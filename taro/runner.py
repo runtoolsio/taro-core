@@ -12,12 +12,6 @@ def run(job: Job):
     JobInstance(job).run()
 
 
-class JobLogAdapter(logging.LoggerAdapter):
-
-    def process(self, msg, kwargs):
-        return '[%s] %s' % (self.extra['connid'], msg), kwargs
-
-
 class JobInstance:
 
     def __init__(self, job: Job):
