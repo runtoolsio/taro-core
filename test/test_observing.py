@@ -1,12 +1,12 @@
 """
-Tests that an observer receives correct notifications
+Tests that TestObserver receives correct notifications
 """
 
 import pytest
 
 from taro.execution import ExecutionState
 from taro.job import Job
-from taro.test.execution import TestExecution
+from taro.test.execution import TestExecution  # TODO package import
 from taro.test.observer import TestObserver
 import taro.runner as runner
 
