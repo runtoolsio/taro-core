@@ -3,7 +3,7 @@ from typing import Iterable, Union, Any
 from taro.execution import Execution
 
 
-def job_id(category, name):
+def job_id(category: str, name: str):
     return "{}/{}".format(category, name)
 
 

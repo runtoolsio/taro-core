@@ -11,10 +11,10 @@ class ExecutionState(Enum):
     NOT_STARTED = 4
     FAILED = 5
 
-    def is_terminal(self):
+    def is_terminal(self) -> bool:
         return self.value >= 3
 
-    def is_failure(self):
+    def is_failure(self) -> bool:
         return self.value >= 4
 
 

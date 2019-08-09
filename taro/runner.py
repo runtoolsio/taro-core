@@ -19,7 +19,6 @@ class JobInstance:
         self.id = 'uuid'  # TODO real
         self.state = ExecutionState.NONE
         self.exec_error = None
-        self._set_state(ExecutionState.TRIGGERED)
 
     # Inline?
     def _log(self, event: str, msg: str):
@@ -50,6 +49,7 @@ class JobInstance:
                 log.exception("event=[observer_exception]")
 
     def run(self):
+        self._set_state(ExecutionState.TRIGGERED)
         try:
             new_state = self.job.execution.execute_catch_exc()
             self._set_state(new_state)
