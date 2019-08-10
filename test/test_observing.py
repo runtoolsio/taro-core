@@ -18,8 +18,8 @@ def observer():
     return observer
 
 
-def job(exec_state: ExecutionState = ExecutionState.COMPLETED):
-    return Job('c', 'n', TestExecution(exec_state.name))
+def job(after_exec_state: ExecutionState = ExecutionState.COMPLETED):
+    return Job('c', 'n', TestExecution(after_exec_state))
 
 
 def test_job_passed(observer: TestObserver):

@@ -10,6 +10,7 @@ class ExecutionState(Enum):
     COMPLETED = 3
     NOT_STARTED = 4
     FAILED = 5
+    ERROR = 6
 
     def is_terminal(self) -> bool:
         return self.value >= 3
@@ -20,10 +21,12 @@ class ExecutionState(Enum):
 
 class ExecutionError(Exception):
 
-    def __init__(self, message: str, not_started: bool, unexpected_error=None, **kwargs):
+    def __init__(self, message: str, exec_state: ExecutionState, unexpected_error: Exception = None, **kwargs):
+        if not exec_state.is_failure():
+            raise ValueError('exec_state must be a failure', exec_state)
         super().__init__(message)
         self.message = message
-        self.not_started = not_started
+        self.exec_state = exec_state
         self.unexpected_error = unexpected_error
         self.params = kwargs
 
@@ -36,7 +39,7 @@ class Execution(abc.ABC):
         except ExecutionError:
             raise
         except Exception as e:
-            raise ExecutionError("Unexpected error", not_started=False, unexpected_error=e)
+            raise ExecutionError("Unexpected error", ExecutionState.ERROR, unexpected_error=e)
 
     @abc.abstractmethod
     def execute(self) -> ExecutionState:

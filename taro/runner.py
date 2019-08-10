@@ -20,17 +20,22 @@ class JobInstance:
         self.state = ExecutionState.NONE
         self.exec_error = None
 
+    def run(self):
+        self._set_state(ExecutionState.TRIGGERED)
+        try:
+            new_state = self.job.execution.execute_catch_exc()
+            self._set_state(new_state)
+        except ExecutionError as e:
+            self._set_error(e)
+            self._set_state(e.exec_state)
+
     # Inline?
     def _log(self, event: str, msg: str):
         return "event=[{}] job_id=[{}] exec_id=[{}] {}".format(event, self.job.id, self.id, msg)
 
-    def _set_state(self, exec_state, exec_error=None):
+    def _set_state(self, exec_state):
         if not exec_state or exec_state == ExecutionState.NONE or self.state == exec_state:
             return
-
-        if exec_error:
-            self.exec_error = exec_error
-            log.exception(self._log('job_failed', "reason=[{}]".format(exec_error)), exc_info=True)
 
         prev_state, self.state = self.state, exec_state
         level = logging.WARN if self.state.is_failure() else logging.INFO
@@ -40,6 +45,10 @@ class JobInstance:
 
         self._notify_observers()
 
+    def _set_error(self, exec_error: ExecutionError):
+        self.exec_error = exec_error
+        log.exception(self._log('job_failed', "reason=[{}]".format(exec_error)), exc_info=True)
+
     def _notify_observers(self):
         for observer in _observers:
             # noinspection PyBroadException
@@ -47,15 +56,6 @@ class JobInstance:
                 observer.notify(self.job, self.state, self.exec_error)
             except Exception:
                 log.exception("event=[observer_exception]")
-
-    def run(self):
-        self._set_state(ExecutionState.TRIGGERED)
-        try:
-            new_state = self.job.execution.execute_catch_exc()
-            self._set_state(new_state)
-        except ExecutionError as e:
-            new_state = ExecutionState.NOT_STARTED if e.not_started else ExecutionState.FAILED
-            self._set_state(new_state, e)
 
 
 class ExecutionStateObserver(abc.ABC):
