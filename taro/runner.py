@@ -1,6 +1,7 @@
 import abc
 import logging
 from typing import List
+from datetime import datetime
 
 from taro.execution import ExecutionError, ExecutionState
 from taro.job import Job
@@ -8,15 +9,19 @@ from taro.job import Job
 log = logging.getLogger(__name__)
 
 
-def run(job: Job):
+def run(job):
     JobInstance(job).run()
+
+
+def job_id(job) -> str:
+    return job.id + "_" + format(int(datetime.utcnow().timestamp() * 1000), 'x')
 
 
 class JobInstance:
 
-    def __init__(self, job: Job):
+    def __init__(self, job):
         self.job = job
-        self.id = 'uuid'  # TODO real
+        self.id = job_id(job)
         self.state = ExecutionState.NONE
         self.exec_error = None
 
