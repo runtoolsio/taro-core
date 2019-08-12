@@ -47,8 +47,11 @@ def test_execution_started(observer: TestObserver):
 
 
 def test_execution_raises_exc(observer: TestObserver):
-    runner.run(job(raise_exc=Exception()))
+    exc_to_raise = Exception()
+    runner.run(job(raise_exc=exc_to_raise))
 
     assert observer.wait_for_terminal_state()
     assert observer.exec_state(0) == ExecutionState.TRIGGERED
     assert observer.exec_state(1) == ExecutionState.ERROR
+    assert not observer.exec_error(0)
+    assert observer.exec_error(1).unexpected_error == exc_to_raise

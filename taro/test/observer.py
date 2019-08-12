@@ -51,6 +51,13 @@ class TestObserver(ExecutionStateObserver):
         """
         return self._events[event_idx][2]
 
+    def exec_error(self, event_idx: int) -> ExecutionError:
+        """
+        :param event_idx: event index
+        :return: execution state of the event on given index
+        """
+        return self._events[event_idx][3]
+
     def _release_state_waiter(self):
         if self._support_waiter:
             with self.completion_lock:
