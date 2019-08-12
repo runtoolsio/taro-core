@@ -8,17 +8,28 @@ class TestExecution(Execution):
 
     def __init__(self, after_exec_state: ExecutionState = None, raise_exc: Exception = None):
         if after_exec_state and raise_exc:
-            raise ValueError("both after_exec_state and throw_exc are set", after_exec_state, raise_exc)
-        self.after_exec_state = after_exec_state or ExecutionState.COMPLETED
-        self.raise_exc = raise_exc
+            raise ValueError("either after_exec_state or throw_exc must be set", after_exec_state, raise_exc)
+        self._after_exec_state = after_exec_state or (None if raise_exc else ExecutionState.COMPLETED)
+        self._raise_exc = raise_exc
 
     def __repr__(self):
-        return "{}({!r})".format(self.__class__.__name__, self.after_exec_state.name)
+        return "{}(ExecutionState.{}, {!r})".format(
+            self.__class__.__name__, self._after_exec_state.name, self._raise_exc)
+
+    def after_exec_state(self, state: ExecutionState):
+        self._after_exec_state = state
+        self._raise_exc = None
+        return self
+
+    def raise_exception(self, exc: Exception):
+        self._after_exec_state = None
+        self._raise_exc = exc
+        return self
 
     def execute(self):
-        if self.after_exec_state:
-            log.info('event=[executed] new_state=[{}]', self.after_exec_state)
-            return self.after_exec_state
+        if self._after_exec_state:
+            log.info('event=[executed] new_state=[{}]', self._after_exec_state)
+            return self._after_exec_state
         else:
-            log.info('event=[executed] exception_raised=[{}]', self.raise_exc)
-            raise self.raise_exc
+            log.info('event=[executed] exception_raised=[{}]', self._raise_exc)
+            raise self._raise_exc

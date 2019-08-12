@@ -18,8 +18,8 @@ def observer():
     return observer
 
 
-def job(after_exec_state: ExecutionState = ExecutionState.COMPLETED):
-    return Job('c', 'n', TestExecution(after_exec_state))
+def job(after_exec_state: ExecutionState = None, raise_exc: Exception = None):
+    return Job('c', 'n', TestExecution(after_exec_state, raise_exc))
 
 
 def test_job_passed(observer: TestObserver):
@@ -44,3 +44,11 @@ def test_execution_started(observer: TestObserver):
     assert observer.wait_for_state(ExecutionState.STARTED)
     assert observer.exec_state(0) == ExecutionState.TRIGGERED
     assert observer.exec_state(1) == ExecutionState.STARTED
+
+
+def test_execution_raises_exc(observer: TestObserver):
+    runner.run(job(raise_exc=Exception()))
+
+    assert observer.wait_for_terminal_state()
+    assert observer.exec_state(0) == ExecutionState.TRIGGERED
+    assert observer.exec_state(1) == ExecutionState.ERROR
