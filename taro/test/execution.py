@@ -1,3 +1,11 @@
+"""
+:class:`Execution` implementation for testing purposes.
+
+Default :class:`ExecutionState` returned after the execution is COMPLETED.
+Different state can be returned by setting after_exec_state: :func:`TestExecution.after_exec_state`.
+Alternatively the execution can raise an exception set to raise_exc: :func:`TestExecution.raise_exception`.
+"""
+
 import logging
 from taro.execution import Execution, ExecutionState
 

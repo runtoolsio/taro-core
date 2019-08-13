@@ -1,5 +1,5 @@
 """
-ExecutionStateObserver implementation for testing purposes.
+:class:`ExecutionStateObserver` implementation for testing purposes.
 
 Observed notifications are stored as events in indexed sequence.
 The wait_for_* methods allow to wait for a specific event to be observed. This can be used for synchronization

@@ -20,15 +20,31 @@ def job_id(job) -> str:
 class JobInstance:
 
     def __init__(self, job):
-        self.job = job
-        self.id = job_id(job)
-        self.state = ExecutionState.NONE
-        self.exec_error = None
+        self._id = job_id(job)
+        self._job = job
+        self._state = ExecutionState.NONE
+        self._exec_error = None
+
+    @property
+    def id(self):
+        return self._id
+
+    @property
+    def job(self):
+        return self._job
+
+    @property
+    def state(self):
+        return self._state
+
+    @property
+    def exec_error(self):
+        return self._exec_error
 
     def run(self):
         self._set_state(ExecutionState.TRIGGERED)
         try:
-            new_state = self.job.execution.execute()
+            new_state = self._job.execution.execute()
             self._set_state(new_state)
         except Exception as e:
             exec_error = e if isinstance(e, ExecutionError) else ExecutionError.from_unexpected_error(e)
@@ -37,29 +53,29 @@ class JobInstance:
 
     # Inline?
     def _log(self, event: str, msg: str):
-        return "event=[{}] job_id=[{}] exec_id=[{}] {}".format(event, self.job.id, self.id, msg)
+        return "event=[{}] job_id=[{}] exec_id=[{}] {}".format(event, self._job.id, self._id, msg)
 
     def _set_state(self, exec_state):
-        if not exec_state or exec_state == ExecutionState.NONE or self.state == exec_state:
+        if not exec_state or exec_state == ExecutionState.NONE or self._state == exec_state:
             return
 
-        prev_state, self.state = self.state, exec_state
-        level = logging.WARN if self.state.is_failure() else logging.INFO
+        prev_state, self._state = self._state, exec_state
+        level = logging.WARN if self._state.is_failure() else logging.INFO
         log.log(level, self._log('job_state_changed',
                                  "new_state=[{}] prev_state=[{}]".format(
-                                     self.state.name.lower(), prev_state.name.lower())))
+                                     self._state.name.lower(), prev_state.name.lower())))
 
         self._notify_observers()
 
     def _set_error(self, exec_error: ExecutionError):
-        self.exec_error = exec_error
+        self._exec_error = exec_error
         log.exception(self._log('job_failed', "reason=[{}]".format(exec_error)), exc_info=True)
 
     def _notify_observers(self):
         for observer in _observers:
             # noinspection PyBroadException
             try:
-                observer.notify(self.job, self.state, self.exec_error)
+                observer.notify(self._job, self._state, self._exec_error)
             except Exception:
                 log.exception("event=[observer_exception]")
 
