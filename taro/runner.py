@@ -28,11 +28,12 @@ class JobInstance:
     def run(self):
         self._set_state(ExecutionState.TRIGGERED)
         try:
-            new_state = self.job.execution.execute_catch_exc()
+            new_state = self.job.execution.execute()
             self._set_state(new_state)
-        except ExecutionError as e:
-            self._set_error(e)
-            self._set_state(e.exec_state)
+        except Exception as e:
+            exec_error = e if isinstance(e, ExecutionError) else ExecutionError.from_unexpected_error(e)
+            self._set_error(exec_error)
+            self._set_state(exec_error.exec_state)
 
     # Inline?
     def _log(self, event: str, msg: str):

@@ -21,6 +21,10 @@ class ExecutionState(Enum):
 
 class ExecutionError(Exception):
 
+    @classmethod
+    def from_unexpected_error(cls, e: Exception):
+        return cls("Unexpected error", ExecutionState.ERROR, unexpected_error=e)
+
     def __init__(self, message: str, exec_state: ExecutionState, unexpected_error: Exception = None, **kwargs):
         if not exec_state.is_failure():
             raise ValueError('exec_state must be a failure', exec_state)
@@ -32,14 +36,6 @@ class ExecutionError(Exception):
 
 
 class Execution(abc.ABC):
-
-    def execute_catch_exc(self) -> ExecutionState:
-        try:
-            return self.execute()
-        except ExecutionError:
-            raise
-        except Exception as e:
-            raise ExecutionError("Unexpected error", ExecutionState.ERROR, unexpected_error=e)
 
     @abc.abstractmethod
     def execute(self) -> ExecutionState:
