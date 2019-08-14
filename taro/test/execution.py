@@ -34,7 +34,7 @@ class TestExecution(Execution):
         self._raise_exc = exc
         return self
 
-    def execute(self):
+    def execute(self) -> ExecutionState:
         if self._after_exec_state:
             log.info('event=[executed] new_state=[{}]', self._after_exec_state)
             return self._after_exec_state

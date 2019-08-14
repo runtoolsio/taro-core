@@ -28,7 +28,7 @@ class TestObserver(ExecutionStateObserver):
         if self._support_waiter:
             self.completion_lock = Condition()
 
-    def notify(self, job: Job, exec_state: ExecutionState, exec_error=None):
+    def notify(self, job: Job, exec_state: ExecutionState, exec_error: ExecutionError = None):
         self._events.append((datetime.now(), job, exec_state, exec_error))
 
         log_msg = "event=[notification] job=[{}] state=[{}]".format(job, exec_state)
