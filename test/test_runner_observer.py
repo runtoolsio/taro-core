@@ -1,5 +1,6 @@
 """
-Tests that TestObserver receives correct notifications
+Tests that :mod:`runner` sends correct notification to observers.
+:class:`TestObserver` is used for verifying the behavior.
 """
 
 import pytest
