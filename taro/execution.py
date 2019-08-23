@@ -2,7 +2,7 @@ import abc
 from enum import Enum
 
 
-# TODO STOPPED
+# TODO INIT_FAILED, STOPPED
 class ExecutionState(Enum):
     NONE = 0
     TRIGGERED = 1

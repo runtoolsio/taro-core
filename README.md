@@ -1,2 +1,29 @@
 # taro
 Job management library
+
+## Inter-process communication
+https://docs.python.org/3/library/xmlrpc.html
+
+## Required features
+- job monitoring
+- job stopping
+- job timeout
+- job post checks
+- logging configurations
+- log rotation
+
+## Implementation notes
+Logging config: https://stackoverflow.com/questions/14058453/making-python-loggers-output-all-messages-to-stdout-in-addition-to-log-file
+
+STDOUT to file: https://stackoverflow.com/questions/4965159/how-to-redirect-output-with-subprocess-in-python
+
+Reading subprocess stdout:
+https://zaiste.net/realtime_output_from_shell_command_in_python/
+
+https://stackoverflow.com/questions/13398261/how-to-run-a-subprocess-with-python-wait-for-it-to-exit-and-get-the-full-stdout
+https://stackoverflow.com/questions/19961052/what-is-the-difference-if-i-dont-use-stdout-subprocess-pipe-in-subprocess-popen
+https://stackoverflow.com/questions/803265/getting-realtime-output-using-subprocess
+
+Log files location:
+https://superuser.com/questions/1293842/where-should-userspecific-application-log-files-be-stored-in-gnu-linux?rq=1
+https://stackoverflow.com/questions/25897836/where-should-i-write-a-user-specific-log-file-to-and-be-xdg-base-directory-comp
