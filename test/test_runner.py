@@ -11,5 +11,5 @@ def test_executed():
     execution = TestExecution()
     assert execution.executed_count() == 0
 
-    runner.run(Job('c', 'n', execution))
+    runner.run(Job('j1', execution))
     assert execution.executed_count() == 1

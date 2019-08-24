@@ -20,7 +20,7 @@ def observer():
 
 
 def job(after_exec_state: ExecutionState = None, raise_exc: Exception = None):
-    return Job('c', 'n', TestExecution(after_exec_state, raise_exc))
+    return Job('j1', TestExecution(after_exec_state, raise_exc))
 
 
 def test_job_passed(observer: TestObserver):
