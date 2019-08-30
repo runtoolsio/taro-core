@@ -2,6 +2,7 @@ import argparse
 import logging
 import sys
 
+from taro import log
 from taro import runner
 from taro.job import Job
 from taro.process import ProcessExecution
@@ -27,27 +28,10 @@ def parse_args(args):
 
 def main(args):
     args = parse_args(args)
-    configure_logging(args)
+    log.configure(args)
 
     if args.action == 'exec':
         run_exec(args)
-
-
-def configure_logging(args):
-    # print(getpass.getuser()) root when sudo
-    # print(os.getuid()) 0 when sudo
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.DEBUG)
-    log_formatter = logging.Formatter('%(asctime)s - %(levelname)-5s - %(name)s - %(message)s')
-
-    for log in args.log:
-        log_type = log[0].lower()
-        if 'stdout' == log_type:
-            console_handler = logging.StreamHandler()
-            if len(log) >= 2:
-                console_handler.setLevel(log[1])
-            console_handler.setFormatter(log_formatter)
-            root_logger.addHandler(console_handler)
 
 
 def run_exec(args):
