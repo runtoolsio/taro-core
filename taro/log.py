@@ -1,3 +1,4 @@
+import argparse
 import logging
 
 
@@ -10,8 +11,15 @@ def configure(args):
         log_type = log[0].lower()
         level = log[1] if len(log) > 1 else None
 
-        if 'stdout' == log_type:
-            _configure_console(root_logger, formatter, level)
+        if 'file' == log_type:
+            pass
+        else:
+            if len(log) > 2:
+                raise argparse.ArgumentError(None,
+                                             "Argument --log with value <{}> may contain only one additional value: "
+                                             "<level>, unknown: {}".format(log_type, ' '.join(log[2:])))
+            if 'stdout' == log_type:
+                _configure_console(root_logger, formatter, level)
 
 
 def _configure_console(root, formatter, level):
