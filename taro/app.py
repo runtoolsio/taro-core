@@ -23,6 +23,8 @@ def parse_args(args):
     exec_parser.add_argument('--id', type=str, default='anonymous', help='job ID')
     exec_parser.add_argument('--log-file', nargs=1, type=str, metavar='<log-level>',
                              help='log into taro.log file with given <log-level>')
+    exec_parser.add_argument('--log-stdout', nargs=1, type=str, metavar='<log-level>',
+                             help='log into standard output with given <log-level>')
     # Terms command and arguments taken from python doc and docker run help,
     # for this app (or rather exec command) these are operands (alternatively arguments)
     exec_parser.add_argument('command', type=str, metavar='COMMAND', help='program to execute')
@@ -40,6 +42,8 @@ def main(args):
 
 
 def setup_logging(args):
+    if args.log_stdout and args.log_stdout[0].lower() != 'off':
+        log.setup_console(args.log_stdout[0].lower())
     if args.log_file and args.log_file[0].lower() != 'off':
         log.setup_file(args.log_file[0].lower())
 

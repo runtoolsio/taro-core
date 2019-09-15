@@ -6,9 +6,9 @@ _root_logger.setLevel(logging.DEBUG)
 _formatter = logging.Formatter('%(asctime)s - %(levelname)-5s - %(name)s - %(message)s')
 
 
-def _setup_console(level):
+def setup_console(level):
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(level or logging.WARN)
+    console_handler.setLevel(logging.getLevelName(level.upper()))
     console_handler.setFormatter(_formatter)
     _root_logger.addHandler(console_handler)
 
