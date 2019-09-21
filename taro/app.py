@@ -1,7 +1,10 @@
 import argparse
 import sys
 
+import yaml
+
 from taro import log
+from taro import paths
 from taro import runner
 from taro.job import Job
 from taro.process import ProcessExecution
@@ -21,6 +24,7 @@ def parse_args(args):
     # # for this app these are operands (alternatively arguments)
     exec_parser.add_argument('--dry-run', action='store_true')  # TODO
     exec_parser.add_argument('--id', type=str, default='anonymous', help='job ID')
+    exec_parser.add_argument('--no-config', action='store_true')
     exec_parser.add_argument('--log-file', nargs=1, type=str, metavar='<log-level>',
                              help='log into taro.log file with given <log-level>')
     exec_parser.add_argument('--log-stdout', nargs=1, type=str, metavar='<log-level>',
@@ -35,10 +39,18 @@ def parse_args(args):
 
 def main(args):
     args = parse_args(args)
+    load_config(args)
     setup_logging(args)
 
     if args.action == 'exec':
         run_exec(args)
+
+
+def load_config(args):
+    config_file_path = paths.config_file_path()
+    with open(config_file_path, 'r') as stream:
+        config = yaml.safe_load(stream)
+    print(config)
 
 
 def setup_logging(args):

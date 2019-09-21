@@ -34,3 +34,12 @@ https://stackoverflow.com/questions/803265/getting-realtime-output-using-subproc
 Log files location:
 https://superuser.com/questions/1293842/where-should-userspecific-application-log-files-be-stored-in-gnu-linux?rq=1
 https://stackoverflow.com/questions/25897836/where-should-i-write-a-user-specific-log-file-to-and-be-xdg-base-directory-comp
+
+Bin location:
+https://unix.stackexchange.com/questions/36871/where-should-a-local-executable-be-placed
+
+Default ranger config:
+/usr/lib/python3.7/site-packages/ranger/config/rc.conf
+
+User specific site-packages:
+/home/stan/.local/lib/python3.7/site-packages
