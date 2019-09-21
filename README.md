@@ -4,13 +4,20 @@ Job management library
 ## Inter-process communication
 https://docs.python.org/3/library/xmlrpc.html
 
-## Required features
-- job monitoring
+## Feature priority
+### Mandatory
+1. Logging
+2. (Config)
+3. Current executing jobs
+4. Progress of currently executing jobs
+5. SNS notifications
+6. Execution history
+7. Log rotation
+
+### Optional
 - job stopping
 - job timeout
 - job post checks
-- logging configurations
-- log rotation
 
 ## Implementation notes
 Logging config: https://stackoverflow.com/questions/14058453/making-python-loggers-output-all-messages-to-stdout-in-addition-to-log-file
