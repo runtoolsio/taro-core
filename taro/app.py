@@ -1,63 +1,37 @@
-import argparse
 import sys
 
-import yaml
-
+from taro import cli
+from taro import configuration
 from taro import log
-from taro import paths
 from taro import runner
 from taro.job import Job
 from taro.process import ProcessExecution
 
 
-def parse_args(args):
-    parser = argparse.ArgumentParser(description='Manage your jobs with Taro')
-    common = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(dest='action')  # command/action
-
-    exec_parser = subparsers.add_parser('exec', parents=[common], description='Execute command', add_help=False)
-    # exec_parser.add_argument('--log', nargs='+', action='append', type=str, metavar='<arg>',
-    #                          help='<logger> [level] [arg] ...', default=[])
-    # exec_parser.add_argument('--log-level', type=str, default=logging.INFO)  # Remove default
-    # exec_parser.add_argument('-t', '--timeout', type=int)
-    # # Terms command and arguments taken from python doc and docker run help,
-    # # for this app these are operands (alternatively arguments)
-    exec_parser.add_argument('--dry-run', action='store_true')  # TODO
-    exec_parser.add_argument('--id', type=str, default='anonymous', help='job ID')
-    exec_parser.add_argument('--no-config', action='store_true')
-    exec_parser.add_argument('--log-file', nargs=1, type=str, metavar='<log-level>',
-                             help='log into taro.log file with given <log-level>')
-    exec_parser.add_argument('--log-stdout', nargs=1, type=str, metavar='<log-level>',
-                             help='log into standard output with given <log-level>')
-    # Terms command and arguments taken from python doc and docker run help,
-    # for this app (or rather exec command) these are operands (alternatively arguments)
-    exec_parser.add_argument('command', type=str, metavar='COMMAND', help='program to execute')
-    exec_parser.add_argument('arg', type=str, metavar='ARG', nargs=argparse.REMAINDER, help="program arguments")
-
-    return parser.parse_args(args)
-
-
 def main(args):
-    args = parse_args(args)
-    load_config(args)
+    args = cli.parse_args(args)
+    config = configuration.read_config()
+    args_config = merge_args_config(args, config)
+    print(args_config)
     setup_logging(args)
 
     if args.action == 'exec':
         run_exec(args)
 
 
-def load_config(args):
-    config_file_path = paths.config_file_path()
-    with open(config_file_path, 'r') as stream:
-        config = yaml.safe_load(stream)
-    print(config)
+def merge_args_config(args, config):
+    merged = dict(config)
+    for k, v in vars(args).items():
+        if v:
+            merged[k] = v
+    return merged
 
 
 def setup_logging(args):
-    if args.log_stdout and args.log_stdout[0].lower() != 'off':
-        log.setup_console(args.log_stdout[0].lower())
-    if args.log_file and args.log_file[0].lower() != 'off':
-        log.setup_file(args.log_file[0].lower())
+    if args.log_stdout and args.log_stdout.lower() != 'off':
+        log.setup_console(args.log_stdout.lower())
+    if args.log_file and args.log_file.lower() != 'off':
+        log.setup_file(args.log_file.lower())
 
 
 def run_exec(args):
