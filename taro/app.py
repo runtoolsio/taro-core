@@ -11,20 +11,32 @@ from taro.process import ProcessExecution
 def main(args):
     args = cli.parse_args(args)
     config = configuration.read_config()
-    args_config = merge_args_config(args, config)
-    print(args_config)
+    override_config(config, args)
     setup_logging(args)
 
     if args.action == 'exec':
         run_exec(args)
 
 
-def merge_args_config(args, config):
-    merged = dict(config)
-    for k, v in vars(args).items():
-        if v:
-            merged[k] = v
-    return merged
+def override_config(config, args):
+    arg_to_config = {
+        'log_disabled': 'log.disable',
+        'log_file': 'log.file.level',
+        'log_file_path': 'log.file.path',
+        'log_stdout': 'log.stdout.level'
+    }
+
+    for arg, conf in arg_to_config.items():
+        arg_value = getattr(args, arg)
+        if arg_value is not None:
+            _setattr(config, conf.split('.'), arg_value)
+
+
+def _setattr(obj, fields, value):
+    if len(fields) == 1:
+        setattr(obj, fields[0], value)
+    else:
+        _setattr(getattr(obj, fields[0]), fields[1:], value)
 
 
 def setup_logging(args):
