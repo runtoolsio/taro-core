@@ -20,8 +20,15 @@ def main(args):
 
 
 def override_config(args, config):
+    """
+    Overrides values in configuration with cli option values for those specified on command line
+
+    :param args: command line arguments
+    :param config: configuration
+    """
+
     arg_to_config = {
-        'log_disabled': 'log.disable',
+        'log_enabled': 'log.enabled',
         'log_file': 'log.file.level',
         'log_file_path': 'log.file.path',
         'log_stdout': 'log.stdout.level'
@@ -34,12 +41,15 @@ def override_config(args, config):
 
 
 def setup_logging(log_config):
-    stdout_level = get_attr(log_config, 'stdout.level', none='off')
-    if stdout_level.lower() != 'off':
-        log.setup_console(stdout_level.lower())
-    file_level = get_attr(log_config, 'file.level', none='off')
-    if file_level.lower() != 'off':
-        log.setup_file(file_level.lower())
+    if not log_config.enabled:
+        return
+
+    stdout_level = get_attr(log_config, 'stdout.level', none='off').lower()
+    if stdout_level != 'off':
+        log.setup_console(stdout_level)
+    file_level = get_attr(log_config, 'file.level', none='off').lower()
+    if file_level != 'off':
+        log.setup_file(file_level)
 
 
 def run_exec(args):
