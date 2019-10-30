@@ -28,10 +28,10 @@ def override_config(args, config):
     """
 
     arg_to_config = {
-        'log_enabled': 'log.enabled',
-        'log_file': 'log.file.level',
-        'log_file_path': 'log.file.path',
-        'log_stdout': 'log.stdout.level'
+        'log_enabled': configuration.LOG_ENABLED,
+        'log_stdout': configuration.LOG_STDOUT_LEVEL,
+        'log_file': configuration.LOG_FILE_LEVEL,
+        'log_file_path': configuration.LOG_FILE_PATH,
     }
 
     for arg, conf in arg_to_config.items():

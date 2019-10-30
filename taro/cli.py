@@ -1,8 +1,13 @@
 import argparse
 from argparse import RawTextHelpFormatter
 
+from taro import configuration
+
 _true_options = ['yes', 'true', 't', 'y', '1', 'on']
 _false_options = ['no', 'false', 'f', 'n', '0', 'off']
+_all_boolean_options = _true_options + _false_options
+
+_log_levels = ['critical', 'fatal', 'error', 'warn', 'warning', 'info', 'debug', 'off']
 
 
 def parse_args(args):
@@ -19,7 +24,7 @@ def parse_args(args):
 
 def init_exec_parser(common, subparsers):
     """
-    Creates parser for exec command
+    Creates parser for `exec` command
 
     :param common: parent parser
     :param subparsers: sub-parser for exec parser to be added to
@@ -27,21 +32,23 @@ def init_exec_parser(common, subparsers):
 
     exec_parser = subparsers.add_parser(
         'exec', formatter_class=RawTextHelpFormatter, parents=[common], description='Execute command', add_help=False)
+
+    # General options
+    exec_parser.add_argument('--dry-run', action='store_true')  # TODO implement
+    exec_parser.add_argument('--id', type=str, default='anonymous', help='defines job ID')
+    exec_parser.add_argument('-t', '--timeout', type=int)  # TODO implement
+
+    # Config override options
     config_group = exec_parser.add_argument_group('config override', 'these options override entries from config file')
-    exec_parser.add_argument('--dry-run', action='store_true')  # TODO
-    exec_parser.add_argument('--id', type=str, default='anonymous', help='job ID')
-    # exec_parser.add_argument('-t', '--timeout', type=int)
-    config_group.add_argument(
-        '--log-enabled',
-        type=_str2bool,
-        metavar='enabled',
-        help='overrides log.enabled, allowed values True={}, False={}'.format(_true_options, _false_options))
-    config_group.add_argument('--log-file', type=str, metavar='<log-level>',
-                              help='log into {log-file-path} file with given <log-level>')
-    config_group.add_argument('--log-file-path', type=str, metavar='<path>',
-                              help='log file path')
-    config_group.add_argument('--log-stdout', type=str, metavar='<log-level>',
-                              help='log into standard output with given <log-level>')
+    config_group.add_argument('--log-enabled', type=_str2bool, metavar="{{{}}}".format(','.join(_all_boolean_options)),
+                              help='overrides ' + configuration.LOG_ENABLED)
+    config_group.add_argument('--log-stdout', type=str, choices=_log_levels,
+                              help='overrides ' + configuration.LOG_STDOUT_LEVEL)
+    config_group.add_argument('--log-file', type=str, choices=_log_levels,
+                              help='overrides ' + configuration.LOG_FILE_LEVEL)
+    config_group.add_argument('--log-file-path', type=str, metavar='PATH',
+                              help='overrides ' + configuration.LOG_FILE_PATH)
+
     # Terms command and arguments taken from python doc and docker run help,
     # for this app (or rather exec command) these are operands (alternatively arguments)
     exec_parser.add_argument('command', type=str, metavar='COMMAND', help='program to execute')

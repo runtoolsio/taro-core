@@ -5,6 +5,11 @@ import yaml
 
 from taro import paths
 
+LOG_ENABLED = 'log.enabled'
+LOG_STDOUT_LEVEL = 'log.stdout.level'
+LOG_FILE_LEVEL = 'log.file.level'
+LOG_FILE_PATH = 'log.file.path'
+
 
 def read_config() -> SimpleNamespace:
     config_file_path = paths.config_file_path()
