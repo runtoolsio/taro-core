@@ -1,4 +1,5 @@
 import argparse
+from argparse import RawTextHelpFormatter
 
 _true_options = ['yes', 'true', 't', 'y', '1', 'on']
 _false_options = ['no', 'false', 'f', 'n', '0', 'off']
@@ -6,19 +7,30 @@ _false_options = ['no', 'false', 'f', 'n', '0', 'off']
 
 def parse_args(args):
     parser = argparse.ArgumentParser(description='Manage your jobs with Taro')
-    common = argparse.ArgumentParser()
+    common = argparse.ArgumentParser()  # parent parser for subparsers in case they need to share common options
     subparsers = parser.add_subparsers(dest='action')  # command/action
 
-    exec_parser = subparsers.add_parser('exec', parents=[common], description='Execute command', add_help=False)
+    init_exec_parser(common, subparsers)
+
+    parsed = parser.parse_args(args)
+    _check_log_collision(parser, parsed)
+    return parsed
+
+
+def init_exec_parser(common, subparsers):
+    """
+    Creates parser for exec command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for exec parser to be added to
+    """
+
+    exec_parser = subparsers.add_parser(
+        'exec', formatter_class=RawTextHelpFormatter, parents=[common], description='Execute command', add_help=False)
     config_group = exec_parser.add_argument_group('config override', 'these options override entries from config file')
-    # exec_parser.add_argument('--log', nargs='+', action='append', type=str, metavar='<arg>',
-    #                          help='<logger> [level] [arg] ...', default=[])
-    # exec_parser.add_argument('--log-level', type=str, default=logging.INFO)  # Remove default
-    # exec_parser.add_argument('-t', '--timeout', type=int)
-    # # Terms command and arguments taken from python doc and docker run help,
-    # # for this app these are operands (alternatively arguments)
     exec_parser.add_argument('--dry-run', action='store_true')  # TODO
     exec_parser.add_argument('--id', type=str, default='anonymous', help='job ID')
+    # exec_parser.add_argument('-t', '--timeout', type=int)
     config_group.add_argument(
         '--log-enabled',
         type=_str2bool,
@@ -34,10 +46,6 @@ def parse_args(args):
     # for this app (or rather exec command) these are operands (alternatively arguments)
     exec_parser.add_argument('command', type=str, metavar='COMMAND', help='program to execute')
     exec_parser.add_argument('arg', type=str, metavar='ARG', nargs=argparse.REMAINDER, help="program arguments")
-
-    parsed = parser.parse_args(args)
-    _check_log_collision(parser, parsed)
-    return parsed
 
 
 # Maxim's solution: https://stackoverflow.com/questions/15008758
