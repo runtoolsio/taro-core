@@ -1,5 +1,8 @@
 import argparse
 
+_true_options = ['yes', 'true', 't', 'y', '1', 'on']
+_false_options = ['no', 'false', 'f', 'n', '0', 'off']
+
 
 def parse_args(args):
     parser = argparse.ArgumentParser(description='Manage your jobs with Taro')
@@ -16,7 +19,11 @@ def parse_args(args):
     # # for this app these are operands (alternatively arguments)
     exec_parser.add_argument('--dry-run', action='store_true')  # TODO
     exec_parser.add_argument('--id', type=str, default='anonymous', help='job ID')
-    config_group.add_argument('--log-enabled', type=_str2bool)  # TODO help
+    config_group.add_argument(
+        '--log-enabled',
+        type=_str2bool,
+        metavar='enabled',
+        help='overrides log.enabled, allowed values True={}, False={}'.format(_true_options, _false_options))
     config_group.add_argument('--log-file', type=str, metavar='<log-level>',
                               help='log into {log-file-path} file with given <log-level>')
     config_group.add_argument('--log-file-path', type=str, metavar='<path>',
@@ -37,9 +44,9 @@ def parse_args(args):
 def _str2bool(v):
     if isinstance(v, bool):
         return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1', 'on'):
+    if v.lower() in _true_options:
         return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0', 'off'):
+    elif v.lower() in _false_options:
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
