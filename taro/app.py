@@ -1,7 +1,7 @@
 import sys
 
 from taro import cli
-from taro import configuration
+from taro import cnf
 from taro import log
 from taro import runner
 from taro.job import Job
@@ -11,9 +11,9 @@ from taro.util import get_attr, set_attr
 
 def main(args):
     args = cli.parse_args(args)
-    config = configuration.read_config()
+    config = cnf.read_config()
     override_config(args, config)
-    setup_logging(config.log)
+    setup_logging(config)
 
     if args.action == 'exec':
         run_exec(args)
@@ -28,10 +28,10 @@ def override_config(args, config):
     """
 
     arg_to_config = {
-        'log_enabled': configuration.LOG_ENABLED,
-        'log_stdout': configuration.LOG_STDOUT_LEVEL,
-        'log_file': configuration.LOG_FILE_LEVEL,
-        'log_file_path': configuration.LOG_FILE_PATH,
+        'log_enabled': cnf.LOG_ENABLED,
+        'log_stdout': cnf.LOG_STDOUT_LEVEL,
+        'log_file': cnf.LOG_FILE_LEVEL,
+        'log_file_path': cnf.LOG_FILE_PATH,
     }
 
     for arg, conf in arg_to_config.items():
@@ -40,15 +40,15 @@ def override_config(args, config):
             set_attr(config, conf.split('.'), arg_value)
 
 
-def setup_logging(log_config):
-    if not log_config.enabled:
+def setup_logging(config):
+    if not get_attr(config, cnf.LOG_ENABLED, none=False):
         return
 
-    stdout_level = get_attr(log_config, 'stdout.level', none='off').lower()
+    stdout_level = get_attr(config, cnf.LOG_STDOUT_LEVEL, none='off').lower()
     if stdout_level != 'off':
         log.setup_console(stdout_level)
 
-    file_level = get_attr(log_config, 'file.level', none='off').lower()
+    file_level = get_attr(config, cnf.LOG_FILE_LEVEL, none='off').lower()
     if file_level != 'off':
         log.setup_file(file_level)
 

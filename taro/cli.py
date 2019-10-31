@@ -1,7 +1,7 @@
 import argparse
 from argparse import RawTextHelpFormatter
 
-from taro import configuration
+from taro import cnf
 
 _true_options = ['yes', 'true', 't', 'y', '1', 'on']
 _false_options = ['no', 'false', 'f', 'n', '0', 'off']
@@ -41,13 +41,13 @@ def init_exec_parser(common, subparsers):
     # Config override options
     config_group = exec_parser.add_argument_group('config override', 'these options override entries from config file')
     config_group.add_argument('--log-enabled', type=_str2bool, metavar="{{{}}}".format(','.join(_all_boolean_options)),
-                              help='overrides ' + configuration.LOG_ENABLED)
+                              help='overrides ' + cnf.LOG_ENABLED)
     config_group.add_argument('--log-stdout', type=str, choices=_log_levels,
-                              help='overrides ' + configuration.LOG_STDOUT_LEVEL)
+                              help='overrides ' + cnf.LOG_STDOUT_LEVEL)
     config_group.add_argument('--log-file', type=str, choices=_log_levels,
-                              help='overrides ' + configuration.LOG_FILE_LEVEL)
+                              help='overrides ' + cnf.LOG_FILE_LEVEL)
     config_group.add_argument('--log-file-path', type=str, metavar='PATH',
-                              help='overrides ' + configuration.LOG_FILE_PATH)
+                              help='overrides ' + cnf.LOG_FILE_PATH)
 
     # Terms command and arguments taken from python doc and docker run help,
     # for this app (or rather exec command) these are operands (alternatively arguments)

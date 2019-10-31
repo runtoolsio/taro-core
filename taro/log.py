@@ -14,8 +14,8 @@ def setup_console(level):
     _root_logger.addHandler(console_handler)
 
 
-def setup_file(level):
-    file_handler = logging.FileHandler(paths.log_file_path())
+def setup_file(level, file=None):
+    file_handler = logging.FileHandler(file or paths.log_file_path())
     file_handler.setLevel(logging.getLevelName(level.upper()))
     file_handler.setFormatter(_formatter)
     _root_logger.addHandler(file_handler)
