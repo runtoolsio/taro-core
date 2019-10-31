@@ -50,7 +50,7 @@ def setup_logging(config):
 
     file_level = get_attr(config, cnf.LOG_FILE_LEVEL, none='off').lower()
     if file_level != 'off':
-        log.setup_file(file_level)
+        log.setup_file(file_level, get_attr(config, cnf.LOG_FILE_PATH))
 
 
 def run_exec(args):

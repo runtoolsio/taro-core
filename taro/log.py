@@ -1,4 +1,5 @@
 import logging
+import os
 
 from taro import paths
 
@@ -15,7 +16,14 @@ def setup_console(level):
 
 
 def setup_file(level, file=None):
-    file_handler = logging.FileHandler(file or paths.log_file_path())
+    file_handler = logging.FileHandler(_expand_user(file) or paths.log_file_path())
     file_handler.setLevel(logging.getLevelName(level.upper()))
     file_handler.setFormatter(_formatter)
     _root_logger.addHandler(file_handler)
+
+
+def _expand_user(file):
+    if file is None or not file.startswith('~'):
+        return file
+
+    return os.path.expanduser(file)
