@@ -1,5 +1,6 @@
 import logging
-import pathlib
+
+from taro import paths
 
 _root_logger = logging.getLogger()
 _root_logger.setLevel(logging.DEBUG)
@@ -14,15 +15,7 @@ def setup_console(level):
 
 
 def setup_file(level):
-    file_handler = logging.FileHandler(_get_log_file_path())
+    file_handler = logging.FileHandler(paths.log_file_path())
     file_handler.setLevel(logging.getLevelName(level.upper()))
     file_handler.setFormatter(_formatter)
     _root_logger.addHandler(file_handler)
-
-
-def _get_log_file_path():
-    """TODO root"""
-    home = pathlib.Path.home()
-    path = home / '.cache' / 'taro'
-    path.mkdir(parents=True, exist_ok=True)
-    return str(path / 'taro.log')

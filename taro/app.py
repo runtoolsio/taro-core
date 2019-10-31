@@ -47,6 +47,7 @@ def setup_logging(log_config):
     stdout_level = get_attr(log_config, 'stdout.level', none='off').lower()
     if stdout_level != 'off':
         log.setup_console(stdout_level)
+
     file_level = get_attr(log_config, 'file.level', none='off').lower()
     if file_level != 'off':
         log.setup_file(file_level)

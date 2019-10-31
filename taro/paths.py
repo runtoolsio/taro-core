@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 _CONFIG_FILE = 'taro.yaml'
+_LOG_FILE = 'taro.log'
 
 
 def _is_root():
@@ -24,3 +25,14 @@ def config_file_path() -> Path:
         return system_config
 
     raise FileNotFoundError('None config file found: ' + str([str(config) for config in paths]))
+
+
+def log_file_path() -> Path:
+    if _is_root():
+        path = Path('/var/log/taro')
+    else:
+        home = Path.home()
+        path = home / '.cache' / 'taro'
+
+    path.mkdir(parents=True, exist_ok=True)
+    return path / 'taro.log'
