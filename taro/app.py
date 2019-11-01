@@ -11,12 +11,25 @@ from taro.util import get_attr, set_attr
 
 def main(args):
     args = cli.parse_args(args)
+
+    if args.action == cli.ACTION_EXEC:
+        run_exec(args)
+    elif args.action == cli.ACTION_SHOW_CONFIG:
+        run_show_config()
+
+
+def run_exec(args):
     config = cnf.read_config()
     override_config(args, config)
     setup_logging(config)
 
-    if args.action == 'exec':
-        run_exec(args)
+    execution = ProcessExecution([args.command] + args.arg)
+    job = Job(args.id, execution)
+    runner.run(job)
+
+
+def run_show_config():
+    cnf.print_config()
 
 
 def override_config(args, config):
@@ -51,12 +64,6 @@ def setup_logging(config):
     file_level = get_attr(config, cnf.LOG_FILE_LEVEL, none='off').lower()
     if file_level != 'off':
         log.setup_file(file_level, get_attr(config, cnf.LOG_FILE_PATH))
-
-
-def run_exec(args):
-    execution = ProcessExecution([args.command] + args.arg)
-    job = Job(args.id, execution)
-    runner.run(job)
 
 
 if __name__ == '__main__':

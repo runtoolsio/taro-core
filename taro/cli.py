@@ -3,6 +3,9 @@ from argparse import RawTextHelpFormatter
 
 from taro import cnf
 
+ACTION_EXEC = 'exec'
+ACTION_SHOW_CONFIG = 'show-config'
+
 _true_options = ['yes', 'true', 't', 'y', '1', 'on']
 _false_options = ['no', 'false', 'f', 'n', '0', 'off']
 _all_boolean_options = _true_options + _false_options
@@ -16,6 +19,7 @@ def parse_args(args):
     subparsers = parser.add_subparsers(dest='action')  # command/action
 
     init_exec_parser(common, subparsers)
+    init_show_config_parser(common, subparsers)
 
     parsed = parser.parse_args(args)
     _check_log_collision(parser, parsed)
@@ -55,6 +59,19 @@ def init_exec_parser(common, subparsers):
     exec_parser.add_argument('arg', type=str, metavar='ARG', nargs=argparse.REMAINDER, help="program arguments")
 
 
+def init_show_config_parser(common, subparsers):
+    """
+    Creates parser for `show-config` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for show-config parser to be added to
+    """
+
+    subparsers.add_parser(
+        'show-config', formatter_class=RawTextHelpFormatter, parents=[common], description='Print config',
+        add_help=False)
+
+
 # Maxim's solution: https://stackoverflow.com/questions/15008758
 def _str2bool(v):
     if isinstance(v, bool):
@@ -68,7 +85,7 @@ def _str2bool(v):
 
 
 def _check_log_collision(parser, parsed):
-    if parsed.log_enabled is not None and not parsed.log_enabled:
+    if hasattr(parsed, 'log_enabled') and parsed.log_enabled is not None and not parsed.log_enabled:
         for arg, val in vars(parsed).items():
             if arg != 'log_enabled' and arg.startswith('log_') and val is not None:
                 parser.error("Conflicting options: log_enabled is set to false but {} is specified".format(arg))

@@ -13,8 +13,15 @@ LOG_FILE_PATH = 'log.file.path'
 
 def read_config() -> SimpleNamespace:
     config_file_path = paths.config_file_path()
-    with open(config_file_path, 'r') as stream:
-        return wrap_namespace(yaml.safe_load(stream))
+    with open(config_file_path, 'r') as file:
+        return wrap_namespace(yaml.safe_load(file))
+
+
+def print_config():
+    config_file_path = paths.config_file_path()
+    print('Showing config file: ' + str(config_file_path))
+    with open(config_file_path, 'r') as file:
+        print(file.read())
 
 
 # Martijn Pieters' solution below: https://stackoverflow.com/questions/50490856
