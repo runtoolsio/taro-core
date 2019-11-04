@@ -39,6 +39,7 @@ def _init_exec_parser(common, subparsers):
 
     # General options
     exec_parser.add_argument('--dry-run', action='store_true')  # TODO implement
+    exec_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
     exec_parser.add_argument('--id', type=str, default='anonymous', help='defines job ID')
     exec_parser.add_argument('-t', '--timeout', type=int)  # TODO implement
 

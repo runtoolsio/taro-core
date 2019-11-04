@@ -17,7 +17,7 @@ def main(args):
 
 
 def run_exec(args):
-    config = cnf.read_config()
+    config = get_config(args)
     override_config(args, config)
     setup_logging(config)
 
@@ -28,6 +28,15 @@ def run_exec(args):
 
 def run_show_config():
     cnf.print_config()
+
+
+def get_config(args):
+    if args.def_config:
+        config_file_path = paths.default_config_file_path()
+    else:
+        config_file_path = paths.lookup_config_file_path()
+
+    return cnf.read_config(config_file_path)
 
 
 def override_config(args, config):

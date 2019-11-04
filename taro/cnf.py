@@ -11,8 +11,7 @@ LOG_FILE_LEVEL = 'log.file.level'
 LOG_FILE_PATH = 'log.file.path'
 
 
-def read_config() -> SimpleNamespace:
-    config_file_path = paths.lookup_config_file_path()
+def read_config(config_file_path) -> SimpleNamespace:
     with open(config_file_path, 'r') as file:
         return wrap_namespace(yaml.safe_load(file))
 
