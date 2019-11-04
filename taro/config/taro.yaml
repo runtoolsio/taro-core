@@ -1,0 +1,9 @@
+log:
+  enabled: true
+  stdout:
+    level: warn
+  file:
+    level: info
+    path: ~/.cache/taro/taro.log
+  syslog:
+    level: off

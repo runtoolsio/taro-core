@@ -61,7 +61,7 @@ def setup_logging(config):
 
     file_level = get_attr(config, cnf.LOG_FILE_LEVEL, none='off').lower()
     if file_level != 'off':
-        log_file_path = _expand_user(get_attr(config, cnf.LOG_FILE_PATH)) or paths.log_file_path()
+        log_file_path = _expand_user(get_attr(config, cnf.LOG_FILE_PATH)) or paths.log_file_path(create=True)
         log.setup_file(file_level, log_file_path)
 
 
