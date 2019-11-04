@@ -18,15 +18,15 @@ def parse_args(args):
     common = argparse.ArgumentParser()  # parent parser for subparsers in case they need to share common options
     subparsers = parser.add_subparsers(dest='action')  # command/action
 
-    init_exec_parser(common, subparsers)
-    init_show_config_parser(common, subparsers)
+    _init_exec_parser(common, subparsers)
+    _init_show_config_parser(common, subparsers)
 
     parsed = parser.parse_args(args)
     _check_log_collision(parser, parsed)
     return parsed
 
 
-def init_exec_parser(common, subparsers):
+def _init_exec_parser(common, subparsers):
     """
     Creates parser for `exec` command
 
@@ -59,7 +59,7 @@ def init_exec_parser(common, subparsers):
     exec_parser.add_argument('arg', type=str, metavar='ARG', nargs=argparse.REMAINDER, help="program arguments")
 
 
-def init_show_config_parser(common, subparsers):
+def _init_show_config_parser(common, subparsers):
     """
     Creates parser for `show-config` command
 

@@ -1,9 +1,7 @@
+import os
 import sys
 
-from taro import cli
-from taro import cnf
-from taro import log
-from taro import runner
+from taro import cli, paths, cnf, log, runner
 from taro.job import Job
 from taro.process import ProcessExecution
 from taro.util import get_attr, set_attr
@@ -63,7 +61,15 @@ def setup_logging(config):
 
     file_level = get_attr(config, cnf.LOG_FILE_LEVEL, none='off').lower()
     if file_level != 'off':
-        log.setup_file(file_level, get_attr(config, cnf.LOG_FILE_PATH))
+        log_file_path = _expand_user(get_attr(config, cnf.LOG_FILE_PATH)) or paths.log_file_path()
+        log.setup_file(file_level, log_file_path)
+
+
+def _expand_user(file):
+    if file is None or not file.startswith('~'):
+        return file
+
+    return os.path.expanduser(file)
 
 
 if __name__ == '__main__':
