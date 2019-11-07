@@ -74,7 +74,10 @@ def _init_show_config_parser(common, subparsers):
     config_parser = subparsers.add_parser('config', parents=[common], description='Config related actions',
                                           add_help=False)
     config_subparsers = config_parser.add_subparsers(dest='config_action')
-    config_subparsers.add_parser('show', parents=[common], description='Print config', add_help=False)
+    show_config_parser = config_subparsers.add_parser(
+        'show', parents=[common], description='Print config used by exec command or config specified by an option',
+        add_help=False)
+    show_config_parser.add_argument('-dc', '--def-config', action='store_true', help='show default config')
 
 
 # Maxim's solution: https://stackoverflow.com/questions/15008758
@@ -101,5 +104,5 @@ def _check_collisions(parser, parsed):
             if arg != 'log_enabled' and arg.startswith('log_') and val is not None:
                 parser.error("Conflicting options: log-enabled is set to false but {} is specified".format(arg))
 
-    if hasattr(parsed, 'def_config') and parsed.def_config and parsed.config:
+    if hasattr(parsed, 'def_config') and hasattr(parsed, 'config') and parsed.def_config and parsed.config:
         parser.error('Conflicting options: both def-config and config specified')

@@ -3,8 +3,6 @@ from types import SimpleNamespace
 
 import yaml
 
-from taro import paths
-
 LOG_ENABLED = 'log.enabled'
 LOG_STDOUT_LEVEL = 'log.stdout.level'
 LOG_FILE_LEVEL = 'log.file.level'
@@ -16,8 +14,7 @@ def read_config(config_file_path) -> SimpleNamespace:
         return wrap_namespace(yaml.safe_load(file))
 
 
-def print_config():
-    config_file_path = paths.lookup_config_file_path()
+def print_config(config_file_path):
     print('Showing config file: ' + str(config_file_path))
     with open(config_file_path, 'r') as file:
         print(file.read())

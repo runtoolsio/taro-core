@@ -14,7 +14,7 @@ def main(args):
         run_exec(args)
     elif args.action == cli.ACTION_CONFIG:
         if args.config_action == cli.ACTION_CONFIG_SHOW:
-            run_show_config()
+            run_show_config(args)
 
 
 def run_exec(args):
@@ -27,19 +27,22 @@ def run_exec(args):
     runner.run(job)
 
 
-def run_show_config():
-    cnf.print_config()
+def run_show_config(args):
+    cnf.print_config(get_config_file_path(args))
 
 
 def get_config(args):
-    if args.config:
-        config_file_path = _expand_user(args.config)
-    elif args.def_config:
-        config_file_path = paths.default_config_file_path()
-    else:
-        config_file_path = paths.lookup_config_file_path()
-
+    config_file_path = get_config_file_path(args)
     return cnf.read_config(config_file_path)
+
+
+def get_config_file_path(args):
+    if hasattr(args, 'config') and args.config:
+        return _expand_user(args.config)
+    elif args.def_config:
+        return paths.default_config_file_path()
+    else:
+        return paths.lookup_config_file_path()
 
 
 def override_config(args, config):
