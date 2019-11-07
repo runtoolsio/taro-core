@@ -17,6 +17,17 @@ def default_config_file_path() -> Path:
     return def_config
 
 
+"""
+https://stackoverflow.com/questions/7567642
+S.Lott's answer:
+There's usually a multi-step search for the configuration file.
+1. Local directory. ./myproject.conf.
+2. User's home directory (~user/myproject.conf)
+3. A standard system-wide directory (/etc/myproject/myproject.conf)
+4. A place named by an environment variable (MYPROJECT_CONF)
+"""
+
+
 def lookup_config_file_path() -> Path:
     paths = []
 
