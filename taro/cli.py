@@ -22,7 +22,7 @@ def parse_args(args):
     _init_show_config_parser(common, subparsers)
 
     parsed = parser.parse_args(args)
-    _check_log_collision(parser, parsed)
+    _check_collisions(parser, parsed)
     return parsed
 
 
@@ -40,6 +40,7 @@ def _init_exec_parser(common, subparsers):
     # General options
     exec_parser.add_argument('--dry-run', action='store_true')  # TODO implement
     exec_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
+    exec_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
     exec_parser.add_argument('--id', type=str, default='anonymous', help='defines job ID')
     exec_parser.add_argument('-t', '--timeout', type=int)  # TODO implement
 
@@ -85,8 +86,17 @@ def _str2bool(v):
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
-def _check_log_collision(parser, parsed):
+def _check_collisions(parser, parsed):
+    """
+    Check that incompatible combinations of options were not used
+
+    :param parser: parser
+    :param parsed: parsed arguments
+    """
     if hasattr(parsed, 'log_enabled') and parsed.log_enabled is not None and not parsed.log_enabled:
         for arg, val in vars(parsed).items():
             if arg != 'log_enabled' and arg.startswith('log_') and val is not None:
-                parser.error("Conflicting options: log_enabled is set to false but {} is specified".format(arg))
+                parser.error("Conflicting options: log-enabled is set to false but {} is specified".format(arg))
+
+    if parsed.def_config and parsed.config:
+        parser.error('Conflicting options: both def-config and config specified')

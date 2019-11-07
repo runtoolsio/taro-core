@@ -31,7 +31,9 @@ def run_show_config():
 
 
 def get_config(args):
-    if args.def_config:
+    if args.config:
+        config_file_path = _expand_user(args.config)
+    elif args.def_config:
         config_file_path = paths.default_config_file_path()
     else:
         config_file_path = paths.lookup_config_file_path()
