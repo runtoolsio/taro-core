@@ -12,8 +12,9 @@ def main(args):
 
     if args.action == cli.ACTION_EXEC:
         run_exec(args)
-    elif args.action == cli.ACTION_SHOW_CONFIG:
-        run_show_config()
+    elif args.action == cli.ACTION_CONFIG:
+        if args.config_action == cli.ACTION_CONFIG_SHOW:
+            run_show_config()
 
 
 def run_exec(args):

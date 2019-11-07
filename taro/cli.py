@@ -4,7 +4,8 @@ from argparse import RawTextHelpFormatter
 from taro import cnf
 
 ACTION_EXEC = 'exec'
-ACTION_SHOW_CONFIG = 'show-config'
+ACTION_CONFIG = 'config'
+ACTION_CONFIG_SHOW = 'show'
 
 _true_options = ['yes', 'true', 't', 'y', '1', 'on']
 _false_options = ['no', 'false', 'f', 'n', '0', 'off']
@@ -14,6 +15,7 @@ _log_levels = ['critical', 'fatal', 'error', 'warn', 'warning', 'info', 'debug',
 
 
 def parse_args(args):
+    # TODO destination required
     parser = argparse.ArgumentParser(description='Manage your jobs with Taro')
     common = argparse.ArgumentParser()  # parent parser for subparsers in case they need to share common options
     subparsers = parser.add_subparsers(dest='action')  # command/action
@@ -63,15 +65,16 @@ def _init_exec_parser(common, subparsers):
 
 def _init_show_config_parser(common, subparsers):
     """
-    Creates parser for `show-config` command
+    Creates parsers for `config` command
 
     :param common: parent parser
-    :param subparsers: sub-parser for show-config parser to be added to
+    :param subparsers: sub-parser for config parser to be added to
     """
 
-    subparsers.add_parser(
-        'show-config', formatter_class=RawTextHelpFormatter, parents=[common], description='Print config',
-        add_help=False)
+    config_parser = subparsers.add_parser('config', parents=[common], description='Config related actions',
+                                          add_help=False)
+    config_subparsers = config_parser.add_subparsers(dest='config_action')
+    config_subparsers.add_parser('show', parents=[common], description='Print config', add_help=False)
 
 
 # Maxim's solution: https://stackoverflow.com/questions/15008758
@@ -98,5 +101,5 @@ def _check_collisions(parser, parsed):
             if arg != 'log_enabled' and arg.startswith('log_') and val is not None:
                 parser.error("Conflicting options: log-enabled is set to false but {} is specified".format(arg))
 
-    if parsed.def_config and parsed.config:
+    if hasattr(parsed, 'def_config') and parsed.def_config and parsed.config:
         parser.error('Conflicting options: both def-config and config specified')
