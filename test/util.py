@@ -23,7 +23,7 @@ def run_app(command, return_stderr=False):
     return output.getvalue()
 
 
-def run_app_expect_exc(command, exception):
+def run_app_expect_error(command, exception):
     """
     Run command expecting to raise an exception
     :param exception: expected exception

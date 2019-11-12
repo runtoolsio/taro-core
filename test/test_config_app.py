@@ -5,7 +5,7 @@ Command: config
 
 from taro import paths
 from test.util import run_app
-from test.util import run_app_expect_exc
+from test.util import run_app_expect_error
 
 
 def test_show_default():
@@ -18,6 +18,6 @@ def test_show_default():
 
 
 def test_invalid_sub_command():
-    output = run_app_expect_exc('config no_such_action', SystemExit)
+    output = run_app_expect_error('config no_such_action', SystemExit)
 
     assert 'invalid choice' in output
