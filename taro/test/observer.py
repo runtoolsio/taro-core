@@ -22,7 +22,7 @@ type_id = 'test'
 
 class TestObserver(ExecutionStateObserver):
 
-    def __init__(self, support_waiter: bool = False):
+    def __init__(self, *, support_waiter: bool = False):
         self._events: List[Tuple[datetime, Job, ExecutionState, ExecutionError]] = []
         self._support_waiter = support_waiter
         if self._support_waiter:

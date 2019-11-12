@@ -1,7 +1,7 @@
 import abc
 import logging
-from typing import List
 from datetime import datetime
+from typing import List
 
 from taro.execution import ExecutionError, ExecutionState
 from taro.job import Job
@@ -92,6 +92,10 @@ _observers: List[ExecutionStateObserver] = []
 
 def register_observer(observer):
     _observers.append(observer)
+
+
+def deregister_observer(observer):
+    _observers.remove(observer)
 
 
 class ExecutionStateListener(ExecutionStateObserver):

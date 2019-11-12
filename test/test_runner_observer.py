@@ -5,18 +5,19 @@ Tests that :mod:`runner` sends correct notification to observers.
 
 import pytest
 
+import taro.runner as runner
 from taro.execution import ExecutionState
 from taro.job import Job
 from taro.test.execution import TestExecution  # TODO package import
 from taro.test.observer import TestObserver
-import taro.runner as runner
 
 
 @pytest.fixture
 def observer():
-    observer = TestObserver(True)
+    observer = TestObserver(support_waiter=True)
     runner.register_observer(observer)
-    return observer
+    yield observer
+    runner.deregister_observer(observer)
 
 
 def job(after_exec_state: ExecutionState = None, raise_exc: Exception = None):
