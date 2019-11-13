@@ -12,7 +12,10 @@ class ProcessExecution(Execution):
     def execute(self) -> ExecutionState:
         try:
             ret_code = subprocess.call(self.args)
-            return ExecutionState.COMPLETED
+            if ret_code == 0:
+                return ExecutionState.COMPLETED
+            else:
+                raise ExecutionError("Process returned non-zero code: " + str(ret_code), ExecutionState.FAILED)
         except FileNotFoundError as e:
             sys.stderr.write(str(e) + "\n")
             raise ExecutionError(str(e), ExecutionState.FAILED) from e

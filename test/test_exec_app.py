@@ -28,6 +28,11 @@ def test_invalid_command(observer: TestObserver):
     assert observer.exec_state(-1) == ExecutionState.FAILED
 
 
-def test_invalid_command_print_to_stderr(observer: TestObserver):
+def test_failed_command(observer: TestObserver):
+    run_app('exec ls --no-such-option')
+    assert observer.exec_state(-1) == ExecutionState.FAILED
+
+
+def test_invalid_command_print_to_stderr():
     output = run_app('exec --log-stdout off non_existing_command', return_stderr=True)
     assert 'No such file' in output
