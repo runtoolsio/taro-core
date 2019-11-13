@@ -69,7 +69,10 @@ class JobInstance:
 
     def _set_error(self, exec_error: ExecutionError):
         self._exec_error = exec_error
-        log.exception(self._log('job_failed', "reason=[{}]".format(exec_error)), exc_info=True)
+        if exec_error.exec_state == ExecutionState.ERROR or exec_error.unexpected_error:
+            log.exception(self._log('job_error', "reason=[{}]".format(exec_error)), exc_info=True)
+        else:
+            log.warning(self._log('job_failed', "reason=[{}]".format(exec_error)))
 
     def _notify_observers(self):
         for observer in _observers:
