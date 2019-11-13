@@ -18,11 +18,16 @@ def observer():
     runner.deregister_observer(observer)
 
 
-def test_exec_echo(observer: TestObserver):
+def test_successful(observer: TestObserver):
     run_app('exec echo this binary universe')
     assert observer.exec_state(-1) == ExecutionState.COMPLETED
 
 
-def test_exec_invalid_command(observer: TestObserver):
+def test_invalid_command(observer: TestObserver):
     run_app('exec non_existing_command')
     assert observer.exec_state(-1) == ExecutionState.FAILED
+
+
+def test_invalid_command_print_to_stderr(observer: TestObserver):
+    output = run_app('exec --log-stdout off non_existing_command', return_stderr=True)
+    assert 'No such file' in output
