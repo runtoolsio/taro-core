@@ -1,6 +1,6 @@
 import subprocess
 
-from taro.execution import Execution, ExecutionState
+from taro.execution import Execution, ExecutionState, ExecutionError
 
 
 class ProcessExecution(Execution):
@@ -9,5 +9,8 @@ class ProcessExecution(Execution):
         self.args = args
 
     def execute(self) -> ExecutionState:
-        subprocess.call(self.args)
-        return ExecutionState.COMPLETED
+        try:
+            subprocess.call(self.args)
+            return ExecutionState.COMPLETED
+        except FileNotFoundError as e:
+            raise ExecutionError(str(e), ExecutionState.FAILED) from e
