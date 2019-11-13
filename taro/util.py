@@ -1,17 +1,17 @@
-def get_attr(obj, fields, none=None):
-    return _getattr(obj, fields.split('.'), none)
+def get_attr(obj, fields, default=None):
+    return _getattr(obj, fields.split('.'), default)
 
 
-def _getattr(obj, fields, none):
-    attr = getattr(obj, fields[0])
+def _getattr(obj, fields, default):
+    attr = getattr(obj, fields[0], default)
 
     if attr is None:
-        return none
+        return default
 
     if len(fields) == 1:
         return attr
     else:
-        return _getattr(attr, fields[1:], none)
+        return _getattr(attr, fields[1:], default)
 
 
 def set_attr(obj, fields, value):

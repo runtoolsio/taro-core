@@ -67,14 +67,14 @@ def override_config(args, config):
 
 
 def setup_logging(config):
-    if not get_attr(config, cnf.LOG_ENABLED, none=False):
+    if not get_attr(config, cnf.LOG_ENABLED, default=False):
         return
 
-    stdout_level = get_attr(config, cnf.LOG_STDOUT_LEVEL, none='off').lower()
+    stdout_level = get_attr(config, cnf.LOG_STDOUT_LEVEL, default='off').lower()
     if stdout_level != 'off':
         log.setup_console(stdout_level)
 
-    file_level = get_attr(config, cnf.LOG_FILE_LEVEL, none='off').lower()
+    file_level = get_attr(config, cnf.LOG_FILE_LEVEL, default='off').lower()
     if file_level != 'off':
         log_file_path = _expand_user(get_attr(config, cnf.LOG_FILE_PATH)) or paths.log_file_path(create=True)
         log.setup_file(file_level, log_file_path)
