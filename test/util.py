@@ -6,17 +6,18 @@ import pytest
 from taro import app
 
 
-def run_app(command, return_stderr=False):
+def run_app(command, capture_stderr=False):
     """
     Run command and return recorded stdout or stderr
-    :param return_stderr: return stderr instead of stdout
+    :param capture_stderr: return stderr instead of stdout
     :param command: command to run
     :return: output of the executed command
     """
     output = io.StringIO()
-    if return_stderr:
-        with contextlib.redirect_stderr(output):
+    if capture_stderr:
+        with io.StringIO() as buf, contextlib.redirect_stderr(buf):
             app.main(command.split())
+            return buf.getvalue()
     else:
         with contextlib.redirect_stdout(output):
             app.main(command.split())

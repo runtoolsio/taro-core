@@ -67,7 +67,8 @@ def override_config(args, config):
 
 
 def setup_logging(config):
-    if not get_attr(config, cnf.LOG_ENABLED, default=False):
+    if not get_attr(config, cnf.LOG_ENABLED, default=True):
+        log.disable()
         return
 
     stdout_level = get_attr(config, cnf.LOG_STDOUT_LEVEL, default='off').lower()

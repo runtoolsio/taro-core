@@ -34,5 +34,5 @@ def test_failed_command(observer: TestObserver):
 
 
 def test_invalid_command_print_to_stderr():
-    output = run_app('exec --log-stdout off non_existing_command', return_stderr=True)
+    output = run_app('exec --log-stdout off non_existing_command', capture_stderr=True)
     assert 'No such file' in output
