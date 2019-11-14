@@ -36,3 +36,13 @@ def test_failed_command(observer: TestObserver):
 def test_invalid_command_print_to_stderr():
     output = run_app('exec --log-stdout off non_existing_command', capture_stderr=True)
     assert 'No such file' in output
+
+
+def test_default_job_id(observer: TestObserver):
+    run_app('exec echo life is dukkha')
+    assert observer.last_job().id == 'echo life is dukkha'
+
+
+def test_explicit_job_id(observer: TestObserver):
+    run_app('exec --id this_is_an_id echo not an id')
+    assert observer.last_job().id == 'this_is_an_id'
