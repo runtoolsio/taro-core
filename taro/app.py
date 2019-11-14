@@ -22,8 +22,10 @@ def run_exec(args):
     override_config(args, config)
     setup_logging(config)
 
-    execution = ProcessExecution([args.command] + args.arg)
-    job = Job(args.id, execution)
+    all_args = [args.command] + args.arg
+    execution = ProcessExecution(all_args)
+    job_id = args.id or " ".join(all_args)
+    job = Job(job_id, execution)
     runner.run(job)
 
 
@@ -90,5 +92,3 @@ def _expand_user(file):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
-
-# main(['exec', '--log-disabled', 'ls', '-l'])
