@@ -1,3 +1,4 @@
+import importlib
 import logging
 
 _root_logger = logging.getLogger()
@@ -5,8 +6,22 @@ _root_logger.setLevel(logging.DEBUG)
 _formatter = logging.Formatter('%(asctime)s - %(levelname)-5s - %(name)s - %(message)s')
 
 
+def init():
+    """
+    Resetting needed for tests
+    """
+    _root_logger.disabled = False
+    logging.shutdown()
+    importlib.reload(logging)
+
+
 def disable():
     logging.disable()
+    _root_logger.disabled = True
+
+
+def is_disabled():
+    return _root_logger.disabled
 
 
 def setup_console(level):

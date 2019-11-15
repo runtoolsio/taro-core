@@ -1,19 +1,44 @@
 """
 Tests :mod:`app` module
 Command: exec
-Group: logging
+Description: Test that logging is configured according to CLI options and/or configuration file
 """
+import pytest
 
-from test.util import run_app
+from taro import log
+from test.util import run_app, create_test_config, remove_test_config
+
+
+@pytest.fixture(autouse=True)
+def remove_config_if_created():
+    yield
+    remove_test_config()
+
+
+def test_logging_enabled_by_default():
+    create_test_config(dict())
+    run_app('exec -C test.yaml echo')
+    assert not log.is_disabled()
+
+
+def test_logging_enabled_in_config():
+    create_test_config({"log": {"enabled": True}})
+    run_app('exec -C test.yaml echo')
+    assert not log.is_disabled()
+
+
+def test_logging_disabled_in_config():
+    create_test_config({"log": {"enabled": False}})
+    run_app('exec -C test.yaml echo')
+    assert log.is_disabled()
+
+
+def test_logging_enabled_cli_overrides_config():
+    create_test_config({"log": {"enabled": False}})
+    run_app('exec -C test.yaml --log-enabled true echo')
+    assert not log.is_disabled()
 
 
 def test_logging_disabled():
-    """
-    When logging is disabled not even error log messages are allowed
-    """
-
-    command = 'exec --log-enabled false ls --no-such-option'
-    standard_output = run_app(command, capture_stderr=False)
-    error_output = run_app(command, capture_stderr=True)
-    assert not standard_output
-    assert not error_output
+    run_app('exec --log-enabled false echo')
+    assert log.is_disabled()
