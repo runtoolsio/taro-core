@@ -3,6 +3,8 @@ Tests :mod:`app` module
 Command: exec
 Description: Test that logging is configured according to CLI options and/or configuration file
 """
+import logging
+
 import pytest
 
 from taro import log
@@ -42,3 +44,9 @@ def test_logging_enabled_cli_overrides_config():
 def test_logging_disabled():
     run_app('exec --log-enabled false echo')
     assert log.is_disabled()
+
+
+def test_logging_stdout_level_in_config():
+    create_test_config({"log": {"stdout": {"level": "error"}}})
+    run_app('exec --log-stdout error echo')
+    assert logging.ERROR == log.get_console_level()
