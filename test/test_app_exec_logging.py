@@ -57,8 +57,14 @@ def test_logging_stdout_level_cli_override():
     run_app('exec -C test.yaml --log-stdout warn echo')
     assert logging.WARN == log.get_console_level()
 
-#
-# def test_logging_file_level_in_config():
-#     create_test_config({"log": {"file": {"level": "error"}}})
-#     run_app('exec -C test.yaml echo')
-#     assert logging.ERROR == log.get_console_level()
+
+def test_logging_file_level_in_config():
+    create_test_config({"log": {"file": {"level": "error"}}})
+    run_app('exec -C test.yaml echo')
+    assert logging.ERROR == log.get_file_level()
+
+
+def test_logging_file_level_cli_override():
+    create_test_config({"log": {"file": {"level": "error"}}})
+    run_app('exec -C test.yaml --log-file warn echo')
+    assert logging.WARN == log.get_file_level()

@@ -33,15 +33,19 @@ def setup_console(level):
 
 
 def get_console_level():
-    handler = _find_handler(STDOUT_HANDLER)
-    return handler.level if handler else None
+    return _get_handler_level(STDOUT_HANDLER)
 
 
 def setup_file(level, file):
     file_handler = logging.FileHandler(file)
+    file_handler.set_name(FILE_HANDLER)
     file_handler.setLevel(logging.getLevelName(level.upper()))
     file_handler.setFormatter(_formatter)
-    _root_logger.addHandler(file_handler)
+    _register_handler(file_handler)
+
+
+def get_file_level():
+    return _get_handler_level(FILE_HANDLER)
 
 
 def _find_handler(name):
@@ -58,3 +62,8 @@ def _register_handler(handler):
         _root_logger.removeHandler(previous)
 
     _root_logger.addHandler(handler)
+
+
+def _get_handler_level(name):
+    handler = _find_handler(name)
+    return handler.level if handler else None
