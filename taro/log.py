@@ -48,6 +48,14 @@ def get_file_level():
     return _get_handler_level(FILE_HANDLER)
 
 
+def get_file_path():
+    handler = _find_handler(FILE_HANDLER)
+    if handler:
+        return handler.baseFilename
+    else:
+        return None
+
+
 def _find_handler(name):
     for handler in _root_logger.handlers:
         if handler.name == name:
