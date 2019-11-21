@@ -1,10 +1,12 @@
 import logging
+import sys
 
 _root_logger = logging.getLogger()
 _root_logger.setLevel(logging.DEBUG)
 _formatter = logging.Formatter('%(asctime)s - %(levelname)-5s - %(name)s - %(message)s')
 
 STDOUT_HANDLER = 'stdout-handler'
+STDERR_HANDLER = 'stderr-handler'
 FILE_HANDLER = 'file-handler'
 
 
@@ -25,11 +27,19 @@ def is_disabled():
 
 
 def setup_console(level):
-    console_handler = logging.StreamHandler()
-    console_handler.set_name(STDOUT_HANDLER)
-    console_handler.setLevel(logging.getLevelName(level.upper()))
-    console_handler.setFormatter(_formatter)
-    _register_handler(console_handler)
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.set_name(STDOUT_HANDLER)
+    stdout_handler.setLevel(logging.getLevelName(level.upper()))
+    stdout_handler.setFormatter(_formatter)
+    stdout_handler.addFilter(lambda record: record.levelno <= logging.INFO)
+    _register_handler(stdout_handler)
+
+    stderr_handler = logging.StreamHandler(sys.stderr)
+    stderr_handler.set_name(STDERR_HANDLER)
+    stderr_handler.setLevel(logging.getLevelName(level.upper()))
+    stderr_handler.setFormatter(_formatter)
+    stderr_handler.addFilter(lambda record: record.levelno > logging.INFO)
+    _register_handler(stderr_handler)
 
 
 def get_console_level():

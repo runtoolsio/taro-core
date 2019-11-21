@@ -6,7 +6,7 @@ https://docs.python.org/3/library/xmlrpc.html
 
 ## Feature priority
 ### Mandatory
-1. Logging - normal to stdout and errors to stderr (https://docs.python.org/3/library/logging.handlers.html)
+1. ~~Logging - normal to stdout and errors to stderr (https://docs.python.org/3/library/logging.handlers.html)~~
 2. (Config)
 3. Current executing jobs
 4. Progress of currently executing jobs
