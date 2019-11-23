@@ -33,9 +33,9 @@ def test_failed_command(observer: TestObserver):
     assert observer.exec_state(-1) == ExecutionState.FAILED
 
 
-def test_invalid_command_print_to_stderr():
-    output = run_app('exec --log-stdout off non_existing_command', capture_stderr=True)
-    assert 'No such file' in output
+def test_invalid_command_print_to_stderr(capsys):
+    run_app('exec --log-stdout off non_existing_command')
+    assert 'No such file' in capsys.readouterr().err
 
 
 def test_default_job_id(observer: TestObserver):

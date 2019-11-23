@@ -21,6 +21,7 @@ def parse_args(args):
     subparsers = parser.add_subparsers(dest='action')  # command/action
 
     _init_exec_parser(common, subparsers)
+    _init_ps_parser(common, subparsers)
     _init_show_config_parser(common, subparsers)
 
     parsed = parser.parse_args(args)
@@ -60,6 +61,17 @@ def _init_exec_parser(common, subparsers):
     # for this app (or rather exec command) these are operands (alternatively arguments)
     exec_parser.add_argument('command', type=str, metavar='COMMAND', help='program to execute')
     exec_parser.add_argument('arg', type=str, metavar='ARG', nargs=argparse.REMAINDER, help="program arguments")
+
+
+def _init_ps_parser(common, subparsers):
+    """
+    Creates parsers for `ps` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for ps parser to be added to
+    """
+
+    ps_parser = subparsers.add_parser('ps', parents=[common], description='Show running jobs', add_help=False)
 
 
 def _init_show_config_parser(common, subparsers):

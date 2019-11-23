@@ -7,7 +7,7 @@ https://docs.python.org/3/library/xmlrpc.html
 ## Feature priority
 ### Mandatory
 1. ~~Logging - normal to stdout and errors to stderr (https://docs.python.org/3/library/logging.handlers.html)~~
-2. (Config)
+2. ~~(Config)~~
 3. Current executing jobs
 4. Progress of currently executing jobs
 5. SNS notifications
@@ -20,6 +20,18 @@ https://docs.python.org/3/library/xmlrpc.html
 - job post checks
 
 ## Implementation notes
+
+### Color Print
+termcolor module
+https://github.com/tartley/colorama
+https://github.com/erikrose/blessings
+https://github.com/timofurrer/colorful
+
+### Table Print
+https://stackoverflow.com/questions/9535954/printing-lists-as-tabular-data
+
+### Misc
+
 Logging config: https://stackoverflow.com/questions/14058453/making-python-loggers-output-all-messages-to-stdout-in-addition-to-log-file
 
 STDOUT to file: https://stackoverflow.com/questions/4965159/how-to-redirect-output-with-subprocess-in-python
