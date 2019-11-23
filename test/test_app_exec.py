@@ -18,9 +18,11 @@ def observer():
     runner.deregister_observer(observer)
 
 
-def test_successful(observer: TestObserver):
+def test_successful(capsys, observer: TestObserver):
     run_app('exec echo this binary universe')
+
     assert observer.exec_state(-1) == ExecutionState.COMPLETED
+    assert 'this binary universe' in capsys.readouterr().out
 
 
 def test_invalid_command(observer: TestObserver):
