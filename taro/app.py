@@ -12,6 +12,8 @@ def main(args):
 
     if args.action == cli.ACTION_EXEC:
         run_exec(args)
+    elif args.action == cli.ACTION_PS:
+        run_ps(args)
     elif args.action == cli.ACTION_CONFIG:
         if args.config_action == cli.ACTION_CONFIG_SHOW:
             run_show_config(args)
@@ -27,6 +29,10 @@ def run_exec(args):
     job_id = args.id or " ".join(all_args)
     job = Job(job_id, execution)
     runner.run(job)
+
+
+def run_ps(args):
+    pass
 
 
 def run_show_config(args):

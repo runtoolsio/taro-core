@@ -4,6 +4,7 @@ from argparse import RawTextHelpFormatter
 from taro import cnf
 
 ACTION_EXEC = 'exec'
+ACTION_PS = 'ps'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
 
@@ -38,7 +39,8 @@ def _init_exec_parser(common, subparsers):
     """
 
     exec_parser = subparsers.add_parser(
-        'exec', formatter_class=RawTextHelpFormatter, parents=[common], description='Execute command', add_help=False)
+        ACTION_EXEC, formatter_class=RawTextHelpFormatter, parents=[common], description='Execute command',
+        add_help=False)
 
     # General options
     exec_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
@@ -71,7 +73,7 @@ def _init_ps_parser(common, subparsers):
     :param subparsers: sub-parser for ps parser to be added to
     """
 
-    ps_parser = subparsers.add_parser('ps', parents=[common], description='Show running jobs', add_help=False)
+    ps_parser = subparsers.add_parser(ACTION_PS, parents=[common], description='Show running jobs', add_help=False)
 
 
 def _init_show_config_parser(common, subparsers):
@@ -82,12 +84,12 @@ def _init_show_config_parser(common, subparsers):
     :param subparsers: sub-parser for config parser to be added to
     """
 
-    config_parser = subparsers.add_parser('config', parents=[common], description='Config related actions',
-                                          add_help=False)
+    config_parser = subparsers.add_parser(
+        ACTION_CONFIG, parents=[common], description='Config related actions', add_help=False)
     config_subparsers = config_parser.add_subparsers(dest='config_action')
     show_config_parser = config_subparsers.add_parser(
-        'show', parents=[common], description='Print config used by exec command or config specified by an option',
-        add_help=False)
+        ACTION_CONFIG_SHOW, parents=[common],
+        description='Print config used by exec command or config specified by an option', add_help=False)
     show_config_parser.add_argument('-dc', '--def-config', action='store_true', help='show default config')
 
 
