@@ -10,17 +10,23 @@ log = logging.getLogger(__name__)
 
 
 def run(job):
-    JobInstance(job).run()
+    instance = JobInstance(job)
+    run_instance(instance)
+    return instance
 
 
-def job_id(job) -> str:
+def run_instance(instance):
+    instance.run()
+
+
+def _instance_id(job) -> str:
     return job.id + "_" + format(int(datetime.utcnow().timestamp() * 1000), 'x')
 
 
 class JobInstance:
 
     def __init__(self, job):
-        self._id = job_id(job)
+        self._id = _instance_id(job)
         self._job = job
         self._state = ExecutionState.NONE
         self._exec_error = None
@@ -30,8 +36,8 @@ class JobInstance:
         return self._id
 
     @property
-    def job(self):
-        return self._job
+    def job_id(self):
+        return self._job.id
 
     @property
     def state(self):
