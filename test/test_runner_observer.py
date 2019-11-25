@@ -28,7 +28,7 @@ def test_job_passed(observer: TestObserver):
     j = job(ExecutionState.COMPLETED)
     runner.run(j)
 
-    assert observer.last_job() == j
+    assert observer.last_job().job_id == j.id
 
 
 def test_execution_completed(observer: TestObserver):

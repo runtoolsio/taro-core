@@ -1,16 +1,15 @@
-import abc
 import logging
 from datetime import datetime
 from typing import List
 
 from taro.execution import ExecutionError, ExecutionState
-from taro.job import Job
+from taro.job import JobInstance, ExecutionStateObserver
 
 log = logging.getLogger(__name__)
 
 
 def run(job):
-    instance = JobInstance(job)
+    instance = RunnerJobInstance(job)
     run_instance(instance)
     return instance
 
@@ -23,7 +22,7 @@ def _instance_id(job) -> str:
     return job.id + "_" + format(int(datetime.utcnow().timestamp() * 1000), 'x')
 
 
-class JobInstance:
+class RunnerJobInstance(JobInstance):
 
     def __init__(self, job):
         self._id = _instance_id(job)
@@ -84,16 +83,9 @@ class JobInstance:
         for observer in _observers:
             # noinspection PyBroadException
             try:
-                observer.notify(self._job, self._state, self._exec_error)
+                observer.notify(self)
             except Exception:
                 log.exception("event=[observer_exception]")
-
-
-class ExecutionStateObserver(abc.ABC):
-
-    @abc.abstractmethod
-    def notify(self, job: Job, exec_state: ExecutionState, exec_error=None):
-        """This method is called when state is changed."""
 
 
 _observers: List[ExecutionStateObserver] = []
@@ -105,56 +97,3 @@ def register_observer(observer):
 
 def deregister_observer(observer):
     _observers.remove(observer)
-
-
-class ExecutionStateListener(ExecutionStateObserver):
-
-    def __init__(self):
-        self.state_to_method = {
-            ExecutionState.TRIGGERED: self.on_triggered,
-            ExecutionState.STARTED: self.on_started,
-            ExecutionState.COMPLETED: self.on_completed,
-            ExecutionState.NOT_STARTED: self.on_not_started,
-            ExecutionState.FAILED: self.on_failed,
-        }
-
-    # noinspection PyMethodMayBeStatic
-    def is_observing(self, _: Job):
-        """Whether this listener listens to the changes of the given job"""
-        return True
-
-    def notify(self, job: Job, exec_state: ExecutionState, exec_error=None):
-        """
-        This method is called when state is changed.
-
-        It is responsible to delegate to corresponding on_* listening method.
-        """
-
-        if not self.is_observing(job):
-            return
-
-        notify_method = self.state_to_method[exec_state]
-        if exec_state.is_failure():
-            notify_method(job, exec_error)
-        else:
-            notify_method(job)
-
-    @abc.abstractmethod
-    def on_triggered(self, job: Job):
-        """TODO"""
-
-    @abc.abstractmethod
-    def on_started(self, job: Job):
-        """Send notification about successful start of an asynchronous job"""
-
-    @abc.abstractmethod
-    def on_completed(self, job: Job):
-        """Send notification about successful completion of a job"""
-
-    @abc.abstractmethod
-    def on_not_started(self, job: Job, exec_error: ExecutionError):
-        """Send notification about failed start of an asynchronous job"""
-
-    @abc.abstractmethod
-    def on_failed(self, job: Job, exec_error: ExecutionError):
-        """Send notification about failed execution of a job"""

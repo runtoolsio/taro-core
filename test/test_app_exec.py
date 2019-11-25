@@ -42,9 +42,9 @@ def test_invalid_command_print_to_stderr(capsys):
 
 def test_default_job_id(observer: TestObserver):
     run_app('exec echo life is dukkha')
-    assert observer.last_job().id == 'echo life is dukkha'
+    assert observer.last_job().job_id == 'echo life is dukkha'
 
 
 def test_explicit_job_id(observer: TestObserver):
     run_app('exec --id this_is_an_id echo not an id')
-    assert observer.last_job().id == 'this_is_an_id'
+    assert observer.last_job().job_id == 'this_is_an_id'

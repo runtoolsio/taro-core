@@ -12,7 +12,7 @@ from threading import Condition
 from typing import Tuple, List, Callable
 
 from taro.execution import ExecutionState, ExecutionError
-from taro.job import Job
+from taro.job import JobInstance
 from taro.runner import ExecutionStateObserver
 
 log = logging.getLogger(__name__)
@@ -23,17 +23,17 @@ type_id = 'test'
 class TestObserver(ExecutionStateObserver):
 
     def __init__(self, *, support_waiter: bool = False):
-        self._events: List[Tuple[datetime, Job, ExecutionState, ExecutionError]] = []
+        self._events: List[Tuple[datetime, JobInstance, ExecutionState, ExecutionError]] = []
         self._support_waiter = support_waiter
         if self._support_waiter:
             self.completion_lock = Condition()
 
-    def notify(self, job: Job, exec_state: ExecutionState, exec_error: ExecutionError = None):
-        self._events.append((datetime.now(), job, exec_state, exec_error))
-        log.info("event=[notification] job=[{}] state=[{}] error=[{}]".format(job, exec_state, exec_error))
+    def notify(self, job_instance: JobInstance):
+        self._events.append((datetime.now(), job_instance, job_instance.state, job_instance.exec_error))
+        log.info("event=[state_changed] job_instance=[{}]".format(job_instance))
         self._release_state_waiter()
 
-    def last_job(self) -> Job:
+    def last_job(self) -> JobInstance:
         """
         :return: job of the last event
         """
