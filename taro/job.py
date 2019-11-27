@@ -1,3 +1,16 @@
+"""
+Job framework defines components used for job submission and management.
+It is built upon :mod:`execution` framework.
+It provides constructs for:
+  1. Creating of job definition
+  2. Implementing of job instance
+  3. Implementing of job observer
+
+There are two type of clients of the framework:
+  1. Job users
+  2. Job management implementation
+"""
+
 import abc
 
 from taro.execution import ExecutionState, ExecutionError

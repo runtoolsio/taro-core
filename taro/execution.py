@@ -1,3 +1,11 @@
+"""
+Execution framework defines an abstraction for an execution of a task.
+It consists of:
+ 1. Possible states of execution
+ 2. A structure for conveying of error conditions
+ 3. An interface for implementing various types of executions
+"""
+
 import abc
 from enum import Enum
 
@@ -40,9 +48,9 @@ class Execution(abc.ABC):
     @abc.abstractmethod
     def execute(self) -> ExecutionState:
         """
-        Executes job
+        Executes a task
 
-        :return: a state of the job instance after the execution of this method
-        :raises ExecutionError: when execution failed due to known cause
+        :return: state after the execution of this method
+        :raises ExecutionError: when execution failed
         :raises Exception: on unexpected failure
         """
