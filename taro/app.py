@@ -1,10 +1,14 @@
+import logging
 import os
 import sys
 
 from taro import cli, paths, cnf, log, runner
+from taro.api import SocketApi
 from taro.job import Job
 from taro.process import ProcessExecution
 from taro.util import get_attr, set_attr
+
+logger = logging.getLogger(__name__)
 
 
 def main(args):
@@ -28,7 +32,15 @@ def run_exec(args):
     execution = ProcessExecution(all_args)
     job_id = args.id or " ".join(all_args)
     job = Job(job_id, execution)
-    runner.run(job)
+    job_instance = runner.create_job_instance(job)
+    api = SocketApi(job_instance)
+    api_started = api.start()
+    if not api_started:
+        logger.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")
+    try:
+        runner.run(job)
+    finally:
+        api.stop()
 
 
 def run_ps(args):

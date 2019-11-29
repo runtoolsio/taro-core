@@ -107,6 +107,7 @@ def api_socket_path(socket_name: str, create: bool):
     :param socket_name: socket file name
     :param create: create path directories if not exist
     :return: unix domain socket path
+    :raises FileNotFoundError: when path cannot be created (only if create == True)
     """
 
     if _is_root():
@@ -115,6 +116,6 @@ def api_socket_path(socket_name: str, create: bool):
         path = Path(f"/tmp/taro_{getpass.getuser()}")
 
     if create:
-        path.mkdir(mode=700, exist_ok=True)
+        path.mkdir(mode=0o700, exist_ok=True)
 
     return path / socket_name
