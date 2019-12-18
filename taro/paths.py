@@ -99,14 +99,13 @@ or use a location in the user's $HOME.
 """
 
 
-def api_socket_path(socket_name: str, create: bool):
+def api_socket_dir(create: bool) -> Path:
     """
-    1. Root user: /run/taro/{socket-name}
-    2. Non-root user: /tmp/taro_${USER}/{socket-name} (An alternative may be: ${HOME}/.cache/taro/{socket-name})
+    1. Root user: /run/taro
+    2. Non-root user: /tmp/taro_${USER} (An alternative may be: ${HOME}/.cache/taro)
 
-    :param socket_name: socket file name
     :param create: create path directories if not exist
-    :return: unix domain socket path
+    :return: directory path for API unix domain sockets
     :raises FileNotFoundError: when path cannot be created (only if create == True)
     """
 
@@ -118,4 +117,18 @@ def api_socket_path(socket_name: str, create: bool):
     if create:
         path.mkdir(mode=0o700, exist_ok=True)
 
-    return path / socket_name
+    return path
+
+
+def api_socket_path(socket_name: str, create: bool) -> Path:
+    """
+    1. Root user: /run/taro/{socket-name}
+    2. Non-root user: /tmp/taro_${USER}/{socket-name} (An alternative may be: ${HOME}/.cache/taro/{socket-name})
+
+    :param socket_name: socket file name
+    :param create: create path directories if not exist
+    :return: unix domain socket path for API
+    :raises FileNotFoundError: when path cannot be created (only if create == True)
+    """
+
+    return api_socket_dir(create) / socket_name

@@ -1,9 +1,10 @@
 import logging
 import os
+
 import sys
 
 from taro import cli, paths, cnf, log, runner
-from taro.api import Server
+from taro.api import Server, Client
 from taro.job import Job
 from taro.process import ProcessExecution
 from taro.util import get_attr, set_attr
@@ -44,7 +45,8 @@ def run_exec(args):
 
 
 def run_ps(args):
-    pass
+    client = Client()
+    client.read_job_info()
 
 
 def run_show_config(args):
