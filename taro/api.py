@@ -78,4 +78,5 @@ class Client:
             self._client.send(json.dumps(req_body).encode())
             datagram = self._client.recv(1024)
             print(datagram.decode())
-            self._client.close()
+        self._client.shutdown(socket.SHUT_RDWR)
+        self._client.close()
