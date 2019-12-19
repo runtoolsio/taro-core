@@ -17,4 +17,3 @@ def test_ps(capsys):
 
     output = capsys.readouterr().out
     assert 'sleep 1' in output
-    assert 'running' in output

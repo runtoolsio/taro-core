@@ -73,9 +73,8 @@ class Client:
         api_dir = paths.api_socket_dir(False)
         api_files = (entry for entry in api_dir.iterdir() if entry.is_socket() and API_FILE_EXTENSION == entry.suffix)
         for api_file in api_files:
-            self._client.connect(str(api_file))
             req_body = {'api': '/jobs'}
-            self._client.send(json.dumps(req_body).encode())
+            self._client.sendto(json.dumps(req_body).encode(), str(api_file))
             datagram = self._client.recv(1024)
             print(datagram.decode())
         self._client.shutdown(socket.SHUT_RDWR)
