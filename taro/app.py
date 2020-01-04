@@ -1,5 +1,6 @@
 import logging
 import os
+import signal
 
 import sys
 
@@ -35,6 +36,7 @@ def run_exec(args):
     job = Job(job_id, execution)
     job_instance = runner.create_job_instance(job)
     api = Server(job_instance)
+    signal.signal(signal.SIGTERM, terminate_exec)
     api_started = api.start()
     if not api_started:
         logger.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")
@@ -42,6 +44,11 @@ def run_exec(args):
         runner.run(job)
     finally:
         api.stop()
+
+
+def terminate_exec(_, __):
+    logger.warning('event=[terminated_by_signal]')
+    sys.exit()
 
 
 def run_ps(args):

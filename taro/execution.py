@@ -10,15 +10,16 @@ import abc
 from enum import Enum
 
 
-# TODO INIT_FAILED, STOPPED
+# TODO INIT_FAILED
 class ExecutionState(Enum):
     NONE = 0
     TRIGGERED = 1
     STARTED = 2
     COMPLETED = 3
     NOT_STARTED = 4
-    FAILED = 5
-    ERROR = 6
+    STOPPED = 5
+    FAILED = 6
+    ERROR = 7
 
     def is_terminal(self) -> bool:
         return self.value >= 3

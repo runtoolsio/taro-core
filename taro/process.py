@@ -1,4 +1,5 @@
 import subprocess
+
 import sys
 
 from taro.execution import Execution, ExecutionState, ExecutionError
@@ -19,3 +20,5 @@ class ProcessExecution(Execution):
         except FileNotFoundError as e:
             sys.stderr.write(str(e) + "\n")
             raise ExecutionError(str(e), ExecutionState.FAILED) from e
+        except SystemExit as e:
+            raise ExecutionError(str(e), ExecutionState.STOPPED) from e

@@ -74,8 +74,11 @@ class Client:
         api_files = (entry for entry in api_dir.iterdir() if entry.is_socket() and API_FILE_EXTENSION == entry.suffix)
         for api_file in api_files:
             req_body = {'api': '/jobs'}
-            self._client.sendto(json.dumps(req_body).encode(), str(api_file))
-            datagram = self._client.recv(1024)
-            print(datagram.decode())
+            try:
+                self._client.sendto(json.dumps(req_body).encode(), str(api_file))
+                datagram = self._client.recv(1024)
+                print(datagram.decode())
+            except ConnectionRefusedError:
+                log.warning('event=[dead_socket] socket=[{}]'.format(api_file))
         self._client.shutdown(socket.SHUT_RDWR)
         self._client.close()

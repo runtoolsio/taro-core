@@ -21,6 +21,27 @@ https://docs.python.org/3/library/xmlrpc.html
 
 ## Implementation notes
 
+### Termination / Signals
+#### SIGTERM handler
+Python does not register a handler for the SIGTERM signal. That means that the system will take the default action.
+On linux, the default action for a SIGTERM is to terminate the process:
+ - the process will simply not be allocated any more time slices during which it can execute code
+ - the process's memory and other resources (open files, network sockets, etc...) will be released back to the rest of the system
+
+#### sys.exit()
+Signal handler suspends current execution in the main thread and executes the handler code. When an exception is raised from the handler
+the exception is propagated back in the main thread stack. An observed traceback:
+```
+...
+  File "/usr/lib/python3.8/subprocess.py", line 1804, in _wait
+    (pid, sts) = self._try_wait(0)
+  File "/usr/lib/python3.8/subprocess.py", line 1762, in _try_wait
+    (pid, sts) = os.waitpid(self.pid, wait_flags)
+  File "/home/stan/Projects/taro-suite/taro/taro/term.py", line 15, in terminate << handler code
+    sys.exit()
+SystemExit
+```
+
 ### Color Print
 termcolor module
 https://github.com/tartley/colorama
