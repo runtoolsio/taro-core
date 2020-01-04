@@ -22,3 +22,6 @@ class ProcessExecution(Execution):
             raise ExecutionError(str(e), ExecutionState.FAILED) from e
         except SystemExit as e:
             raise ExecutionError(str(e), ExecutionState.STOPPED) from e
+
+    def stop_execution(self):
+        pass

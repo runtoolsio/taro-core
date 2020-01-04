@@ -55,3 +55,9 @@ class Execution(abc.ABC):
         :raises ExecutionError: when execution failed
         :raises Exception: on unexpected failure
         """
+
+    @abc.abstractmethod
+    def stop_execution(self):
+        """
+        Stop running execution
+        """
