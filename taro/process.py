@@ -22,13 +22,13 @@ class ProcessExecution(Execution):
                 ret_code = self.popen.wait()
                 if ret_code == 0:
                     return ExecutionState.COMPLETED
+            except KeyboardInterrupt:
+                return ExecutionState.STOPPED
             except FileNotFoundError as e:
                 sys.stderr.write(str(e) + "\n")
                 raise ExecutionError(str(e), ExecutionState.FAILED) from e
-            except KeyboardInterrupt as e:
-                raise ExecutionError(str(e), ExecutionState.INTERRUPTED) from e
             except SystemExit as e:
-                raise ExecutionError(str(e), ExecutionState.INTERRUPTED) from e
+                raise ExecutionError('System exit', ExecutionState.INTERRUPTED) from e
 
         if self.stopped:
             return ExecutionState.STOPPED
@@ -43,7 +43,7 @@ class ProcessExecution(Execution):
             self.popen.terminate()
 
     def interrupt(self, signal):
-        if signal not in (9, 15):
+        if signal not in (2, 9):
             raise ValueError('Unknown interruption signal ' + str(signal))
         self.interrupt_signal = signal
         self.popen.send_signal(signal)

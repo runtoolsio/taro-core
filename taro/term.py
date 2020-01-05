@@ -12,6 +12,6 @@ class Term:
         log.warning('event=[terminated_by_signal]')
         self.execution.interrupt(15)
 
-    def kill(self, _, __):
-        log.warning('event=[killed_by_signal]')
-        self.execution.interrupt(9)
+    def interrupt(self, _, __):
+        log.warning('event=[interrupted_by_keyboard]')
+        self.execution.interrupt(2)  # TODO handle repeated signal
