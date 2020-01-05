@@ -25,15 +25,17 @@ class ProcessExecution(Execution):
             except FileNotFoundError as e:
                 sys.stderr.write(str(e) + "\n")
                 raise ExecutionError(str(e), ExecutionState.FAILED) from e
+            except KeyboardInterrupt as e:
+                raise ExecutionError(str(e), ExecutionState.INTERRUPTED) from e
             except SystemExit as e:
                 raise ExecutionError(str(e), ExecutionState.INTERRUPTED) from e
 
         if self.stopped:
             return ExecutionState.STOPPED
         elif self.interrupt_signal > 0:
-            raise ExecutionError("Interrupted by signal:" + str(self.interrupt_signal), ExecutionState.INTERRUPTED)
+            raise ExecutionError("Interrupted by signal " + str(self.interrupt_signal), ExecutionState.INTERRUPTED)
         else:
-            raise ExecutionError("Process returned non-zero code: " + str(ret_code), ExecutionState.FAILED)
+            raise ExecutionError("Process returned non-zero code " + str(ret_code), ExecutionState.FAILED)
 
     def stop_execution(self):
         self.stopped = True
@@ -41,7 +43,7 @@ class ProcessExecution(Execution):
             self.popen.terminate()
 
     def interrupt(self, signal):
-        if signal <= 0:
-            raise ValueError('Signal value must be greater than zero but was: ' + str(signal))
+        if signal not in (9, 15):
+            raise ValueError('Unknown interruption signal ' + str(signal))
         self.interrupt_signal = signal
-        self.popen.terminate()
+        self.popen.send_signal(signal)

@@ -11,3 +11,7 @@ class Term:
     def terminate(self, _, __):
         log.warning('event=[terminated_by_signal]')
         self.execution.interrupt(15)
+
+    def kill(self, _, __):
+        log.warning('event=[killed_by_signal]')
+        self.execution.interrupt(9)
