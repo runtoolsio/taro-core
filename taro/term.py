@@ -10,4 +10,4 @@ class Term:
 
     def terminate(self, _, __):
         log.warning('event=[terminated_by_signal]')
-        self.execution.stop_execution()
+        self.execution.interrupt(15)
