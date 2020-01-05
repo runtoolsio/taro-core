@@ -73,9 +73,9 @@ class ExecutionStateListener(ExecutionStateObserver):
             ExecutionState.TRIGGERED: self.on_triggered,
             ExecutionState.STARTED: self.on_started,
             ExecutionState.COMPLETED: self.on_completed,
-            ExecutionState.NOT_STARTED: self.on_not_started,
+            ExecutionState.START_FAILED: self.start_failed,
             ExecutionState.FAILED: self.on_failed,
-        }
+        }  # TODO all states
 
     # noinspection PyMethodMayBeStatic
     def is_observing(self, _):
@@ -110,7 +110,7 @@ class ExecutionStateListener(ExecutionStateObserver):
         """Job execution successfully completed"""
 
     @abc.abstractmethod
-    def on_not_started(self, job_instance):
+    def start_failed(self, job_instance):
         """Starting of the job failed -> job did not run"""
 
     @abc.abstractmethod

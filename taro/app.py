@@ -9,6 +9,7 @@ from taro.api import Server, Client
 from taro.job import Job
 from taro.process import ProcessExecution
 from taro.runner import RunnerJobInstance
+from taro.term import Term
 from taro.util import get_attr, set_attr
 
 logger = logging.getLogger(__name__)
@@ -33,11 +34,12 @@ def run_exec(args):
 
     all_args = [args.command] + args.arg
     execution = ProcessExecution(all_args)
+    term = Term(execution)
+    signal.signal(signal.SIGTERM, term.terminate)
     job_id = args.id or " ".join(all_args)
     job = Job(job_id, execution)
     job_instance = RunnerJobInstance(job)
     api = Server(job_instance)
-    signal.signal(signal.SIGTERM, terminate_exec)
     api_started = api.start()
     if not api_started:
         logger.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")
@@ -45,11 +47,6 @@ def run_exec(args):
         job_instance.run()
     finally:
         api.stop()
-
-
-def terminate_exec(_, __):
-    logger.warning('event=[terminated_by_signal]')
-    sys.exit()
 
 
 def run_ps(args):

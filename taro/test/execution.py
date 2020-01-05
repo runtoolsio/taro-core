@@ -7,8 +7,8 @@ Alternatively the execution can raise an exception set to raise_exc: :func:`Test
 """
 
 import logging
-from typing import List
 from datetime import datetime
+from typing import List
 
 from taro.execution import Execution, ExecutionState
 
@@ -52,3 +52,6 @@ class TestExecution(Execution):
 
     def last_execution_occurrence(self) -> datetime:
         return self._execution_occurrences[-1]
+
+    def stop_execution(self):
+        raise NotImplementedError()

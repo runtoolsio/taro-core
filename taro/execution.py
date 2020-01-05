@@ -16,16 +16,17 @@ class ExecutionState(Enum):
     TRIGGERED = 1
     STARTED = 2
     COMPLETED = 3
-    NOT_STARTED = 4
-    STOPPED = 5
-    FAILED = 6
-    ERROR = 7
+    STOPPED = 4
+    START_FAILED = 5
+    INTERRUPTED = 6
+    FAILED = 7
+    ERROR = 8
 
     def is_terminal(self) -> bool:
-        return self.value >= 3
+        return self.value >= 4
 
     def is_failure(self) -> bool:
-        return self.value >= 4
+        return self.value >= 5
 
 
 class ExecutionError(Exception):
