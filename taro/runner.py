@@ -4,6 +4,7 @@ Implementation of job management framework based on :mod:`job` module.
 
 import logging
 from datetime import datetime
+from threading import Event
 from typing import List
 
 from taro.execution import ExecutionError, ExecutionState
@@ -16,6 +17,10 @@ def _instance_id(job) -> str:
     return job.id + "_" + format(int(datetime.utcnow().timestamp() * 1000), 'x')
 
 
+def run(job):
+    RunnerJobInstance(job).run()
+
+
 class RunnerJobInstance(JobInstance):
 
     def __init__(self, job):
@@ -23,6 +28,8 @@ class RunnerJobInstance(JobInstance):
         self._job = job
         self._state = ExecutionState.NONE
         self._exec_error = None
+        if job.wait:
+            self._event = Event()
 
     @property
     def id(self):
@@ -41,6 +48,10 @@ class RunnerJobInstance(JobInstance):
         return self._exec_error
 
     def run(self):
+        if self._job.wait:
+            self._set_state(ExecutionState.WAITING)
+            self._event.wait()
+
         self._set_state(ExecutionState.TRIGGERED)
         try:
             new_state = self._job.execution.execute()
@@ -49,6 +60,10 @@ class RunnerJobInstance(JobInstance):
             exec_error = e if isinstance(e, ExecutionError) else ExecutionError.from_unexpected_error(e)
             self._set_error(exec_error)
             self._set_state(exec_error.exec_state)
+
+    def release(self, wait: str):
+        if wait and self._job.wait == wait:
+            self._event.set()
 
     # Inline?
     def _log(self, event: str, msg: str):

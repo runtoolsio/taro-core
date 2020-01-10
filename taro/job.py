@@ -17,7 +17,7 @@ from taro.execution import ExecutionState, ExecutionError
 
 
 class Job:
-    def __init__(self, job_id: str, execution, observers=()):
+    def __init__(self, job_id: str, execution, observers=(), wait: str = ''):
         if not job_id:
             raise ValueError('Job ID cannot be None or empty')
         if execution is None:
@@ -26,6 +26,7 @@ class Job:
         self.id = job_id
         self.execution = execution
         self.observers = list(observers)
+        self.wait = wait
 
     def __repr__(self):
         return "{}({!r}, {!r}, {!r})".format(
@@ -53,6 +54,13 @@ class JobInstance(abc.ABC):
     @abc.abstractmethod
     def exec_error(self) -> ExecutionError:
         """Job execution error if occurred otherwise None"""
+
+    @abc.abstractmethod
+    def release(self, wait: str):
+        """
+        Trigger job execution waiting for a given condition. Ignore if the instance doesn't wait for the condition.
+        :param wait: name of the condition
+        """
 
     def __repr__(self):
         return "{}({!r}, {!r}, {!r}, {!r})".format(

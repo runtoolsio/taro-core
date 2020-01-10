@@ -13,14 +13,15 @@ from enum import Enum
 # TODO INIT_FAILED
 class ExecutionState(Enum):
     NONE = 0
-    TRIGGERED = 1
-    STARTED = 2
-    COMPLETED = 3
-    STOPPED = 4
-    START_FAILED = 5
-    INTERRUPTED = 6
-    FAILED = 7
-    ERROR = 8
+    WAITING = 1
+    TRIGGERED = 2
+    STARTED = 3
+    COMPLETED = 4
+    STOPPED = 5
+    START_FAILED = 6
+    INTERRUPTED = 7
+    FAILED = 8
+    ERROR = 9
 
     def is_terminal(self) -> bool:
         return self.value >= 4
