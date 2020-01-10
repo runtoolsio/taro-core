@@ -1,7 +1,6 @@
+import sys
 from subprocess import Popen
 from typing import Union
-
-import sys
 
 from taro.execution import Execution, ExecutionState, ExecutionError
 
@@ -43,7 +42,8 @@ class ProcessExecution(Execution):
             self.popen.terminate()
 
     def interrupt(self, signal):
-        if signal not in (2, 9):
+        if signal not in (2, 15):
             raise ValueError('Unknown interruption signal ' + str(signal))
         self.interrupt_signal = signal
-        self.popen.send_signal(signal)
+        if self.popen:
+            self.popen.send_signal(signal)
