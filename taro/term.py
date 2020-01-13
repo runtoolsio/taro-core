@@ -5,13 +5,13 @@ log = logging.getLogger(__name__)
 
 class Term:
 
-    def __init__(self, execution):
-        self.execution = execution
+    def __init__(self, job_instance):
+        self.job_instance = job_instance
 
     def terminate(self, _, __):
         log.warning('event=[terminated_by_signal]')
-        self.execution.interrupt(15)
+        self.job_instance.interrupt()
 
     def interrupt(self, _, __):
         log.warning('event=[interrupted_by_keyboard]')
-        self.execution.interrupt(2)  # TODO handle repeated signal
+        self.job_instance.interrupt()  # TODO handle repeated signal

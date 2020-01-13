@@ -34,12 +34,12 @@ def run_exec(args):
 
     all_args = [args.command] + args.arg
     execution = ProcessExecution(all_args)
-    term = Term(execution)
+    job_id = args.id or " ".join(all_args)
+    job = Job(job_id, execution, wait=args.wait or '')
+    job_instance = RunnerJobInstance(job)
+    term = Term(job_instance)
     signal.signal(signal.SIGTERM, term.terminate)
     signal.signal(signal.SIGINT, term.interrupt)
-    job_id = args.id or " ".join(all_args)
-    job = Job(job_id, execution)
-    job_instance = RunnerJobInstance(job)
     api = Server(job_instance)
     api_started = api.start()
     if not api_started:

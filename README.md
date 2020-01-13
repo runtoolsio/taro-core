@@ -50,6 +50,8 @@ https://github.com/timofurrer/colorful
 
 ### Table Print
 https://stackoverflow.com/questions/9535954/printing-lists-as-tabular-data
+https://github.com/foutaise/texttable/
+https://github.com/astanin/python-tabulate
 
 ### Misc
 

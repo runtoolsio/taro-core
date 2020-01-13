@@ -4,7 +4,7 @@ Implementation of job management framework based on :mod:`job` module.
 
 import logging
 from datetime import datetime
-from threading import Event
+from threading import Lock, Condition
 from typing import List
 
 from taro.execution import ExecutionError, ExecutionState
@@ -24,12 +24,14 @@ def run(job):
 class RunnerJobInstance(JobInstance):
 
     def __init__(self, job):
-        self._id = _instance_id(job)
+        self._id: str = _instance_id(job)
         self._job = job
-        self._state = ExecutionState.NONE
+        self._state: ExecutionState = ExecutionState.NONE
         self._exec_error = None
+        self._stopped_or_interrupted: bool = False
+        self._pre_exec_lock: Lock = Lock()
         if job.wait:
-            self._event = Event()
+            self._wait_condition: Condition = Condition(self._pre_exec_lock)
 
     @property
     def id(self):
@@ -48,11 +50,16 @@ class RunnerJobInstance(JobInstance):
         return self._exec_error
 
     def run(self):
-        if self._job.wait:
-            self._set_state(ExecutionState.WAITING)
-            self._event.wait()
+        with self._pre_exec_lock:
+            if self._job.wait:
+                self._set_state(ExecutionState.WAITING)
+                self._wait_condition.wait()
+            if self._stopped_or_interrupted:
+                self._set_state(ExecutionState.CANCELLED)
+                return
 
-        self._set_state(ExecutionState.TRIGGERED)
+            self._set_state(ExecutionState.TRIGGERED)
+
         try:
             new_state = self._job.execution.execute()
             self._set_state(new_state)
@@ -63,7 +70,26 @@ class RunnerJobInstance(JobInstance):
 
     def release(self, wait: str):
         if wait and self._job.wait == wait:
-            self._event.set()
+            with self._pre_exec_lock:
+                self._wait_condition.notify()
+
+    def stop(self):
+        with self._pre_exec_lock:
+            self._stopped_or_interrupted = True
+            if self._job.wait:
+                self._wait_condition.notify()
+            if self._state.is_executing():
+                self._job.execution.stop()
+
+    def interrupt(self):
+        with self._pre_exec_lock:
+            self._stopped_or_interrupted = True
+            if self._job.wait:
+                print('before notify')
+                self._wait_condition.notify()
+                print('after notify')
+            if self._state.is_executing():
+                self._job.execution.interrupt()
 
     # Inline?
     def _log(self, event: str, msg: str):
@@ -85,7 +111,7 @@ class RunnerJobInstance(JobInstance):
         if exec_error.exec_state == ExecutionState.ERROR or exec_error.unexpected_error:
             log.exception(self._log('job_error', "reason=[{}]".format(exec_error)), exc_info=True)
         else:
-            log.warning(self._log('job_failed', "reason=[{}]".format(exec_error)))
+            log.warning(self._log('job_not_completed', "reason=[{}]".format(exec_error)))
 
     def _notify_observers(self):
         for observer in (self._job.observers + _observers):

@@ -10,24 +10,27 @@ import abc
 from enum import Enum
 
 
-# TODO INIT_FAILED
 class ExecutionState(Enum):
     NONE = 0
     WAITING = 1
     TRIGGERED = 2
     STARTED = 3
     COMPLETED = 4
-    STOPPED = 5
-    START_FAILED = 6
-    INTERRUPTED = 7
-    FAILED = 8
-    ERROR = 9
+    CANCELLED = 5
+    STOPPED = 6
+    START_FAILED = 7
+    INTERRUPTED = 8
+    FAILED = 9
+    ERROR = 10
+
+    def is_executing(self):
+        return 2 <= self.value <= 3
 
     def is_terminal(self) -> bool:
         return self.value >= 4
 
     def is_failure(self) -> bool:
-        return self.value >= 5
+        return self.value >= 7
 
 
 class ExecutionError(Exception):
@@ -59,7 +62,13 @@ class Execution(abc.ABC):
         """
 
     @abc.abstractmethod
-    def stop_execution(self):
+    def stop(self):
         """
-        Stop running execution
+        Stop running execution gracefully
+        """
+
+    @abc.abstractmethod
+    def interrupt(self):
+        """
+        Stop running execution immediately
         """

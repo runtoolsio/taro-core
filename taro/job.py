@@ -62,6 +62,18 @@ class JobInstance(abc.ABC):
         :param wait: name of the condition
         """
 
+    @abc.abstractmethod
+    def stop(self):
+        """
+        Stop running execution gracefully
+        """
+
+    @abc.abstractmethod
+    def interrupt(self):
+        """
+        Stop running execution immediately
+        """
+
     def __repr__(self):
         return "{}({!r}, {!r}, {!r}, {!r})".format(
             self.__class__.__name__, self.id, self.job_id, self.state, self.exec_error)

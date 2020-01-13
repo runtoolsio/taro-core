@@ -53,5 +53,8 @@ class TestExecution(Execution):
     def last_execution_occurrence(self) -> datetime:
         return self._execution_occurrences[-1]
 
-    def stop_execution(self):
+    def stop(self):
+        raise NotImplementedError()
+
+    def interrupt(self):
         raise NotImplementedError()
