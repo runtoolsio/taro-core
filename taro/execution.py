@@ -64,11 +64,15 @@ class Execution(abc.ABC):
     @abc.abstractmethod
     def stop(self):
         """
-        Stop running execution gracefully
+        If not yet executed: Do not execute
+        If already executing: Stop running execution GRACEFULLY
+        If execution finished: Ignore
         """
 
     @abc.abstractmethod
     def interrupt(self):
         """
-        Stop running execution immediately
+        If not yet executed: Do not execute
+        If already executing: Stop running execution IMMEDIATELY
+        If execution finished: Ignore
         """
