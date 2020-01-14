@@ -5,6 +5,7 @@ from taro import cnf
 
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
+ACTION_RELEASE = 'release'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
 
@@ -23,6 +24,7 @@ def parse_args(args):
 
     _init_exec_parser(common, subparsers)
     _init_ps_parser(common, subparsers)
+    _init_release_parser(common, subparsers)
     _init_show_config_parser(common, subparsers)
 
     parsed = parser.parse_args(args)
@@ -75,6 +77,19 @@ def _init_ps_parser(common, subparsers):
     """
 
     ps_parser = subparsers.add_parser(ACTION_PS, parents=[common], description='Show running jobs', add_help=False)
+
+
+def _init_release_parser(common, subparsers):
+    """
+    Creates parsers for `release` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for release parser to be added to
+    """
+
+    release_parser = subparsers.add_parser(ACTION_RELEASE, parents=[common], description='Release waiting jobs',
+                                           add_help=False)
+    release_parser.add_argument('job', type=str, metavar='JOB', help='ID of the job to be released')
 
 
 def _init_show_config_parser(common, subparsers):
