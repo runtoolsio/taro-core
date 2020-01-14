@@ -4,7 +4,7 @@ Implementation of job management framework based on :mod:`job` module.
 
 import logging
 from datetime import datetime
-from threading import Lock, Condition
+from threading import Lock, Event
 from typing import List
 
 from taro.execution import ExecutionError, ExecutionState
@@ -28,10 +28,11 @@ class RunnerJobInstance(JobInstance):
         self._job = job
         self._state: ExecutionState = ExecutionState.NONE
         self._exec_error = None
+        self._executing = False
         self._stopped_or_interrupted: bool = False
-        self._pre_exec_lock: Lock = Lock()
+        self._executing_flag_lock: Lock = Lock()
         if job.wait:
-            self._wait_condition: Condition = Condition(self._pre_exec_lock)
+            self._wait_condition: Event = Event()
 
     @property
     def id(self):
@@ -50,16 +51,20 @@ class RunnerJobInstance(JobInstance):
         return self._exec_error
 
     def run(self):
-        with self._pre_exec_lock:
-            if self._job.wait:
-                self._set_state(ExecutionState.WAITING)
-                self._wait_condition.wait()
-            if self._stopped_or_interrupted:
-                self._set_state(ExecutionState.CANCELLED)
-                return
+        if self._job.wait:
+            self._set_state(ExecutionState.WAITING)
+            self._wait_condition.wait()
 
-            self._set_state(ExecutionState.TRIGGERED)
+        # Is variable assignment atomic? Better be sure with lock:
+        # https://stackoverflow.com/questions/2291069/is-python-variable-assignment-atomic
+        with self._executing_flag_lock:
+            self._executing = not self._stopped_or_interrupted
 
+        if not self._executing:
+            self._set_state(ExecutionState.CANCELLED)
+            return
+
+        self._set_state(ExecutionState.TRIGGERED)
         try:
             new_state = self._job.execution.execute()
             self._set_state(new_state)
@@ -70,26 +75,35 @@ class RunnerJobInstance(JobInstance):
 
     def release(self, wait: str):
         if wait and self._job.wait == wait:
-            with self._pre_exec_lock:
-                self._wait_condition.notify()
+            self._wait_condition.set()
 
     def stop(self):
-        with self._pre_exec_lock:
+        """
+        Cancel not yet started execution or stop started execution.
+        Due to synchronous design there is a small window when an execution can be stopped before it is started.
+        All execution implementations must cope with such scenario.
+        """
+        with self._executing_flag_lock:
             self._stopped_or_interrupted = True
-            if self._job.wait:
-                self._wait_condition.notify()
-            if self._state.is_executing():
-                self._job.execution.stop()
+
+        if self._job.wait:
+            self._wait_condition.set()
+        if self._executing:
+            self._job.execution.stop()
 
     def interrupt(self):
-        with self._pre_exec_lock:
+        """
+        Cancel not yet started execution or interrupt started execution.
+        Due to synchronous design there is a small window when an execution can be interrupted before it is started.
+        All execution implementations must cope with such scenario.
+        """
+        with self._executing_flag_lock:
             self._stopped_or_interrupted = True
-            if self._job.wait:
-                print('before notify')
-                self._wait_condition.notify()
-                print('after notify')
-            if self._state.is_executing():
-                self._job.execution.interrupt()
+
+        if self._job.wait:
+            self._wait_condition.set()
+        if self._executing:
+            self._job.execution.interrupt()
 
     # Inline?
     def _log(self, event: str, msg: str):
