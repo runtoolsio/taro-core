@@ -19,3 +19,12 @@ def set_attr(obj, fields, value):
         setattr(obj, fields[0], value)
     else:
         set_attr(getattr(obj, fields[0]), fields[1:], value)
+
+
+def prime(func):
+    def start(*args, **kwargs):
+        cr = func(*args, **kwargs)
+        next(cr)
+        return cr
+
+    return start

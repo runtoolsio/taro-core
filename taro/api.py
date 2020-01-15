@@ -3,8 +3,10 @@ import logging
 import os
 import socket
 from threading import Thread
+from types import coroutine
 
 from taro import paths
+from taro.util import prime
 
 log = logging.getLogger(__name__)
 
@@ -68,17 +70,32 @@ class Client:
     def __init__(self):
         self._client = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
 
-    def read_job_info(self):
-        self._client.bind(self._client.getsockname())
+    @coroutine
+    @prime
+    def servers(self):
         api_dir = paths.api_socket_dir(create=False)
         api_files = (entry for entry in api_dir.iterdir() if entry.is_socket() and API_FILE_EXTENSION == entry.suffix)
-        for api_file in api_files:
-            req_body = {'api': '/jobs'}
-            try:
-                self._client.sendto(json.dumps(req_body).encode(), str(api_file))
-                datagram = self._client.recv(1024)
-                print(datagram.decode())
-            except ConnectionRefusedError:
-                log.warning('event=[dead_socket] socket=[{}]'.format(api_file))  # TODO remove file
-        self._client.shutdown(socket.SHUT_RDWR)
-        self._client.close()
+        self._client.bind(self._client.getsockname())
+        resp = '_'
+        try:
+            for api_file in api_files:
+                if resp:
+                    req_body = yield resp
+                try:
+                    self._client.sendto(json.dumps(req_body).encode(), str(api_file))
+                    datagram = self._client.recv(1024)
+                    resp = datagram.decode()
+                except ConnectionRefusedError:
+                    log.warning('event=[dead_socket] socket=[{}]'.format(api_file))  # TODO remove file
+                    resp = None  # Ignore and continue with another one
+        finally:
+            self._client.shutdown(socket.SHUT_RDWR)
+            self._client.close()
+
+    def read_job_info(self):
+        server = self.servers()
+        try:
+            while True:
+                print(server.send({'api': '/jobs'}))
+        except StopIteration:
+            pass
