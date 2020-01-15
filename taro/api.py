@@ -6,7 +6,7 @@ from threading import Thread
 from types import coroutine
 
 from taro import paths
-from taro.util import prime
+from taro.util import iterates
 
 log = logging.getLogger(__name__)
 
@@ -71,31 +71,34 @@ class Client:
         self._client = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
 
     @coroutine
-    @prime
     def servers(self):
         api_dir = paths.api_socket_dir(create=False)
         api_files = (entry for entry in api_dir.iterdir() if entry.is_socket() and API_FILE_EXTENSION == entry.suffix)
         self._client.bind(self._client.getsockname())
+        req_body = '_'
         resp = '_'
         try:
             for api_file in api_files:
-                if resp:
-                    req_body = yield resp
-                try:
-                    self._client.sendto(json.dumps(req_body).encode(), str(api_file))
-                    datagram = self._client.recv(1024)
-                    resp = datagram.decode()
-                except ConnectionRefusedError:
-                    log.warning('event=[dead_socket] socket=[{}]'.format(api_file))  # TODO remove file
-                    resp = None  # Ignore and continue with another one
+                while True:
+                    if resp:
+                        req_body = yield resp
+                    if not req_body:
+                        break
+                    try:
+                        self._client.sendto(json.dumps(req_body).encode(), str(api_file))
+                        datagram = self._client.recv(1024)
+                        resp = datagram.decode()
+                    except ConnectionRefusedError:
+                        log.warning('event=[dead_socket] socket=[{}]'.format(api_file))  # TODO remove file
+                        resp = None  # Ignore and continue with another one
+                        break
         finally:
             self._client.shutdown(socket.SHUT_RDWR)
             self._client.close()
 
+    @iterates
     def read_job_info(self):
         server = self.servers()
-        try:
-            while True:
-                print(server.send({'api': '/jobs'}))
-        except StopIteration:
-            pass
+        while True:
+            next(server)
+            print(server.send({'api': '/jobs'}))

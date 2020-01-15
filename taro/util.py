@@ -1,3 +1,6 @@
+import functools
+
+
 def get_attr(obj, fields, default=None):
     return _getattr(obj, fields.split('.'), default)
 
@@ -28,3 +31,14 @@ def prime(func):
         return cr
 
     return start
+
+
+def iterates(func):
+    @functools.wraps(func)
+    def catcher(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except StopIteration:
+            pass
+
+    return catcher
