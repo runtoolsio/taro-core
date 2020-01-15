@@ -22,6 +22,8 @@ def main(args):
         run_exec(args)
     elif args.action == cli.ACTION_PS:
         run_ps(args)
+    elif args.action == cli.ACTION_RELEASE:
+        run_release(args)
     elif args.action == cli.ACTION_CONFIG:
         if args.config_action == cli.ACTION_CONFIG_SHOW:
             run_show_config(args)
@@ -51,6 +53,11 @@ def run_exec(args):
 
 
 def run_ps(args):
+    client = Client()
+    client.read_job_info()
+
+
+def run_release(args):
     client = Client()
     client.read_job_info()
 

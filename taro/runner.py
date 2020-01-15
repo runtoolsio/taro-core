@@ -73,9 +73,12 @@ class RunnerJobInstance(JobInstance):
             self._set_error(exec_error)
             self._set_state(exec_error.exec_state)
 
-    def release(self, wait: str):
-        if wait and self._job.wait == wait:
+    def release(self, wait: str) -> bool:
+        if wait and self._job.wait == wait and not self._wait_condition.is_set():
             self._wait_condition.set()
+            return True
+        else:
+            return False
 
     def stop(self):
         """

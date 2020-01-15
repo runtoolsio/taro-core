@@ -70,7 +70,7 @@ class Client:
 
     def read_job_info(self):
         self._client.bind(self._client.getsockname())
-        api_dir = paths.api_socket_dir(False)
+        api_dir = paths.api_socket_dir(create=False)
         api_files = (entry for entry in api_dir.iterdir() if entry.is_socket() and API_FILE_EXTENSION == entry.suffix)
         for api_file in api_files:
             req_body = {'api': '/jobs'}
@@ -79,6 +79,6 @@ class Client:
                 datagram = self._client.recv(1024)
                 print(datagram.decode())
             except ConnectionRefusedError:
-                log.warning('event=[dead_socket] socket=[{}]'.format(api_file))
+                log.warning('event=[dead_socket] socket=[{}]'.format(api_file))  # TODO remove file
         self._client.shutdown(socket.SHUT_RDWR)
         self._client.close()

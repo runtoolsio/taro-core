@@ -56,10 +56,11 @@ class JobInstance(abc.ABC):
         """Job execution error if occurred otherwise None"""
 
     @abc.abstractmethod
-    def release(self, wait: str):
+    def release(self, wait: str) -> bool:
         """
         Trigger job execution waiting for a given condition. Ignore if the instance doesn't wait for the condition.
         :param wait: name of the condition
+        :return: whether job has been released
         """
 
     @abc.abstractmethod
