@@ -94,7 +94,7 @@ class Client:
         api_files = (entry for entry in api_dir.iterdir() if entry.is_socket() and API_FILE_EXTENSION == entry.suffix)
         self._client.bind(self._client.getsockname())
         req_body = '_'
-        resp = '_'
+        resp = {}
         try:
             for api_file in api_files:
                 while True:
@@ -105,7 +105,7 @@ class Client:
                     try:
                         self._client.sendto(json.dumps(req_body).encode(), str(api_file))
                         datagram = self._client.recv(1024)
-                        resp = datagram.decode()
+                        resp = json.loads(datagram.decode())
                     except ConnectionRefusedError:
                         log.warning('event=[dead_socket] socket=[{}]'.format(api_file))  # TODO remove file
                         resp = None  # Ignore and continue with another one
@@ -127,4 +127,5 @@ class Client:
         while True:
             next(server)
             resp = server.send({'req': {'api': '/release'}, "data": {"wait": wait}})
-            print(resp)
+            if resp['data']['released']:
+                print(resp)
