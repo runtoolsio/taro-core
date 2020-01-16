@@ -50,9 +50,27 @@ class Server:
                 log.warning('event=[missing_client_address]')
                 continue
             req_body = json.loads(datagram)
-            if req_body.get('api') == '/jobs':
-                resp_body = {'job_id': self.job_instance.job_id, 'instance_id': self.job_instance.id}
-                self._server.sendto(json.dumps(resp_body).encode(), client_address)
+
+            if 'req' not in req_body:
+                resp_body = {"resp": {"error": "missing_req"}}
+            elif 'api' not in req_body['req']:
+                resp_body = {"resp": {"error": "missing_req_api"}}
+            elif req_body['req']['api'] == '/job':
+                resp_body = {"resp": {"code": 200},
+                             "data": {"job_id": self.job_instance.job_id, "instance_id": self.job_instance.id}}
+            elif req_body['req']['api'] == '/release':
+                if 'data' not in req_body:
+                    resp_body = {"resp": {"error": "missing_data"}}
+                elif 'wait' not in req_body['data']:
+                    resp_body = {"resp": {"error": "missing_data_wait"}}
+                else:
+                    released = self.job_instance.release(req_body.get('data').get('wait'))
+                    resp_body = {"resp": {"code": 200},
+                                 "data": {"job_id": self.job_instance.job_id, "released": released}}
+            else:
+                resp_body = {"resp": {"error": "unknown_req_api"}}
+
+            self._server.sendto(json.dumps(resp_body).encode(), client_address)
 
     def stop(self):
         if self._server is None:
@@ -101,4 +119,12 @@ class Client:
         server = self.servers()
         while True:
             next(server)
-            print(server.send({'api': '/jobs'}))
+            print(server.send({'req': {'api': '/job'}}))
+
+    @iterates
+    def release_jobs(self, wait):
+        server = self.servers()
+        while True:
+            next(server)
+            resp = server.send({'req': {'api': '/release'}, "data": {"wait": wait}})
+            print(resp)

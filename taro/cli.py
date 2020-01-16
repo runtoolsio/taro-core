@@ -87,9 +87,9 @@ def _init_release_parser(common, subparsers):
     :param subparsers: sub-parser for release parser to be added to
     """
 
-    release_parser = subparsers.add_parser(ACTION_RELEASE, parents=[common], description='Release waiting jobs',
-                                           add_help=False)
-    release_parser.add_argument('job', type=str, metavar='JOB', help='ID of the job to be released')
+    release_parser = subparsers.add_parser(ACTION_RELEASE, parents=[common],
+                                           description='Release jobs waiting for condition', add_help=False)
+    release_parser.add_argument('wait', type=str, metavar='WAIT', help='Waiting condition value')
 
 
 def _init_show_config_parser(common, subparsers):

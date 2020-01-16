@@ -59,7 +59,7 @@ def run_ps(args):
 
 def run_release(args):
     client = Client()
-    client.read_job_info()
+    client.release_jobs(args.wait)
 
 
 def run_show_config(args):
