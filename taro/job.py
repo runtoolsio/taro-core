@@ -37,13 +37,13 @@ class JobInstance(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def id(self) -> str:
-        """Identifier of this instance"""
+    def job_id(self) -> str:
+        """Identifier of the job of this instance"""
 
     @property
     @abc.abstractmethod
-    def job_id(self) -> str:
-        """Identifier of the job of this instance"""
+    def instance_id(self) -> str:
+        """Identifier of this instance"""
 
     @property
     @abc.abstractmethod
@@ -77,7 +77,7 @@ class JobInstance(abc.ABC):
 
     def __repr__(self):
         return "{}({!r}, {!r}, {!r}, {!r})".format(
-            self.__class__.__name__, self.id, self.job_id, self.state, self.exec_error)
+            self.__class__.__name__, self.instance_id, self.job_id, self.state, self.exec_error)
 
 
 class ExecutionStateObserver(abc.ABC):

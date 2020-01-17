@@ -14,7 +14,7 @@ API_FILE_EXTENSION = '.api'
 
 
 def _create_socket_name(job_instance):
-    return job_instance.id + API_FILE_EXTENSION
+    return job_instance.instance_id + API_FILE_EXTENSION
 
 
 class Server:
@@ -57,7 +57,7 @@ class Server:
                 resp_body = {"resp": {"error": "missing_req_api"}}
             elif req_body['req']['api'] == '/job':
                 resp_body = {"resp": {"code": 200},
-                             "data": {"job_id": self.job_instance.job_id, "instance_id": self.job_instance.id}}
+                             "data": {"job_id": self.job_instance.job_id, "instance_id": self.job_instance.instance_id}}
             elif req_body['req']['api'] == '/release':
                 if 'data' not in req_body:
                     resp_body = {"resp": {"error": "missing_data"}}

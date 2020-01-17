@@ -24,7 +24,7 @@ def run(job):
 class RunnerJobInstance(JobInstance):
 
     def __init__(self, job):
-        self._id: str = _instance_id(job)
+        self._instance_id: str = _instance_id(job)
         self._job = job
         self._state: ExecutionState = ExecutionState.NONE
         self._exec_error = None
@@ -35,8 +35,8 @@ class RunnerJobInstance(JobInstance):
             self._wait_condition: Event = Event()
 
     @property
-    def id(self):
-        return self._id
+    def instance_id(self):
+        return self._instance_id
 
     @property
     def job_id(self):
@@ -110,7 +110,7 @@ class RunnerJobInstance(JobInstance):
 
     # Inline?
     def _log(self, event: str, msg: str):
-        return "event=[{}] job_id=[{}] instance_id=[{}] {}".format(event, self._job.id, self._id, msg)
+        return "event=[{}] job_id=[{}] instance_id=[{}] {}".format(event, self._job.id, self._instance_id, msg)
 
     def _set_state(self, exec_state):
         if not exec_state or exec_state == ExecutionState.NONE or self._state == exec_state:
