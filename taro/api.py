@@ -19,13 +19,13 @@ def _create_socket_name(job_instance):
 
 class Server:
 
-    def __init__(self, job_instance):
-        self.job_instance = job_instance
+    def __init__(self, job_control):
+        self.job_control = job_control
         self._server: socket = None
 
     def start(self) -> bool:
         try:
-            socket_path = paths.api_socket_path(_create_socket_name(self.job_instance), create=True)
+            socket_path = paths.api_socket_path(_create_socket_name(self.job_control), create=True)
         except FileNotFoundError as e:
             log.error("event=[unable_create_socket_dir] socket_dir=[%s] message=[%s]", e.filename, e)
             return False
@@ -57,16 +57,16 @@ class Server:
                 resp_body = {"resp": {"error": "missing_req_api"}}
             elif req_body['req']['api'] == '/job':
                 resp_body = {"resp": {"code": 200},
-                             "data": {"job_id": self.job_instance.job_id, "instance_id": self.job_instance.instance_id}}
+                             "data": {"job_id": self.job_control.job_id, "instance_id": self.job_control.instance_id}}
             elif req_body['req']['api'] == '/release':
                 if 'data' not in req_body:
                     resp_body = {"resp": {"error": "missing_data"}}
                 elif 'wait' not in req_body['data']:
                     resp_body = {"resp": {"error": "missing_data_wait"}}
                 else:
-                    released = self.job_instance.release(req_body.get('data').get('wait'))
+                    released = self.job_control.release(req_body.get('data').get('wait'))
                     resp_body = {"resp": {"code": 200},
-                                 "data": {"job_id": self.job_instance.job_id, "released": released}}
+                                 "data": {"job_id": self.job_control.job_id, "released": released}}
             else:
                 resp_body = {"resp": {"error": "unknown_req_api"}}
 

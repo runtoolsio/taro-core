@@ -55,6 +55,13 @@ class JobInstance(abc.ABC):
     def exec_error(self) -> ExecutionError:
         """Job execution error if occurred otherwise None"""
 
+    def __repr__(self):
+        return "{}({!r}, {!r}, {!r}, {!r})".format(
+            self.__class__.__name__, self.instance_id, self.job_id, self.state, self.exec_error)
+
+
+class JobControl(JobInstance):
+
     @abc.abstractmethod
     def release(self, wait: str) -> bool:
         """
@@ -74,10 +81,6 @@ class JobInstance(abc.ABC):
         """
         Stop running execution immediately
         """
-
-    def __repr__(self):
-        return "{}({!r}, {!r}, {!r}, {!r})".format(
-            self.__class__.__name__, self.instance_id, self.job_id, self.state, self.exec_error)
 
 
 class ExecutionStateObserver(abc.ABC):

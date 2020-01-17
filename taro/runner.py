@@ -8,7 +8,7 @@ from threading import Lock, Event
 from typing import List
 
 from taro.execution import ExecutionError, ExecutionState
-from taro.job import JobInstance, ExecutionStateObserver
+from taro.job import ExecutionStateObserver, JobControl
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ def run(job):
     RunnerJobInstance(job).run()
 
 
-class RunnerJobInstance(JobInstance):
+class RunnerJobInstance(JobControl):
 
     def __init__(self, job):
         self._instance_id: str = _instance_id(job)
