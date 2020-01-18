@@ -85,14 +85,12 @@ class Server:
 
 class Client:
 
-    def __init__(self):
-        self._client = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-
     @coroutine
     def servers(self):
         req_body = '_'
         resp = {}
-        self._client.bind(self._client.getsockname())
+        client = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        client.bind(client.getsockname())
         try:
             for api_file in paths.socket_files(API_FILE_EXTENSION):
                 while True:
@@ -101,16 +99,16 @@ class Client:
                     if not req_body:
                         break
                     try:
-                        self._client.sendto(json.dumps(req_body).encode(), str(api_file))
-                        datagram = self._client.recv(1024)
+                        client.sendto(json.dumps(req_body).encode(), str(api_file))
+                        datagram = client.recv(1024)
                         resp = json.loads(datagram.decode())
                     except ConnectionRefusedError:
                         log.warning('event=[dead_socket] socket=[{}]'.format(api_file))  # TODO remove file
                         resp = None  # Ignore and continue with another one
                         break
         finally:
-            self._client.shutdown(socket.SHUT_RDWR)
-            self._client.close()
+            client.shutdown(socket.SHUT_RDWR)
+            client.close()
 
     @iterates
     def read_job_info(self):
