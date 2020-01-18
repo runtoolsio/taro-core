@@ -54,12 +54,18 @@ def run_exec(args):
 
 def run_ps(args):
     client = Client()
-    client.read_job_info()
+    try:
+        client.read_job_info()
+    finally:
+        client.close()
 
 
 def run_release(args):
     client = Client()
-    client.release_jobs(args.wait)
+    try:
+        client.release_jobs(args.wait)
+    finally:
+        client.close()
 
 
 def run_show_config(args):

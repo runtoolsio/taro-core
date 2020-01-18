@@ -4,6 +4,7 @@ import logging
 import os
 import socket
 from threading import Thread
+from types import coroutine
 
 from taro import paths
 
@@ -64,3 +65,39 @@ class SocketServer(abc.ABC):
         self._server.close()
         if os.path.exists(socket_name):
             os.remove(socket_name)
+
+
+class SocketClient:
+
+    def __init__(self, file_extension: str, bidirectional: bool):
+        self._file_extension = file_extension
+        self._bidirectional = bidirectional
+        self._client = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        if bidirectional:
+            self._client.bind(self._client.getsockname())
+
+    @coroutine
+    def servers(self):
+        req_body = '_'  # Dummy initialization to remove warnings
+        resp = None
+        skip = False
+        for api_file in paths.socket_files(self._file_extension):
+            while True:
+                if not skip:
+                    req_body = yield resp
+                skip = False  # reset
+                if not req_body:
+                    break
+                try:
+                    self._client.sendto(json.dumps(req_body).encode(), str(api_file))
+                    if self._bidirectional:
+                        datagram = self._client.recv(1024)
+                        resp = json.loads(datagram.decode())
+                except ConnectionRefusedError:
+                    log.warning('event=[dead_socket] socket=[{}]'.format(api_file))  # TODO remove file
+                    skip = True  # Ignore this one and continue with another one
+                    break
+
+    def close(self):
+        self._client.shutdown(socket.SHUT_RDWR)
+        self._client.close()

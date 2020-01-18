@@ -1,10 +1,6 @@
-import json
 import logging
-import socket
-from types import coroutine
 
-from taro import paths
-from taro.server import SocketServer
+from taro.socket import SocketServer, SocketClient
 from taro.util import iterates
 
 log = logging.getLogger(__name__)
@@ -44,32 +40,10 @@ class Server(SocketServer):
         return {"resp": {"error": "unknown_req_api"}}
 
 
-class Client:
+class Client(SocketClient):
 
-    @coroutine
-    def servers(self):
-        req_body = '_'
-        resp = {}
-        client = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        client.bind(client.getsockname())
-        try:
-            for api_file in paths.socket_files(API_FILE_EXTENSION):
-                while True:
-                    if resp:
-                        req_body = yield resp
-                    if not req_body:
-                        break
-                    try:
-                        client.sendto(json.dumps(req_body).encode(), str(api_file))
-                        datagram = client.recv(1024)
-                        resp = json.loads(datagram.decode())
-                    except ConnectionRefusedError:
-                        log.warning('event=[dead_socket] socket=[{}]'.format(api_file))  # TODO remove file
-                        resp = None  # Ignore and continue with another one
-                        break
-        finally:
-            client.shutdown(socket.SHUT_RDWR)
-            client.close()
+    def __init__(self):
+        super().__init__(API_FILE_EXTENSION, bidirectional=True)
 
     @iterates
     def read_job_info(self):

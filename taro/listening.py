@@ -1,6 +1,6 @@
 #  Sender, Listening
 from taro.job import ExecutionStateObserver
-from taro.server import SocketServer
+from taro.socket import SocketServer
 
 LISTENER_FILE_EXTENSION = '.listener'
 
