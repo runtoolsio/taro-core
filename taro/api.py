@@ -25,7 +25,7 @@ class Server:
 
     def start(self) -> bool:
         try:
-            socket_path = paths.api_socket_path(_create_socket_name(self.job_control), create=True)
+            socket_path = paths.socket_path(_create_socket_name(self.job_control), create=True)
         except FileNotFoundError as e:
             log.error("event=[unable_create_socket_dir] socket_dir=[%s] message=[%s]", e.filename, e)
             return False
@@ -90,13 +90,11 @@ class Client:
 
     @coroutine
     def servers(self):
-        api_dir = paths.api_socket_dir(create=False)
-        api_files = (entry for entry in api_dir.iterdir() if entry.is_socket() and API_FILE_EXTENSION == entry.suffix)
-        self._client.bind(self._client.getsockname())
         req_body = '_'
         resp = {}
+        self._client.bind(self._client.getsockname())
         try:
-            for api_file in api_files:
+            for api_file in paths.socket_files(API_FILE_EXTENSION):
                 while True:
                     if resp:
                         req_body = yield resp

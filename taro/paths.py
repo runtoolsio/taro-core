@@ -9,6 +9,7 @@ Followed conventions:
 import getpass
 import os
 from pathlib import Path
+from typing import Generator
 
 _CONFIG_FILE = 'taro.yaml'
 _LOG_FILE = 'taro.log'
@@ -99,13 +100,13 @@ or use a location in the user's $HOME.
 """
 
 
-def api_socket_dir(create: bool) -> Path:
+def socket_dir(create: bool) -> Path:
     """
     1. Root user: /run/taro
     2. Non-root user: /tmp/taro_${USER} (An alternative may be: ${HOME}/.cache/taro)
 
     :param create: create path directories if not exist
-    :return: directory path for API unix domain sockets
+    :return: directory path for unix domain sockets
     :raises FileNotFoundError: when path cannot be created (only if create == True)
     """
 
@@ -120,15 +121,19 @@ def api_socket_dir(create: bool) -> Path:
     return path
 
 
-def api_socket_path(socket_name: str, create: bool) -> Path:
+def socket_path(socket_name: str, create: bool) -> Path:
     """
     1. Root user: /run/taro/{socket-name}
     2. Non-root user: /tmp/taro_${USER}/{socket-name} (An alternative may be: ${HOME}/.cache/taro/{socket-name})
 
     :param socket_name: socket file name
     :param create: create path directories if not exist
-    :return: unix domain socket path for API
+    :return: unix domain socket path
     :raises FileNotFoundError: when path cannot be created (only if create == True)
     """
 
-    return api_socket_dir(create) / socket_name
+    return socket_dir(create) / socket_name
+
+
+def socket_files(file_extension: str) -> Generator[Path, None, None]:
+    return (entry for entry in socket_dir(False).iterdir() if entry.is_socket() and file_extension == entry.suffix)
