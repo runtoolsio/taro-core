@@ -3,10 +3,10 @@ Implementation of job management framework based on :mod:`job` module.
 """
 
 import logging
-from datetime import datetime
 from threading import Lock, Event
 from typing import List
 
+from taro import util
 from taro.execution import ExecutionError, ExecutionState
 from taro.job import ExecutionStateObserver, JobControl
 
@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 
 
 def _instance_id(job) -> str:
-    return job.id + "_" + format(int(datetime.utcnow().timestamp() * 1000), 'x')
+    return job.id + "_" + util.unique_timestamp_hex()
 
 
 def run(job):

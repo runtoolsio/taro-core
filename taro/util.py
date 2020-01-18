@@ -1,4 +1,6 @@
 import functools
+import secrets
+from datetime import datetime
 
 
 def get_attr(obj, fields, default=None):
@@ -42,3 +44,7 @@ def iterates(func):
             pass
 
     return catcher
+
+
+def unique_timestamp_hex(random_suffix_length=2):
+    return format(int(datetime.utcnow().timestamp() * 1000), 'x') + secrets.token_hex(random_suffix_length)
