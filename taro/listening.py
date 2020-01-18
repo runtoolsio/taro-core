@@ -8,3 +8,7 @@ class Dispatcher(ExecutionStateObserver):
 
     def notify(self, job_instance):
         pass
+
+
+class Receiver:
+    pass

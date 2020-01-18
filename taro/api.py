@@ -1,11 +1,10 @@
 import json
 import logging
-import os
 import socket
-from threading import Thread
 from types import coroutine
 
 from taro import paths
+from taro.server import SocketServer
 from taro.util import iterates
 
 log = logging.getLogger(__name__)
@@ -17,70 +16,32 @@ def _create_socket_name(job_instance):
     return job_instance.instance_id + API_FILE_EXTENSION
 
 
-class Server:
+class Server(SocketServer):
 
     def __init__(self, job_control):
-        self.job_control = job_control
-        self._server: socket = None
+        super().__init__(_create_socket_name(job_control))
+        self._job_control = job_control
 
-    def start(self) -> bool:
-        try:
-            socket_path = paths.socket_path(_create_socket_name(self.job_control), create=True)
-        except FileNotFoundError as e:
-            log.error("event=[unable_create_socket_dir] socket_dir=[%s] message=[%s]", e.filename, e)
-            return False
+    def handle(self, req_body):
+        if 'req' not in req_body:
+            return {"resp": {"error": "missing_req"}}
+        if 'api' not in req_body['req']:
+            return {"resp": {"error": "missing_req_api"}}
 
-        self._server = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        try:
-            self._server.bind(str(socket_path))
-            Thread(target=self.serve, name='Thread-ApiServer').start()
-            return True
-        except PermissionError as e:
-            log.error("event=[unable_create_socket] socket=[%s] message=[%s]", socket_path, e)
-            return False
+        if req_body['req']['api'] == '/job':
+            return {"resp": {"code": 200},
+                    "data": {"job_id": self._job_control.job_id, "instance_id": self._job_control.instance_id}}
 
-    def serve(self):
-        log.debug('event=[server_started]')
-        while True:
-            datagram, client_address = self._server.recvfrom(1024)
-            if not datagram:
-                log.debug('event=[server_stopped]')
-                break
-            if not client_address:
-                log.warning('event=[missing_client_address]')
-                continue
-            req_body = json.loads(datagram)
+        if req_body['req']['api'] == '/release':
+            if 'data' not in req_body:
+                return {"resp": {"error": "missing_data"}}
+            if 'wait' not in req_body['data']:
+                return {"resp": {"error": "missing_data_wait"}}
 
-            if 'req' not in req_body:
-                resp_body = {"resp": {"error": "missing_req"}}
-            elif 'api' not in req_body['req']:
-                resp_body = {"resp": {"error": "missing_req_api"}}
-            elif req_body['req']['api'] == '/job':
-                resp_body = {"resp": {"code": 200},
-                             "data": {"job_id": self.job_control.job_id, "instance_id": self.job_control.instance_id}}
-            elif req_body['req']['api'] == '/release':
-                if 'data' not in req_body:
-                    resp_body = {"resp": {"error": "missing_data"}}
-                elif 'wait' not in req_body['data']:
-                    resp_body = {"resp": {"error": "missing_data_wait"}}
-                else:
-                    released = self.job_control.release(req_body.get('data').get('wait'))
-                    resp_body = {"resp": {"code": 200},
-                                 "data": {"job_id": self.job_control.job_id, "released": released}}
-            else:
-                resp_body = {"resp": {"error": "unknown_req_api"}}
+            released = self._job_control.release(req_body.get('data').get('wait'))
+            return {"resp": {"code": 200}, "data": {"job_id": self._job_control.job_id, "released": released}}
 
-            self._server.sendto(json.dumps(resp_body).encode(), client_address)
-
-    def stop(self):
-        if self._server is None:
-            return
-
-        socket_name = self._server.getsockname()
-        self._server.shutdown(socket.SHUT_RD)
-        self._server.close()
-        if os.path.exists(socket_name):
-            os.remove(socket_name)
+        return {"resp": {"error": "unknown_req_api"}}
 
 
 class Client:
