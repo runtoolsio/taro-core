@@ -4,9 +4,10 @@ import signal
 
 import sys
 
-from taro import cli, paths, cnf, log
+from taro import cli, paths, cnf, log, runner
 from taro.api import Server, Client
 from taro.job import Job
+from taro.listening import Dispatcher
 from taro.process import ProcessExecution
 from taro.runner import RunnerJobInstance
 from taro.term import Term
@@ -46,10 +47,13 @@ def run_exec(args):
     api_started = api.start()
     if not api_started:
         logger.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")
+    dispatcher = Dispatcher()
+    runner.register_observer(dispatcher)
     try:
         job_instance.run()
     finally:
         api.stop()
+        dispatcher.close()
 
 
 def run_ps(args):
