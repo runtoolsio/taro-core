@@ -1,9 +1,14 @@
 #  Sender, Listening
+from taro import util
 from taro.job import ExecutionStateObserver
 from taro.socket import SocketServer, SocketClient
 from taro.util import iterates
 
 LISTENER_FILE_EXTENSION = '.listener'
+
+
+def _create_socket_name():
+    return util.unique_timestamp_hex() + LISTENER_FILE_EXTENSION
 
 
 class Dispatcher(ExecutionStateObserver):
@@ -24,5 +29,8 @@ class Dispatcher(ExecutionStateObserver):
 
 class Receiver(SocketServer):
 
+    def __init__(self):
+        super().__init__(_create_socket_name())
+
     def handle(self, req_body):
-        pass
+        print(req_body)

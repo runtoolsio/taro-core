@@ -16,8 +16,11 @@ class SocketServer(abc.ABC):
     def __init__(self, socket_name):
         self._socket_name = socket_name
         self._server: socket = None
+        self._stopped = False
 
     def start(self) -> bool:
+        if self._stopped:
+            return False
         try:
             socket_path = paths.socket_path(self._socket_name, create=True)
         except FileNotFoundError as e:
@@ -35,10 +38,9 @@ class SocketServer(abc.ABC):
 
     def serve(self):
         log.debug('event=[server_started]')
-        while True:
+        while not self._stopped:
             datagram, client_address = self._server.recvfrom(1024)
             if not datagram:
-                log.debug('event=[server_stopped]')
                 break
             req_body = json.loads(datagram)
             resp_body = self.handle(req_body)
@@ -48,6 +50,7 @@ class SocketServer(abc.ABC):
                     self._server.sendto(json.dumps(resp_body).encode(), client_address)
                 else:
                     log.warning('event=[missing_client_address]')
+        log.debug('event=[server_stopped]')
 
     @abc.abstractmethod
     def handle(self, req_body):
@@ -57,6 +60,7 @@ class SocketServer(abc.ABC):
         """
 
     def stop(self):
+        self._stopped = True
         if self._server is None:
             return
 
