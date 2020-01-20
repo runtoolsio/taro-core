@@ -18,10 +18,14 @@ class Dispatcher(ExecutionStateObserver):
 
     @iterates
     def notify(self, job_instance):
+        event_body = {"event_type": "job_state_change", "event": {"job_instance": {
+            "job_id": job_instance.job_id, "instance_id": job_instance.instance_id, "state": job_instance.state.name,
+            "exec_error": job_instance.exec_error.message if job_instance.exec_error else None
+        }}}
         receiver = self._client.servers()
         while True:
             next(receiver)
-            receiver.send({"event_type": "dzuvec"})
+            receiver.send(event_body)
 
     def close(self):
         self._client.close()
@@ -31,6 +35,7 @@ class Receiver(SocketServer):
 
     def __init__(self):
         super().__init__(_create_socket_name())
+        self.listeners = []
 
     def handle(self, req_body):
         print(req_body)
