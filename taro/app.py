@@ -6,7 +6,7 @@ import sys
 from taro import cli, paths, cnf, log, runner
 from taro.api import Server, Client
 from taro.job import Job
-from taro.listening import Dispatcher, Receiver
+from taro.listening import Dispatcher, Receiver, EventPrint
 from taro.process import ProcessExecution
 from taro.runner import RunnerJobInstance
 from taro.term import Term
@@ -75,6 +75,7 @@ def run_release(args):
 
 def run_listen(args):
     receiver = Receiver()
+    receiver.listeners.append(EventPrint())
     signal.signal(signal.SIGTERM, lambda _, __: receiver.stop())
     signal.signal(signal.SIGINT, lambda _, __: receiver.stop())
     receiver.start()

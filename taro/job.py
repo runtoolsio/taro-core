@@ -60,6 +60,31 @@ class JobInstance(abc.ABC):
             self.__class__.__name__, self.instance_id, self.job_id, self.state, self.exec_error)
 
 
+class JobInstanceData(JobInstance):
+
+    def __init__(self, job_id: str, instance_id: str, state: ExecutionState, exec_error: ExecutionError):
+        self._job_id = job_id
+        self._instance_id = instance_id
+        self._state = state
+        self._exec_error = exec_error
+
+    @property
+    def job_id(self) -> str:
+        return self._job_id
+
+    @property
+    def instance_id(self) -> str:
+        return self._instance_id
+
+    @property
+    def state(self) -> ExecutionState:
+        return self._state
+
+    @property
+    def exec_error(self) -> ExecutionError:
+        return self._exec_error
+
+
 class JobControl(JobInstance):
 
     @abc.abstractmethod
