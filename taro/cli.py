@@ -6,6 +6,7 @@ from taro import cnf
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
 ACTION_RELEASE = 'release'
+ACTION_LISTEN = 'listen'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
 
@@ -25,6 +26,7 @@ def parse_args(args):
     _init_exec_parser(common, subparsers)
     _init_ps_parser(common, subparsers)
     _init_release_parser(common, subparsers)
+    _init_listen_parser(common, subparsers)
     _init_show_config_parser(common, subparsers)
 
     parsed = parser.parse_args(args)
@@ -90,6 +92,18 @@ def _init_release_parser(common, subparsers):
     release_parser = subparsers.add_parser(ACTION_RELEASE, parents=[common],
                                            description='Release jobs waiting for condition', add_help=False)
     release_parser.add_argument('wait', type=str, metavar='WAIT', help='Waiting condition value')
+
+
+def _init_listen_parser(common, subparsers):
+    """
+    Creates parsers for `listen` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for listen parser to be added to
+    """
+
+    release_parser = subparsers.add_parser(ACTION_LISTEN, parents=[common],
+                                           description='Print job state changes', add_help=False)
 
 
 def _init_show_config_parser(common, subparsers):

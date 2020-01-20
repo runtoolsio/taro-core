@@ -1,13 +1,12 @@
 import logging
 import os
 import signal
-
 import sys
 
 from taro import cli, paths, cnf, log, runner
 from taro.api import Server, Client
 from taro.job import Job
-from taro.listening import Dispatcher
+from taro.listening import Dispatcher, Receiver
 from taro.process import ProcessExecution
 from taro.runner import RunnerJobInstance
 from taro.term import Term
@@ -25,6 +24,8 @@ def main(args):
         run_ps(args)
     elif args.action == cli.ACTION_RELEASE:
         run_release(args)
+    elif args.action == cli.ACTION_LISTEN:
+        run_listen(args)
     elif args.action == cli.ACTION_CONFIG:
         if args.config_action == cli.ACTION_CONFIG_SHOW:
             run_show_config(args)
@@ -70,6 +71,13 @@ def run_release(args):
         client.release_jobs(args.wait)
     finally:
         client.close()
+
+
+def run_listen(args):
+    receiver = Receiver()
+    signal.signal(signal.SIGTERM, lambda _, __: receiver.stop())
+    signal.signal(signal.SIGINT, lambda _, __: receiver.stop())
+    receiver.start()
 
 
 def run_show_config(args):
