@@ -7,6 +7,7 @@ ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
 ACTION_RELEASE = 'release'
 ACTION_LISTEN = 'listen'
+ACTION_WAIT = 'wait'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
 
@@ -27,6 +28,7 @@ def parse_args(args):
     _init_ps_parser(common, subparsers)
     _init_release_parser(common, subparsers)
     _init_listen_parser(common, subparsers)
+    _init_wait_parser(common, subparsers)
     _init_show_config_parser(common, subparsers)
 
     parsed = parser.parse_args(args)
@@ -104,6 +106,19 @@ def _init_listen_parser(common, subparsers):
 
     release_parser = subparsers.add_parser(ACTION_LISTEN, parents=[common],
                                            description='Print job state changes', add_help=False)
+
+
+def _init_wait_parser(common, subparsers):
+    """
+    Creates parsers for `wait` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for wait parser to be added to
+    """
+
+    wait_parser = subparsers.add_parser(ACTION_WAIT, parents=[common], description='Wait for job state', add_help=False)
+    wait_parser.add_argument('state', type=str, metavar='STATE',
+                             help='State or group of states for which the command waits')
 
 
 def _init_show_config_parser(common, subparsers):

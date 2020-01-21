@@ -59,3 +59,14 @@ class EventPrint(ExecutionStateObserver):
 
     def notify(self, job_instance):
         print(job_instance)
+
+
+class StoppingListener(ExecutionStateObserver):
+
+    def __init__(self, server, state):
+        self._server = server
+        self.state = state
+
+    def notify(self, job_instance):
+        if self.state == job_instance.state:
+            self._server.stop()

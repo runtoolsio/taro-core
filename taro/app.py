@@ -1,12 +1,14 @@
 import logging
 import os
 import signal
+
 import sys
 
 from taro import cli, paths, cnf, log, runner
 from taro.api import Server, Client
+from taro.execution import ExecutionState
 from taro.job import Job
-from taro.listening import Dispatcher, Receiver, EventPrint
+from taro.listening import Dispatcher, Receiver, EventPrint, StoppingListener
 from taro.process import ProcessExecution
 from taro.runner import RunnerJobInstance
 from taro.term import Term
@@ -26,6 +28,8 @@ def main(args):
         run_release(args)
     elif args.action == cli.ACTION_LISTEN:
         run_listen(args)
+    elif args.action == cli.ACTION_WAIT:
+        run_wait(args)
     elif args.action == cli.ACTION_CONFIG:
         if args.config_action == cli.ACTION_CONFIG_SHOW:
             run_show_config(args)
@@ -79,6 +83,19 @@ def run_listen(args):
     signal.signal(signal.SIGTERM, lambda _, __: receiver.stop())
     signal.signal(signal.SIGINT, lambda _, __: receiver.stop())
     receiver.start()
+
+
+def run_wait(args):
+    receiver = Receiver()
+    receiver.listeners.append(StoppingListener(receiver, ExecutionState[args.state]))
+    signal.signal(signal.SIGTERM, lambda _, __: stop_server_and_exit(receiver, signal.SIGTERM))
+    signal.signal(signal.SIGINT, lambda _, __: stop_server_and_exit(receiver, signal.SIGINT))
+    receiver.start()
+
+
+def stop_server_and_exit(server, signal_number: int):
+    server.stop()
+    sys.exit(128 + signal_number)
 
 
 def run_show_config(args):
