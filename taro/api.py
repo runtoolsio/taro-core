@@ -1,5 +1,6 @@
 import logging
 
+from taro import dto
 from taro.socket import SocketServer, SocketClient
 from taro.util import iterates
 
@@ -25,8 +26,7 @@ class Server(SocketServer):
             return {"resp": {"error": "missing_req_api"}}
 
         if req_body['req']['api'] == '/job':
-            return {"resp": {"code": 200},
-                    "data": {"job_id": self._job_control.job_id, "instance_id": self._job_control.instance_id}}
+            return {"resp": {"code": 200}, "data": {"job_instance": dto.job_instance(self._job_control)}}
 
         if req_body['req']['api'] == '/release':
             if 'data' not in req_body:
