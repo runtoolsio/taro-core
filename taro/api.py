@@ -1,6 +1,8 @@
 import logging
+from typing import List
 
 from taro import dto
+from taro.job import JobInstanceData
 from taro.socket import SocketServer, SocketClient
 from taro.util import iterates
 
@@ -45,12 +47,17 @@ class Client(SocketClient):
     def __init__(self):
         super().__init__(API_FILE_EXTENSION, bidirectional=True)
 
-    @iterates
-    def read_job_info(self):
+    def read_job_info(self) -> List[JobInstanceData]:
         server = self.servers()
+        jobs = []
         while True:
-            next(server)
-            print(server.send({'req': {'api': '/job'}}))
+            try:
+                next(server)
+            except StopIteration:
+                break
+            resp_body = server.send({'req': {'api': '/job'}})
+            jobs.append(dto.to_job_instance_data(resp_body['data']['job_instance']))
+        return jobs
 
     @iterates
     def release_jobs(self, wait):
