@@ -22,11 +22,9 @@ type_id = 'test'
 
 class TestObserver(ExecutionStateObserver):
 
-    def __init__(self, *, support_waiter: bool = False):
+    def __init__(self):
         self._events: List[Tuple[datetime, JobInstance, ExecutionState, ExecutionError]] = []
-        self._support_waiter = support_waiter
-        if self._support_waiter:
-            self.completion_lock = Condition()
+        self.completion_lock = Condition()
 
     def notify(self, job_instance: JobInstance):
         self._events.append((datetime.now(), job_instance, job_instance.state, job_instance.exec_error))
@@ -54,9 +52,8 @@ class TestObserver(ExecutionStateObserver):
         return self._events[event_idx][3]
 
     def _release_state_waiter(self):
-        if self._support_waiter:
-            with self.completion_lock:
-                self.completion_lock.notify()  # Support only one-to-one thread sync to keep things simple
+        with self.completion_lock:
+            self.completion_lock.notify()  # Support only one-to-one thread sync to keep things simple
 
     def wait_for_state(self, exec_state: ExecutionState, timeout: float = 1) -> bool:
         """
@@ -78,8 +75,5 @@ class TestObserver(ExecutionStateObserver):
         return self._wait_for_state_condition(lambda: any((e for e in self._events if e[2].is_terminal())), timeout)
 
     def _wait_for_state_condition(self, state_condition: Callable[[], bool], timeout: float):
-        if not self._support_waiter:
-            raise ValueError("support_waiter set to false")
-
         with self.completion_lock:
             return self.completion_lock.wait_for(state_condition, timeout)
