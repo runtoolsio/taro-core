@@ -10,12 +10,18 @@ from taro.execution import ExecutionState
 from test.util import run_app
 
 
-def test_ps(capsys):
+def test_trigger_job(capsys):
     Process(target=run_app, args=('exec sleep 1',), daemon=True).start()
-    run_and_assert(capsys, lambda out: 'sleep 1' in out and ExecutionState.TRIGGERED.name.casefold() in out.casefold())
+    run_ps_and_assert(capsys,
+                      lambda out: 'sleep 1' in out and ExecutionState.TRIGGERED.name.casefold() in out.casefold())
 
 
-def run_and_assert(capsys, assertion):
+def test_waiting_job(capsys):
+    Process(target=run_app, args=('exec -w val sleep 1',), daemon=True).start()
+    run_ps_and_assert(capsys, lambda out: 'sleep 1' in out and ExecutionState.WAITING.name.casefold() in out.casefold())
+
+
+def run_ps_and_assert(capsys, assertion):
     for _ in range(0, 10):
         run_app('ps')
         output = capsys.readouterr().out
