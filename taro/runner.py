@@ -27,6 +27,7 @@ class RunnerJobInstance(JobControl):
         self._instance_id: str = _instance_id(job)
         self._job = job
         self._state: ExecutionState = ExecutionState.NONE
+        self._state_changes = []
         self._exec_error = None
         self._executing = False
         self._stopped_or_interrupted: bool = False
@@ -45,6 +46,10 @@ class RunnerJobInstance(JobControl):
     @property
     def state(self):
         return self._state
+
+    @property
+    def state_changes(self):
+        return self._state_changes
 
     @property
     def exec_error(self):
