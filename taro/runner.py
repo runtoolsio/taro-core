@@ -1,10 +1,10 @@
 """
 Implementation of job management framework based on :mod:`job` module.
 """
-
+import datetime
 import logging
 from threading import Lock, Event
-from typing import List
+from typing import List, Tuple, Union
 
 from taro import util
 from taro.execution import ExecutionError, ExecutionState
@@ -26,8 +26,7 @@ class RunnerJobInstance(JobControl):
     def __init__(self, job):
         self._instance_id: str = _instance_id(job)
         self._job = job
-        self._state: ExecutionState = ExecutionState.NONE
-        self._state_changes = []
+        self._state_changes: List[Tuple[ExecutionState, datetime.datetime]] = []
         self._exec_error = None
         self._executing = False
         self._stopped_or_interrupted: bool = False
@@ -35,24 +34,29 @@ class RunnerJobInstance(JobControl):
         if job.wait:
             self._wait_condition: Event = Event()
 
+        self._set_state(ExecutionState.CREATED)
+
     @property
-    def instance_id(self):
+    def instance_id(self) -> str:
         return self._instance_id
 
     @property
-    def job_id(self):
+    def job_id(self) -> str:
         return self._job.id
 
     @property
-    def state(self):
-        return self._state
+    def state(self) -> ExecutionState:
+        if self._state_changes:
+            return self._state_changes[-1][0]
+        else:
+            return ExecutionState.NONE
 
     @property
-    def state_changes(self):
+    def state_changes(self) -> List[Tuple[ExecutionState, datetime.datetime]]:
         return self._state_changes
 
     @property
-    def exec_error(self):
+    def exec_error(self) -> Union[ExecutionError, None]:
         return self._exec_error
 
     def run(self):
@@ -117,14 +121,15 @@ class RunnerJobInstance(JobControl):
     def _log(self, event: str, msg: str):
         return "event=[{}] job_id=[{}] instance_id=[{}] {}".format(event, self._job.id, self._instance_id, msg)
 
-    def _set_state(self, exec_state):
-        if not exec_state or exec_state == ExecutionState.NONE or self._state == exec_state:
+    def _set_state(self, new_state):
+        if not new_state or new_state == ExecutionState.NONE or self.state == new_state:
             return
 
-        prev_state, self._state = self._state, exec_state
-        level = logging.WARN if self._state.is_failure() else logging.INFO
+        prev_state = self.state
+        self._state_changes.append((new_state, datetime.datetime.utcnow()))
+        level = logging.WARN if new_state.is_failure() else logging.INFO
         log.log(level, self._log('job_state_changed', "new_state=[{}] prev_state=[{}]".format(
-            self._state.name.lower(), prev_state.name.lower())))
+            new_state.name.lower(), prev_state.name.lower())))
 
         self._notify_observers()
 
