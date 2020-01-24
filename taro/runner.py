@@ -18,7 +18,9 @@ def _instance_id(job) -> str:
 
 
 def run(job):
-    RunnerJobInstance(job).run()
+    instance = RunnerJobInstance(job)
+    instance.run()
+    return instance
 
 
 class RunnerJobInstance(JobControl):
