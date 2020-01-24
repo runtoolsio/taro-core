@@ -7,30 +7,31 @@ It consists of:
 """
 
 import abc
-from enum import Enum
+from enum import IntEnum
 
 
-class ExecutionState(Enum):
+class ExecutionState(IntEnum):
     NONE = 0
-    WAITING = 1
-    TRIGGERED = 2
-    STARTED = 3
-    COMPLETED = 4
-    CANCELLED = 5
-    STOPPED = 6
-    START_FAILED = 7
-    INTERRUPTED = 8
-    FAILED = 9
-    ERROR = 10
+    CREATED = 1
+    WAITING = 2
+    TRIGGERED = 3
+    STARTED = 4
+    COMPLETED = 5
+    CANCELLED = 6
+    STOPPED = 7
+    START_FAILED = 8
+    INTERRUPTED = 9
+    FAILED = 10
+    ERROR = 11
 
     def is_executing(self):
-        return 2 <= self.value <= 3
+        return ExecutionState.TRIGGERED <= self <= ExecutionState.STARTED
 
     def is_terminal(self) -> bool:
-        return self.value >= 4
+        return self >= ExecutionState.COMPLETED
 
     def is_failure(self) -> bool:
-        return self.value >= 7
+        return self >= ExecutionState.START_FAILED
 
 
 class ExecutionError(Exception):
