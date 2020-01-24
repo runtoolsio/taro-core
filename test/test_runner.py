@@ -6,7 +6,7 @@ from threading import Thread
 import time
 
 import taro.runner as runner
-from taro.execution import ExecutionState
+from taro.execution import ExecutionState, ExecutionError
 from taro.job import Job
 from taro.runner import RunnerJobInstance
 from taro.test.execution import TestExecution  # TODO package import
@@ -49,9 +49,35 @@ def test_waiting():
 
     assert instance.release('w1')
     t.join(timeout=1)
-    assert instance.state == ExecutionState.COMPLETED
 
+    assert instance.state == ExecutionState.COMPLETED
     assert instance.state_changes[0][0] == ExecutionState.CREATED
     assert instance.state_changes[1][0] == ExecutionState.WAITING
     assert instance.state_changes[2][0] == ExecutionState.TRIGGERED
     assert instance.state_changes[3][0] == ExecutionState.COMPLETED
+
+
+def test_cancellation():
+    instance = RunnerJobInstance(Job('j1', TestExecution(), wait='w1'))
+    t = Thread(target=instance.run)
+    t.start()
+
+    instance.stop()
+    t.join(timeout=1)
+
+    assert instance.state == ExecutionState.CANCELLED
+    assert instance.state_changes[0][0] == ExecutionState.CREATED
+    assert instance.state_changes[1][0] == ExecutionState.WAITING
+    assert instance.state_changes[2][0] == ExecutionState.CANCELLED
+
+
+def test_error():
+    execution = TestExecution()
+    exception = Exception()
+    execution.raise_exception(exception)
+    instance = runner.run(Job('j1', execution))
+
+    assert instance.state == ExecutionState.ERROR
+    assert isinstance(instance.exec_error, ExecutionError)
+    assert instance.exec_error.exec_state == ExecutionState.ERROR
+    assert instance.exec_error.unexpected_error == exception
