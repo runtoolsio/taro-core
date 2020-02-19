@@ -65,7 +65,7 @@ class RunnerJobInstance(JobControl):
         return self._exec_error
 
     def run(self):
-        if self._job.wait:
+        if self._job.wait and not self._stopped_or_interrupted:
             self._set_state(ExecutionState.WAITING)
             self._wait_condition.wait()
 
