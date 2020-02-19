@@ -57,6 +57,9 @@ class RunnerJobInstance(JobControl):
     def state_changes(self) -> List[Tuple[ExecutionState, datetime.datetime]]:
         return self._state_changes
 
+    def states(self) -> List[ExecutionState]:
+        return [state for state, _ in self.state_changes]
+
     @property
     def exec_error(self) -> Union[ExecutionError, None]:
         return self._exec_error
