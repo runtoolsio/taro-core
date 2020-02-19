@@ -1,7 +1,6 @@
+import sys
 from subprocess import Popen
 from typing import Union
-
-import sys
 
 from taro.execution import Execution, ExecutionState, ExecutionError
 
@@ -19,6 +18,9 @@ class ProcessExecution(Execution):
         if not self._stopped and not self._interrupted:
             try:
                 self.popen = Popen(self.args)
+
+                # print(psutil.Process(self.popen.pid).memory_info().rss)
+
                 ret_code = self.popen.wait()
                 if ret_code == 0:
                     return ExecutionState.COMPLETED
