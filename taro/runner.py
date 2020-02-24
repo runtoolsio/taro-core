@@ -3,8 +3,9 @@ Implementation of job management framework based on :mod:`job` module.
 """
 import datetime
 import logging
+from collections import OrderedDict
 from threading import Lock, Event
-from typing import List, Tuple, Union
+from typing import List, Union
 
 from taro import util
 from taro.execution import ExecutionError, ExecutionState
@@ -28,7 +29,7 @@ class RunnerJobInstance(JobControl):
     def __init__(self, job):
         self._instance_id: str = _instance_id(job)
         self._job = job
-        self._state_changes: List[Tuple[ExecutionState, datetime.datetime]] = []
+        self._state_changes: OrderedDict[ExecutionState, datetime.datetime] = OrderedDict()
         self._exec_error = None
         self._executing = False
         self._stopped_or_interrupted: bool = False
@@ -49,16 +50,16 @@ class RunnerJobInstance(JobControl):
     @property
     def state(self) -> ExecutionState:
         if self._state_changes:
-            return self._state_changes[-1][0]
+            return next(reversed(self._state_changes.keys()))
         else:
             return ExecutionState.NONE
 
     @property
-    def state_changes(self) -> List[Tuple[ExecutionState, datetime.datetime]]:
+    def state_changes(self):
         return self._state_changes
 
     def states(self) -> List[ExecutionState]:
-        return [state for state, _ in self.state_changes]
+        return list(self._state_changes.keys())
 
     @property
     def exec_error(self) -> Union[ExecutionError, None]:
@@ -131,7 +132,7 @@ class RunnerJobInstance(JobControl):
             return
 
         prev_state = self.state
-        self._state_changes.append((new_state, datetime.datetime.utcnow()))
+        self._state_changes[new_state] = datetime.datetime.utcnow()
         level = logging.WARN if new_state.is_failure() else logging.INFO
         log.log(level, self._log('job_state_changed', "new_state=[{}] prev_state=[{}]".format(
             new_state.name.lower(), prev_state.name.lower())))
