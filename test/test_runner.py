@@ -1,8 +1,9 @@
 """
 Tests :mod:`runner` module
 """
-import time
 from threading import Thread
+
+import time
 
 import taro.runner as runner
 from taro.execution import ExecutionState as ExSt, ExecutionError
@@ -22,7 +23,7 @@ def test_executed():
 def test_state_changes():
     instance = runner.run(Job('j', TestExecution()))
     assert instance.state == ExSt.COMPLETED
-    assert instance.states() == [ExSt.CREATED, ExSt.TRIGGERED, ExSt.COMPLETED]
+    assert instance.states() == [ExSt.CREATED, ExSt.RUNNING, ExSt.COMPLETED]
 
 
 def test_state_created():
@@ -46,7 +47,7 @@ def test_waiting():
     t.join(timeout=1)
 
     assert instance.state == ExSt.COMPLETED
-    assert instance.states() == [ExSt.CREATED, ExSt.WAITING, ExSt.TRIGGERED, ExSt.COMPLETED]
+    assert instance.states() == [ExSt.CREATED, ExSt.WAITING, ExSt.RUNNING, ExSt.COMPLETED]
 
 
 def test_cancellation_after_start():

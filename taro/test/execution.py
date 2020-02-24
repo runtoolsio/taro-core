@@ -38,6 +38,9 @@ class TestExecution(Execution):
         self._raise_exc = exc
         return self
 
+    def is_async(self) -> bool:
+        return False
+
     def execute(self) -> ExecutionState:
         self._execution_occurrences.append(datetime.now())
         if self._after_exec_state:

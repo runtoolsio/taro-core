@@ -79,7 +79,7 @@ class RunnerJobInstance(JobControl):
             self._set_state(ExecutionState.CANCELLED)
             return
 
-        self._set_state(ExecutionState.TRIGGERED)
+        self._set_state(ExecutionState.TRIGGERED if self._job.execution.is_async() else ExecutionState.RUNNING)
         try:
             new_state = self._job.execution.execute()
             self._set_state(new_state)

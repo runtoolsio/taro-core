@@ -66,8 +66,12 @@ def run_ps(args):
     client = Client()
     try:
         jobs = client.read_job_info()
-        headers = ['Job ID', 'Instance ID', 'State']
-        jobs_as_fields = [(j.job_id, j.instance_id, j.state.name) for j in jobs]
+        headers = ['JOB ID', 'INSTANCE ID', 'STATE', 'CREATED']
+        jobs_as_fields = [
+            (j.job_id,
+             j.instance_id,
+             j.state.name,
+             j.state_changes[ExecutionState.CREATED]) for j in jobs]
         print(tabulate(jobs_as_fields, headers=headers))
     finally:
         client.close()

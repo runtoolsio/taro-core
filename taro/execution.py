@@ -14,18 +14,19 @@ class ExecutionState(IntEnum):
     NONE = 0
     CREATED = 1
     WAITING = 2
-    TRIGGERED = 3
-    STARTED = 4
-    COMPLETED = 5
-    CANCELLED = 6
-    STOPPED = 7
-    START_FAILED = 8
-    INTERRUPTED = 9
-    FAILED = 10
-    ERROR = 11
+    RUNNING = 3
+    TRIGGERED = 4
+    STARTED = 5
+    COMPLETED = 6
+    CANCELLED = 7
+    STOPPED = 8
+    START_FAILED = 9
+    INTERRUPTED = 10
+    FAILED = 11
+    ERROR = 12
 
     def is_executing(self):
-        return ExecutionState.TRIGGERED <= self <= ExecutionState.STARTED
+        return ExecutionState.RUNNING <= self <= ExecutionState.STARTED
 
     def is_terminal(self) -> bool:
         return self >= ExecutionState.COMPLETED
@@ -51,6 +52,20 @@ class ExecutionError(Exception):
 
 
 class Execution(abc.ABC):
+
+    @abc.abstractmethod
+    def is_async(self) -> bool:
+        """
+        SYNCHRONOUS TASK
+            - finishes after the call of the execute() method
+            - execution state is changed to RUNNING before the call of the execute() method
+
+        ASYNCHRONOUS TASK
+            - need not to finish after the call of the execute() method
+            - execution state is changed to TRIGGER before the call of the execute() method
+
+        :return: whether this execution is asynchronous
+        """
 
     @abc.abstractmethod
     def execute(self) -> ExecutionState:

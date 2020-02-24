@@ -35,7 +35,7 @@ def test_execution_completed(observer: TestObserver):
     runner.run(job(ExecutionState.COMPLETED))
 
     assert observer.exec_state(0) == ExecutionState.CREATED
-    assert observer.exec_state(1) == ExecutionState.TRIGGERED
+    assert observer.exec_state(1) == ExecutionState.RUNNING
     assert observer.exec_state(2) == ExecutionState.COMPLETED
 
 
@@ -43,7 +43,7 @@ def test_execution_started(observer: TestObserver):
     runner.run(job(ExecutionState.STARTED))
 
     assert observer.exec_state(0) == ExecutionState.CREATED
-    assert observer.exec_state(1) == ExecutionState.TRIGGERED
+    assert observer.exec_state(1) == ExecutionState.RUNNING
     assert observer.exec_state(2) == ExecutionState.STARTED
 
 
@@ -52,7 +52,7 @@ def test_execution_raises_exc(observer: TestObserver):
     runner.run(job(raise_exc=exc_to_raise))
 
     assert observer.exec_state(0) == ExecutionState.CREATED
-    assert observer.exec_state(1) == ExecutionState.TRIGGERED
+    assert observer.exec_state(1) == ExecutionState.RUNNING
     assert observer.exec_state(2) == ExecutionState.ERROR
     assert not observer.exec_error(0)
     assert observer.exec_error(2).unexpected_error == exc_to_raise

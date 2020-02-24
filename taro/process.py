@@ -1,6 +1,7 @@
-import sys
 from subprocess import Popen
 from typing import Union
+
+import sys
 
 from taro.execution import Execution, ExecutionState, ExecutionError
 
@@ -12,6 +13,9 @@ class ProcessExecution(Execution):
         self.popen: Union[Popen, None] = None
         self._stopped: bool = False
         self._interrupted: bool = False
+
+    def is_async(self) -> bool:
+        return False
 
     def execute(self) -> ExecutionState:
         ret_code = -1
