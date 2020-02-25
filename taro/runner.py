@@ -132,7 +132,7 @@ class RunnerJobInstance(JobControl):
             return
 
         prev_state = self.state
-        self._state_changes[new_state] = datetime.datetime.utcnow()
+        self._state_changes[new_state] = datetime.datetime.now(datetime.timezone.utc)
         level = logging.WARN if new_state.is_failure() else logging.INFO
         log.log(level, self._log('job_state_changed', "new_state=[{}] prev_state=[{}]".format(
             new_state.name.lower(), prev_state.name.lower())))

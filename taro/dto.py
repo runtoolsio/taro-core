@@ -6,8 +6,7 @@ from taro.job import JobInstanceData
 
 
 def job_instance(inst):
-    state_changes = \
-        [{"state": state, "changed": change.isoformat() + 'Z'} for state, change in inst.state_changes.items()]
+    state_changes = [{"state": state, "changed": change.isoformat()} for state, change in inst.state_changes.items()]
     if inst.exec_error:
         exec_error = {"message": inst.exec_error.message, "state": inst.exec_error.exec_state.name}
     else:
@@ -19,7 +18,7 @@ def job_instance(inst):
 
 def to_job_instance_data(as_dict):
     state_changes = OrderedDict(
-        ((state_change['state'], datetime.strptime(state_change['changed'], "%Y-%m-%dT%H:%M:%S.%fZ"))
+        ((state_change['state'], datetime.strptime(state_change['changed'], "%Y-%m-%dT%H:%M:%S.%f%z"))
          for state_change in as_dict['state_changes']))
 
     if as_dict['exec_error']:

@@ -71,7 +71,7 @@ def run_ps(args):
             (j.job_id,
              j.instance_id,
              j.state.name,
-             j.state_changes[ExecutionState.CREATED]) for j in jobs]
+             j.state_changes[ExecutionState.CREATED].astimezone()) for j in jobs]
         print(tabulate(jobs_as_fields, headers=headers))
     finally:
         client.close()
