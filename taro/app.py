@@ -3,9 +3,8 @@ import os
 import signal
 
 import sys
-from tabulate import tabulate
 
-from taro import cli, paths, cnf, log, runner
+from taro import cli, paths, cnf, log, runner, ps
 from taro.api import Server, Client
 from taro.execution import ExecutionState
 from taro.job import Job
@@ -66,13 +65,7 @@ def run_ps(args):
     client = Client()
     try:
         jobs = client.read_job_info()
-        headers = ['JOB ID', 'INSTANCE ID', 'STATE', 'CREATED']
-        jobs_as_fields = [
-            (j.job_id,
-             j.instance_id,
-             j.state.name,
-             j.state_changes[ExecutionState.CREATED].astimezone()) for j in jobs]
-        print(tabulate(jobs_as_fields, headers=headers))
+        ps.print_jobs(jobs)
     finally:
         client.close()
 
