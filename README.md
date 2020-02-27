@@ -1,23 +1,32 @@
 # taro
 Job management library
 
-## Inter-process communication
-https://docs.python.org/3/library/xmlrpc.html
-
 ## Feature priority
 ### Mandatory
 1. ~~Logging - normal to stdout and errors to stderr (https://docs.python.org/3/library/logging.handlers.html)~~
 2. ~~(Config)~~
-3. Current executing jobs
-4. Progress of currently executing jobs
-5. SNS notifications
-6. Execution history
-7. Log rotation
+3. ~~Current executing jobs~~
+4. Stop, interrupt, kill
+5. Progress of currently executing jobs
+6. SNS notifications
+7. Execution history
+8. Log rotation
 
 ### Optional
-- job stopping
 - job timeout
 - job post checks
+
+## Premature termination
+### General
+A process can be terminated either by stop or interrupt operations.
+When a process is stopped its termination (final) state is set to STOPPED.
+When a process is interrupted its termination (final) state is set to INTERRUPTED which is a failure state.
+Choosing one of these options a user can decided whether the termination is a failure or not.
+
+### Exec command
+A child process executed with `exec` command is stopped or interrupted by sending kill signal.
+Received SIGTERM (normal kill) or SIGINT (Ctrl+C) signals trigger interrupt operation.
+It is expected for terminated child process to stop executing otherwise this process will continue waiting for the child.
 
 ## Implementation notes
 
