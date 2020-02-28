@@ -47,4 +47,4 @@ def iterates(func):
 
 
 def unique_timestamp_hex(random_suffix_length=4):
-    return format(int(datetime.utcnow().timestamp() * 1000000), 'x') + secrets.token_hex(random_suffix_length)
+    return secrets.token_hex(random_suffix_length) + format(int(datetime.utcnow().timestamp() * 1000000), 'x')[::-1]
