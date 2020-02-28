@@ -14,10 +14,6 @@ from taro.job import ExecutionStateObserver, JobControl
 log = logging.getLogger(__name__)
 
 
-def _instance_id(job) -> str:
-    return job.id + "_" + util.unique_timestamp_hex()
-
-
 def run(job):
     instance = RunnerJobInstance(job)
     instance.run()
@@ -27,7 +23,7 @@ def run(job):
 class RunnerJobInstance(JobControl):
 
     def __init__(self, job):
-        self._instance_id: str = _instance_id(job)
+        self._instance_id: str = util.unique_timestamp_hex()
         self._job = job
         self._state_changes: OrderedDict[ExecutionState, datetime.datetime] = OrderedDict()
         self._exec_error = None
