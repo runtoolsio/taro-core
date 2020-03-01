@@ -8,6 +8,7 @@ ACTION_PS = 'ps'
 ACTION_RELEASE = 'release'
 ACTION_LISTEN = 'listen'
 ACTION_WAIT = 'wait'
+ACTION_STOP = 'stop'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
 
@@ -29,6 +30,7 @@ def parse_args(args):
     _init_release_parser(common, subparsers)
     _init_listen_parser(common, subparsers)
     _init_wait_parser(common, subparsers)
+    _init_stop_parser(common, subparsers)
     _init_show_config_parser(common, subparsers)
 
     parsed = parser.parse_args(args)
@@ -119,6 +121,19 @@ def _init_wait_parser(common, subparsers):
     wait_parser = subparsers.add_parser(ACTION_WAIT, parents=[common], description='Wait for job state', add_help=False)
     wait_parser.add_argument('state', type=str, metavar='STATE',
                              help='State or group of states for which the command waits')
+
+
+def _init_stop_parser(common, subparsers):
+    """
+    Creates parsers for `stop` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for stop parser to be added to
+    """
+
+    stop_parser = subparsers.add_parser(ACTION_STOP, parents=[common], description='Stop job', add_help=False)
+    stop_parser.add_argument('--all', action='store_true', help='Force stop all if there are more jobs to stop')
+    stop_parser.add_argument('job', type=str, metavar='JOB', help='ID of the job to stop')
 
 
 def _init_show_config_parser(common, subparsers):

@@ -1,7 +1,6 @@
 import logging
 import os
 import signal
-
 import sys
 
 from taro import cli, paths, cnf, log, runner, ps
@@ -30,6 +29,8 @@ def main(args):
         run_listen(args)
     elif args.action == cli.ACTION_WAIT:
         run_wait(args)
+    elif args.action == cli.ACTION_STOP:
+        run_stop(args)
     elif args.action == cli.ACTION_CONFIG:
         if args.config_action == cli.ACTION_CONFIG_SHOW:
             run_show_config(args)
@@ -64,7 +65,7 @@ def run_exec(args):
 def run_ps(args):
     client = Client()
     try:
-        jobs = client.read_job_info()
+        jobs = client.read_jobs_info()
         ps.print_jobs(jobs)
     finally:
         client.close()
@@ -92,6 +93,21 @@ def run_wait(args):
     signal.signal(signal.SIGTERM, lambda _, __: stop_server_and_exit(receiver, signal.SIGTERM))
     signal.signal(signal.SIGINT, lambda _, __: stop_server_and_exit(receiver, signal.SIGINT))
     receiver.start()
+
+
+def run_stop(args):
+    client = Client()
+    try:
+        all_jobs = client.read_jobs_info()
+        print(all_jobs)
+        jobs = [job for job in all_jobs if job.job_id == args.job or job.instance_id == args.job]
+        print(args.job)
+        if len(jobs) > 1 and not args.all:
+            print('The criteria matches more than one job. Use --all flag if you wish to stop them all:' + os.linesep)
+            ps.print_jobs(jobs)
+            return  # Exit code non-zero?
+    finally:
+        client.close()
 
 
 def stop_server_and_exit(server, signal_number: int):

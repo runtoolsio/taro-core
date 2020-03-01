@@ -47,7 +47,7 @@ class Client(SocketClient):
     def __init__(self):
         super().__init__(API_FILE_EXTENSION, bidirectional=True)
 
-    def read_job_info(self) -> List[JobInstanceData]:
+    def read_jobs_info(self) -> List[JobInstanceData]:
         server = self.servers()
         jobs = []
         while True:
