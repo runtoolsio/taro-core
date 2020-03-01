@@ -61,7 +61,7 @@ def lookup_config_file_path() -> Path:
     if system_config.exists():
         return system_config
 
-    raise FileNotFoundError('None config file found: ' + str([str(config) for config in paths]))
+    raise FileNotFoundError('Config file not found in paths: ' + str([str(config) for config in paths]))
 
 
 def log_file_path(create: bool) -> Path:
