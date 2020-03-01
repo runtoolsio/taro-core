@@ -136,4 +136,7 @@ def socket_path(socket_name: str, create: bool) -> Path:
 
 
 def socket_files(file_extension: str) -> Generator[Path, None, None]:
-    return (entry for entry in socket_dir(False).iterdir() if entry.is_socket() and file_extension == entry.suffix)
+    s_dir = socket_dir(False)
+    if not s_dir.exists():
+        return (_ for _ in ())
+    return (entry for entry in s_dir.iterdir() if entry.is_socket() and file_extension == entry.suffix)
