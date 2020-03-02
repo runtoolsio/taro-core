@@ -53,10 +53,13 @@ class EventPrint(ExecutionStateObserver):
 
 class StoppingListener(ExecutionStateObserver):
 
-    def __init__(self, server, condition=lambda _: True):
+    def __init__(self, server, condition=lambda _: True, count=1):
         self._server = server
         self.condition = condition
+        self.count = count
 
     def notify(self, job_instance):
         if self.condition(job_instance):
-            self._server.stop()
+            self.count -= 1
+            if self.count <= 0:
+                self._server.stop()

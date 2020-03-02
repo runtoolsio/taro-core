@@ -91,7 +91,7 @@ def run_wait(args):
     def condition(job): return not args.states or job.state.name in args.states
     receiver = Receiver()
     receiver.listeners.append(EventPrint(condition))
-    receiver.listeners.append(StoppingListener(receiver, condition))
+    receiver.listeners.append(StoppingListener(receiver, condition, args.count))
     signal.signal(signal.SIGTERM, lambda _, __: stop_server_and_exit(receiver, signal.SIGTERM))
     signal.signal(signal.SIGINT, lambda _, __: stop_server_and_exit(receiver, signal.SIGINT))
     receiver.start()
