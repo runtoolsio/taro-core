@@ -2,19 +2,15 @@
 Tests :mod:`app` module
 Command: stop
 """
-from multiprocessing.context import Process
 
 from taro.execution import ExecutionState
-from test.util import run_app
+from test.util import run_app, run_app_as_process, run_wait
 
 
 def test_more_jobs_require_all_flag(capsys):
-    pw = Process(target=run_app, args=('exec wait -c 2 ' + ExecutionState.RUNNING.name,))
-    pw.start()
-    p1 = Process(target=run_app, args=('exec --id j1 sleep 5',), daemon=True)
-    p1.start()
-    p2 = Process(target=run_app, args=('exec --id j1 sleep 5',), daemon=True)
-    p2.start()
+    pw = run_wait(ExecutionState.RUNNING, 2)
+    p1 = run_app_as_process('exec --id j1 sleep 5', daemon=True)
+    p2 = run_app_as_process('exec --id j1 sleep 5', daemon=True)
 
     pw.join()  # Wait for both exec to run
     run_app('stop j1')

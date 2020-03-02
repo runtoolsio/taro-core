@@ -2,22 +2,21 @@
 Tests :mod:`app` module
 Command: ps
 """
-from multiprocessing.context import Process
 
 import time
 
 from taro.execution import ExecutionState
-from test.util import run_app
+from test.util import run_app, run_app_as_process
 
 
 def test_job_running(capsys):
-    Process(target=run_app, args=('exec sleep 1',), daemon=True).start()
+    run_app_as_process('exec sleep 1', daemon=True)
     run_ps_and_assert(capsys,
                       lambda out: 'sleep 1' in out and ExecutionState.RUNNING.name.casefold() in out.casefold())
 
 
 def test_job_waiting(capsys):
-    Process(target=run_app, args=('exec -w val sleep 1',), daemon=True).start()
+    run_app_as_process('exec -w val sleep 1', daemon=True)
     run_ps_and_assert(capsys, lambda out: 'sleep 1' in out and ExecutionState.WAITING.name.casefold() in out.casefold())
 
 

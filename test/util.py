@@ -1,8 +1,15 @@
+from multiprocessing.context import Process
 from pathlib import Path
 
 import yaml
 
 from taro import app
+
+
+def run_app_as_process(command, daemon=False) -> Process:
+    p = Process(target=run_app, args=(command,), daemon=daemon)
+    p.start()
+    return p
 
 
 def run_app(command):
@@ -16,6 +23,10 @@ def run_app(command):
         app.main(command.split())
     finally:
         app.FORCE_DEFAULT_CONFIG = False
+
+
+def run_wait(state, count) -> Process:
+    return run_app_as_process(f"wait -c {count} {state.name}")
 
 
 def create_test_config(config):
