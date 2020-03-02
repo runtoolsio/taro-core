@@ -2,9 +2,11 @@
 Tests :mod:`app` module
 Command: exec
 """
+import os
+
 import pytest
 
-from taro import runner
+from taro import runner, util
 from taro.execution import ExecutionState
 from taro.test.observer import TestObserver
 from test.util import run_app
@@ -19,10 +21,11 @@ def observer():
 
 
 def test_successful(capsys, observer: TestObserver):
-    run_app('exec echo this binary universe')
+    dir_name = util.unique_timestamp_hex()
+    run_app('exec mkdir ' + dir_name)
 
     assert observer.exec_state(-1) == ExecutionState.COMPLETED
-    assert 'this binary universe' in capsys.readouterr().out
+    os.rmdir(dir_name)
 
 
 def test_invalid_command(observer: TestObserver):
@@ -36,7 +39,7 @@ def test_failed_command(observer: TestObserver):
 
 
 def test_invalid_command_print_to_stderr(capsys):
-    run_app('exec --log-stdout off non_existing_command')
+    run_app('exec --log-stdout off non_existing_command')  # Disable logging so only the error message is printed
     assert 'No such file' in capsys.readouterr().err
 
 
