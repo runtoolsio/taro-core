@@ -31,4 +31,4 @@ def execution_time(job_instance):
 
 
 def print_state_change(job_instance):
-    print(f"{job_instance.state.name}: {job_instance.job_id}@{job_instance.instance_id}")
+    print(f"{job_instance.job_id}@{job_instance.instance_id} -> {job_instance.state.name}")
