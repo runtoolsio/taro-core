@@ -5,7 +5,6 @@ import sys
 
 from taro import cli, paths, cnf, log, runner, ps
 from taro.api import Server, Client
-from taro.execution import ExecutionState
 from taro.job import Job
 from taro.listening import Dispatcher, Receiver, EventPrint, StoppingListener
 from taro.process import ProcessExecution
@@ -14,6 +13,8 @@ from taro.term import Term
 from taro.util import get_attr, set_attr
 
 logger = logging.getLogger(__name__)
+
+FORCE_DEFAULT_CONFIG = False
 
 
 def main(args):
@@ -89,6 +90,7 @@ def run_listen(args):
 
 def run_wait(args):
     def condition(job): return not args.states or job.state.name in args.states
+
     receiver = Receiver()
     receiver.listeners.append(EventPrint(condition))
     receiver.listeners.append(StoppingListener(receiver, condition, args.count))
@@ -129,7 +131,7 @@ def get_config(args):
 def get_config_file_path(args):
     if hasattr(args, 'config') and args.config:
         return _expand_user(args.config)
-    elif args.def_config:
+    elif args.def_config or FORCE_DEFAULT_CONFIG:
         return paths.default_config_file_path()
     else:
         return paths.lookup_config_file_path()

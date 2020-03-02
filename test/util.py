@@ -7,11 +7,15 @@ from taro import app
 
 def run_app(command):
     """
-    Run command
+    Run command with default config
     :param command: command to run
     :return: output of the executed command
     """
-    app.main(command.split())
+    app.FORCE_DEFAULT_CONFIG = True
+    try:
+        app.main(command.split())
+    finally:
+        app.FORCE_DEFAULT_CONFIG = False
 
 
 def create_test_config(config):
