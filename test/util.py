@@ -25,7 +25,7 @@ def run_app(command):
         app.FORCE_DEFAULT_CONFIG = False
 
 
-def run_wait(state, count) -> Process:
+def run_wait(state, count=1) -> Process:
     return run_app_as_process(f"wait -c {count} {state.name}")
 
 
