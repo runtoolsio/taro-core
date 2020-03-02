@@ -29,6 +29,13 @@ def run_wait(state, count=1) -> Process:
     return run_app_as_process(f"wait -c {count} {state.name}")
 
 
+def run_app_as_process_and_wait(command, *, wait_for, daemon=False) -> Process:
+    pw = run_wait(wait_for)
+    p = run_app_as_process(command, daemon)
+    pw.join()
+    return p
+
+
 def create_test_config(config):
     with open(_test_config_path(), 'w') as outfile:
         yaml.dump(config, outfile, default_flow_style=False)
