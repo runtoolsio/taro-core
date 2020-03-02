@@ -1,5 +1,5 @@
 #  Sender, Listening
-from taro import util, dto
+from taro import util, dto, ps
 from taro.job import ExecutionStateObserver
 from taro.socket import SocketServer, SocketClient
 from taro.util import iterates
@@ -43,16 +43,20 @@ class Receiver(SocketServer):
 
 class EventPrint(ExecutionStateObserver):
 
+    def __init__(self, condition=lambda _: True):
+        self.condition = condition
+
     def notify(self, job_instance):
-        print(job_instance)
+        if self.condition(job_instance):
+            ps.print_state_change(job_instance)
 
 
 class StoppingListener(ExecutionStateObserver):
 
-    def __init__(self, server, state):
+    def __init__(self, server, condition=lambda _: True):
         self._server = server
-        self.state = state
+        self.condition = condition
 
     def notify(self, job_instance):
-        if self.state == job_instance.state:
+        if self.condition(job_instance):
             self._server.stop()

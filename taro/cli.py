@@ -119,8 +119,8 @@ def _init_wait_parser(common, subparsers):
     """
 
     wait_parser = subparsers.add_parser(ACTION_WAIT, parents=[common], description='Wait for job state', add_help=False)
-    wait_parser.add_argument('state', type=str, metavar='STATE',
-                             help='State or group of states for which the command waits')
+    wait_parser.add_argument('states', type=str, metavar='STATES', nargs=argparse.REMAINDER,
+                             help='States or group of states for which the command waits')
 
 
 def _init_stop_parser(common, subparsers):
