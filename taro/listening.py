@@ -19,11 +19,7 @@ class Dispatcher(ExecutionStateObserver):
     @iterates
     def notify(self, job_instance):
         event_body = {"event_type": "job_state_change", "event": {"job_instance": dto.job_instance(job_instance)}}
-
-        receiver = self._client.servers()
-        while True:
-            next(receiver)
-            receiver.send(event_body)
+        self._client.communicate(event_body)
 
     def close(self):
         self._client.close()
