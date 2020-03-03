@@ -103,13 +103,13 @@ def run_stop(args):
     client = Client()
     try:
         all_jobs = client.read_jobs_info()
-        print(all_jobs)
         jobs = [job for job in all_jobs if job.job_id == args.job or job.instance_id == args.job]
-        print(args.job)
         if len(jobs) > 1 and not args.all:
-            print('The criteria matches more than one job. Use --all flag if you wish to stop them all:' + os.linesep)
+            print('No action performed, because the criteria matches more than one job.'
+                  'Use --all flag if you wish to stop them all:' + os.linesep)
             ps.print_jobs(jobs)
             return  # Exit code non-zero?
+
     finally:
         client.close()
 

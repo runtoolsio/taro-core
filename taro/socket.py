@@ -3,8 +3,10 @@ import json
 import logging
 import os
 import socket
+from collections import namedtuple
 from threading import Thread
 from types import coroutine
+from typing import List
 
 from taro import paths
 
@@ -71,6 +73,9 @@ class SocketServer(abc.ABC):
             os.remove(socket_name)
 
 
+InstanceResponse = namedtuple('InstanceResponse', 'instance response')
+
+
 class SocketClient:
 
     def __init__(self, file_extension: str, bidirectional: bool):
@@ -81,11 +86,14 @@ class SocketClient:
             self._client.bind(self._client.getsockname())
 
     @coroutine
-    def servers(self):
+    def servers(self, include=()):
         req_body = '_'  # Dummy initialization to remove warnings
         resp = None
         skip = False
         for api_file in paths.socket_files(self._file_extension):
+            instance_id = api_file.stem
+            if include and instance_id not in include:
+                continue
             while True:
                 if not skip:
                     req_body = yield resp
@@ -96,11 +104,22 @@ class SocketClient:
                     self._client.sendto(json.dumps(req_body).encode(), str(api_file))
                     if self._bidirectional:
                         datagram = self._client.recv(1024)
-                        resp = json.loads(datagram.decode())
+                        resp = InstanceResponse(instance_id, json.loads(datagram.decode()))
                 except ConnectionRefusedError:
                     log.warning('event=[dead_socket] socket=[{}]'.format(api_file))  # TODO remove file
                     skip = True  # Ignore this one and continue with another one
                     break
+
+    def communicate(self, req, include=()) -> List[InstanceResponse]:
+        server = self.servers(include=include)
+        responses = []
+        while True:
+            try:
+                next(server)
+            except StopIteration:
+                break
+            responses.append(server.send(req))
+        return responses
 
     def close(self):
         self._client.shutdown(socket.SHUT_RDWR)

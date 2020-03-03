@@ -48,22 +48,14 @@ class Client(SocketClient):
         super().__init__(API_FILE_EXTENSION, bidirectional=True)
 
     def read_jobs_info(self) -> List[JobInstanceData]:
-        server = self.servers()
-        jobs = []
-        while True:
-            try:
-                next(server)
-            except StopIteration:
-                break
-            resp_body = server.send({'req': {'api': '/job'}})
-            jobs.append(dto.to_job_instance_data(resp_body['data']['job_instance']))
-        return jobs
+        responses = self.communicate({'req': {'api': '/job'}})
+        return [dto.to_job_instance_data(inst_resp.response['data']['job_instance']) for inst_resp in responses]
 
     @iterates
     def release_jobs(self, wait):
         server = self.servers()
         while True:
             next(server)
-            resp = server.send({'req': {'api': '/release'}, "data": {"wait": wait}})
+            resp = server.send({'req': {'api': '/release'}, "data": {"wait": wait}}).response
             if resp['data']['released']:
-                print(resp)
+                print(resp)  # Do not print, but returned released
