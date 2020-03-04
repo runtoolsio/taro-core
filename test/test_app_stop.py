@@ -2,9 +2,15 @@
 Tests :mod:`app` module
 Command: stop
 """
+import pytest
 
 from taro.execution import ExecutionState
 from test.util import run_app, run_app_as_process, run_wait
+
+
+def test_stop_must_specify_job(capsys):
+    with pytest.raises(SystemExit):
+        run_app('stop')
 
 
 def test_stop(capsys):
@@ -17,8 +23,6 @@ def test_stop(capsys):
     run_app('stop to_stop')
 
     stop_w.join(1)
-    # output = capsys.readouterr().out
-    # assert 'more than one job' in output
     assert not p1.is_alive()
     assert p2.is_alive()
 

@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Tuple
 
 from taro import dto
 from taro.job import JobInstanceData
@@ -27,8 +27,10 @@ class Server(SocketServer):
         if 'api' not in req_body['req']:
             return {"resp": {"error": "missing_req_api"}}
 
+        instance = dto.job_instance(self._job_control)
+
         if req_body['req']['api'] == '/job':
-            return {"resp": {"code": 200}, "data": {"job_instance": dto.job_instance(self._job_control)}}
+            return {"resp": {"code": 200}, "data": {"job_instance": instance}}
 
         if req_body['req']['api'] == '/release':
             if 'data' not in req_body:
@@ -37,13 +39,17 @@ class Server(SocketServer):
                 return {"resp": {"error": "missing_data_wait"}}
 
             released = self._job_control.release(req_body.get('data').get('wait'))
-            return {"resp": {"code": 200}, "data": {"job_id": self._job_control.job_id, "released": released}}
+            return {"resp": {"code": 200}, "data": {"job_instance": instance, "released": released}}
 
         if req_body['req']['api'] == '/stop':
             self._job_control.stop()
-            return {"resp": {"code": 200}, "data": {"job_id": self._job_control.job_id, "action": "stopped"}}
+            return {"resp": {"code": 200}, "data": {"job_instance": instance, "result": "stop_performed"}}
 
         return {"resp": {"error": "unknown_req_api"}}
+
+
+def _create_job_instance(inst_resp):
+    return dto.to_job_instance_data(inst_resp.response['data']['job_instance'])
 
 
 class Client(SocketClient):
@@ -53,7 +59,7 @@ class Client(SocketClient):
 
     def read_jobs_info(self) -> List[JobInstanceData]:
         responses = self.communicate({'req': {'api': '/job'}})
-        return [dto.to_job_instance_data(inst_resp.response['data']['job_instance']) for inst_resp in responses]
+        return [_create_job_instance(inst_resp) for inst_resp in responses]
 
     @iterates
     def release_jobs(self, wait):
@@ -64,8 +70,9 @@ class Client(SocketClient):
             if resp['data']['released']:
                 print(resp)  # TODO Do not print, but returned released (use communicate)
 
-    def stop_jobs(self, instances):
+    def stop_jobs(self, instances) -> List[Tuple[JobInstanceData, str]]:
         if not instances:
             raise ValueError('Instances to be stopped cannot be empty')
 
-        responses = self.communicate({'req': {'api': '/stop'}}, instances)
+        inst_responses = self.communicate({'req': {'api': '/stop'}}, instances)
+        return [(_create_job_instance(inst_resp), inst_resp.response['data']['result']) for inst_resp in inst_responses]
