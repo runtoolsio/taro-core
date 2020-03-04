@@ -110,6 +110,7 @@ def run_stop(args):
             ps.print_jobs(jobs)
             return  # Exit code non-zero?
 
+        client.stop_jobs([job.instance_id for job in jobs])
     finally:
         client.close()
 

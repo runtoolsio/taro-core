@@ -39,6 +39,10 @@ class Server(SocketServer):
             released = self._job_control.release(req_body.get('data').get('wait'))
             return {"resp": {"code": 200}, "data": {"job_id": self._job_control.job_id, "released": released}}
 
+        if req_body['req']['api'] == '/stop':
+            self._job_control.stop()
+            return {"resp": {"code": 200}, "data": {"job_id": self._job_control.job_id, "action": "stopped"}}
+
         return {"resp": {"error": "unknown_req_api"}}
 
 
@@ -58,4 +62,10 @@ class Client(SocketClient):
             next(server)
             resp = server.send({'req': {'api': '/release'}, "data": {"wait": wait}}).response
             if resp['data']['released']:
-                print(resp)  # Do not print, but returned released
+                print(resp)  # TODO Do not print, but returned released (use communicate)
+
+    def stop_jobs(self, instances):
+        if not instances:
+            raise ValueError('Instances to be stopped cannot be empty')
+
+        responses = self.communicate({'req': {'api': '/stop'}}, instances)
