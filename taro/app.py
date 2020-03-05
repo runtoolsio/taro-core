@@ -43,7 +43,7 @@ def run_exec(args):
     setup_logging(config)
 
     all_args = [args.command] + args.arg
-    execution = ProcessExecution(all_args)
+    execution = ProcessExecution(all_args, args.progress)
     job_id = args.id or " ".join(all_args)
     job = Job(job_id, execution, wait=args.wait or '')
     job_instance = RunnerJobInstance(job)

@@ -6,7 +6,7 @@ Job management library
 1. ~~Logging - normal to stdout and errors to stderr (https://docs.python.org/3/library/logging.handlers.html)~~
 2. ~~(Config)~~
 3. ~~Current executing jobs~~
-4. Stop, interrupt, kill
+4. ~~Stop, interrupt~~
 5. Progress of currently executing jobs
 6. SNS notifications
 7. Execution history

@@ -1,15 +1,15 @@
+import sys
 from subprocess import Popen
 from typing import Union
-
-import sys
 
 from taro.execution import Execution, ExecutionState, ExecutionError
 
 
 class ProcessExecution(Execution):
 
-    def __init__(self, args):
+    def __init__(self, args, progress: bool):
         self.args = args
+        self.progress: bool = progress
         self.popen: Union[Popen, None] = None
         self._stopped: bool = False
         self._interrupted: bool = False
@@ -21,7 +21,7 @@ class ProcessExecution(Execution):
         ret_code = -1
         if not self._stopped and not self._interrupted:
             try:
-                self.popen = Popen(self.args)
+                self.popen = Popen(self.args, stdout=None)
 
                 # print(psutil.Process(self.popen.pid).memory_info().rss)
 
@@ -41,6 +41,9 @@ class ProcessExecution(Execution):
         if self._interrupted:
             raise ExecutionError("Process interrupted", ExecutionState.INTERRUPTED)
         raise ExecutionError("Process returned non-zero code " + str(ret_code), ExecutionState.FAILED)
+
+    def progress(self):
+        pass
 
     def stop(self):
         self._stopped = True

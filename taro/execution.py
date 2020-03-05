@@ -78,6 +78,14 @@ class Execution(abc.ABC):
         """
 
     @abc.abstractmethod
+    def progress(self):
+        """
+        If progress monitoring is not supported then this method must return None
+
+        :return: Current progress of the execution or None
+        """
+
+    @abc.abstractmethod
     def stop(self):
         """
         If not yet executed: Do not execute
