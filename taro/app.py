@@ -110,7 +110,7 @@ def run_stop(args):
             ps.print_jobs(jobs)
             return  # Exit code non-zero?
 
-        inst_results = client.stop_jobs([job.instance_id for job in jobs])
+        inst_results = client.stop_jobs([job.instance_id for job in jobs], args.interrupt)
         for i_res in inst_results:
             print(f"{i_res[0].job_id}@{i_res[0].instance_id} -> {i_res[1]}")
     finally:

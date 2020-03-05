@@ -45,6 +45,10 @@ class Server(SocketServer):
             self._job_control.stop()
             return {"resp": {"code": 200}, "data": {"job_instance": instance, "result": "stop_performed"}}
 
+        if req_body['req']['api'] == '/interrupt':
+            self._job_control.interrupt()
+            return {"resp": {"code": 200}, "data": {"job_instance": instance, "result": "interrupt_performed"}}
+
         return {"resp": {"error": "unknown_req_api"}}
 
 
@@ -70,9 +74,9 @@ class Client(SocketClient):
             if resp['data']['released']:
                 print(resp)  # TODO Do not print, but returned released (use communicate)
 
-    def stop_jobs(self, instances) -> List[Tuple[JobInstanceData, str]]:
+    def stop_jobs(self, instances, interrupt: bool) -> List[Tuple[JobInstanceData, str]]:
         if not instances:
             raise ValueError('Instances to be stopped cannot be empty')
 
-        inst_responses = self.communicate({'req': {'api': '/stop'}}, instances)
+        inst_responses = self.communicate({'req': {'api': '/interrupt' if interrupt else '/stop'}}, instances)
         return [(_create_job_instance(inst_resp), inst_resp.response['data']['result']) for inst_resp in inst_responses]
