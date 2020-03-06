@@ -13,7 +13,7 @@ def job_instance(inst):
         exec_error = None
 
     return {"job_id": inst.job_id, "instance_id": inst.instance_id, "state": inst.state.name,
-            "state_changes": state_changes, "exec_error": exec_error}
+            "state_changes": state_changes, "progress": inst.progress, "exec_error": exec_error}
 
 
 def to_job_instance_data(as_dict):
@@ -27,4 +27,9 @@ def to_job_instance_data(as_dict):
         exec_error = None
 
     return JobInstanceData(
-        as_dict['job_id'], as_dict['instance_id'], ExecutionState[as_dict['state']], state_changes, exec_error)
+        as_dict['job_id'],
+        as_dict['instance_id'],
+        ExecutionState[as_dict['state']],
+        state_changes,
+        as_dict['progress'],
+        exec_error)

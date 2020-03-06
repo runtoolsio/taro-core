@@ -7,7 +7,7 @@ Job management library
 2. ~~(Config)~~
 3. ~~Current executing jobs~~
 4. ~~Stop, interrupt~~
-5. Progress of currently executing jobs
+5. ~~Progress of currently executing jobs~~
 6. SNS notifications
 7. Execution history
 8. Log rotation

@@ -54,7 +54,7 @@ def _init_exec_parser(common, subparsers):
     exec_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
     exec_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
     exec_parser.add_argument('--id', type=str, help='defines job ID')
-    exec_parser.add_argument('-p', '--progress', type=str, help='capture stdout for progress reading')
+    exec_parser.add_argument('-p', '--progress', action='store_true', help='capture stdout for progress reading')
     exec_parser.add_argument('-t', '--timeout', type=int)  # TODO implement
     exec_parser.add_argument('-w', '--wait', type=str, help='execution will wait until released by this value')
 

@@ -1,5 +1,7 @@
+import io
 import sys
-from subprocess import Popen
+from subprocess import Popen, PIPE
+from threading import Thread
 from typing import Union
 
 from taro.execution import Execution, ExecutionState, ExecutionError
@@ -7,10 +9,11 @@ from taro.execution import Execution, ExecutionState, ExecutionError
 
 class ProcessExecution(Execution):
 
-    def __init__(self, args, progress: bool):
+    def __init__(self, args, read_progress: bool):
         self.args = args
-        self.progress: bool = progress
-        self.popen: Union[Popen, None] = None
+        self.read_progress: bool = read_progress
+        self._popen: Union[Popen, None] = None
+        self._progress = None
         self._stopped: bool = False
         self._interrupted: bool = False
 
@@ -20,12 +23,15 @@ class ProcessExecution(Execution):
     def execute(self) -> ExecutionState:
         ret_code = -1
         if not self._stopped and not self._interrupted:
+            stdout = PIPE if self.read_progress else None
             try:
-                self.popen = Popen(self.args, stdout=None)
+                self._popen = Popen(self.args, stdout=stdout)
+                if self.read_progress:
+                    Thread(target=self._read_progress, name='Progress-Reader', daemon=True).start()
 
                 # print(psutil.Process(self.popen.pid).memory_info().rss)
 
-                ret_code = self.popen.wait()
+                ret_code = self._popen.wait()
                 if ret_code == 0:
                     return ExecutionState.COMPLETED
             except KeyboardInterrupt:
@@ -43,14 +49,19 @@ class ProcessExecution(Execution):
         raise ExecutionError("Process returned non-zero code " + str(ret_code), ExecutionState.FAILED)
 
     def progress(self):
-        pass
+        return self._progress
+
+    def _read_progress(self):
+        for line in io.TextIOWrapper(self._popen.stdout, encoding="utf-8"):
+            self._progress = line.rstrip()
+            print(self._progress)
 
     def stop(self):
         self._stopped = True
-        if self.popen:
-            self.popen.terminate()
+        if self._popen:
+            self._popen.terminate()
 
     def interrupt(self):
         self._interrupted = True
-        if self.popen:
-            self.popen.terminate()
+        if self._popen:
+            self._popen.terminate()

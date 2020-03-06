@@ -58,6 +58,10 @@ class RunnerJobInstance(JobControl):
         return list(self._state_changes.keys())
 
     @property
+    def progress(self):
+        return self._job.execution.progress()
+
+    @property
     def exec_error(self) -> Union[ExecutionError, None]:
         return self._exec_error
 

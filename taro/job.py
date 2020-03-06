@@ -57,6 +57,11 @@ class JobInstance(abc.ABC):
 
     @property
     @abc.abstractmethod
+    def progress(self):
+        """Current progress of the job or None if not supported"""
+
+    @property
+    @abc.abstractmethod
     def exec_error(self) -> ExecutionError:
         """Job execution error if occurred otherwise None"""
 
@@ -67,11 +72,13 @@ class JobInstance(abc.ABC):
 
 class JobInstanceData(JobInstance):
 
-    def __init__(self, job_id: str, instance_id: str, state: ExecutionState, state_changes, exec_error: ExecutionError):
+    def __init__(self, job_id: str, instance_id: str, state: ExecutionState, state_changes, progress,
+                 exec_error: ExecutionError):
         self._job_id = job_id
         self._instance_id = instance_id
         self._state = state
         self._state_changes = state_changes
+        self._progress = progress
         self._exec_error = exec_error
 
     @property
@@ -89,6 +96,10 @@ class JobInstanceData(JobInstance):
     @property
     def state_changes(self):
         return self._state_changes
+
+    @property
+    def progress(self):
+        return self._progress
 
     @property
     def exec_error(self) -> ExecutionError:
