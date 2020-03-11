@@ -48,12 +48,12 @@ class JobInstance(abc.ABC):
     @property
     @abc.abstractmethod
     def state(self) -> ExecutionState:
-        """Current job execution state"""
+        """Current execution state"""
 
     @property
     @abc.abstractmethod
     def state_changes(self):
-        """Sequence of state and change timestamp"""
+        """Sequence of (state, change_timestamp)"""
 
     @property
     @abc.abstractmethod

@@ -6,7 +6,7 @@ from taro.execution import ExecutionState
 
 
 def print_jobs(job_instances, header=True):
-    headers = ['JOB ID', 'INSTANCE ID', 'CREATED', 'EXECUTION TIME', 'STATE', 'PROGRESS'] if header else ()
+    headers = ['JOB ID', 'INSTANCE ID', 'CREATED', 'EXECUTION TIME', 'PROGRESS', 'STATE'] if header else ()
     jobs_as_fields = [_job_to_fields(j) for j in job_instances]
     print(tabulate(jobs_as_fields, headers=headers))
 
@@ -17,8 +17,8 @@ def _job_to_fields(j):
          j.instance_id,
          j.state_changes[ExecutionState.CREATED].astimezone().replace(tzinfo=None),
          execution_time(j),
-         j.state.name,
-         progress(j))
+         progress(j),
+         j.state.name)
 
 
 def execution_time(job_instance):
