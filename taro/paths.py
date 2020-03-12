@@ -140,3 +140,24 @@ def socket_files(file_extension: str) -> Generator[Path, None, None]:
     if not s_dir.exists():
         return (_ for _ in ())
     return (entry for entry in s_dir.iterdir() if entry.is_socket() and file_extension == entry.suffix)
+
+
+def sqlite_db_path(create: bool) -> Path:
+    """
+    1. Root user: /var/lib/taro/{db-file}
+    2. Non-root user: ${XDG_DATA_HOME}/taro/{db-file}
+
+    :param create: create path directories if not exist
+    :return: db file path
+    """
+
+    if _is_root():
+        path = Path('/var/lib/taro')
+    else:
+        home = Path.home()
+        path = home / '.local' / 'share' / 'taro'
+
+    if create:
+        path.mkdir(parents=True, exist_ok=True)
+
+    return path / 'taro.db'
