@@ -31,5 +31,5 @@ class Persistence(ExecutionStateObserver):
                  job_instance.state_changes[ExecutionState.CREATED],
                  job_instance.state_changes[job_instance.state],
                  ".".join([state.name for state in job_instance.state_changes.keys()]),
-                 job_instance.exec_error
+                 job_instance.exec_error.message if job_instance.exec_error else None
                  ))
