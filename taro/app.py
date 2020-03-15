@@ -1,6 +1,8 @@
 import logging
 import os
 import signal
+import sqlite3
+
 import sys
 
 from taro import cli, paths, cnf, log, runner, ps
@@ -8,6 +10,7 @@ from taro.api import Server, Client
 from taro.job import Job
 from taro.listening import Dispatcher, Receiver, EventPrint, StoppingListener
 from taro.process import ProcessExecution
+from taro.rdbms import Persistence
 from taro.runner import RunnerJobInstance
 from taro.term import Term
 from taro.util import get_attr, set_attr
@@ -54,6 +57,9 @@ def run_exec(args):
     api_started = api.start()
     if not api_started:
         logger.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")
+    db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
+    persistence = Persistence(db_con)
+    runner.register_observer(persistence)
     dispatcher = Dispatcher()
     runner.register_observer(dispatcher)
     try:
@@ -61,6 +67,7 @@ def run_exec(args):
     finally:
         api.stop()
         dispatcher.close()
+        db_con.close()
 
 
 def run_ps(args):

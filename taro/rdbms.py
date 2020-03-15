@@ -20,7 +20,7 @@ class Persistence(ExecutionStateObserver):
                          (job_id text, instance_id text, created timestamp, finished timestamp, states text, error text)
                          ''')
             log.debug('event=[table_created] table=[history]')
-        c.commit()
+        self._conn.commit()
 
     def notify(self, job_instance):
         if job_instance.state.is_terminal():
@@ -30,5 +30,6 @@ class Persistence(ExecutionStateObserver):
                  job_instance.instance_id,
                  job_instance.state_changes[ExecutionState.CREATED],
                  job_instance.state_changes[job_instance.state],
+                 ".".join([state.name for state in job_instance.state_changes.keys()]),
                  job_instance.exec_error
                  ))
