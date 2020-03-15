@@ -67,16 +67,15 @@ class JobInstance(abc.ABC):
 
     def __repr__(self):
         return "{}({!r}, {!r}, {!r}, {!r})".format(
-            self.__class__.__name__, self.instance_id, self.job_id, self.state, self.exec_error)
+            self.__class__.__name__, self.instance_id, self.job_id, self.state_changes, self.exec_error)
 
 
 class JobInstanceData(JobInstance):
 
-    def __init__(self, job_id: str, instance_id: str, state: ExecutionState, state_changes, progress,
-                 exec_error: ExecutionError):
+    def __init__(self, job_id: str, instance_id: str, state_changes, progress, exec_error: ExecutionError):
         self._job_id = job_id
         self._instance_id = instance_id
-        self._state = state
+        self._state = next(reversed(state_changes.keys()))
         self._state_changes = state_changes
         self._progress = progress
         self._exec_error = exec_error

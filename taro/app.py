@@ -27,6 +27,8 @@ def main(args):
         run_exec(args)
     elif args.action == cli.ACTION_PS:
         run_ps(args)
+    elif args.action == cli.ACTION_HISTORY:
+        run_history(args)
     elif args.action == cli.ACTION_RELEASE:
         run_release(args)
     elif args.action == cli.ACTION_LISTEN:
@@ -77,6 +79,14 @@ def run_ps(args):
         ps.print_jobs(jobs)
     finally:
         client.close()
+
+
+def run_history(args):
+    db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
+    persistence = Persistence(db_con)
+    finished = persistence.read_finished()
+    print(finished)
+    db_con.close()
 
 
 def run_release(args):
