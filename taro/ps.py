@@ -31,13 +31,16 @@ def _job_to_fields(j, columns: Iterable[Column]):
 
 
 def execution_time(job_instance):
-    state = job_instance.state
-    if not state.is_executing():
+    if job_instance.state.is_before_execution():
         return 'N/A'
 
-    utc_now = datetime.datetime.now(datetime.timezone.utc)
-    state_change = job_instance.state_changes[state]
-    return utc_now - state_change
+    exec_start = next(changed for state, changed in job_instance.state_changes.items() if state.is_executing())
+    if job_instance.state.is_executing():
+        utc_now = datetime.datetime.now(datetime.timezone.utc)
+        return utc_now - exec_start
+    else:
+        finished = job_instance.state_changes[job_instance.state]
+        return finished - exec_start
 
 
 def progress(job_instance):

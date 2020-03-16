@@ -15,7 +15,7 @@ class ExecutionState(IntEnum):
     CREATED = 1
     WAITING = 2
     RUNNING = 3
-    TRIGGERED = 4
+    TRIGGERED = 4  # When request to start job was sent, but confirmation has not been (or cannot be) received
     STARTED = 5
     COMPLETED = 6
     CANCELLED = 7
@@ -24,6 +24,9 @@ class ExecutionState(IntEnum):
     INTERRUPTED = 10
     FAILED = 11
     ERROR = 12
+
+    def is_before_execution(self):
+        return self <= ExecutionState.WAITING
 
     def is_executing(self):
         return ExecutionState.RUNNING <= self <= ExecutionState.STARTED
