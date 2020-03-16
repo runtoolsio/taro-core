@@ -1,5 +1,6 @@
 import logging
 
+from taro import util
 from taro.execution import ExecutionState, ExecutionError
 from taro.job import ExecutionStateObserver, JobInstanceData
 
@@ -10,12 +11,12 @@ def _to_job_instance(t):
     state_names = t[4].split(",")
 
     def dt_for_state(i):
+        ts = None
         if i == 0:
-            return t[2]
+            ts = t[2]
         elif i == len(state_names) - 1:
-            return t[3]
-        else:
-            return None
+            ts = t[3]
+        return util.dt_from_utc_str(ts, is_iso=False) if ts else None
 
     state_changes = {ExecutionState[name]: dt_for_state(i) for i, name in enumerate(state_names)}
     exec_error = ExecutionError(t[5], ExecutionState[state_names[-1]]) if t[5] else None  # TODO more data

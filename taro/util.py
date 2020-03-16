@@ -50,5 +50,6 @@ def unique_timestamp_hex(random_suffix_length=4):
     return secrets.token_hex(random_suffix_length) + format(int(datetime.utcnow().timestamp() * 1000000), 'x')[::-1]
 
 
-def dt_from_utc_str(str_ts):
-    return datetime.strptime(str_ts, "%Y-%m-%dT%H:%M:%S.%f%z")
+def dt_from_utc_str(str_ts, is_iso=True):
+    sep = "T" if is_iso else " "
+    return datetime.strptime(str_ts, "%Y-%m-%d" + sep + "%H:%M:%S.%f%z")
