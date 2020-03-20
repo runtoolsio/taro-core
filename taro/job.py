@@ -47,13 +47,8 @@ class JobInstance(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def state(self) -> ExecutionState:
-        """Current execution state"""
-
-    @property
-    @abc.abstractmethod
-    def state_changes(self):
-        """Sequence of (state, change_timestamp)"""
+    def lifecycle(self):
+        """Execution lifecycle of this instance"""
 
     @property
     @abc.abstractmethod
@@ -67,16 +62,15 @@ class JobInstance(abc.ABC):
 
     def __repr__(self):
         return "{}({!r}, {!r}, {!r}, {!r})".format(
-            self.__class__.__name__, self.instance_id, self.job_id, self.state_changes, self.exec_error)
+            self.__class__.__name__, self.instance_id, self.job_id, self.lifecycle, self.exec_error)
 
 
 class JobInstanceData(JobInstance):
 
-    def __init__(self, job_id: str, instance_id: str, state_changes, progress, exec_error: ExecutionError):
+    def __init__(self, job_id: str, instance_id: str, lifecycle, progress, exec_error: ExecutionError):
         self._job_id = job_id
         self._instance_id = instance_id
-        self._state = next(reversed(state_changes.keys()))
-        self._state_changes = state_changes
+        self._lifecycle = lifecycle
         self._progress = progress
         self._exec_error = exec_error
 
@@ -89,12 +83,8 @@ class JobInstanceData(JobInstance):
         return self._instance_id
 
     @property
-    def state(self) -> ExecutionState:
-        return self._state
-
-    @property
-    def state_changes(self):
-        return self._state_changes
+    def lifecycle(self):
+        return self._lifecycle
 
     @property
     def progress(self):

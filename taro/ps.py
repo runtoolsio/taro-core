@@ -14,10 +14,10 @@ class Column:
 
 JOB_ID = Column('JOB ID', lambda j: j.job_id)
 INSTANCE_ID = Column('INSTANCE ID', lambda j: j.instance_id)
-CREATED = Column('CREATED', lambda j: j.state_changes[ExecutionState.CREATED].astimezone().replace(tzinfo=None))
+CREATED = Column('CREATED', lambda j: j.lifecycle.changed(ExecutionState.CREATED).astimezone().replace(tzinfo=None))
 EXEC_TIME = Column('EXECUTION TIME', lambda j: execution_time(j))
 PROGRESS = Column('PROGRESS', lambda j: progress(j))
-STATE = Column('STATE', lambda j: j.state.name)
+STATE = Column('STATE', lambda j: j.lifecycle.state().name)
 
 
 def print_jobs(job_instances, columns: Iterable[Column], show_header: bool):
@@ -31,16 +31,13 @@ def _job_to_fields(j, columns: Iterable[Column]):
 
 
 def execution_time(job_instance):
-    if job_instance.state.is_before_execution():
+    if job_instance.lifecycle.state().is_before_execution():
         return 'N/A'
 
-    exec_start = next(changed for state, changed in job_instance.state_changes.items() if state.is_executing())
-    if job_instance.state.is_executing():
-        utc_now = datetime.datetime.now(datetime.timezone.utc)
-        return utc_now - exec_start
+    if job_instance.lifecycle.state().is_executing():
+        return datetime.datetime.now(datetime.timezone.utc) - job_instance.lifecycle.execution_start()
     else:
-        finished = job_instance.state_changes[job_instance.state]
-        return finished - exec_start
+        return job_instance.lifecycle.last_changed() - job_instance.lifecycle.execution_start()
 
 
 def progress(job_instance):
@@ -52,4 +49,4 @@ def progress(job_instance):
 
 
 def print_state_change(job_instance):
-    print(f"{job_instance.job_id}@{job_instance.instance_id} -> {job_instance.state.name}")
+    print(f"{job_instance.job_id}@{job_instance.instance_id} -> {job_instance.lifecycle.state().name}")

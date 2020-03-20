@@ -7,7 +7,10 @@ It consists of:
 """
 
 import abc
+import datetime
+from collections import OrderedDict
 from enum import IntEnum
+from typing import Tuple, List, Iterable
 
 
 class ExecutionState(IntEnum):
@@ -103,3 +106,40 @@ class Execution(abc.ABC):
         If already executing: Stop running execution IMMEDIATELY
         If execution finished: Ignore
         """
+
+
+class ExecutionLifecycle:
+
+    def __init__(self, *state_changes: Tuple[ExecutionState, datetime.datetime]):
+        self._state_changes: OrderedDict[ExecutionState, datetime.datetime] = OrderedDict(state_changes)
+
+    def state(self):
+        return next(reversed(self._state_changes.keys()), ExecutionState.NONE)
+
+    def states(self) -> List[ExecutionState]:
+        return list(self._state_changes.keys())
+
+    def state_changes(self) -> Iterable[Tuple[ExecutionState, datetime.datetime]]:
+        return ((state, changed) for state, changed in self._state_changes.items())
+
+    def changed(self, state: ExecutionState) -> datetime.datetime:
+        return self._state_changes[state]
+
+    def last_changed(self):
+        return next(reversed(self._state_changes.values()), None)
+
+    def execution_start(self) -> datetime.datetime:
+        return next((changed for state, changed in self._state_changes.items() if state.is_executing()), None)
+
+
+class ExecutionLifecycleManagement(ExecutionLifecycle):
+
+    def __init__(self, *state_changes: Tuple[ExecutionState, datetime.datetime]):
+        super().__init__(*state_changes)
+
+    def set_state(self, new_state) -> bool:
+        if not new_state or new_state == ExecutionState.NONE or self.state() == new_state:
+            return False
+        else:
+            self._state_changes[new_state] = datetime.datetime.now(datetime.timezone.utc)
+            return True

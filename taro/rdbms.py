@@ -2,7 +2,7 @@ import logging
 from collections import OrderedDict
 
 from taro import util
-from taro.execution import ExecutionState, ExecutionError
+from taro.execution import ExecutionState, ExecutionError, ExecutionLifecycle
 from taro.job import ExecutionStateObserver, JobInstanceData
 
 log = logging.getLogger(__name__)
@@ -22,9 +22,9 @@ def _to_job_instance(t):
             ts = t[4]
         return util.dt_from_utc_str(ts, is_iso=False) if ts else None
 
-    state_changes = OrderedDict((state, dt_for_state(state)) for state in states)
+    lifecycle = ExecutionLifecycle(*((state, dt_for_state(state)) for state in states))
     exec_error = ExecutionError(t[6], states[-1]) if t[6] else None  # TODO more data
-    return JobInstanceData(t[0], t[1], state_changes, None, exec_error)
+    return JobInstanceData(t[0], t[1], lifecycle, None, exec_error)
 
 
 class Persistence(ExecutionStateObserver):
@@ -54,15 +54,15 @@ class Persistence(ExecutionStateObserver):
         return [_to_job_instance(row) for row in c.fetchall()]
 
     def notify(self, job_instance):
-        if job_instance.state.is_terminal():
+        if job_instance.lifecycle.state().is_terminal():
             self._conn.execute(
                 "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (job_instance.job_id,
                  job_instance.instance_id,
-                 job_instance.state_changes[ExecutionState.CREATED],
-                 next(changed for state, changed in job_instance.state_changes.items() if state.is_executing()),
-                 job_instance.state_changes[job_instance.state],
-                 ",".join([state.name for state in job_instance.state_changes.keys()]),
+                 job_instance.lifecycle.changed(ExecutionState.CREATED),
+                 job_instance.lifecycle.execution_start(),
+                 job_instance.lifecycle.last_changed(),
+                 ",".join([state.name for state in job_instance.lifecycle.states()]),
                  job_instance.exec_error.message if job_instance.exec_error else None
                  ))
             self._conn.commit()

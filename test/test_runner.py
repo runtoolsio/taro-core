@@ -22,13 +22,13 @@ def test_executed():
 
 def test_state_changes():
     instance = runner.run(Job('j', TestExecution()))
-    assert instance.state == ExSt.COMPLETED
-    assert instance.states() == [ExSt.CREATED, ExSt.RUNNING, ExSt.COMPLETED]
+    assert instance.lifecycle.state() == ExSt.COMPLETED
+    assert instance.lifecycle.states() == [ExSt.CREATED, ExSt.RUNNING, ExSt.COMPLETED]
 
 
 def test_state_created():
     instance = RunnerJobInstance(Job('j', TestExecution()))
-    assert instance.state == ExSt.CREATED
+    assert instance.lifecycle.state() == ExSt.CREATED
 
 
 def test_waiting():
@@ -40,14 +40,14 @@ def test_waiting():
 
     # Different wait label -> keep waiting
     assert not instance.release('w2')
-    assert instance.state == ExSt.WAITING
+    assert instance.lifecycle.state() == ExSt.WAITING
 
     # Release and wait for completion
     assert instance.release('w1')
     t.join(timeout=1)
 
-    assert instance.state == ExSt.COMPLETED
-    assert instance.states() == [ExSt.CREATED, ExSt.WAITING, ExSt.RUNNING, ExSt.COMPLETED]
+    assert instance.lifecycle.state() == ExSt.COMPLETED
+    assert instance.lifecycle.states() == [ExSt.CREATED, ExSt.WAITING, ExSt.RUNNING, ExSt.COMPLETED]
 
 
 def test_cancellation_after_start():
@@ -61,8 +61,8 @@ def test_cancellation_after_start():
     instance.stop()
     t.join(timeout=1)
 
-    assert instance.state == ExSt.CANCELLED
-    assert instance.states() == [ExSt.CREATED, ExSt.WAITING, ExSt.CANCELLED]
+    assert instance.lifecycle.state() == ExSt.CANCELLED
+    assert instance.lifecycle.states() == [ExSt.CREATED, ExSt.WAITING, ExSt.CANCELLED]
 
 
 def test_cancellation_before_start():
@@ -73,8 +73,8 @@ def test_cancellation_before_start():
     t.start()
     t.join(timeout=1)
 
-    assert instance.state == ExSt.CANCELLED
-    assert instance.states() == [ExSt.CREATED, ExSt.CANCELLED]
+    assert instance.lifecycle.state() == ExSt.CANCELLED
+    assert instance.lifecycle.states() == [ExSt.CREATED, ExSt.CANCELLED]
 
 
 def test_error():
@@ -83,7 +83,7 @@ def test_error():
     execution.raise_exception(exception)
     instance = runner.run(Job('j', execution))
 
-    assert instance.state == ExSt.ERROR
+    assert instance.lifecycle.state() == ExSt.ERROR
     assert isinstance(instance.exec_error, ExecutionError)
     assert instance.exec_error.exec_state == ExSt.ERROR
     assert instance.exec_error.unexpected_error == exception
@@ -94,7 +94,7 @@ def wait_for_waiting_state(instance: RunnerJobInstance):
     Wait for the job to reach waiting state
     """
     wait_count = 0
-    while instance.state != ExSt.WAITING:
+    while instance.lifecycle.state() != ExSt.WAITING:
         time.sleep(0.1)
         wait_count += 1
         if wait_count > 10:

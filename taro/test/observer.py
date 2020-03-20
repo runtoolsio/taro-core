@@ -27,7 +27,7 @@ class TestObserver(ExecutionStateObserver):
         self.completion_lock = Condition()
 
     def notify(self, job_instance: JobInstance):
-        self._events.append((datetime.now(), job_instance, job_instance.state, job_instance.exec_error))
+        self._events.append((datetime.now(), job_instance, job_instance.lifecycle.state(), job_instance.exec_error))
         log.info("event=[state_changed] job_instance=[{}]".format(job_instance))
         self._release_state_waiter()
 
