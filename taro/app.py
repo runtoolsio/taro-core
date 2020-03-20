@@ -108,7 +108,7 @@ def run_listen(args):
 
 
 def run_wait(args):
-    def condition(job): return not args.states or job.state.name in args.states
+    def condition(job): return not args.states or job.lifecycle.state().name in args.states
 
     receiver = Receiver()
     receiver.listeners.append(EventPrint(condition))
