@@ -60,7 +60,7 @@ class Rdbms(ExecutionStateObserver):
                 (job_instance.job_id,
                  job_instance.instance_id,
                  job_instance.lifecycle.changed(ExecutionState.CREATED),
-                 job_instance.lifecycle.execution_start(),
+                 job_instance.lifecycle.execution_started(),
                  job_instance.lifecycle.last_changed(),
                  ",".join([state.name for state in job_instance.lifecycle.states()]),
                  job_instance.exec_error.message if job_instance.exec_error else None

@@ -16,7 +16,8 @@ class Column:
 JOB_ID = Column('JOB ID', lambda j: j.job_id)
 INSTANCE_ID = Column('INSTANCE ID', lambda j: j.instance_id)
 CREATED = Column('CREATED', lambda j: _format_dt(j.lifecycle.changed(ExecutionState.CREATED)))
-EXECUTED = Column('EXECUTED', lambda j: _format_dt(j.lifecycle.execution_start()))
+EXECUTED = Column('EXECUTED', lambda j: _format_dt(j.lifecycle.execution_started()))
+ENDED = Column('ENDED', lambda j: _format_dt(j.lifecycle.execution_finished()))
 EXEC_TIME = Column('EXECUTION TIME', lambda j: execution_time(j))
 PROGRESS = Column('PROGRESS', lambda j: progress(j))
 STATE = Column('STATE', lambda j: j.lifecycle.state().name)
@@ -44,9 +45,9 @@ def execution_time(job_instance):
         return 'N/A'
 
     if job_instance.lifecycle.state().is_executing():
-        exec_time = datetime.datetime.now(datetime.timezone.utc) - job_instance.lifecycle.execution_start()
+        exec_time = datetime.datetime.now(datetime.timezone.utc) - job_instance.lifecycle.execution_started()
     else:
-        exec_time = job_instance.lifecycle.last_changed() - job_instance.lifecycle.execution_start()
+        exec_time = job_instance.lifecycle.last_changed() - job_instance.lifecycle.execution_started()
     return util.format_timedelta(exec_time)
 
 

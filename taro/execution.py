@@ -10,7 +10,7 @@ import abc
 import datetime
 from collections import OrderedDict
 from enum import IntEnum
-from typing import Tuple, List, Iterable
+from typing import Tuple, List, Iterable, Union
 
 
 class ExecutionState(IntEnum):
@@ -129,10 +129,16 @@ class ExecutionLifecycle:
         return next(reversed(self._state_changes.values()), None)
 
     def executed(self):
-        return self.execution_start() is not None
+        return self.execution_started() is not None
 
-    def execution_start(self) -> datetime.datetime:
+    def execution_started(self) -> Union[datetime.datetime, None]:
         return next((changed for state, changed in self._state_changes.items() if state.is_executing()), None)
+
+    def execution_finished(self) -> Union[datetime.datetime, None]:
+        state = self.state()
+        if not state.is_terminal():
+            return None
+        return self.changed(state)
 
 
 class ExecutionLifecycleManagement(ExecutionLifecycle):
