@@ -10,7 +10,7 @@ from taro.api import Server, Client
 from taro.job import Job
 from taro.listening import Dispatcher, Receiver, EventPrint, StoppingListener
 from taro.process import ProcessExecution
-from taro.rdbms import Persistence
+from taro.rdbms import Rdbms
 from taro.runner import RunnerJobInstance
 from taro.term import Term
 from taro.util import get_attr, set_attr
@@ -59,9 +59,11 @@ def run_exec(args):
     api_started = api.start()
     if not api_started:
         logger.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")
-    db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
-    persistence = Persistence(db_con)
-    runner.register_observer(persistence)
+    db_con = None
+    if get_attr(config, cnf.PERSISTENCE_ENABLED, default=False):
+        db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
+        persistence = Rdbms(db_con)
+        runner.register_observer(persistence)
     dispatcher = Dispatcher()
     runner.register_observer(dispatcher)
     try:
@@ -69,7 +71,8 @@ def run_exec(args):
     finally:
         api.stop()
         dispatcher.close()
-        db_con.close()
+        if db_con:
+            db_con.close()
 
 
 def run_ps(args):
@@ -84,7 +87,7 @@ def run_ps(args):
 
 def run_history(args):
     db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
-    persistence = Persistence(db_con)
+    persistence = Rdbms(db_con)
     finished = persistence.read_finished()
     columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.PROGRESS, ps.STATE)
     ps.print_jobs(finished, columns, True)

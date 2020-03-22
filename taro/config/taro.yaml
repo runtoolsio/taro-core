@@ -4,3 +4,6 @@ log:
     level: warn
   syslog:
     level: off
+
+persistence:
+  enabled: false

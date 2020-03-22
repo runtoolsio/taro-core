@@ -128,6 +128,9 @@ class ExecutionLifecycle:
     def last_changed(self):
         return next(reversed(self._state_changes.values()), None)
 
+    def executed(self):
+        return self.execution_start() is not None
+
     def execution_start(self) -> datetime.datetime:
         return next((changed for state, changed in self._state_changes.items() if state.is_executing()), None)
 

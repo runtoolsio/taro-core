@@ -7,6 +7,7 @@ LOG_ENABLED = 'log.enabled'
 LOG_STDOUT_LEVEL = 'log.stdout.level'
 LOG_FILE_LEVEL = 'log.file.level'
 LOG_FILE_PATH = 'log.file.path'
+PERSISTENCE_ENABLED = 'persistence.enabled'
 
 
 def read_config(config_file_path) -> SimpleNamespace:

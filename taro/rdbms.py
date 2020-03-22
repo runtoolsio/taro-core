@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 
 def _to_job_instance(t):
     states = [ExecutionState[name] for name in t[5].split(",")]
-    exec_state = next(state for state in states if state.is_executing())
+    exec_state = next((state for state in states if state.is_executing()), None)
 
     def dt_for_state(state):
         ts = None
@@ -27,7 +27,7 @@ def _to_job_instance(t):
     return JobInstanceData(t[0], t[1], lifecycle, None, exec_error)
 
 
-class Persistence(ExecutionStateObserver):
+class Rdbms(ExecutionStateObserver):
 
     def __init__(self, connection):
         self._conn = connection

@@ -31,7 +31,7 @@ def _job_to_fields(j, columns: Iterable[Column]):
 
 
 def execution_time(job_instance):
-    if job_instance.lifecycle.state().is_before_execution():
+    if not job_instance.lifecycle.executed():
         return 'N/A'
 
     if job_instance.lifecycle.state().is_executing():
