@@ -8,6 +8,7 @@ LOG_STDOUT_LEVEL = 'log.stdout.level'
 LOG_FILE_LEVEL = 'log.file.level'
 LOG_FILE_PATH = 'log.file.path'
 PERSISTENCE_ENABLED = 'persistence.enabled'
+PERSISTENCE_TYPE = 'persistence.type'
 
 
 def read_config(config_file_path) -> SimpleNamespace:
@@ -35,3 +36,9 @@ def _wrap_dict(ob):
 @wrap_namespace.register(list)
 def _wrap_list(ob):
     return [wrap_namespace(v) for v in ob]
+
+
+class ConfigError(Exception):
+
+    def __init__(self, message: str):
+        super().__init__(message)
