@@ -3,6 +3,7 @@ from typing import Iterable
 
 from tabulate import tabulate
 
+from taro import util
 from taro.execution import ExecutionState
 
 
@@ -43,9 +44,10 @@ def execution_time(job_instance):
         return 'N/A'
 
     if job_instance.lifecycle.state().is_executing():
-        return datetime.datetime.now(datetime.timezone.utc) - job_instance.lifecycle.execution_start()
+        exec_time = datetime.datetime.now(datetime.timezone.utc) - job_instance.lifecycle.execution_start()
     else:
-        return job_instance.lifecycle.last_changed() - job_instance.lifecycle.execution_start()
+        exec_time = job_instance.lifecycle.last_changed() - job_instance.lifecycle.execution_start()
+    return util.format_timedelta(exec_time)
 
 
 def progress(job_instance):

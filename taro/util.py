@@ -53,3 +53,18 @@ def unique_timestamp_hex(random_suffix_length=4):
 def dt_from_utc_str(str_ts, is_iso=True):
     sep = "T" if is_iso else " "
     return datetime.strptime(str_ts, "%Y-%m-%d" + sep + "%H:%M:%S.%f%z")
+
+
+def format_timedelta(td):
+    mm, ss = divmod(td.seconds, 60)
+    hh, mm = divmod(mm, 60)
+    s = "%02d:%02d:%02d" % (hh, mm, ss)
+    if td.days:
+        def plural(n):
+            return n, abs(n) != 1 and "s" or ""
+
+        s = ("%d day%s, " % plural(td.days)) + s
+    if td.microseconds:
+        s = s + ".%06d" % td.microseconds
+        # s = s + ("%f" % (td.microseconds / 1000000))[1:-3]
+    return s
