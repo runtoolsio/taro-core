@@ -14,7 +14,8 @@ class Column:
 
 JOB_ID = Column('JOB ID', lambda j: j.job_id)
 INSTANCE_ID = Column('INSTANCE ID', lambda j: j.instance_id)
-CREATED = Column('CREATED', lambda j: j.lifecycle.changed(ExecutionState.CREATED).astimezone().replace(tzinfo=None))
+CREATED = Column('CREATED', lambda j: _format_dt(j.lifecycle.changed(ExecutionState.CREATED)))
+EXECUTED = Column('EXECUTED', lambda j: _format_dt(j.lifecycle.execution_start()))
 EXEC_TIME = Column('EXECUTION TIME', lambda j: execution_time(j))
 PROGRESS = Column('PROGRESS', lambda j: progress(j))
 STATE = Column('STATE', lambda j: j.lifecycle.state().name)
@@ -28,6 +29,13 @@ def print_jobs(job_instances, columns: Iterable[Column], show_header: bool):
 
 def _job_to_fields(j, columns: Iterable[Column]):
     return [column.value_fnc(j) for column in columns]
+
+
+def _format_dt(dt):
+    if not dt:
+        return 'N/A'
+
+    return dt.astimezone().replace(tzinfo=None).isoformat(sep=' ', timespec='milliseconds')
 
 
 def execution_time(job_instance):

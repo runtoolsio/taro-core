@@ -89,7 +89,7 @@ def run_history(args):
     db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
     persistence = Rdbms(db_con)
     finished = persistence.read_finished()
-    columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.PROGRESS, ps.STATE)
+    columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.EXECUTED, ps.EXEC_TIME, ps.PROGRESS, ps.STATE)
     ps.print_jobs(finished, columns, True)
     db_con.close()
 
