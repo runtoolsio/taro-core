@@ -1,6 +1,7 @@
 import datetime
 from typing import Iterable
 
+from beautifultable import BeautifulTable, enums
 from tabulate import tabulate
 
 from taro import util
@@ -24,9 +25,13 @@ STATE = Column('STATE', lambda j: j.lifecycle.state().name)
 
 
 def print_jobs(job_instances, columns: Iterable[Column], show_header: bool):
-    headers = [column.name for column in columns] if show_header else ()
+    table = BeautifulTable(max_width=160, default_alignment=enums.ALIGN_LEFT)
+    table.set_style(BeautifulTable.STYLE_COMPACT)
+    table.column_headers = [column.name for column in columns] if show_header else ()
     jobs_as_fields = [_job_to_fields(j, columns) for j in job_instances]
-    print(tabulate(jobs_as_fields, headers=headers))
+    for row in jobs_as_fields:
+        table.append_row(row)
+    print(table)
 
 
 def _job_to_fields(j, columns: Iterable[Column]):
