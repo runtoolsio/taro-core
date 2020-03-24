@@ -79,7 +79,7 @@ def run_ps(args):
     client = Client()
     try:
         jobs = client.read_jobs_info()
-        columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.PROGRESS, ps.STATE)
+        columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.PROGRESS_RESULT, ps.STATE)
         ps.print_jobs(jobs, columns, True)
     finally:
         client.close()
@@ -89,7 +89,7 @@ def run_history(args):
     db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
     persistence = Rdbms(db_con)
     finished = persistence.read_finished()
-    columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE)
+    columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE, ps.PROGRESS_RESULT)
     ps.print_jobs(finished, columns, True)
     db_con.close()
 
@@ -129,7 +129,7 @@ def run_stop(args):
         if len(jobs) > 1 and not args.all:
             print('No action performed, because the criteria matches more than one job.'
                   'Use --all flag if you wish to stop them all:' + os.linesep)
-            columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.PROGRESS, ps.STATE)
+            columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.PROGRESS_RESULT, ps.STATE)
             ps.print_jobs(jobs, columns, True)
             return  # Exit code non-zero?
 

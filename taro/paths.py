@@ -3,6 +3,9 @@ Followed conventions:
  - https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
  - https://refspecs.linuxfoundation.org/FHS_3.0/fhs/ch03s15.html
 
+Discussion:
+ - https://askubuntu.com/questions/14535/whats-the-local-folder-for-in-my-home-directory
+
  TODO Read XDG env variables: https://wiki.archlinux.org/index.php/XDG_Base_Directory
 """
 

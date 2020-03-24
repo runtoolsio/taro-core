@@ -88,7 +88,7 @@ class Execution(abc.ABC):
         """
         If progress monitoring is not supported then this method must return None
 
-        :return: Current progress of the execution or None
+        :return: Current progress if executing or result when finished or None when not supported
         """
 
     @abc.abstractmethod

@@ -20,8 +20,9 @@ CREATED = Column('CREATED', lambda j: _format_dt(j.lifecycle.changed(ExecutionSt
 EXECUTED = Column('EXECUTED', lambda j: _format_dt(j.lifecycle.execution_started()))
 ENDED = Column('ENDED', lambda j: _format_dt(j.lifecycle.execution_finished()))
 EXEC_TIME = Column('EXECUTION TIME', lambda j: execution_time(j))
-PROGRESS = Column('PROGRESS', lambda j: progress(j))
 STATE = Column('STATE', lambda j: j.lifecycle.state().name)
+PROGRESS = Column('PROGRESS', lambda j: progress(j))
+PROGRESS_RESULT = Column('RESULT', lambda j: result(j))
 
 
 def print_jobs(job_instances, columns: Iterable[Column], show_header: bool):
@@ -57,11 +58,23 @@ def execution_time(job_instance):
 
 
 def progress(job_instance):
-    if not job_instance.progress:
+    if job_instance.lifecycle.state().is_terminal():
         return 'N/A'
 
-    max_length = 35
-    return job_instance.progress[:max_length] + (job_instance.progress[max_length:] and '..')
+    return _limit_text(job_instance.progress, 35) or ''
+
+
+def result(job_instance):
+    if not job_instance.lifecycle.state().is_terminal():
+        return 'N/A'
+
+    return _limit_text(job_instance.progress, 35) or ''
+
+
+def _limit_text(text, limit):
+    if not text:
+        return text
+    return text[:limit] + (text[limit:] and '..')
 
 
 def print_state_change(job_instance):

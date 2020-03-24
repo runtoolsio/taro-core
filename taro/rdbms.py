@@ -23,8 +23,8 @@ def _to_job_instance(t):
         return util.dt_from_utc_str(ts, is_iso=False) if ts else None
 
     lifecycle = ExecutionLifecycle(*((state, dt_for_state(state)) for state in states))
-    exec_error = ExecutionError(t[6], states[-1]) if t[6] else None  # TODO more data
-    return JobInstanceData(t[0], t[1], lifecycle, None, exec_error)
+    exec_error = ExecutionError(t[7], states[-1]) if t[7] else None  # TODO more data
+    return JobInstanceData(t[0], t[1], lifecycle, t[6], exec_error)
 
 
 class Rdbms(ExecutionStateObserver):
@@ -44,6 +44,7 @@ class Rdbms(ExecutionStateObserver):
                          executed timestamp,
                          finished timestamp,
                          states text,
+                         result text,
                          error text)
                          ''')
             log.debug('event=[table_created] table=[history]')
@@ -56,13 +57,14 @@ class Rdbms(ExecutionStateObserver):
     def notify(self, job_instance):
         if job_instance.lifecycle.state().is_terminal():
             self._conn.execute(
-                "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (job_instance.job_id,
                  job_instance.instance_id,
                  job_instance.lifecycle.changed(ExecutionState.CREATED),
                  job_instance.lifecycle.execution_started(),
                  job_instance.lifecycle.last_changed(),
                  ",".join([state.name for state in job_instance.lifecycle.states()]),
+                 job_instance.progress,
                  job_instance.exec_error.message if job_instance.exec_error else None
                  ))
             self._conn.commit()
