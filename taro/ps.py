@@ -3,6 +3,7 @@ from typing import Iterable
 
 from beautifultable import BeautifulTable, enums
 from tabulate import tabulate
+from termcolor import colored
 
 from taro import util
 from taro.execution import ExecutionState
@@ -29,14 +30,24 @@ def print_jobs(job_instances, columns: Iterable[Column], show_header: bool):
     table = BeautifulTable(max_width=160, default_alignment=enums.ALIGN_LEFT)
     table.set_style(BeautifulTable.STYLE_COMPACT)
     table.column_headers = [column.name for column in columns] if show_header else ()
-    jobs_as_fields = [_job_to_fields(j, columns) for j in job_instances]
-    for row in jobs_as_fields:
-        table.append_row(row)
+    for j in job_instances:
+        table.append_row(_job_to_fields(j, _get_color(j), columns))
     print(table)
 
 
-def _job_to_fields(j, columns: Iterable[Column]):
-    return [column.value_fnc(j) for column in columns]
+def _get_color(job_instance):
+    state = job_instance.lifecycle.state()
+    if state.is_failure():
+        return 'red'
+
+    if state.is_terminal() and state != ExecutionState.COMPLETED:
+        return 'yellow'
+
+    return None
+
+
+def _job_to_fields(j, color, columns: Iterable[Column]):
+    return [colored(column.value_fnc(j), color) if color else column.value_fnc(j) for column in columns]
 
 
 def _format_dt(dt):
