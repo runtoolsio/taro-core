@@ -191,12 +191,12 @@ def setup_logging(config):
         log.disable()
         return
 
-    stdout_level = get_attr(config, cnf.LOG_STDOUT_LEVEL, default='off').lower()
-    if stdout_level != 'off':
+    stdout_level = get_attr(config, cnf.LOG_STDOUT_LEVEL, default='off')
+    if stdout_level and stdout_level.lower() != 'off':  # Can be boolean as PyYaml converts some values
         log.setup_console(stdout_level)
 
-    file_level = get_attr(config, cnf.LOG_FILE_LEVEL, default='off').lower()
-    if file_level != 'off':
+    file_level = get_attr(config, cnf.LOG_FILE_LEVEL, default='off')
+    if file_level and file_level.lower() != 'off':  # Can be boolean as PyYaml converts some values
         log_file_path = _expand_user(get_attr(config, cnf.LOG_FILE_PATH)) or paths.log_file_path(create=True)
         log.setup_file(file_level, log_file_path)
 
