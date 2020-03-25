@@ -4,6 +4,7 @@ log:
     level: warn
   file:
     level: off
+    path: ~/.cache/taro/taro.log
   syslog:
     level: off
 
