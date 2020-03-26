@@ -18,11 +18,11 @@ def run_app(command):
     :param command: command to run
     :return: output of the executed command
     """
-    app.FORCE_DEFAULT_CONFIG = True
+    app.USE_MINIMAL_CONFIG = True
     try:
         app.main(command.split())
     finally:
-        app.FORCE_DEFAULT_CONFIG = False
+        app.USE_MINIMAL_CONFIG = False
 
 
 def run_wait(state, count=1) -> Process:

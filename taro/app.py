@@ -17,7 +17,7 @@ from taro.util import get_attr, set_attr
 
 logger = logging.getLogger(__name__)
 
-FORCE_DEFAULT_CONFIG = False
+USE_MINIMAL_CONFIG = False
 
 
 def main(args):
@@ -157,10 +157,13 @@ def get_config(args):
 def get_config_file_path(args):
     if hasattr(args, 'config') and args.config:
         return _expand_user(args.config)
-    elif args.def_config or FORCE_DEFAULT_CONFIG:
+    if hasattr(args, 'def_config') and args.def_config:
         return paths.default_config_file_path()
-    else:
-        return paths.lookup_config_file_path()
+    # Keep following condition as the last one so USE_MINIMAL_CONFIG can be overridden by args
+    if (hasattr(args, 'min_config') and args.min_config) or USE_MINIMAL_CONFIG:
+        return paths.minimal_config_file_path()
+
+    return paths.lookup_config_file_path()
 
 
 def override_config(args, config):

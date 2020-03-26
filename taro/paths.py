@@ -14,7 +14,8 @@ import os
 from pathlib import Path
 from typing import Generator
 
-_CONFIG_FILE = 'taro.yaml'
+_DEFAULT_CONFIG_FILE = 'default.yaml'
+_MINIMAL_CONFIG_FILE = 'minimal.yaml'
 _LOG_FILE = 'taro.log'
 
 
@@ -23,10 +24,18 @@ def _is_root():
 
 
 def default_config_file_path() -> Path:
+    return config_file_path(_DEFAULT_CONFIG_FILE)
+
+
+def minimal_config_file_path() -> Path:
+    return config_file_path(_MINIMAL_CONFIG_FILE)
+
+
+def config_file_path(filename) -> Path:
     base_path = Path(__file__).parent
-    def_config = base_path / 'config' / _CONFIG_FILE
+    def_config = base_path / 'config' / filename
     if not def_config.exists():
-        raise FileNotFoundError('Default config file not found, corrupted installation?')
+        raise FileNotFoundError(filename + ' config file not found, corrupted installation?')
     return def_config
 
 
@@ -54,12 +63,12 @@ def lookup_config_file_path() -> Path:
 
     if not _is_root():
         home_dir = Path.home()
-        user_config = home_dir / '.config' / 'taro' / _CONFIG_FILE
+        user_config = home_dir / '.config' / 'taro' / _DEFAULT_CONFIG_FILE
         paths.append(user_config)
         if user_config.exists():
             return user_config
 
-    system_config = Path('/etc/taro') / _CONFIG_FILE
+    system_config = Path('/etc/taro') / _DEFAULT_CONFIG_FILE
     paths.append(system_config)
     if system_config.exists():
         return system_config

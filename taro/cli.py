@@ -54,6 +54,8 @@ def _init_exec_parser(common, subparsers):
 
     # General options
     exec_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
+    exec_parser.add_argument('-mc', '--min-config', action='store_true',
+                             help='ignore config files and use minimum configuration')
     exec_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
     exec_parser.add_argument('--id', type=str, help='defines job ID')
     exec_parser.add_argument('-p', '--progress', action='store_true', help='capture stdout for progress reading')
@@ -169,6 +171,7 @@ def _init_show_config_parser(common, subparsers):
         ACTION_CONFIG_SHOW, parents=[common],
         description='Print config used by exec command or config specified by an option', add_help=False)
     show_config_parser.add_argument('-dc', '--def-config', action='store_true', help='show default config')
+    show_config_parser.add_argument('-mc', '--min-config', action='store_true', help='show minimum config')
 
 
 # Maxim's solution: https://stackoverflow.com/questions/15008758
@@ -195,5 +198,13 @@ def _check_collisions(parser, parsed):
             if arg != 'log_enabled' and arg.startswith('log_') and val is not None:
                 parser.error("Conflicting options: log-enabled is set to false but {} is specified".format(arg))
 
-    if hasattr(parsed, 'def_config') and hasattr(parsed, 'config') and parsed.def_config and parsed.config:
-        parser.error('Conflicting options: both def-config and config specified')
+    config_options = []
+    if hasattr(parsed, 'def_config') and parsed.def_config:
+        config_options.append('def_config')
+    if hasattr(parsed, 'min_config') and parsed.min_config:
+        config_options.append('min_config')
+    if hasattr(parsed, 'config') and parsed.config:
+        config_options.append('config')
+
+    if len(config_options) > 1:
+        parser.error('Conflicting options: ' + str(config_options))

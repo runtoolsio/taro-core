@@ -1,0 +1,13 @@
+log:
+  enabled: true
+  stdout:
+    level: warn
+  file:
+    level: info
+#    path: ~/.cache/taro/taro.log
+  syslog:
+    level: off # Not yet implemented
+
+persistence:
+  enabled: true
+  type: sqlite

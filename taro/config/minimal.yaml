@@ -1,7 +1,7 @@
 log:
-  enabled: true
+  enabled: false
   stdout:
-    level: warn
+    level: off
   file:
     level: off
     path: ~/.cache/taro/taro.log
