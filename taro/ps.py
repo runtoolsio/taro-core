@@ -2,6 +2,12 @@ import datetime
 from typing import Iterable
 
 from beautifultable import BeautifulTable, enums
+from prompt_toolkit.eventloop.dummy_contextvars import Token
+from prompt_toolkit.formatted_text import FormattedText
+from prompt_toolkit import print_formatted_text
+from pypager.pager import Pager
+from pypager.source import GeneratorSource
+from pypager.style import ui_style
 from tabulate import tabulate
 from termcolor import colored
 
@@ -30,9 +36,25 @@ def print_jobs(job_instances, columns: Iterable[Column], show_header: bool):
     table = BeautifulTable(max_width=160, default_alignment=enums.ALIGN_LEFT)
     table.set_style(BeautifulTable.STYLE_COMPACT)
     table.column_headers = [column.name for column in columns] if show_header else ()
+    l = []
     for j in job_instances:
         table.append_row(_job_to_fields(j, _get_color(j), columns))
-    print(table)
+        l.append(_job_to_fields(j, _get_color(j), columns))
+    gen = table.stream(iter(l), append=False)
+    while True:
+        try:
+            # print(next(gen))
+            print_formatted_text(FormattedText([(ui_style['standout'], next(gen))]))
+        except StopIteration:
+            return
+    # p = Pager()
+    # p.add_source(GeneratorSource(content_generator(gen)))
+    # p.run()
+
+
+def content_generator(gen):
+    for l in gen:
+        yield [("", l + '\n')]
 
 
 def _get_color(job_instance):
