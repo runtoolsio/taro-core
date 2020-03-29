@@ -5,7 +5,7 @@ from taro import cnf
 
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
-ACTION_HISTORY = 'history'
+ACTION_JOBS = 'jobs'
 ACTION_RELEASE = 'release'
 ACTION_LISTEN = 'listen'
 ACTION_WAIT = 'wait'
@@ -28,7 +28,7 @@ def parse_args(args):
 
     _init_exec_parser(common, subparsers)
     _init_ps_parser(common, subparsers)
-    _init_history_parser(common, subparsers)
+    _init_jobs_parser(common, subparsers)
     _init_release_parser(common, subparsers)
     _init_listen_parser(common, subparsers)
     _init_wait_parser(common, subparsers)
@@ -90,16 +90,16 @@ def _init_ps_parser(common, subparsers):
     ps_parser = subparsers.add_parser(ACTION_PS, parents=[common], description='Show running jobs', add_help=False)
 
 
-def _init_history_parser(common, subparsers):
+def _init_jobs_parser(common, subparsers):
     """
-    Creates parsers for `history` command
+    Creates parsers for `jobs` command
 
     :param common: parent parser
-    :param subparsers: sub-parser for history parser to be added to
+    :param subparsers: sub-parser for jobs parser to be added to
     """
 
-    history_parser = subparsers.add_parser(
-        ACTION_HISTORY, parents=[common], description='Show finished jobs', add_help=False)
+    jobs_parser = subparsers.add_parser(
+        ACTION_JOBS, parents=[common], description='Show jobs', add_help=False)
 
 
 def _init_release_parser(common, subparsers):

@@ -28,8 +28,8 @@ def main(args):
         run_exec(args)
     elif args.action == cli.ACTION_PS:
         run_ps(args)
-    elif args.action == cli.ACTION_HISTORY:
-        run_history(args)
+    elif args.action == cli.ACTION_JOBS:
+        run_jobs(args)
     elif args.action == cli.ACTION_RELEASE:
         run_release(args)
     elif args.action == cli.ACTION_LISTEN:
@@ -86,7 +86,7 @@ def run_ps(args):
         client.close()
 
 
-def run_history(args):
+def run_jobs(args):
     jobs = []
 
     client = Client()

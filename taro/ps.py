@@ -56,7 +56,7 @@ def _get_color(job_instance):
     state = job_instance.lifecycle.state()
 
     if state.is_before_execution():
-        return '#44aaff italic'
+        return 'green'
 
     if state.is_executing():
         return '#44aaff'
