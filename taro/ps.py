@@ -1,61 +1,52 @@
 import datetime
+from collections import namedtuple
 from typing import Iterable
 
-from beautifultable import BeautifulTable, enums
-from prompt_toolkit.eventloop.dummy_contextvars import Token
-from prompt_toolkit.formatted_text import FormattedText
-from prompt_toolkit import print_formatted_text
+from prompt_toolkit.formatted_text import FormattedText as FT
 from pypager.pager import Pager
 from pypager.source import GeneratorSource
-from pypager.style import ui_style
-from tabulate import tabulate
-from termcolor import colored
 
 from taro import util
 from taro.execution import ExecutionState
 
+Column = namedtuple('Column', 'name width value_fnc')
 
-class Column:
-    def __init__(self, name, value_fnc):
-        self.name = name
-        self.value_fnc = value_fnc
+JOB_ID = Column('JOB ID', 30, lambda j: j.job_id)
+INSTANCE_ID = Column('INSTANCE ID', 22, lambda j: j.instance_id)
+CREATED = Column('CREATED', 24, lambda j: _format_dt(j.lifecycle.changed(ExecutionState.CREATED)))
+EXECUTED = Column('EXECUTED', 24, lambda j: _format_dt(j.lifecycle.execution_started()))
+ENDED = Column('ENDED', 24, lambda j: _format_dt(j.lifecycle.execution_finished()))
+EXEC_TIME = Column('EXECUTION TIME', 17, lambda j: execution_time(j))
+STATE = Column('STATE', max(len(s.name) for s in ExecutionState) + 1, lambda j: j.lifecycle.state().name)
+PROGRESS = Column('PROGRESS', 10, lambda j: progress(j))
+PROGRESS_RESULT = Column('RESULT', 20, lambda j: result(j))
 
 
-JOB_ID = Column('JOB ID', lambda j: j.job_id)
-INSTANCE_ID = Column('INSTANCE ID', lambda j: j.instance_id)
-CREATED = Column('CREATED', lambda j: _format_dt(j.lifecycle.changed(ExecutionState.CREATED)))
-EXECUTED = Column('EXECUTED', lambda j: _format_dt(j.lifecycle.execution_started()))
-ENDED = Column('ENDED', lambda j: _format_dt(j.lifecycle.execution_finished()))
-EXEC_TIME = Column('EXECUTION TIME', lambda j: execution_time(j))
-STATE = Column('STATE', lambda j: j.lifecycle.state().name)
-PROGRESS = Column('PROGRESS', lambda j: progress(j))
-PROGRESS_RESULT = Column('RESULT', lambda j: result(j))
+def output_gen(job_instances, columns: Iterable[Column], show_header: bool):
+    f = " ".join(" {:" + str(c.width) + "}" for c in columns)
+
+    if show_header:
+        header_line = f.format(*(c.name for c in columns))
+        yield FT([('bold #ffffff', header_line)])
+        separator_line = " ".join("-" * (c.width + 1) for c in columns)
+        yield FT([('bold #ffffff', separator_line)])
+
+    for j in job_instances:
+        line = f.format(*(c.value_fnc(j) for c in columns))
+        yield FT([(_get_color(j), line)])
 
 
 def print_jobs(job_instances, columns: Iterable[Column], show_header: bool):
-    table = BeautifulTable(max_width=160, default_alignment=enums.ALIGN_LEFT)
-    table.set_style(BeautifulTable.STYLE_COMPACT)
-    table.column_headers = [column.name for column in columns] if show_header else ()
-    l = []
-    for j in job_instances:
-        table.append_row(_job_to_fields(j, _get_color(j), columns))
-        l.append(_job_to_fields(j, _get_color(j), columns))
-    # print(table)
-    gen = table.stream(iter(l), append=False)
-    while True:
-        try:
-            # print(next(gen))
-            print_formatted_text(FormattedText([(ui_style['standout'], next(gen))]))
-        except StopIteration:
-            return
-    # p = Pager()
-    # p.add_source(GeneratorSource(content_generator(gen)))
-    # p.run()
-
-
-def content_generator(gen):
-    for l in gen:
-        yield [("", l + '\n')]
+    gen = output_gen(job_instances, columns, show_header)
+    p = Pager()
+    p.add_source(GeneratorSource(line + [('', '\n')] for line in gen))
+    p.run()
+    #
+    # while True:
+    #     try:
+    #         print_formatted_text(next(gen))
+    #     except StopIteration:
+    #         break
 
 
 def _get_color(job_instance):
@@ -66,11 +57,7 @@ def _get_color(job_instance):
     if state.is_terminal() and state != ExecutionState.COMPLETED:
         return 'yellow'
 
-    return None
-
-
-def _job_to_fields(j, color, columns: Iterable[Column]):
-    return [colored(column.value_fnc(j), color) if color else FormattedText([(ui_style['standout'], column.value_fnc(j))]) for column in columns]
+    return 'white'
 
 
 def _format_dt(dt):

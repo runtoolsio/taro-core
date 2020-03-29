@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 from typing import Generator
 
-_DEFAULT_CONFIG_FILE = 'default.yaml'
+_DEFAULT_CONFIG_FILE = 'taro.yaml'
 _MINIMAL_CONFIG_FILE = 'minimal.yaml'
 _LOG_FILE = 'taro.log'
 
