@@ -2,7 +2,8 @@ import datetime
 from collections import namedtuple
 from typing import Iterable
 
-from prompt_toolkit.formatted_text import FormattedText as FT
+from prompt_toolkit import print_formatted_text
+from prompt_toolkit.formatted_text import FormattedText as FTxt
 from pypager.pager import Pager
 from pypager.source import GeneratorSource
 
@@ -27,26 +28,28 @@ def output_gen(job_instances, columns: Iterable[Column], show_header: bool):
 
     if show_header:
         header_line = f.format(*(c.name for c in columns))
-        yield FT([('bold #ffffff', header_line)])
+        yield FTxt([('bold', header_line)])
         separator_line = " ".join("-" * (c.width + 1) for c in columns)
-        yield FT([('bold #ffffff', separator_line)])
+        yield FTxt([('bold', separator_line)])
 
     for j in job_instances:
         line = f.format(*(c.value_fnc(j) for c in columns))
-        yield FT([(_get_color(j), line)])
+        yield FTxt([(_get_color(j), line)])
 
 
-def print_jobs(job_instances, columns: Iterable[Column], show_header: bool):
+def print_jobs(job_instances, columns: Iterable[Column], *, show_header: bool, pager: bool):
     gen = output_gen(job_instances, columns, show_header)
-    p = Pager()
-    p.add_source(GeneratorSource(line + [('', '\n')] for line in gen))
-    p.run()
-    #
-    # while True:
-    #     try:
-    #         print_formatted_text(next(gen))
-    #     except StopIteration:
-    #         break
+
+    if pager:
+        p = Pager()
+        p.add_source(GeneratorSource(line + [('', '\n')] for line in gen))
+        p.run()
+    else:
+        while True:
+            try:
+                print_formatted_text(next(gen))
+            except StopIteration:
+                break
 
 
 def _get_color(job_instance):
@@ -57,7 +60,7 @@ def _get_color(job_instance):
     if state.is_terminal() and state != ExecutionState.COMPLETED:
         return 'yellow'
 
-    return 'white'
+    return ''
 
 
 def _format_dt(dt):

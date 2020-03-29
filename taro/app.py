@@ -2,7 +2,6 @@ import logging
 import os
 import signal
 import sqlite3
-
 import sys
 
 from taro import cli, paths, cnf, log, runner, ps
@@ -80,7 +79,7 @@ def run_ps(args):
     try:
         jobs = client.read_jobs_info()
         columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.PROGRESS_RESULT, ps.STATE)
-        ps.print_jobs(jobs, columns, True)
+        ps.print_jobs(jobs, columns, show_header=True, pager=False)
     finally:
         client.close()
 
@@ -93,7 +92,7 @@ def run_history(args):
         persistence = Rdbms(db_con)
         finished = persistence.read_finished()
         columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE, ps.PROGRESS_RESULT)
-        ps.print_jobs(jobs + finished, columns, True)
+        ps.print_jobs(jobs + finished, columns, show_header=True, pager=False)
     finally:
         db_con.close()
 
@@ -134,7 +133,7 @@ def run_stop(args):
             print('No action performed, because the criteria matches more than one job.'
                   'Use --all flag if you wish to stop them all:' + os.linesep)
             columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.PROGRESS_RESULT, ps.STATE)
-            ps.print_jobs(jobs, columns, True)
+            ps.print_jobs(jobs, columns, show_header=True, pager=False)
             return  # Exit code non-zero?
 
         inst_results = client.stop_jobs([job.instance_id for job in jobs], args.interrupt)
