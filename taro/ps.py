@@ -40,6 +40,7 @@ def print_jobs(job_instances, columns: Iterable[Column], show_header: bool):
     for j in job_instances:
         table.append_row(_job_to_fields(j, _get_color(j), columns))
         l.append(_job_to_fields(j, _get_color(j), columns))
+    # print(table)
     gen = table.stream(iter(l), append=False)
     while True:
         try:
@@ -69,7 +70,7 @@ def _get_color(job_instance):
 
 
 def _job_to_fields(j, color, columns: Iterable[Column]):
-    return [colored(column.value_fnc(j), color) if color else column.value_fnc(j) for column in columns]
+    return [colored(column.value_fnc(j), color) if color else FormattedText([(ui_style['standout'], column.value_fnc(j))]) for column in columns]
 
 
 def _format_dt(dt):

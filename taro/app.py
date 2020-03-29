@@ -86,12 +86,16 @@ def run_ps(args):
 
 
 def run_history(args):
+    client = Client()
     db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
-    persistence = Rdbms(db_con)
-    finished = persistence.read_finished()
-    columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE, ps.PROGRESS_RESULT)
-    ps.print_jobs(finished, columns, True)
-    db_con.close()
+    try:
+        jobs = client.read_jobs_info()
+        persistence = Rdbms(db_con)
+        finished = persistence.read_finished()
+        columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE, ps.PROGRESS_RESULT)
+        ps.print_jobs(jobs + finished, columns, True)
+    finally:
+        db_con.close()
 
 
 def run_release(args):
