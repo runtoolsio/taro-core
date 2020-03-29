@@ -92,7 +92,7 @@ def run_history(args):
         persistence = Rdbms(db_con)
         finished = persistence.read_finished()
         columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE, ps.PROGRESS_RESULT)
-        ps.print_jobs(jobs + finished, columns, show_header=True, pager=False)
+        ps.print_jobs(jobs + finished, columns, show_header=True, pager=True)
     finally:
         db_con.close()
 

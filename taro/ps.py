@@ -58,7 +58,7 @@ def _get_color(job_instance):
         return 'red'
 
     if state.is_terminal() and state != ExecutionState.COMPLETED:
-        return 'yellow'
+        return 'orange'
 
     return ''
 
