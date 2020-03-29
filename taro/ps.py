@@ -12,7 +12,7 @@ from taro.execution import ExecutionState
 
 Column = namedtuple('Column', 'name width value_fnc')
 
-JOB_ID = Column('JOB ID', 15, lambda j: j.job_id)
+JOB_ID = Column('JOB ID', 25, lambda j: j.job_id)
 INSTANCE_ID = Column('INSTANCE ID', 22, lambda j: j.instance_id)
 CREATED = Column('CREATED', 24, lambda j: _format_dt(j.lifecycle.changed(ExecutionState.CREATED)))
 EXECUTED = Column('EXECUTED', 24, lambda j: _format_dt(j.lifecycle.execution_started()))
@@ -20,7 +20,7 @@ ENDED = Column('ENDED', 24, lambda j: _format_dt(j.lifecycle.execution_finished(
 EXEC_TIME = Column('EXECUTION TIME', 17, lambda j: execution_time(j))
 STATE = Column('STATE', max(len(s.name) for s in ExecutionState) + 1, lambda j: j.lifecycle.state().name)
 PROGRESS = Column('PROGRESS', 10, lambda j: progress(j))
-PROGRESS_RESULT = Column('RESULT', 20, lambda j: result(j))
+RESULT = Column('RESULT', 20, lambda j: result(j))
 
 
 def output_gen(job_instances, columns: Iterable[Column], show_header: bool):
@@ -54,6 +54,13 @@ def print_jobs(job_instances, columns: Iterable[Column], *, show_header: bool, p
 
 def _get_color(job_instance):
     state = job_instance.lifecycle.state()
+
+    if state.is_before_execution():
+        return '#44aaff italic'
+
+    if state.is_executing():
+        return '#44aaff'
+
     if state.is_failure():
         return 'red'
 

@@ -3,9 +3,11 @@ import os
 import signal
 import sqlite3
 import sys
+from operator import attrgetter
 
 from taro import cli, paths, cnf, log, runner, ps
 from taro.api import Server, Client
+from taro.execution import ExecutionState
 from taro.job import Job
 from taro.listening import Dispatcher, Receiver, EventPrint, StoppingListener
 from taro.process import ProcessExecution
@@ -78,23 +80,31 @@ def run_ps(args):
     client = Client()
     try:
         jobs = client.read_jobs_info()
-        columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.PROGRESS_RESULT, ps.STATE)
+        columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.STATE, ps.PROGRESS)
         ps.print_jobs(jobs, columns, show_header=True, pager=False)
     finally:
         client.close()
 
 
 def run_history(args):
+    jobs = []
+
     client = Client()
+    try:
+        jobs += client.read_jobs_info()
+    finally:
+        client.close()
+
     db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
     try:
-        jobs = client.read_jobs_info()
         persistence = Rdbms(db_con)
-        finished = persistence.read_finished()
-        columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE, ps.PROGRESS_RESULT)
-        ps.print_jobs(jobs + finished, columns, show_header=True, pager=True)
+        jobs += persistence.read_finished()
     finally:
         db_con.close()
+
+    columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE, ps.RESULT)
+    sorted_jobs = sorted(jobs, key=lambda j: j.lifecycle.changed(ExecutionState.CREATED))
+    ps.print_jobs(sorted_jobs, columns, show_header=True, pager=True)
 
 
 def run_release(args):
@@ -132,7 +142,7 @@ def run_stop(args):
         if len(jobs) > 1 and not args.all:
             print('No action performed, because the criteria matches more than one job.'
                   'Use --all flag if you wish to stop them all:' + os.linesep)
-            columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.PROGRESS_RESULT, ps.STATE)
+            columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.RESULT, ps.STATE)
             ps.print_jobs(jobs, columns, show_header=True, pager=False)
             return  # Exit code non-zero?
 
