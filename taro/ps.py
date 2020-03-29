@@ -12,7 +12,7 @@ from taro.execution import ExecutionState
 
 Column = namedtuple('Column', 'name width value_fnc')
 
-JOB_ID = Column('JOB ID', 30, lambda j: j.job_id)
+JOB_ID = Column('JOB ID', 15, lambda j: j.job_id)
 INSTANCE_ID = Column('INSTANCE ID', 22, lambda j: j.instance_id)
 CREATED = Column('CREATED', 24, lambda j: _format_dt(j.lifecycle.changed(ExecutionState.CREATED)))
 EXECUTED = Column('EXECUTED', 24, lambda j: _format_dt(j.lifecycle.execution_started()))
@@ -33,7 +33,7 @@ def output_gen(job_instances, columns: Iterable[Column], show_header: bool):
         yield FTxt([('bold', separator_line)])
 
     for j in job_instances:
-        line = f.format(*(c.value_fnc(j) for c in columns))
+        line = f.format(*(_limit_text(c.value_fnc(j), c.width - 1) for c in columns))
         yield FTxt([(_get_color(j), line)])
 
 
@@ -96,9 +96,9 @@ def result(job_instance):
 
 
 def _limit_text(text, limit):
-    if not text:
+    if not text or len(text) <= limit:
         return text
-    return text[:limit] + (text[limit:] and '..')
+    return text[:limit - 2] + '..'
 
 
 def print_state_change(job_instance):
