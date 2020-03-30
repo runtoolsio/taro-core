@@ -100,6 +100,7 @@ def _init_jobs_parser(common, subparsers):
 
     jobs_parser = subparsers.add_parser(
         ACTION_JOBS, parents=[common], description='Show jobs', add_help=False)
+    jobs_parser.add_argument('-P', '--no-pager', action='store_true', help='Do not use pager for output')
 
 
 def _init_release_parser(common, subparsers):

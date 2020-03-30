@@ -104,7 +104,7 @@ def run_jobs(args):
 
     columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE, ps.RESULT)
     sorted_jobs = sorted(jobs, key=lambda j: j.lifecycle.changed(ExecutionState.CREATED))
-    ps.print_jobs(sorted_jobs, columns, show_header=True, pager=True)
+    ps.print_jobs(sorted_jobs, columns, show_header=True, pager=not args.no_pager)
 
 
 def run_release(args):
