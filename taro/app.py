@@ -98,12 +98,12 @@ def run_jobs(args):
     db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
     try:
         persistence = Rdbms(db_con)
-        jobs += persistence.read_finished()
+        jobs += persistence.read_finished(chronological=args.chronological)
     finally:
         db_con.close()
 
     columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE, ps.RESULT)
-    sorted_jobs = sorted(jobs, key=lambda j: j.lifecycle.changed(ExecutionState.CREATED))
+    sorted_jobs = sorted(jobs, key=lambda j: j.lifecycle.changed(ExecutionState.CREATED), reverse=not args.chronological)
     ps.print_jobs(sorted_jobs, columns, show_header=True, pager=not args.no_pager)
 
 

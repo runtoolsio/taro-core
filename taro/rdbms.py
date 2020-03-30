@@ -51,8 +51,8 @@ class Rdbms(ExecutionStateObserver):
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
-    def read_finished(self) -> List[JobInstanceData]:
-        c = self._conn.execute("SELECT * FROM history ORDER BY finished ASC")
+    def read_finished(self, *, chronological) -> List[JobInstanceData]:
+        c = self._conn.execute("SELECT * FROM history ORDER BY finished " + ("ASC" if chronological else "DESC"))
         return [_to_job_instance(row) for row in c.fetchall()]
 
     def notify(self, job_instance):
