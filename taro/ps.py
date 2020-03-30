@@ -11,45 +11,17 @@ from pypager.source import GeneratorSource
 from taro import util
 from taro.execution import ExecutionState
 
-Column = namedtuple('Column', 'name width value_fnc')
+Column = namedtuple('Column', 'name max_width value_fnc')
 
-JOB_ID = Column('JOB ID', 25, lambda j: j.job_id)
-INSTANCE_ID = Column('INSTANCE ID', 22, lambda j: j.instance_id)
-CREATED = Column('CREATED', 24, lambda j: _format_dt(j.lifecycle.changed(ExecutionState.CREATED)))
-EXECUTED = Column('EXECUTED', 24, lambda j: _format_dt(j.lifecycle.execution_started()))
-ENDED = Column('ENDED', 24, lambda j: _format_dt(j.lifecycle.execution_finished()))
-EXEC_TIME = Column('EXECUTION TIME', 17, lambda j: execution_time(j))
-STATE = Column('STATE', max(len(s.name) for s in ExecutionState) + 1, lambda j: j.lifecycle.state().name)
-PROGRESS = Column('PROGRESS', 10, lambda j: progress(j))
-RESULT = Column('RESULT', 20, lambda j: result(j))
-
-
-def output_gen(job_instances, columns: Iterable[Column], show_header: bool):
-    """
-    Each column has padding of size 1 from each side
-    """
-    job_iter = iter(job_instances)
-    first_fifty = list(itertools.islice(job_iter, 50))
-    column_width = _calc_widths(first_fifty, columns)
-    f = " ".join(" {:" + str(column_width[c]) + "}" for c in columns)
-
-    if show_header:
-        header_line = f.format(*(c.name for c in columns))
-        yield FTxt([('bold', header_line)])
-        separator_line = " ".join("-" * (column_width[c] + 1) for c in columns)
-        yield FTxt([('bold', separator_line)])
-
-    for j in itertools.chain(first_fifty, job_iter):
-        line = f.format(*(_limit_text(c.value_fnc(j), c.width - 1) for c in columns))
-        yield FTxt([(_get_color(j), line)])
-
-
-def _calc_widths(job_instances, columns: Iterable[Column]):
-    column_width = {c: len(c.name) + 1 for c in columns}
-    for j in job_instances:
-        for c in columns:
-            column_width[c] = max(column_width[c], min(len(c.value_fnc(j)) + 1, c.width))
-    return column_width
+JOB_ID = Column('JOB ID', 30, lambda j: j.job_id)
+INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.instance_id)
+CREATED = Column('CREATED', 25, lambda j: _format_dt(j.lifecycle.changed(ExecutionState.CREATED)))
+EXECUTED = Column('EXECUTED', 25, lambda j: _format_dt(j.lifecycle.execution_started()))
+ENDED = Column('ENDED', 25, lambda j: _format_dt(j.lifecycle.execution_finished()))
+EXEC_TIME = Column('EXECUTION TIME', 18, lambda j: execution_time(j))
+STATE = Column('STATE', max(len(s.name) for s in ExecutionState) + 2, lambda j: j.lifecycle.state().name)
+PROGRESS = Column('PROGRESS', 25, lambda j: progress(j))
+RESULT = Column('RESULT', 25, lambda j: result(j))
 
 
 def print_jobs(job_instances, columns: Iterable[Column], *, show_header: bool, pager: bool):
@@ -65,6 +37,41 @@ def print_jobs(job_instances, columns: Iterable[Column], *, show_header: bool, p
                 print_formatted_text(next(gen))
             except StopIteration:
                 break
+
+
+def output_gen(job_instances, columns: Iterable[Column], show_header: bool):
+    """
+    Table Representation:
+        Each column has padding of size 1 from each side applied in both header and values
+        Left padding is hardcoded in the format token " {:x}"
+        Right padding is implemented by text limiting
+        Columns are separated by one space
+        Header/Values separator line is of the same length as the column
+    Column Widths:
+        First 50 rows are examined to find optimal width of the columns
+    """
+    job_iter = iter(job_instances)
+    first_fifty = list(itertools.islice(job_iter, 50))
+    column_width = _calc_widths(first_fifty, columns)
+    f = " ".join(" {:" + str(column_width[c] - 1) + "}" for c in columns)
+
+    if show_header:
+        header_line = f.format(*(c.name for c in columns))
+        yield FTxt([('bold', header_line)])
+        separator_line = " ".join("-" * (column_width[c]) for c in columns)
+        yield FTxt([('bold', separator_line)])
+
+    for j in itertools.chain(first_fifty, job_iter):
+        line = f.format(*(_limit_text(c.value_fnc(j), column_width[c] - 2) for c in columns))
+        yield FTxt([(_get_color(j), line)])
+
+
+def _calc_widths(job_instances, columns: Iterable[Column]):
+    column_width = {c: len(c.name) + 2 for c in columns}  # +2 for left and right padding
+    for j in job_instances:
+        for c in columns:
+            column_width[c] = max(column_width[c], min(len(c.value_fnc(j)) + 2, c.max_width))  # +2 for padding
+    return column_width
 
 
 def _get_color(job_instance):
