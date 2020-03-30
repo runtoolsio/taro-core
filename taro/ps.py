@@ -2,6 +2,7 @@ import datetime
 from collections import namedtuple
 from typing import Iterable
 
+import itertools
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import FormattedText as FTxt
 from pypager.pager import Pager
@@ -24,17 +25,31 @@ RESULT = Column('RESULT', 20, lambda j: result(j))
 
 
 def output_gen(job_instances, columns: Iterable[Column], show_header: bool):
-    f = " ".join(" {:" + str(c.width) + "}" for c in columns)
+    """
+    Each column has padding of size 1 from each side
+    """
+    job_iter = iter(job_instances)
+    first_fifty = list(itertools.islice(job_iter, 50))
+    column_width = _calc_widths(first_fifty, columns)
+    f = " ".join(" {:" + str(column_width[c]) + "}" for c in columns)
 
     if show_header:
         header_line = f.format(*(c.name for c in columns))
         yield FTxt([('bold', header_line)])
-        separator_line = " ".join("-" * (c.width + 1) for c in columns)
+        separator_line = " ".join("-" * (column_width[c] + 1) for c in columns)
         yield FTxt([('bold', separator_line)])
 
-    for j in job_instances:
+    for j in itertools.chain(first_fifty, job_iter):
         line = f.format(*(_limit_text(c.value_fnc(j), c.width - 1) for c in columns))
         yield FTxt([(_get_color(j), line)])
+
+
+def _calc_widths(job_instances, columns: Iterable[Column]):
+    column_width = {c: len(c.name) + 1 for c in columns}
+    for j in job_instances:
+        for c in columns:
+            column_width[c] = max(column_width[c], min(len(c.value_fnc(j)) + 1, c.width))
+    return column_width
 
 
 def print_jobs(job_instances, columns: Iterable[Column], *, show_header: bool, pager: bool):
