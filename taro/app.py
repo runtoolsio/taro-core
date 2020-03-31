@@ -1,9 +1,10 @@
 import logging
 import os
+import re
 import signal
 import sqlite3
+
 import sys
-from operator import attrgetter
 
 from taro import cli, paths, cnf, log, runner, ps
 from taro.api import Server, Client
@@ -104,7 +105,9 @@ def run_jobs(args):
 
     columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE, ps.RESULT)
     sorted_jobs = sorted(jobs, key=lambda j: j.lifecycle.changed(ExecutionState.CREATED), reverse=not args.chronological)
-    ps.print_jobs(sorted_jobs, columns, show_header=True, pager=not args.no_pager)
+    pattern = re.compile(args.job) if args.job else None
+    filtered_jobs = (j for j in sorted_jobs if not pattern or pattern.search(j.job_id) or pattern.search(j.instance_id))
+    ps.print_jobs(filtered_jobs, columns, show_header=True, pager=not args.no_pager)
 
 
 def run_release(args):
