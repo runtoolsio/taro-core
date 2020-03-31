@@ -10,6 +10,7 @@ from pypager.source import GeneratorSource
 
 from taro import util
 from taro.execution import ExecutionState
+from taro.util import iterates
 
 Column = namedtuple('Column', 'name max_width value_fnc')
 
@@ -24,6 +25,7 @@ PROGRESS = Column('PROGRESS', 25, lambda j: progress(j))
 RESULT = Column('RESULT', 25, lambda j: result(j))
 
 
+@iterates
 def print_jobs(job_instances, columns: Iterable[Column], *, show_header: bool, pager: bool):
     gen = output_gen(job_instances, columns, show_header)
 
@@ -33,10 +35,7 @@ def print_jobs(job_instances, columns: Iterable[Column], *, show_header: bool, p
         p.run()
     else:
         while True:
-            try:
-                print_formatted_text(next(gen))
-            except StopIteration:
-                break
+            print_formatted_text(next(gen))
 
 
 def output_gen(job_instances, columns: Iterable[Column], show_header: bool):
