@@ -100,7 +100,7 @@ def _init_jobs_parser(common, subparsers):
 
     jobs_parser = subparsers.add_parser(
         ACTION_JOBS, parents=[common], description='Show jobs', add_help=False)
-    jobs_parser.add_argument('-j', '--job', type=str, help='Job or instance ID matching pattern for result filtering')
+    jobs_parser.add_argument('--id', type=str, help='Job or instance ID matching pattern for result filtering')
     jobs_parser.add_argument('-c', '--chronological', action='store_true', help='Display jobs in chronological order')
     jobs_parser.add_argument('-P', '--no-pager', action='store_true', help='Do not use pager for output')
 

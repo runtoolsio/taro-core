@@ -4,11 +4,13 @@ import re
 import signal
 import sqlite3
 
+import itertools
 import sys
 
-from taro import cli, paths, cnf, log, runner, ps
+from taro import cli, paths, cnf, log, runner, ps, jfilter
 from taro.api import Server, Client
 from taro.execution import ExecutionState
+from taro.jfilter import AllFilter
 from taro.job import Job
 from taro.listening import Dispatcher, Receiver, EventPrint, StoppingListener
 from taro.process import ProcessExecution
@@ -105,8 +107,10 @@ def run_jobs(args):
 
     columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE, ps.RESULT)
     sorted_jobs = sorted(jobs, key=lambda j: j.lifecycle.changed(ExecutionState.CREATED), reverse=not args.chronological)
-    pattern = re.compile(args.job) if args.job else None
-    filtered_jobs = (j for j in sorted_jobs if not pattern or pattern.search(j.job_id) or pattern.search(j.instance_id))
+    job_filter = AllFilter()
+    if args.id:
+        job_filter << jfilter.create_id_filter(args.id)
+    filtered_jobs = filter(job_filter, sorted_jobs)
     ps.print_jobs(filtered_jobs, columns, show_header=True, pager=not args.no_pager)
 
 
