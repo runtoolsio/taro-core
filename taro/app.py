@@ -3,6 +3,7 @@ import os
 import signal
 import sqlite3
 
+import itertools
 import sys
 
 from taro import cli, paths, cnf, log, runner, ps, jfilter
@@ -108,7 +109,8 @@ def run_jobs(args):
                          reverse=not args.chronological)
     job_filter = _build_job_filter(args)
     filtered_jobs = filter(job_filter, sorted_jobs)
-    ps.print_jobs(filtered_jobs, columns, show_header=True, pager=not args.no_pager)
+    limited_jobs = itertools.islice(filtered_jobs, 0, args.lines or None)
+    ps.print_jobs(limited_jobs, columns, show_header=True, pager=not args.no_pager)
 
 
 def _build_job_filter(args):
