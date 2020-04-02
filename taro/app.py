@@ -1,10 +1,8 @@
 import logging
 import os
-import re
 import signal
 import sqlite3
 
-import itertools
 import sys
 
 from taro import cli, paths, cnf, log, runner, ps, jfilter
@@ -106,12 +104,21 @@ def run_jobs(args):
         db_con.close()
 
     columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE, ps.RESULT)
-    sorted_jobs = sorted(jobs, key=lambda j: j.lifecycle.changed(ExecutionState.CREATED), reverse=not args.chronological)
-    job_filter = AllFilter()
-    if args.id:
-        job_filter << jfilter.create_id_filter(args.id)
+    sorted_jobs = sorted(jobs, key=lambda j: j.lifecycle.changed(ExecutionState.CREATED),
+                         reverse=not args.chronological)
+    job_filter = _build_job_filter(args)
     filtered_jobs = filter(job_filter, sorted_jobs)
     ps.print_jobs(filtered_jobs, columns, show_header=True, pager=not args.no_pager)
+
+
+def _build_job_filter(args):
+    job_filter = AllFilter()
+    if args.id:
+        job_filter <<= jfilter.create_id_filter(args.id)
+    if args.finished:
+        job_filter <<= jfilter.finished_filter
+
+    return job_filter
 
 
 def run_release(args):
