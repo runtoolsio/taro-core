@@ -119,6 +119,8 @@ def _build_job_filter(args):
         job_filter <<= jfilter.create_id_filter(args.id)
     if args.finished:
         job_filter <<= jfilter.finished_filter
+    if args.today:
+        job_filter <<= jfilter.today_filter
 
     return job_filter
 

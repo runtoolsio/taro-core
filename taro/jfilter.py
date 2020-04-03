@@ -1,4 +1,7 @@
+import datetime
 import re
+
+from taro.execution import ExecutionState
 
 
 class AllFilter:
@@ -25,3 +28,8 @@ def create_id_filter(text):
 
 def finished_filter(job_instance):
     return job_instance.lifecycle.state().is_terminal()
+
+
+def today_filter(job_instance):
+    return job_instance.lifecycle.changed(ExecutionState.CREATED).astimezone().date() ==\
+           datetime.datetime.today().date()
