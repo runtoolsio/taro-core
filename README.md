@@ -11,6 +11,8 @@ Job management library
 6. SNS notifications
 7. ~~Execution history~~
 8. Log rotation
+9. Warnings
+10. Overlaps
 
 ### Optional
 - job timeout

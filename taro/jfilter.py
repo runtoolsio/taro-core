@@ -33,3 +33,15 @@ def finished_filter(job_instance):
 def today_filter(job_instance):
     return job_instance.lifecycle.changed(ExecutionState.CREATED).astimezone().date() ==\
            datetime.datetime.today().date()
+
+
+def create_since_filter(since):
+    def do_filter(job_instance):
+        return job_instance.lifecycle.changed(ExecutionState.CREATED).astimezone().replace(tzinfo=None) >= since
+
+    return do_filter
+
+
+def create_until_filter(until):
+    return lambda j: not create_since_filter(until)(j)
+

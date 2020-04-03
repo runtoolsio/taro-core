@@ -121,6 +121,10 @@ def _build_job_filter(args):
         job_filter <<= jfilter.finished_filter
     if args.today:
         job_filter <<= jfilter.today_filter
+    if args.since:
+        job_filter <<= jfilter.create_since_filter(args.since)
+    if args.until:
+        job_filter <<= jfilter.create_until_filter(args.until)
 
     return job_filter
 

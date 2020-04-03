@@ -1,5 +1,6 @@
 import argparse
 from argparse import RawTextHelpFormatter
+from datetime import datetime
 
 from taro import cnf
 
@@ -105,6 +106,8 @@ def _init_jobs_parser(common, subparsers):
     filter_group.add_argument('--id', type=str, help='Job or instance ID matching pattern for result filtering')
     filter_group.add_argument('-F', '--finished', action='store_true', help='Return only finished jobs')
     filter_group.add_argument('-T', '--today', action='store_true', help='Return only jobs created today (local)')
+    filter_group.add_argument('-S', '--since', type=_str2dt, help='Show entries not older than the specified date')
+    filter_group.add_argument('-U', '--until', type=_str2dt, help='Show entries not newer than the specified date')
 
     jobs_parser.add_argument('-n', '--lines', type=int, help='Number of job entries to show')
     jobs_parser.add_argument('-c', '--chronological', action='store_true', help='Display jobs in chronological order')
@@ -193,6 +196,16 @@ def _str2bool(v):
         return False
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
+def _str2dt(v):
+    try:
+        return datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        try:
+            return datetime.strptime(v, "%Y-%m-%d %H:%M")
+        except ValueError:
+            return datetime.strptime(v, "%Y-%m-%d")
 
 
 def _check_collisions(parser, parsed):
