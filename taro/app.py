@@ -1,9 +1,8 @@
+import itertools
 import logging
 import os
 import signal
 import sqlite3
-
-import itertools
 import sys
 
 from taro import cli, paths, cnf, log, runner, ps, jfilter
@@ -21,6 +20,7 @@ from taro.util import get_attr, set_attr
 logger = logging.getLogger(__name__)
 
 USE_MINIMAL_CONFIG = False
+DEFAULT_PS_COLUMNS = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.STATE, ps.PROGRESS)
 
 
 def main(args):
@@ -82,8 +82,7 @@ def run_ps(args):
     client = Client()
     try:
         jobs = client.read_jobs_info()
-        columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.STATE, ps.PROGRESS)
-        ps.print_jobs(jobs, columns, show_header=True, pager=False)
+        ps.print_jobs(jobs, DEFAULT_PS_COLUMNS, show_header=True, pager=False)
     finally:
         client.close()
 

@@ -1,8 +1,9 @@
 import datetime
-from collections import namedtuple
-from typing import Iterable
-
 import itertools
+import re
+from collections import namedtuple
+from typing import Iterable, List, Dict
+
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import FormattedText as FTxt
 from pypager.pager import Pager
@@ -131,3 +132,24 @@ def _limit_text(text, limit):
 
 def print_state_change(job_instance):
     print(f"{job_instance.job_id}@{job_instance.instance_id} -> {job_instance.lifecycle.state().name}")
+
+
+def parse_output(output, columns) -> List[Dict[Column, str]]:
+    """
+    Parses individual job lines from provided string containing job table (must include both header and sep line).
+    Columns of the table must be specified.
+
+    :param output: output containing job table
+    :param columns: exact columns of the job table in correct order
+    :return: list of dictionaries where each dictionary represent one job line by column -> value mapping
+    """
+
+    lines = [line for line in output.splitlines() if line]  # Ignore empty lines
+    header_idx = [i for i, line in enumerate(lines) if all(column.name in line for column in columns)]
+    if not header_idx:
+        raise ValueError('The output does not contain specified job table')
+    column_sep_line = lines[header_idx[0] + 1]  # Line separating header and values..
+    sep_line_pattern = re.compile('-+')  # ..consisting of `-` strings for each column
+    column_spans = [column.span() for column in sep_line_pattern.finditer(column_sep_line)]
+    return [dict(zip(columns, (line[slice(*span)].strip() for span in column_spans)))
+            for line in lines[header_idx[0] + 2:]]

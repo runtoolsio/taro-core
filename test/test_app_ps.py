@@ -2,7 +2,7 @@
 Tests :mod:`app` module
 Command: ps
 """
-
+from taro import ps, app
 from taro.execution import ExecutionState
 from test.util import run_app, run_app_as_process_and_wait
 
@@ -34,4 +34,5 @@ def test_job_progress(capsys):
     run_app('ps')
     output = capsys.readouterr().out
 
-    assert 'progress1' in output
+    jobs = ps.parse_output(output, app.DEFAULT_PS_COLUMNS)
+    assert 'progress1' == jobs[0][ps.PROGRESS]
