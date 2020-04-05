@@ -6,6 +6,8 @@ from typing import Union
 
 from taro.execution import Execution, ExecutionState, ExecutionError
 
+USE_SHELL = False  # For testing only
+
 
 class ProcessExecution(Execution):
 
@@ -25,7 +27,7 @@ class ProcessExecution(Execution):
         if not self._stopped and not self._interrupted:
             stdout = PIPE if self.read_progress else None
             try:
-                self._popen = Popen(self.args, stdout=stdout)
+                self._popen = Popen(" ".join(self.args) if USE_SHELL else self.args, stdout=stdout, shell=USE_SHELL)
                 if self.read_progress:
                     Thread(target=self._read_progress, name='Progress-Reader', daemon=True).start()
 

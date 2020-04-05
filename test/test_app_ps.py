@@ -25,3 +25,13 @@ def test_job_waiting(capsys):
 
     assert 'sleep 1' in output
     assert ExecutionState.WAITING.name.casefold() in output.casefold()
+
+
+def test_job_progress(capsys):
+    run_app_as_process_and_wait('exec --id p_test --progress echo progress1 && sleep 1',
+                                wait_for=ExecutionState.RUNNING, daemon=True, shell=True)
+
+    run_app('ps')
+    output = capsys.readouterr().out
+
+    assert 'progress1' in output
