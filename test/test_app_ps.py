@@ -13,8 +13,9 @@ def test_job_running(capsys):
     run_app('ps')
     output = capsys.readouterr().out
 
-    assert 'sleep 1' in output
-    assert ExecutionState.RUNNING.name.casefold() in output.casefold()
+    jobs = ps.parse_output(output, app.DEFAULT_PS_COLUMNS)
+    assert 'sleep 1' == jobs[0][ps.JOB_ID]
+    assert ExecutionState.RUNNING.name.casefold() == jobs[0][ps.STATE].casefold()
 
 
 def test_job_waiting(capsys):
