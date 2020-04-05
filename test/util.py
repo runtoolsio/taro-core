@@ -1,7 +1,9 @@
 from multiprocessing.context import Process
 from pathlib import Path
 
+import prompt_toolkit
 import yaml
+from prompt_toolkit.output import DummyOutput
 
 from taro import app
 
@@ -19,10 +21,13 @@ def run_app(command):
     :return: output of the executed command
     """
     app.USE_MINIMAL_CONFIG = True
+    # Prevent UnsupportedOperation error: https://github.com/prompt-toolkit/python-prompt-toolkit/issues/1107
+    prompt_toolkit.output.defaults.create_output = NoFormattingOutput
     try:
         app.main(command.split())
     finally:
         app.USE_MINIMAL_CONFIG = False
+        prompt_toolkit.output.defaults.create_output = None
 
 
 def run_wait(state, count=1) -> Process:
@@ -50,3 +55,14 @@ def remove_test_config():
 def _test_config_path() -> Path:
     base_path = Path(__file__).parent
     return base_path / 'test.yaml'
+
+
+class NoFormattingOutput(DummyOutput):
+    def write(self, data: str) -> None:
+        print(data)
+
+    def write_raw(self, data: str) -> None:
+        print(data)
+
+    def fileno(self) -> int:
+        raise NotImplementedError()
