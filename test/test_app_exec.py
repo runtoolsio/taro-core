@@ -39,7 +39,7 @@ def test_failed_command(observer: TestObserver):
 
 
 def test_invalid_command_print_to_stderr(capsys):
-    run_app('exec --log-stdout off non_existing_command')  # Disable logging so only the error message is printed
+    run_app('exec non_existing_command')
     assert 'No such file' in capsys.readouterr().err
 
 
