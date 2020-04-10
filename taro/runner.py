@@ -1,7 +1,6 @@
 """
 Implementation of job management framework based on :mod:`job` module.
 """
-import datetime
 import logging
 from threading import Lock, Event
 from typing import List, Union
@@ -29,8 +28,8 @@ class RunnerJobInstance(JobControl):
         self._executing = False
         self._stopped_or_interrupted: bool = False
         self._executing_flag_lock: Lock = Lock()
-        if job.wait:
-            self._wait_condition: Event = Event()
+        if job.pending:
+            self._pending_condition: Event = Event()
 
         self._set_state(ExecutionState.CREATED)
 
@@ -55,9 +54,9 @@ class RunnerJobInstance(JobControl):
         return self._exec_error
 
     def run(self):
-        if self._job.wait and not self._stopped_or_interrupted:
-            self._set_state(ExecutionState.WAITING)
-            self._wait_condition.wait()
+        if self._job.pending and not self._stopped_or_interrupted:
+            self._set_state(ExecutionState.PENDING)
+            self._pending_condition.wait()
 
         # Is variable assignment atomic? Better be sure with lock:
         # https://stackoverflow.com/questions/2291069/is-python-variable-assignment-atomic
@@ -77,9 +76,9 @@ class RunnerJobInstance(JobControl):
             self._set_error(exec_error)
             self._set_state(exec_error.exec_state)
 
-    def release(self, wait: str) -> bool:
-        if wait and self._job.wait == wait and not self._wait_condition.is_set():
-            self._wait_condition.set()
+    def release(self, pending: str) -> bool:
+        if pending and self._job.pending == pending and not self._pending_condition.is_set():
+            self._pending_condition.set()
             return True
         else:
             return False
@@ -93,8 +92,8 @@ class RunnerJobInstance(JobControl):
         with self._executing_flag_lock:
             self._stopped_or_interrupted = True
 
-        if self._job.wait:
-            self._wait_condition.set()
+        if self._job.pending:
+            self._pending_condition.set()
         if self._executing:
             self._job.execution.stop()
 
@@ -107,8 +106,8 @@ class RunnerJobInstance(JobControl):
         with self._executing_flag_lock:
             self._stopped_or_interrupted = True
 
-        if self._job.wait:
-            self._wait_condition.set()
+        if self._job.pending:
+            self._pending_condition.set()
         if self._executing:
             self._job.execution.interrupt()
 

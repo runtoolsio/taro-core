@@ -60,8 +60,10 @@ def _init_exec_parser(common, subparsers):
     exec_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
     exec_parser.add_argument('--id', type=str, help='defines job ID')
     exec_parser.add_argument('-o', '--read-output', action='store_true', help='read stdout for progress/result reading')
-    # exec_parser.add_argument('-t', '--timeout', type=int)  # TODO implement
-    exec_parser.add_argument('-w', '--wait', type=str, help='execution will wait until this wait value is released')
+    # TODO delay
+    # exec_parser.add_argument('-t', '--timeout', type=int) TODO implement
+    exec_parser.add_argument('-p', '--pending', type=str, help='specifies pending value for releasing of this job')
+    # exec_parser.add_argument('-w', '--wait', type=str, help='execution will wait for other jobs') TODO implement
 
     # Config override options
     config_group = exec_parser.add_argument_group('config override', 'these options override entries from config file')
@@ -123,8 +125,8 @@ def _init_release_parser(common, subparsers):
     """
 
     release_parser = subparsers.add_parser(ACTION_RELEASE, parents=[common],
-                                           description='Release jobs waiting for condition', add_help=False)
-    release_parser.add_argument('wait', type=str, metavar='WAIT', help='Waiting condition value')
+                                           description='Release jobs in pending state', add_help=False)
+    release_parser.add_argument('pending', type=str, metavar='WAIT', help='Pending condition value')
 
 
 def _init_listen_parser(common, subparsers):

@@ -19,14 +19,14 @@ def test_job_running(capsys):
 
 
 def test_job_waiting(capsys):
-    run_app_as_process_and_wait('exec -w val sleep 1', wait_for=ExecutionState.WAITING, daemon=True)
+    run_app_as_process_and_wait('exec -p val sleep 1', wait_for=ExecutionState.PENDING, daemon=True)
 
     run_app('ps')
     output = capsys.readouterr().out
 
     jobs = ps.parse_jobs_table(output, app.DEFAULT_PS_COLUMNS)
     assert 'sleep 1' == jobs[0][ps.JOB_ID]
-    assert ExecutionState.WAITING.name.casefold() == jobs[0][ps.STATE].casefold()
+    assert ExecutionState.PENDING.name.casefold() == jobs[0][ps.STATE].casefold()
 
 
 def test_job_progress(capsys):

@@ -53,7 +53,7 @@ def run_exec(args):
     all_args = [args.command] + args.arg
     execution = ProcessExecution(all_args, args.read_output)
     job_id = args.id or " ".join(all_args)
-    job = Job(job_id, execution, wait=args.wait or '')
+    job = Job(job_id, execution, pending=args.pending or '')
     job_instance = RunnerJobInstance(job)
     term = Term(job_instance)
     signal.signal(signal.SIGTERM, term.terminate)
@@ -131,7 +131,7 @@ def _build_job_filter(args):
 def run_release(args):
     client = Client()
     try:
-        client.release_jobs(args.wait)
+        client.release_jobs(args.pending)
     finally:
         client.close()
 
