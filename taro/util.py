@@ -52,6 +52,11 @@ def unique_timestamp_hex(random_suffix_length=4):
 
 def dt_from_utc_str(str_ts, is_iso=True):
     sep = "T" if is_iso else " "
+
+    # Workaround: https://stackoverflow.com/questions/30999230/how-to-parse-timezone-with-colon to support Python <3.7
+    if ":" == str_ts[-3:-2]:
+        str_ts = str_ts[:-3] + str_ts[-2:]
+
     return datetime.strptime(str_ts, "%Y-%m-%d" + sep + "%H:%M:%S.%f%z")
 
 

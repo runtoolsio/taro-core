@@ -21,7 +21,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: POSIX :: Linux",
     ],
-    python_requires='>=3.5',
+    python_requires='>=3.6',
     packages=setuptools.find_packages(include=("taro",), exclude=("test",)),
     install_requires=[
         "PyYAML>=5.1.2",
