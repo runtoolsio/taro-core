@@ -23,6 +23,10 @@ USE_MINIMAL_CONFIG = False
 DEFAULT_PS_COLUMNS = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.STATE, ps.PROGRESS)
 
 
+def main_cli():
+    main(None)
+
+
 def main(args):
     args = cli.parse_args(args)
 
