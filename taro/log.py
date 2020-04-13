@@ -18,7 +18,7 @@ def init():
 
 
 def disable():
-    logging.disable()
+    logging.disable(logging.CRITICAL)
     _root_logger.disabled = True
 
 
