@@ -14,19 +14,40 @@ from typing import Tuple, List, Iterable, Union
 
 
 class ExecutionState(IntEnum):
+
     NONE = 0
+
+    # v -- Before execution -- v
     CREATED = 1
-    WAITING = 2
-    RUNNING = 3
-    TRIGGERED = 4  # When request to start job was sent, but confirmation has not been (or cannot be) received
-    STARTED = 5
-    COMPLETED = 6
-    CANCELLED = 7
+    PENDING = 2  # Until released
+    WAITING = 3  # For another job
+    # ON_HOLD or same as pending?
+    # ^ -- Before execution -- ^
+
+    # v -- Executing -- v
+    RUNNING = 4
+    TRIGGERED = 5  # When request to start job was sent, but confirmation has not been (or cannot be) received
+    STARTED = 6
+    # ^ -- Executing -- ^
+
+    # v -- Finished/Terminal -- v
+    COMPLETED = 7
     STOPPED = 8
-    START_FAILED = 9
-    INTERRUPTED = 10
-    FAILED = 11
-    ERROR = 12
+
+    # vv -- Not executed -- vv
+    CANCELLED = 9  # Stopped when on-hold
+    SKIPPED = 10
+    SUSPENDED = 11
+    # ^^ -- Not executed -- ^^
+
+    # vv -- Failures -- vv
+    START_FAILED = 12
+    INTERRUPTED = 13
+    FAILED = 14
+    ERROR = 15
+    # ^^ -- Failures -- ^^
+
+    # ^ -- Finished/Terminal -- ^
 
     def is_before_execution(self):
         return self <= ExecutionState.WAITING

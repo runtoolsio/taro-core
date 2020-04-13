@@ -35,10 +35,10 @@ class Server(SocketServer):
         if req_body['req']['api'] == '/release':
             if 'data' not in req_body:
                 return {"resp": {"error": "missing_data"}}
-            if 'wait' not in req_body['data']:
-                return {"resp": {"error": "missing_data_wait"}}
+            if 'pending' not in req_body['data']:
+                return {"resp": {"error": "missing_data_field", "field": "pending"}}
 
-            released = self._job_control.release(req_body.get('data').get('wait'))
+            released = self._job_control.release(req_body.get('data').get('pending'))
             return {"resp": {"code": 200}, "data": {"job_instance": instance, "released": released}}
 
         if req_body['req']['api'] == '/stop':
@@ -66,11 +66,11 @@ class Client(SocketClient):
         return [_create_job_instance(inst_resp) for inst_resp in responses]
 
     @iterates
-    def release_jobs(self, wait):
+    def release_jobs(self, pending):
         server = self.servers()
         while True:
             next(server)
-            resp = server.send({'req': {'api': '/release'}, "data": {"wait": wait}}).response
+            resp = server.send({'req': {'api': '/release'}, "data": {"pending": pending}}).response
             if resp['data']['released']:
                 print(resp)  # TODO Do not print, but returned released (use communicate)
 

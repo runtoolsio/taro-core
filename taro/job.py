@@ -17,7 +17,7 @@ from taro.execution import ExecutionState, ExecutionError
 
 
 class Job:
-    def __init__(self, job_id: str, execution, observers=(), wait: str = ''):
+    def __init__(self, job_id: str, execution, observers=(), pending: str = ''):
         if not job_id:
             raise ValueError('Job ID cannot be None or empty')
         if execution is None:
@@ -26,11 +26,11 @@ class Job:
         self.id = job_id
         self.execution = execution
         self.observers = list(observers)
-        self.wait = wait
+        self.pending = pending
 
     def __repr__(self):
-        return "{}({!r}, {!r}, {!r})".format(
-            self.__class__.__name__, self.id, self.execution, self.observers)
+        return "{}({!r}, {!r}, {!r}, {!r})".format(
+            self.__class__.__name__, self.id, self.execution, self.observers, self.pending)
 
 
 class JobInstance(abc.ABC):
@@ -98,10 +98,10 @@ class JobInstanceData(JobInstance):
 class JobControl(JobInstance):
 
     @abc.abstractmethod
-    def release(self, wait: str) -> bool:
+    def release(self, pending: str) -> bool:
         """
         Trigger job execution waiting for a given condition. Ignore if the instance doesn't wait for the condition.
-        :param wait: name of the condition
+        :param pending: name of the condition
         :return: whether job has been released
         """
 

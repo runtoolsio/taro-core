@@ -44,12 +44,13 @@ def run_wait(state, count=1) -> Process:
     return run_app_as_process("wait -c {} {}".format(count, state.name))
 
 
-def run_app_as_process_and_wait(command, *, wait_for, daemon=False, shell=False) -> Process:
+def run_app_as_process_and_wait(command, *, wait_for, timeout=2, daemon=False, shell=False) -> Process:
     """
     Execute the command and wait for the job to reach the specified state.
 
     :param command: command to execute
     :param wait_for: state for which the execution wait
+    :param timeout: waiting timeout
     :param daemon: whether the command as executed as a daemon process
     :param shell: execute the command using shell
     :return: the app as a process
@@ -57,7 +58,7 @@ def run_app_as_process_and_wait(command, *, wait_for, daemon=False, shell=False)
 
     pw = run_wait(wait_for)
     p = run_app_as_process(command, daemon, shell)
-    pw.join()
+    pw.join(timeout)
     return p
 
 

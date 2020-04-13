@@ -134,7 +134,7 @@ def print_state_change(job_instance):
     print(f"{job_instance.job_id}@{job_instance.instance_id} -> {job_instance.lifecycle.state().name}")
 
 
-def parse_output(output, columns) -> List[Dict[Column, str]]:
+def parse_jobs_table(output, columns) -> List[Dict[Column, str]]:
     """
     Parses individual job lines from provided string containing job table (must include both header and sep line).
     Columns of the table must be specified.
