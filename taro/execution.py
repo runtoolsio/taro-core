@@ -9,57 +9,62 @@ It consists of:
 import abc
 import datetime
 from collections import OrderedDict
-from enum import IntEnum
-from typing import Tuple, List, Iterable, Union
+from enum import Enum, auto
+from typing import Tuple, List, Iterable, Union, Set
 
 
-class ExecutionState(IntEnum):
+class ExecutionStateGroup(Enum):
+    BEFORE_EXECUTION = auto()
+    EXECUTING = auto()
+    TERMINAL = auto()
+    NOT_EXECUTED = auto()
+    FAILURE = auto()
 
-    NONE = 0
 
-    # v -- Before execution -- v
-    CREATED = 1
-    PENDING = 2  # Until released
-    WAITING = 3  # For another job
+class ExecutionState(Enum):
+    NONE = {}
+    CREATED = {ExecutionStateGroup.BEFORE_EXECUTION}
+
+    PENDING = {ExecutionStateGroup.BEFORE_EXECUTION}  # Until released
+    WAITING = {ExecutionStateGroup.BEFORE_EXECUTION}  # For another job
     # ON_HOLD or same as pending?
-    # ^ -- Before execution -- ^
 
-    # v -- Executing -- v
-    RUNNING = 4
-    TRIGGERED = 5  # When request to start job was sent, but confirmation has not been (or cannot be) received
-    STARTED = 6
-    # ^ -- Executing -- ^
+    TRIGGERED = {ExecutionStateGroup.EXECUTING}  # Start request sent, start confirmation not (yet) received
+    STARTED = {ExecutionStateGroup.EXECUTING}
+    RUNNING = {ExecutionStateGroup.EXECUTING}
 
-    # v -- Finished/Terminal -- v
-    COMPLETED = 7
-    STOPPED = 8
+    COMPLETED = {ExecutionStateGroup.TERMINAL}
+    STOPPED = {ExecutionStateGroup.TERMINAL}
 
-    # vv -- Not executed -- vv
-    CANCELLED = 9  # Stopped when on-hold
-    SKIPPED = 10
-    SUSPENDED = 11
-    # ^^ -- Not executed -- ^^
+    CANCELLED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}
+    SKIPPED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}
+    SUSPENDED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}  # Temporarily disabled
 
-    # vv -- Failures -- vv
-    START_FAILED = 12
-    INTERRUPTED = 13
-    FAILED = 14
-    ERROR = 15
-    # ^^ -- Failures -- ^^
+    START_FAILED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.FAILURE}
+    INTERRUPTED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.FAILURE}
+    FAILED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.FAILURE}
+    ERROR = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.FAILURE}
 
-    # ^ -- Finished/Terminal -- ^
+    def __new__(cls, *args, **kwds):
+        value = len(cls.__members__) + 1
+        obj = object.__new__(cls)
+        obj._value_ = value
+        return obj
+
+    def __init__(self, groups: Set[ExecutionStateGroup]):
+        self.groups = groups
 
     def is_before_execution(self):
-        return self <= ExecutionState.WAITING
+        return ExecutionStateGroup.BEFORE_EXECUTION in self.groups
 
     def is_executing(self):
-        return ExecutionState.RUNNING <= self <= ExecutionState.STARTED
+        return ExecutionStateGroup.EXECUTING in self.groups
 
     def is_terminal(self) -> bool:
-        return self >= ExecutionState.COMPLETED
+        return ExecutionStateGroup.TERMINAL in self.groups
 
     def is_failure(self) -> bool:
-        return self >= ExecutionState.START_FAILED
+        return ExecutionStateGroup.FAILURE in self.groups
 
 
 class ExecutionError(Exception):
