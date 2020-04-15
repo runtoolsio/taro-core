@@ -17,7 +17,7 @@ setuptools.setup(
         "Intended Audience :: Developers, Ops, Admins",
         "Topic :: System :: Monitoring",
         "Topic :: System :: Systems Administration",
-        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
         "License :: OSI Approved :: MIT License",
         "Operating System :: POSIX :: Linux",
     ],

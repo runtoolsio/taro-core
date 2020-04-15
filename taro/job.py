@@ -13,7 +13,7 @@ There are two type of clients of the framework:
 
 import abc
 
-from taro.execution import ExecutionState, ExecutionError
+from taro.execution import ExecutionError
 
 
 class Job:
@@ -123,55 +123,3 @@ class ExecutionStateObserver(abc.ABC):
     @abc.abstractmethod
     def notify(self, job_instance):
         """This method is called when state is changed."""
-
-
-class ExecutionStateListener(ExecutionStateObserver):
-
-    def __init__(self):
-        self.state_to_method = {
-            ExecutionState.TRIGGERED: self.on_triggered,
-            ExecutionState.STARTED: self.on_started,
-            ExecutionState.COMPLETED: self.on_completed,
-            ExecutionState.START_FAILED: self.start_failed,
-            ExecutionState.FAILED: self.on_failed,
-        }  # TODO all states
-
-    # noinspection PyMethodMayBeStatic
-    def is_observing(self, _):
-        """
-        Whether this listener listens to the changes of the given job instance
-        :param _: job instance
-        """
-        return True
-
-    def notify(self, job_instance):
-        """
-        This method is called when state is changed.
-
-        It is responsible to delegate to corresponding on_* listening method.
-        """
-
-        if not self.is_observing(job_instance):
-            return
-
-        self.state_to_method[job_instance.state](job_instance)
-
-    @abc.abstractmethod
-    def on_triggered(self, job_instance):
-        """Job initialized but execution no yet started"""
-
-    @abc.abstractmethod
-    def on_started(self, job_instance):
-        """Job execution started"""
-
-    @abc.abstractmethod
-    def on_completed(self, job_instance):
-        """Job execution successfully completed"""
-
-    @abc.abstractmethod
-    def start_failed(self, job_instance):
-        """Starting of the job failed -> job did not run"""
-
-    @abc.abstractmethod
-    def on_failed(self, job_instance):
-        """Job had started but the execution failed"""
