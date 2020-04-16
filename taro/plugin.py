@@ -2,9 +2,6 @@ import importlib
 import logging
 import pkgutil
 from inspect import signature
-from logging import INFO
-
-import taro.log
 
 log = logging.getLogger(__name__)
 
@@ -28,7 +25,7 @@ def discover_plugins(prefix, names):
             module = discovered[name]
             listener = load_plugin(module)
             module2listener[module] = listener
-        except Exception as e:
+        except BaseException as e:
             log.warning("event=[invalid_plugin] plugin=[%s] reason=[%s]", name, e)
 
     return module2listener
