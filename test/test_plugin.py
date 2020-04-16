@@ -1,7 +1,7 @@
 import pytest
 
 from taro import plugin
-from test import plugins
+from test import plugins, Listener
 from test.plugins import invalid_listener, none_listener
 
 
@@ -20,7 +20,7 @@ def test_load_invalid_listener():
         plugin.load_plugin(invalid_listener)  # create_listener returns listener with invalid notify method
 
 
-def test_dodgy_plugin_do_not_exit_app():
-    """Test that BaseException is not propagated"""
-    plugins_ = plugin.discover_plugins('dodgy_', ['dodgy_plugin'])
-    assert len(plugins_) == 0
+def test_plugin_discovered():
+    plugins_ = plugin.discover_plugins('test', ['test'])
+    assert len(plugins_) == 1
+    assert isinstance(plugins_['test'], Listener)

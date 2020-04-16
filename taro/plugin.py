@@ -2,11 +2,14 @@ import importlib
 import logging
 import pkgutil
 from inspect import signature
+from typing import Dict
+
+from taro.job import ExecutionStateObserver
 
 log = logging.getLogger(__name__)
 
 
-def discover_plugins(prefix, names):
+def discover_plugins(prefix, names) -> Dict[str, ExecutionStateObserver]:
     discovered = {
         name: importlib.import_module(name)
         for finder, name, ispkg
@@ -15,7 +18,7 @@ def discover_plugins(prefix, names):
     }
     log.debug("event=[plugin_discovered] plugins=[%s]", ",".join(discovered.keys()))
 
-    module2listener = {}
+    name2listener = {}
     for name in names:
         if name not in discovered.keys():
             log.warning("event=[plugin_not_found] plugin=[%s]", name)
@@ -24,11 +27,11 @@ def discover_plugins(prefix, names):
         try:
             module = discovered[name]
             listener = load_plugin(module)
-            module2listener[module] = listener
+            name2listener[name] = listener
         except BaseException as e:
             log.warning("event=[invalid_plugin] plugin=[%s] reason=[%s]", name, e)
 
-    return module2listener
+    return name2listener
 
 
 def load_plugin(plugin_module):
