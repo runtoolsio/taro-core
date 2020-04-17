@@ -44,16 +44,15 @@ def _wrap_list(ob):
 
 class Config:
 
-    def __init__(self, config_ns):
-        self.log_enabled = get_attr(config_ns, LOG_ENABLED, default=True)
-        self.log_stdout_level = get_attr(config_ns, LOG_STDOUT_LEVEL, default='off')
-        # Can be boolean as PyYaml converts some values
-        file_level_val = get_attr(config_ns, LOG_FILE_LEVEL, default='off')
-        self.log_file_level = 'off' if file_level_val is False else file_level_val.lower()
-        self.log_file_path = get_attr(config_ns, LOG_FILE_PATH)
+    def __init__(self, cns):
+        self.log_enabled = get_attr(cns, LOG_ENABLED, default=True)
+        # Can be boolean as PyYaml converts some values, in such case it defaults to 'off'
+        self.log_stdout_level = get_attr(cns, LOG_STDOUT_LEVEL, default='off', type_=str).lower()
+        self.log_file_level = get_attr(cns, LOG_FILE_LEVEL, default='off', type_=str).lower()
+        self.log_file_path = get_attr(cns, LOG_FILE_PATH, type_=str)
 
-        self.persistence_enabled = get_attr(config_ns, PERSISTENCE_ENABLED, default=False)
-        plugins = get_attr(config_ns, PLUGINS)
+        self.persistence_enabled = get_attr(cns, PERSISTENCE_ENABLED, default=False)
+        plugins = get_attr(cns, PLUGINS)
         if isinstance(plugins, str):
             self.plugins = (plugins,)
         elif isinstance(plugins, Iterable):

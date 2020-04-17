@@ -42,7 +42,6 @@ def test_minimal_config():
     assert not c.log_enabled
     assert c.log_stdout_level == 'off'
     assert c.log_file_level == 'off'
-    assert c.log_file_path is None
     assert not c.persistence_enabled
     assert c.plugins == ()
 
@@ -57,6 +56,13 @@ def test_plugins_array():
     create_test_config({"plugins": ["p1", "p2"]})
     c = Config(_read_config())
     assert c.plugins == ("p1", "p2")
+
+
+def test_not_str_type_ignored():
+    """When non-str value is used in str field then it gets default value"""
+    create_test_config({"log": {"stdout": {"level": 3}}})  # Non-str value
+    c = Config(_read_config())
+    assert c.log_stdout_level == 'off'
 
 
 def _read_config():

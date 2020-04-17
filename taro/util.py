@@ -3,20 +3,22 @@ import secrets
 from datetime import datetime
 
 
-def get_attr(obj, fields, default=None):
-    return _getattr(obj, fields.split('.'), default)
+def get_attr(obj, fields, default=None, type_=None):
+    return _getattr(obj, fields.split('.'), default, type_)
 
 
-def _getattr(obj, fields, default):
+def _getattr(obj, fields, default, type_):
     attr = getattr(obj, fields[0], default)
 
     if attr is None:
         return default
 
     if len(fields) == 1:
+        if type_ and not isinstance(attr, type_):
+            return default
         return attr
     else:
-        return _getattr(attr, fields[1:], default)
+        return _getattr(attr, fields[1:], default, type_)
 
 
 def set_attr(obj, fields, value):
