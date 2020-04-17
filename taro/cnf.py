@@ -3,12 +3,15 @@ from types import SimpleNamespace
 
 import yaml
 
+from taro.util import get_attr
+
 LOG_ENABLED = 'log.enabled'
 LOG_STDOUT_LEVEL = 'log.stdout.level'
 LOG_FILE_LEVEL = 'log.file.level'
 LOG_FILE_PATH = 'log.file.path'
 PERSISTENCE_ENABLED = 'persistence.enabled'
 PERSISTENCE_TYPE = 'persistence.type'
+PLUGINS = 'plugins'
 
 
 def read_config(config_file_path) -> SimpleNamespace:
@@ -38,7 +41,14 @@ def _wrap_list(ob):
     return [wrap_namespace(v) for v in ob]
 
 
-class ConfigError(Exception):
+class Config:
 
-    def __init__(self, message: str):
-        super().__init__(message)
+    def __init__(self, config_ns):
+        self.log_enabled = get_attr(config_ns, LOG_ENABLED, default=True)
+        self.log_stdout_level = get_attr(config_ns, LOG_STDOUT_LEVEL, default='off')
+        # Can be boolean as PyYaml converts some values
+        file_level_val = get_attr(config_ns, LOG_FILE_LEVEL, default='off')
+        self.log_file_level = 'off' if file_level_val is False else file_level_val.lower()
+        self.log_file_path = get_attr(config_ns, LOG_FILE_PATH)
+
+        self.persistence_enabled = get_attr(config_ns, PERSISTENCE_ENABLED, default=False)

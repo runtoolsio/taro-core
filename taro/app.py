@@ -7,6 +7,7 @@ import sys
 
 from taro import cli, paths, cnf, log, runner, ps, jfilter
 from taro.api import Server, Client
+from taro.cnf import Config
 from taro.execution import ExecutionState
 from taro.jfilter import AllFilter
 from taro.job import Job
@@ -15,7 +16,7 @@ from taro.process import ProcessExecution
 from taro.rdbms import Rdbms
 from taro.runner import RunnerJobInstance
 from taro.term import Term
-from taro.util import get_attr, set_attr
+from taro.util import set_attr
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +51,9 @@ def main(args):
 
 
 def run_exec(args):
-    config = get_config(args)
-    override_config(args, config)
+    config_ns = get_config(args)
+    override_config(args, config_ns)
+    config = Config(config_ns)
     setup_logging(config)
 
     all_args = [args.command] + args.arg
@@ -67,7 +69,7 @@ def run_exec(args):
     if not api_started:
         logger.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")
     db_con = None
-    if get_attr(config, cnf.PERSISTENCE_ENABLED, default=False):
+    if config.persistence_enabled:
         db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
         persistence = Rdbms(db_con)
         runner.register_observer(persistence)
@@ -225,21 +227,19 @@ def override_config(args, config):
             set_attr(config, conf.split('.'), arg_value)
 
 
-def setup_logging(config):
+def setup_logging(config: Config):
     log.init()
 
-    if not get_attr(config, cnf.LOG_ENABLED, default=True):
+    if not config.log_enabled:
         log.disable()
         return
 
-    stdout_level = get_attr(config, cnf.LOG_STDOUT_LEVEL, default='off')
-    if stdout_level and stdout_level.lower() != 'off':  # Can be boolean as PyYaml converts some values
-        log.setup_console(stdout_level)
+    if config.log_stdout_level != 'off':
+        log.setup_console(config.log_stdout_level)
 
-    file_level = get_attr(config, cnf.LOG_FILE_LEVEL, default='off')
-    if file_level and file_level.lower() != 'off':  # Can be boolean as PyYaml converts some values
-        log_file_path = _expand_user(get_attr(config, cnf.LOG_FILE_PATH)) or paths.log_file_path(create=True)
-        log.setup_file(file_level, log_file_path)
+    if config.log_file_level != 'off':
+        log_file_path = _expand_user(config.log_file_path) or paths.log_file_path(create=True)
+        log.setup_file(config.log_file_level, log_file_path)
 
 
 def _expand_user(file):

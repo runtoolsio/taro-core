@@ -11,3 +11,5 @@ log:
 persistence:
   enabled: true
   type: sqlite
+
+plugins: []
