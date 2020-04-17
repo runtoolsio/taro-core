@@ -5,7 +5,7 @@ Description: Config related tests
 
 import pytest
 
-from taro import cnf
+from taro import cnf, paths
 from taro.cnf import Config
 from test.util import create_test_config, remove_test_config
 
@@ -20,6 +20,26 @@ def test_defaults():
     create_test_config(dict())
     c = Config(_read_config())
     assert c.log_enabled
+    assert c.log_stdout_level == 'off'
+    assert c.log_file_level == 'off'
+    assert c.log_file_path is None
+    assert not c.persistence_enabled
+    assert c.plugins == ()
+
+
+def test_default_config():
+    c = Config(cnf.read_config(paths.default_config_file_path()))
+    assert c.log_enabled
+    assert c.log_stdout_level == 'warn'
+    assert c.log_file_level == 'info'
+    assert c.log_file_path is None
+    assert c.persistence_enabled
+    assert c.plugins == ()
+
+
+def test_minimal_config():
+    c = Config(cnf.read_config(paths.minimal_config_file_path()))
+    assert not c.log_enabled
     assert c.log_stdout_level == 'off'
     assert c.log_file_level == 'off'
     assert c.log_file_path is None
