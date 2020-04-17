@@ -46,7 +46,6 @@ class Config:
 
     def __init__(self, cns):
         self.log_enabled = get_attr(cns, LOG_ENABLED, default=True)
-        # Can be boolean as PyYaml converts some values, in such case it defaults to 'off'
         self.log_stdout_level = get_attr(cns, LOG_STDOUT_LEVEL, default='off', type_=str).lower()
         self.log_file_level = get_attr(cns, LOG_FILE_LEVEL, default='off', type_=str).lower()
         self.log_file_path = get_attr(cns, LOG_FILE_PATH, type_=str)

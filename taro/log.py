@@ -1,6 +1,9 @@
 import logging
 import sys
 
+from taro import paths
+from taro.util import expand_user
+
 _root_logger = logging.getLogger()
 _root_logger.setLevel(logging.DEBUG)
 _formatter = logging.Formatter('%(asctime)s - %(levelname)-5s - %(name)s - %(message)s')
@@ -8,6 +11,21 @@ _formatter = logging.Formatter('%(asctime)s - %(levelname)-5s - %(name)s - %(mes
 STDOUT_HANDLER = 'stdout-handler'
 STDERR_HANDLER = 'stderr-handler'
 FILE_HANDLER = 'file-handler'
+
+
+def setup(config):
+    init()
+
+    if not config.log_enabled:
+        disable()
+        return
+
+    if config.log_stdout_level != 'off':
+        setup_console(config.log_stdout_level)
+
+    if config.log_file_level != 'off':
+        log_file_path = expand_user(config.log_file_path) or paths.log_file_path(create=True)
+        setup_file(config.log_file_level, log_file_path)
 
 
 def init():

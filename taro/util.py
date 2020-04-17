@@ -1,4 +1,5 @@
 import functools
+import os
 import secrets
 from datetime import datetime
 
@@ -75,3 +76,10 @@ def format_timedelta(td):
         s = s + ".%06d" % td.microseconds
         # s = s + ("%f" % (td.microseconds / 1000000))[1:-3]
     return s
+
+
+def expand_user(file):
+    if file is None or not file.startswith('~'):
+        return file
+
+    return os.path.expanduser(file)

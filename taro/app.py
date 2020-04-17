@@ -5,18 +5,19 @@ import signal
 import sqlite3
 import sys
 
-from taro import cli, paths, cnf, log, runner, ps, jfilter
+from taro import cli, paths, cnf, runner, ps, jfilter
 from taro.api import Server, Client
 from taro.cnf import Config
 from taro.execution import ExecutionState
 from taro.jfilter import AllFilter
 from taro.job import Job
 from taro.listening import Dispatcher, Receiver, EventPrint, StoppingListener
+from taro.log import setup
 from taro.process import ProcessExecution
 from taro.rdbms import Rdbms
 from taro.runner import RunnerJobInstance
 from taro.term import Term
-from taro.util import set_attr
+from taro.util import set_attr, expand_user
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ def run_exec(args):
     config_ns = get_config(args)
     override_config(args, config_ns)
     config = Config(config_ns)
-    setup_logging(config)
+    setup(config)
 
     all_args = [args.command] + args.arg
     execution = ProcessExecution(all_args, args.read_output)
@@ -196,7 +197,7 @@ def get_config(args):
 
 def get_config_file_path(args):
     if hasattr(args, 'config') and args.config:
-        return _expand_user(args.config)
+        return expand_user(args.config)
     if hasattr(args, 'def_config') and args.def_config:
         return paths.default_config_file_path()
     # Keep following condition as the last one so USE_MINIMAL_CONFIG can be overridden by args
@@ -225,28 +226,6 @@ def override_config(args, config):
         arg_value = getattr(args, arg)
         if arg_value is not None:
             set_attr(config, conf.split('.'), arg_value)
-
-
-def setup_logging(config: Config):
-    log.init()
-
-    if not config.log_enabled:
-        log.disable()
-        return
-
-    if config.log_stdout_level != 'off':
-        log.setup_console(config.log_stdout_level)
-
-    if config.log_file_level != 'off':
-        log_file_path = _expand_user(config.log_file_path) or paths.log_file_path(create=True)
-        log.setup_file(config.log_file_level, log_file_path)
-
-
-def _expand_user(file):
-    if file is None or not file.startswith('~'):
-        return file
-
-    return os.path.expanduser(file)
 
 
 if __name__ == '__main__':
