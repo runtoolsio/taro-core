@@ -5,14 +5,13 @@ import signal
 import sqlite3
 import sys
 
-from taro import cli, paths, cnf, runner, ps, jfilter
+from taro import cli, paths, cnf, runner, ps, jfilter, plugin, log
 from taro.api import Server, Client
 from taro.cnf import Config
 from taro.execution import ExecutionState
 from taro.jfilter import AllFilter
 from taro.job import Job
 from taro.listening import Dispatcher, Receiver, EventPrint, StoppingListener
-from taro.log import setup
 from taro.process import ProcessExecution
 from taro.rdbms import Rdbms
 from taro.runner import RunnerJobInstance
@@ -55,7 +54,7 @@ def run_exec(args):
     config_ns = get_config(args)
     override_config(args, config_ns)
     config = Config(config_ns)
-    setup(config)
+    log.setup(config)
 
     all_args = [args.command] + args.arg
     execution = ProcessExecution(all_args, args.read_output)
@@ -76,6 +75,8 @@ def run_exec(args):
         runner.register_observer(persistence)
     dispatcher = Dispatcher()
     runner.register_observer(dispatcher)
+    for listener in plugin.discover_plugins('taro_', config.plugins):
+        runner.register_observer(listener)
     try:
         job_instance.run()
     finally:

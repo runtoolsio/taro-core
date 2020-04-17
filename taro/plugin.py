@@ -28,6 +28,7 @@ def discover_plugins(prefix, names) -> Dict[str, ExecutionStateObserver]:
             module = discovered[name]
             listener = load_plugin(module)
             name2listener[name] = listener
+            log.debug("event=[plugin_loaded] plugin=[%s] listener=[%s]", name, listener)
         except BaseException as e:
             log.warning("event=[invalid_plugin] plugin=[%s] reason=[%s]", name, e)
 
