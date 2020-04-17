@@ -24,6 +24,19 @@ def test_defaults():
     assert c.log_file_level == 'off'
     assert c.log_file_path is None
     assert not c.persistence_enabled
+    assert c.plugins == ()
+
+
+def test_plugins_single_value():
+    create_test_config({"plugins": "plugin"})
+    c = Config(_read_config())
+    assert c.plugins == ("plugin",)
+
+
+def test_plugins_array():
+    create_test_config({"plugins": ["p1", "p2"]})
+    c = Config(_read_config())
+    assert c.plugins == ("p1", "p2")
 
 
 def _read_config():

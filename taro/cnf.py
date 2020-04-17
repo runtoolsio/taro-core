@@ -1,3 +1,4 @@
+from collections import Iterable
 from functools import singledispatch
 from types import SimpleNamespace
 
@@ -52,3 +53,10 @@ class Config:
         self.log_file_path = get_attr(config_ns, LOG_FILE_PATH)
 
         self.persistence_enabled = get_attr(config_ns, PERSISTENCE_ENABLED, default=False)
+        plugins = get_attr(config_ns, PLUGINS)
+        if isinstance(plugins, str):
+            self.plugins = (plugins,)
+        elif isinstance(plugins, Iterable):
+            self.plugins = tuple(plugins)
+        else:
+            self.plugins = ()
