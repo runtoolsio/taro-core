@@ -1,9 +1,8 @@
 # For plugin testing in test_plugin.py
+from taro.test.observer import TestObserver
+
+LISTENER = TestObserver()
+
+
 def create_listener():
-    return Listener()
-
-
-class Listener:
-
-    def notify(self, job_instance):
-        pass
+    return LISTENER

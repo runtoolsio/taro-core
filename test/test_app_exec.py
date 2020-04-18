@@ -6,10 +6,11 @@ import os
 
 import pytest
 
-from taro import runner, util
+from taro import runner, util, app
 from taro.execution import ExecutionState
 from taro.test.observer import TestObserver
-from test.util import run_app
+from test import LISTENER
+from test.util import run_app, remove_test_config, create_test_config
 
 
 @pytest.fixture
@@ -51,3 +52,16 @@ def test_default_job_id(observer: TestObserver):
 def test_explicit_job_id(observer: TestObserver):
     run_app('exec --id this_is_an_id echo not an id')
     assert observer.last_job().job_id == 'this_is_an_id'
+
+
+def test_plugin_executed():
+    plugin_prefix = app.PLUGIN_MODULE_PREFIX
+    app.PLUGIN_MODULE_PREFIX = 'test'
+    try:
+        create_test_config({"plugins": ["test"]})  # Use testing plugin in module 'test'
+        run_app('exec -C test.yaml --id run_with_test_plugin echo plugin')
+    finally:
+        app.PLUGIN_MODULE_PREFIX = plugin_prefix
+        remove_test_config()
+
+    assert LISTENER.last_job().job_id == 'run_with_test_plugin'

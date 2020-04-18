@@ -138,7 +138,7 @@ class RunnerJobInstance(JobControl):
             # noinspection PyBroadException
             try:
                 observer.notify(self)
-            except Exception:
+            except BaseException:
                 log.exception("event=[observer_exception]")
 
 

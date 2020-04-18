@@ -7,7 +7,7 @@ import pytest
 
 import taro.runner as runner
 from taro.execution import ExecutionState
-from taro.job import Job
+from taro.job import Job, ExecutionStateObserver
 from taro.test.execution import TestExecution  # TODO package import
 from taro.test.observer import TestObserver
 
@@ -20,8 +20,8 @@ def observer():
     runner.deregister_observer(observer)
 
 
-def job(after_exec_state: ExecutionState = None, raise_exc: Exception = None):
-    return Job('j1', TestExecution(after_exec_state, raise_exc))
+def job(after_exec_state: ExecutionState = None, raise_exc: Exception = None, observers=()):
+    return Job('j1', TestExecution(after_exec_state, raise_exc), observers)
 
 
 def test_job_passed(observer: TestObserver):
@@ -56,3 +56,22 @@ def test_execution_raises_exc(observer: TestObserver):
     assert observer.exec_state(2) == ExecutionState.ERROR
     assert not observer.exec_error(0)
     assert observer.exec_error(2).unexpected_error == exc_to_raise
+
+
+def test_observer_raises_exception():
+    """
+    All exception raised by observer must be captured by runner and not to disrupt job execution
+    """
+    observer = ExceptionRaisingObserver(BaseException('Should be captured by runner'))
+    j = job(ExecutionState.COMPLETED, observers=[observer])
+    runner.run(j)
+    assert j.execution.executed_count() == 1  # No exception thrown before
+
+
+class ExceptionRaisingObserver(ExecutionStateObserver):
+
+    def __init__(self, raise_exc: BaseException):
+        self.raise_exc = raise_exc
+
+    def notify(self, job_instance):
+        raise self.raise_exc
