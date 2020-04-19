@@ -17,7 +17,7 @@ class Dispatcher(ExecutionStateObserver):
         self._client = SocketClient(LISTENER_FILE_EXTENSION, bidirectional=False)
 
     @iterates
-    def notify(self, job_instance):
+    def state_update(self, job_instance):
         event_body = {"event_type": "job_state_change", "event": {"job_instance": dto.job_instance(job_instance)}}
         self._client.communicate(event_body)
 
@@ -34,7 +34,7 @@ class Receiver(SocketServer):
     def handle(self, req_body):
         job_instance = dto.to_job_instance_data(req_body['event']['job_instance'])
         for listener in self.listeners:
-            listener.notify(job_instance)
+            listener.state_update(job_instance)
 
 
 class EventPrint(ExecutionStateObserver):
@@ -42,7 +42,7 @@ class EventPrint(ExecutionStateObserver):
     def __init__(self, condition=lambda _: True):
         self.condition = condition
 
-    def notify(self, job_instance):
+    def state_update(self, job_instance):
         if self.condition(job_instance):
             ps.print_state_change(job_instance)
 
@@ -54,7 +54,7 @@ class StoppingListener(ExecutionStateObserver):
         self.condition = condition
         self.count = count
 
-    def notify(self, job_instance):
+    def state_update(self, job_instance):
         if self.condition(job_instance):
             self.count -= 1
             if self.count <= 0:

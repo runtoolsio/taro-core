@@ -39,11 +39,11 @@ def load_plugin(plugin_module):
     listener = plugin_module.create_listener()  # Raises AttributeError if not 'create_listener' method
     if not listener:
         raise ValueError("listener cannot be None")
-    notify_method = listener.notify  # Raises AttributeError if not 'notify' method
-    if not callable(notify_method):
-        raise AttributeError("plugin listener {} has no method 'notify'".format(listener))
-    notify_sig = signature(notify_method)
-    if len(notify_sig.parameters) != 1:
-        raise AttributeError("plugin listener {} must have method 'notify' with one parameter".format(listener))
+    update_method = listener.state_update  # Raises AttributeError if not 'state_update' method
+    if not callable(update_method):
+        raise AttributeError("plugin listener {} has no method 'state_update'".format(listener))
+    state_update_sig = signature(update_method)
+    if len(state_update_sig.parameters) != 1:
+        raise AttributeError("plugin listener {} must have method 'state_update' with one parameter".format(listener))
 
     return listener

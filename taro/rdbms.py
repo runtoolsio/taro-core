@@ -55,7 +55,7 @@ class Rdbms(ExecutionStateObserver):
         c = self._conn.execute("SELECT * FROM history ORDER BY finished " + ("ASC" if chronological else "DESC"))
         return [_to_job_instance(row) for row in c.fetchall()]
 
-    def notify(self, job_instance):
+    def state_update(self, job_instance):
         if job_instance.lifecycle.state().is_terminal():
             self._conn.execute(
                 "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?)",

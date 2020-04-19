@@ -4,6 +4,6 @@ def create_listener():
 
 class InvalidListener:
 
-    def notify(self):
+    def state_update(self):
         """Missing job instance parameter"""
         pass

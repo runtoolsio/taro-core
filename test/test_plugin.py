@@ -17,7 +17,7 @@ def test_load_none_listener():
 
 def test_load_invalid_listener():
     with pytest.raises(AttributeError):
-        plugin.load_plugin(invalid_listener)  # create_listener returns listener with invalid notify method
+        plugin.load_plugin(invalid_listener)  # create_listener returns listener with invalid state_update method
 
 
 def test_plugin_discovered():

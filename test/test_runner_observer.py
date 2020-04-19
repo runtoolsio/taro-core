@@ -73,5 +73,5 @@ class ExceptionRaisingObserver(ExecutionStateObserver):
     def __init__(self, raise_exc: BaseException):
         self.raise_exc = raise_exc
 
-    def notify(self, job_instance):
+    def state_update(self, job_instance):
         raise self.raise_exc
