@@ -10,22 +10,17 @@ log = logging.getLogger(__name__)
 
 
 def discover_plugins(prefix, names) -> Dict[str, ExecutionStateObserver]:
-    discovered = {
-        name: importlib.import_module(name)
-        for finder, name, ispkg
-        in pkgutil.iter_modules()
-        if name.startswith(prefix)
-    }
-    log.debug("event=[plugin_discovered] plugins=[%s]", ",".join(discovered.keys()))
+    discovered = [name for finder, name, is_pkg in pkgutil.iter_modules() if name.startswith(prefix)]
+    log.debug("event=[plugin_discovered] plugins=[%s]", ",".join(discovered))
 
     name2listener = {}
     for name in names:
-        if name not in discovered.keys():
+        if name not in discovered:
             log.warning("event=[plugin_not_found] plugin=[%s]", name)
             continue
 
         try:
-            module = discovered[name]
+            module = importlib.import_module(name)
             listener = load_plugin(module)
             name2listener[name] = listener
             log.debug("event=[plugin_loaded] plugin=[%s] listener=[%s]", name, listener)

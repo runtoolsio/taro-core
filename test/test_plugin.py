@@ -24,3 +24,9 @@ def test_plugin_discovered():
     plugins_ = plugin.discover_plugins('test', ['test'])
     assert len(plugins_) == 1
     assert plugins_['test'] is LISTENER
+
+
+def test_invalid_plugin_ignored():
+    """Test that error raised during plugin import is captured"""
+    plugins_ = plugin.discover_plugins('test-', ['test-plugin-invalid'])
+    assert len(plugins_) == 0
