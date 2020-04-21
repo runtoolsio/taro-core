@@ -4,5 +4,5 @@ from taro.test.observer import TestObserver
 LISTENER = TestObserver()
 
 
-def create_listener():
+def create_execution_listener():
     return LISTENER

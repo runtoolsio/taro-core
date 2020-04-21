@@ -13,3 +13,4 @@ persistence:
   type: sqlite
 
 plugins: []
+#plugins: ['taro_sns']

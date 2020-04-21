@@ -31,7 +31,7 @@ def discover_plugins(prefix, names) -> Dict[str, ExecutionStateObserver]:
 
 
 def load_plugin(plugin_module):
-    listener = plugin_module.create_listener()  # Raises AttributeError if not 'create_listener' method
+    listener = plugin_module.create_execution_listener()  # Raises AttributeError if the method is missing
     if not listener:
         raise ValueError("listener cannot be None")
     update_method = listener.state_update  # Raises AttributeError if not 'state_update' method
