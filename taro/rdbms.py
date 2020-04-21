@@ -4,7 +4,7 @@ from typing import List
 
 from taro import util
 from taro.execution import ExecutionState, ExecutionError, ExecutionLifecycle
-from taro.job import ExecutionStateObserver, JobInstanceData
+from taro.job import ExecutionStateObserver, JobInstanceData, JobInstance
 
 log = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ class Rdbms(ExecutionStateObserver):
         c = self._conn.execute("SELECT * FROM history ORDER BY finished " + ("ASC" if chronological else "DESC"))
         return [_to_job_instance(row) for row in c.fetchall()]
 
-    def state_update(self, job_instance):
+    def state_update(self, job_instance: JobInstance):
         if job_instance.lifecycle.state().is_terminal():
             self._conn.execute(
                 "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?)",

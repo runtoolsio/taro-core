@@ -122,7 +122,7 @@ class RunnerJobInstance(JobControl):
 
         level = logging.WARN if new_state.is_failure() else logging.INFO
         log.log(level, self._log('job_state_changed', "new_state=[{}] prev_state=[{}]".format(
-            new_state.name.lower(), prev_state.name.lower())))
+            new_state.name, prev_state.name)))
 
         self._notify_observers()
 
