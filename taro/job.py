@@ -17,20 +17,17 @@ from taro.execution import ExecutionError
 
 
 class Job:
-    def __init__(self, job_id: str, execution, observers=(), pending: str = ''):
+    def __init__(self, job_id: str, observers=(), pending: str = ''):
         if not job_id:
             raise ValueError('Job ID cannot be None or empty')
-        if execution is None:
-            raise TypeError('Job execution cannot be None type')
 
         self.id = job_id
-        self.execution = execution
         self.observers = list(observers)
         self.pending = pending
 
     def __repr__(self):
-        return "{}({!r}, {!r}, {!r}, {!r})".format(
-            self.__class__.__name__, self.id, self.execution, self.observers, self.pending)
+        return "{}({!r}, {!r}, {!r})".format(
+            self.__class__.__name__, self.id, self.observers, self.pending)
 
 
 class JobInstance(abc.ABC):

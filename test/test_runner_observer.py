@@ -20,19 +20,14 @@ def observer():
     runner.deregister_observer(observer)
 
 
-def job(after_exec_state: ExecutionState = None, raise_exc: Exception = None, observers=()):
-    return Job('j1', TestExecution(after_exec_state, raise_exc), observers)
-
-
 def test_job_passed(observer: TestObserver):
-    j = job(ExecutionState.COMPLETED)
-    runner.run(j)
+    runner.run(Job('j1'), TestExecution(ExecutionState.COMPLETED))
 
-    assert observer.last_job().job_id == j.id
+    assert observer.last_job().job_id == 'j1'
 
 
 def test_execution_completed(observer: TestObserver):
-    runner.run(job(ExecutionState.COMPLETED))
+    runner.run(Job('j1'), TestExecution(ExecutionState.COMPLETED))
 
     assert observer.exec_state(0) == ExecutionState.CREATED
     assert observer.exec_state(1) == ExecutionState.RUNNING
@@ -40,7 +35,7 @@ def test_execution_completed(observer: TestObserver):
 
 
 def test_execution_started(observer: TestObserver):
-    runner.run(job(ExecutionState.STARTED))
+    runner.run(Job('j1'), TestExecution(ExecutionState.STARTED))
 
     assert observer.exec_state(0) == ExecutionState.CREATED
     assert observer.exec_state(1) == ExecutionState.RUNNING
@@ -49,7 +44,7 @@ def test_execution_started(observer: TestObserver):
 
 def test_execution_raises_exc(observer: TestObserver):
     exc_to_raise = Exception()
-    runner.run(job(raise_exc=exc_to_raise))
+    runner.run(Job('j1'), TestExecution(raise_exc=exc_to_raise))
 
     assert observer.exec_state(0) == ExecutionState.CREATED
     assert observer.exec_state(1) == ExecutionState.RUNNING
@@ -63,9 +58,9 @@ def test_observer_raises_exception():
     All exception raised by observer must be captured by runner and not to disrupt job execution
     """
     observer = ExceptionRaisingObserver(BaseException('Should be captured by runner'))
-    j = job(ExecutionState.COMPLETED, observers=[observer])
-    runner.run(j)
-    assert j.execution.executed_count() == 1  # No exception thrown before
+    execution = TestExecution(ExecutionState.COMPLETED)
+    runner.run(Job('j1', observers=[observer]), execution)
+    assert execution.executed_count() == 1  # No exception thrown before
 
 
 class ExceptionRaisingObserver(ExecutionStateObserver):

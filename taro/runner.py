@@ -12,17 +12,18 @@ from taro.job import ExecutionStateObserver, JobControl
 log = logging.getLogger(__name__)
 
 
-def run(job):
-    instance = RunnerJobInstance(job)
+def run(job, execution):
+    instance = RunnerJobInstance(job, execution)
     instance.run()
     return instance
 
 
 class RunnerJobInstance(JobControl):
 
-    def __init__(self, job):
-        self._instance_id: str = util.unique_timestamp_hex()
+    def __init__(self, job, execution):
         self._job = job
+        self._execution = execution
+        self._instance_id: str = util.unique_timestamp_hex()
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
         self._exec_error = None
         self._executing = False
@@ -47,7 +48,7 @@ class RunnerJobInstance(JobControl):
 
     @property
     def progress(self):
-        return self._job.execution.progress()
+        return self._execution.progress()
 
     @property
     def exec_error(self) -> Union[ExecutionError, None]:
@@ -67,9 +68,9 @@ class RunnerJobInstance(JobControl):
             self._set_state(ExecutionState.CANCELLED)
             return
 
-        self._set_state(ExecutionState.TRIGGERED if self._job.execution.is_async() else ExecutionState.RUNNING)
+        self._set_state(ExecutionState.TRIGGERED if self._execution.is_async() else ExecutionState.RUNNING)
         try:
-            new_state = self._job.execution.execute()
+            new_state = self._execution.execute()
             self._set_state(new_state)
         except Exception as e:
             exec_error = e if isinstance(e, ExecutionError) else ExecutionError.from_unexpected_error(e)
@@ -95,7 +96,7 @@ class RunnerJobInstance(JobControl):
         if self._job.pending:
             self._pending_condition.set()
         if self._executing:
-            self._job.execution.stop()
+            self._execution.stop()
 
     def interrupt(self):
         """
@@ -109,7 +110,7 @@ class RunnerJobInstance(JobControl):
         if self._job.pending:
             self._pending_condition.set()
         if self._executing:
-            self._job.execution.interrupt()
+            self._execution.interrupt()
 
     # Inline?
     def _log(self, event: str, msg: str):

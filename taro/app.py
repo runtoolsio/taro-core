@@ -60,8 +60,8 @@ def run_exec(args):
     all_args = [args.command] + args.arg
     execution = ProcessExecution(all_args, args.read_output)
     job_id = args.id or " ".join(all_args)
-    job = Job(job_id, execution, pending=args.pending or '')
-    job_instance = RunnerJobInstance(job)
+    job = Job(job_id, pending=args.pending or '')
+    job_instance = RunnerJobInstance(job, execution)
     term = Term(job_instance)
     signal.signal(signal.SIGTERM, term.terminate)
     signal.signal(signal.SIGINT, term.interrupt)
