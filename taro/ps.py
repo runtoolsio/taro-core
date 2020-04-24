@@ -1,9 +1,9 @@
 import datetime
-import itertools
 import re
 from collections import namedtuple
 from typing import Iterable, List, Dict
 
+import itertools
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import FormattedText as FTxt
 from pypager.pager import Pager
@@ -27,8 +27,8 @@ RESULT = Column('RESULT', 25, lambda j: result(j))
 
 
 @iterates
-def print_jobs(job_instances, columns: Iterable[Column], *, show_header: bool, pager: bool):
-    gen = output_gen(job_instances, columns, show_header)
+def print_jobs(job_infos, columns: Iterable[Column], *, show_header: bool, pager: bool):
+    gen = output_gen(job_infos, columns, show_header)
 
     if pager:
         p = Pager()
@@ -39,7 +39,7 @@ def print_jobs(job_instances, columns: Iterable[Column], *, show_header: bool, p
             print_formatted_text(next(gen))
 
 
-def output_gen(job_instances, columns: Iterable[Column], show_header: bool):
+def output_gen(job_infos, columns: Iterable[Column], show_header: bool):
     """
     Table Representation:
         Each column has padding of size 1 from each side applied in both header and values
@@ -50,7 +50,7 @@ def output_gen(job_instances, columns: Iterable[Column], show_header: bool):
     Column Widths:
         First 50 rows are examined to find optimal width of the columns
     """
-    job_iter = iter(job_instances)
+    job_iter = iter(job_infos)
     first_fifty = list(itertools.islice(job_iter, 50))
     column_width = _calc_widths(first_fifty, columns)
     f = " ".join(" {:" + str(column_width[c] - 1) + "}" for c in columns)
@@ -66,16 +66,16 @@ def output_gen(job_instances, columns: Iterable[Column], show_header: bool):
         yield FTxt([(_get_color(j), line)])
 
 
-def _calc_widths(job_instances, columns: Iterable[Column]):
+def _calc_widths(job_infos, columns: Iterable[Column]):
     column_width = {c: len(c.name) + 2 for c in columns}  # +2 for left and right padding
-    for j in job_instances:
+    for j in job_infos:
         for c in columns:
             column_width[c] = max(column_width[c], min(len(c.value_fnc(j)) + 2, c.max_width))  # +2 for padding
     return column_width
 
 
-def _get_color(job_instance):
-    state = job_instance.lifecycle.state()
+def _get_color(job_info):
+    state = job_info.lifecycle.state()
 
     if state.is_before_execution():
         return 'green'
@@ -99,29 +99,29 @@ def _format_dt(dt):
     return dt.astimezone().replace(tzinfo=None).isoformat(sep=' ', timespec='milliseconds')
 
 
-def execution_time(job_instance):
-    if not job_instance.lifecycle.executed():
+def execution_time(job_info):
+    if not job_info.lifecycle.executed():
         return 'N/A'
 
-    if job_instance.lifecycle.state().is_executing():
-        exec_time = datetime.datetime.now(datetime.timezone.utc) - job_instance.lifecycle.execution_started()
+    if job_info.lifecycle.state().is_executing():
+        exec_time = datetime.datetime.now(datetime.timezone.utc) - job_info.lifecycle.execution_started()
     else:
-        exec_time = job_instance.lifecycle.last_changed() - job_instance.lifecycle.execution_started()
+        exec_time = job_info.lifecycle.last_changed() - job_info.lifecycle.execution_started()
     return util.format_timedelta(exec_time)
 
 
-def progress(job_instance):
-    if job_instance.lifecycle.state().is_terminal():
+def progress(job_info):
+    if job_info.lifecycle.state().is_terminal():
         return 'N/A'
 
-    return _limit_text(job_instance.progress, 35) or ''
+    return _limit_text(job_info.progress, 35) or ''
 
 
-def result(job_instance):
-    if not job_instance.lifecycle.state().is_terminal():
+def result(job_info):
+    if not job_info.lifecycle.state().is_terminal():
         return 'N/A'
 
-    return _limit_text(job_instance.progress, 35) or ''
+    return _limit_text(job_info.progress, 35) or ''
 
 
 def _limit_text(text, limit):
@@ -130,8 +130,8 @@ def _limit_text(text, limit):
     return text[:limit - 2] + '..'
 
 
-def print_state_change(job_instance):
-    print(f"{job_instance.job_id}@{job_instance.instance_id} -> {job_instance.lifecycle.state().name}")
+def print_state_change(job_info):
+    print(f"{job_info.job_id}@{job_info.instance_id} -> {job_info.lifecycle.state().name}")
 
 
 def parse_jobs_table(output, columns) -> List[Dict[Column, str]]:

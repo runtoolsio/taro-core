@@ -8,7 +8,7 @@ from taro.job import ExecutionStateObserver, JobInfo
 log = logging.getLogger(__name__)
 
 
-def _to_job_instance(t):
+def _to_job_info(t):
     states = [ExecutionState[name] for name in t[5].split(",")]
     exec_state = next((state for state in states if state.is_executing()), None)
 
@@ -52,7 +52,7 @@ class Rdbms(ExecutionStateObserver):
 
     def read_finished(self, *, chronological) -> List[JobInfo]:
         c = self._conn.execute("SELECT * FROM history ORDER BY finished " + ("ASC" if chronological else "DESC"))
-        return [_to_job_instance(row) for row in c.fetchall()]
+        return [_to_job_info(row) for row in c.fetchall()]
 
     def state_update(self, job_info: JobInfo):
         if job_info.lifecycle.state().is_terminal():

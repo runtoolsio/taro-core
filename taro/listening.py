@@ -18,7 +18,7 @@ class Dispatcher(ExecutionStateObserver):
 
     @iterates
     def state_update(self, job_info: JobInfo):
-        event_body = {"event_type": "job_state_change", "event": {"job_instance": dto.to_info_dto(job_info)}}
+        event_body = {"event_type": "job_state_change", "event": {"job_info": dto.to_info_dto(job_info)}}
         self._client.communicate(event_body)
 
     def close(self):
@@ -32,9 +32,9 @@ class Receiver(SocketServer):
         self.listeners = []
 
     def handle(self, req_body):
-        job_instance = dto.to_job_info(req_body['event']['job_instance'])
+        job_info = dto.to_job_info(req_body['event']['job_info'])
         for listener in self.listeners:
-            listener.state_update(job_instance)
+            listener.state_update(job_info)
 
 
 class EventPrint(ExecutionStateObserver):

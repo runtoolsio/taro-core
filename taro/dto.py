@@ -1,9 +1,11 @@
+from typing import Dict, Any
+
 from taro import util
 from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycle
 from taro.job import JobInfo
 
 
-def to_info_dto(info):
+def to_info_dto(info) -> Dict[str, Any]:
     state_changes = [{"state": state.name, "changed": change.isoformat()} for state, change in
                      info.lifecycle.state_changes()]
     if info.exec_error:
@@ -15,7 +17,7 @@ def to_info_dto(info):
             "lifecycle": {"state_changes": state_changes}, "progress": info.progress, "exec_error": exec_error}
 
 
-def to_job_info(as_dict):
+def to_job_info(as_dict) -> JobInfo:
     state_changes = ((ExecutionState[state_change['state']], util.dt_from_utc_str(state_change['changed']))
                      for state_change in as_dict['lifecycle']['state_changes'])
     lifecycle = ExecutionLifecycle(*state_changes)
