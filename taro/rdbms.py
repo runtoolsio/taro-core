@@ -55,7 +55,7 @@ class Rdbms(ExecutionStateObserver):
         return [_to_job_info(row) for row in c.fetchall()]
 
     def state_update(self, job_info: JobInfo):
-        if job_info.lifecycle.state().is_terminal():
+        if job_info.state.is_terminal():
             self._conn.execute(
                 "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (job_info.job_id,

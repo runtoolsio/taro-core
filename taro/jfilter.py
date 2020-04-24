@@ -27,7 +27,7 @@ def create_id_filter(text):
 
 
 def finished_filter(job_info):
-    return job_info.lifecycle.state().is_terminal()
+    return job_info.state.is_terminal()
 
 
 def today_filter(job_info):

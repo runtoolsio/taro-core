@@ -1,8 +1,9 @@
-import itertools
 import logging
 import os
 import signal
 import sqlite3
+
+import itertools
 import sys
 
 from taro import cli, paths, cnf, runner, ps, jfilter, plugin, log
@@ -154,7 +155,7 @@ def run_listen(args):
 
 
 def run_wait(args):
-    def condition(job): return not args.states or job.lifecycle.state().name in args.states
+    def condition(job_info): return not args.states or job_info.state.name in args.states
 
     receiver = Receiver()
     receiver.listeners.append(EventPrint(condition))

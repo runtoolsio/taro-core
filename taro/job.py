@@ -91,6 +91,10 @@ class JobInfo:
         return self._lifecycle
 
     @property
+    def state(self):
+        return self._lifecycle.state()
+
+    @property
     def progress(self):
         return self._progress
 

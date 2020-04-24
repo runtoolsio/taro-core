@@ -3,7 +3,7 @@ Implementation of job management framework based on :mod:`job` module.
 """
 import copy
 import logging
-from threading import Lock, Event
+from threading import Lock, Event, RLock
 from typing import List, Union
 
 from taro import util
@@ -30,7 +30,7 @@ class RunnerJobInstance(JobControl):
         self._executing = False
         self._stopped_or_interrupted: bool = False
         self._executing_flag_lock: Lock = Lock()
-        self._state_lock: Lock = Lock()
+        self._state_lock: RLock = RLock()
         if job.pending:
             self._pending_condition: Event = Event()
 
@@ -127,30 +127,32 @@ class RunnerJobInstance(JobControl):
         return "event=[{}] job_id=[{}] instance_id=[{}] {}".format(event, self._job.id, self._instance_id, msg)
 
     def _set_state(self, new_state, exec_error: ExecutionError = None):
-        prev_state = self._lifecycle.state()
+        # It is not necessary to lock all this code, but it would be if this method is not confined to one thread
+        # However locking is still needed for correct creation of job info when job_info method is called (anywhere)
+        job_info = None
         with self._state_lock:
-            is_new_state = self._lifecycle.set_state(new_state)
             if exec_error:
                 self._exec_error = exec_error
+                if exec_error.exec_state == ExecutionState.ERROR or exec_error.unexpected_error:
+                    log.exception(self._log('job_error', "reason=[{}]".format(exec_error)), exc_info=True)
+                else:
+                    log.warning(self._log('job_not_completed', "reason=[{}]".format(exec_error)))
 
-        if exec_error:
-            if exec_error.exec_state == ExecutionState.ERROR or exec_error.unexpected_error:
-                log.exception(self._log('job_error', "reason=[{}]".format(exec_error)), exc_info=True)
-            else:
-                log.warning(self._log('job_not_completed', "reason=[{}]".format(exec_error)))
+            prev_state = self._lifecycle.state()
+            if self._lifecycle.set_state(new_state):
+                level = logging.WARN if new_state.is_failure() else logging.INFO
+                log.log(level, self._log('job_state_changed', "new_state=[{}] prev_state=[{}]".format(
+                    new_state.name, prev_state.name)))
+                job_info = self.create_info()  # Be sure both new_state and exec_error are already set
 
-        if is_new_state:
-            level = logging.WARN if new_state.is_failure() else logging.INFO
-            log.log(level, self._log('job_state_changed', "new_state=[{}] prev_state=[{}]".format(
-                new_state.name, prev_state.name)))
+        if job_info:
+            self._notify_observers(job_info)
 
-            self._notify_observers()
-
-    def _notify_observers(self):
+    def _notify_observers(self, job_info: JobInfo):
         for observer in (self._job.observers + _observers):
             # noinspection PyBroadException
             try:
-                observer.state_update(self)
+                observer.state_update(job_info)
             except BaseException:
                 log.exception("event=[observer_exception]")
 

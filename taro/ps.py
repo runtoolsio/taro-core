@@ -21,7 +21,7 @@ CREATED = Column('CREATED', 25, lambda j: _format_dt(j.lifecycle.changed(Executi
 EXECUTED = Column('EXECUTED', 25, lambda j: _format_dt(j.lifecycle.execution_started()))
 ENDED = Column('ENDED', 25, lambda j: _format_dt(j.lifecycle.execution_finished()))
 EXEC_TIME = Column('EXECUTION TIME', 18, lambda j: execution_time(j))
-STATE = Column('STATE', max(len(s.name) for s in ExecutionState) + 2, lambda j: j.lifecycle.state().name)
+STATE = Column('STATE', max(len(s.name) for s in ExecutionState) + 2, lambda j: j.state.name)
 PROGRESS = Column('PROGRESS', 25, lambda j: progress(j))
 RESULT = Column('RESULT', 25, lambda j: result(j))
 
@@ -75,7 +75,7 @@ def _calc_widths(job_infos, columns: Iterable[Column]):
 
 
 def _get_color(job_info):
-    state = job_info.lifecycle.state()
+    state = job_info.state
 
     if state.is_before_execution():
         return 'green'
@@ -103,7 +103,7 @@ def execution_time(job_info):
     if not job_info.lifecycle.executed():
         return 'N/A'
 
-    if job_info.lifecycle.state().is_executing():
+    if job_info.state.is_executing():
         exec_time = datetime.datetime.now(datetime.timezone.utc) - job_info.lifecycle.execution_started()
     else:
         exec_time = job_info.lifecycle.last_changed() - job_info.lifecycle.execution_started()
@@ -111,14 +111,14 @@ def execution_time(job_info):
 
 
 def progress(job_info):
-    if job_info.lifecycle.state().is_terminal():
+    if job_info.state.is_terminal():
         return 'N/A'
 
     return _limit_text(job_info.progress, 35) or ''
 
 
 def result(job_info):
-    if not job_info.lifecycle.state().is_terminal():
+    if not job_info.state.is_terminal():
         return 'N/A'
 
     return _limit_text(job_info.progress, 35) or ''
@@ -131,7 +131,7 @@ def _limit_text(text, limit):
 
 
 def print_state_change(job_info):
-    print(f"{job_info.job_id}@{job_info.instance_id} -> {job_info.lifecycle.state().name}")
+    print(f"{job_info.job_id}@{job_info.instance_id} -> {job_info.state.name}")
 
 
 def parse_jobs_table(output, columns) -> List[Dict[Column, str]]:
