@@ -1,6 +1,6 @@
 #  Sender, Listening
 from taro import util, dto, ps
-from taro.job import ExecutionStateObserver, JobInstance
+from taro.job import ExecutionStateObserver, JobInfo
 from taro.socket import SocketServer, SocketClient
 from taro.util import iterates
 
@@ -17,8 +17,8 @@ class Dispatcher(ExecutionStateObserver):
         self._client = SocketClient(LISTENER_FILE_EXTENSION, bidirectional=False)
 
     @iterates
-    def state_update(self, job_instance: JobInstance):
-        event_body = {"event_type": "job_state_change", "event": {"job_instance": dto.job_instance(job_instance)}}
+    def state_update(self, job_info: JobInfo):
+        event_body = {"event_type": "job_state_change", "event": {"job_instance": dto.job_instance(job_info)}}
         self._client.communicate(event_body)
 
     def close(self):
@@ -42,9 +42,9 @@ class EventPrint(ExecutionStateObserver):
     def __init__(self, condition=lambda _: True):
         self.condition = condition
 
-    def state_update(self, job_instance: JobInstance):
-        if self.condition(job_instance):
-            ps.print_state_change(job_instance)
+    def state_update(self, job_info: JobInfo):
+        if self.condition(job_info):
+            ps.print_state_change(job_info)
 
 
 class StoppingListener(ExecutionStateObserver):
@@ -54,8 +54,8 @@ class StoppingListener(ExecutionStateObserver):
         self.condition = condition
         self.count = count
 
-    def state_update(self, job_instance: JobInstance):
-        if self.condition(job_instance):
+    def state_update(self, job_info: JobInfo):
+        if self.condition(job_info):
             self.count -= 1
             if self.count <= 0:
                 self._server.stop()

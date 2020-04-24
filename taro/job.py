@@ -129,5 +129,5 @@ class JobControl(JobInstance):
 class ExecutionStateObserver(abc.ABC):
 
     @abc.abstractmethod
-    def state_update(self, job_instance: JobInstance):
-        """This method is called when state is changed."""
+    def state_update(self, job_info: JobInfo):
+        """This method is called when job instance execution state is changed."""

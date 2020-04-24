@@ -3,7 +3,7 @@ from typing import List
 
 from taro import util
 from taro.execution import ExecutionState, ExecutionError, ExecutionLifecycle
-from taro.job import ExecutionStateObserver, JobInfo, JobInstance
+from taro.job import ExecutionStateObserver, JobInfo
 
 log = logging.getLogger(__name__)
 
@@ -54,18 +54,18 @@ class Rdbms(ExecutionStateObserver):
         c = self._conn.execute("SELECT * FROM history ORDER BY finished " + ("ASC" if chronological else "DESC"))
         return [_to_job_instance(row) for row in c.fetchall()]
 
-    def state_update(self, job_instance: JobInstance):
-        if job_instance.lifecycle.state().is_terminal():
+    def state_update(self, job_info: JobInfo):
+        if job_info.lifecycle.state().is_terminal():
             self._conn.execute(
                 "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (job_instance.job_id,
-                 job_instance.instance_id,
-                 job_instance.lifecycle.changed(ExecutionState.CREATED),
-                 job_instance.lifecycle.execution_started(),
-                 job_instance.lifecycle.last_changed(),
-                 ",".join([state.name for state in job_instance.lifecycle.states()]),
-                 job_instance.progress,
-                 job_instance.exec_error.message if job_instance.exec_error else None
+                (job_info.job_id,
+                 job_info.instance_id,
+                 job_info.lifecycle.changed(ExecutionState.CREATED),
+                 job_info.lifecycle.execution_started(),
+                 job_info.lifecycle.last_changed(),
+                 ",".join([state.name for state in job_info.lifecycle.states()]),
+                 job_info.progress,
+                 job_info.exec_error.message if job_info.exec_error else None
                  )
             )
             self._conn.commit()
