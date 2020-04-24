@@ -139,6 +139,14 @@ class ExecutionLifecycle:
     def __init__(self, *state_changes: Tuple[ExecutionState, datetime.datetime]):
         self._state_changes: OrderedDict[ExecutionState, datetime.datetime] = OrderedDict(state_changes)
 
+    def __copy__(self):
+        copied = ExecutionLifecycle()
+        copied._state_changes = self._state_changes
+        return copied
+
+    def __deepcopy__(self, memo):
+        return ExecutionLifecycle(*self.state_changes())
+
     def state(self):
         return next(reversed(self._state_changes.keys()), ExecutionState.NONE)
 

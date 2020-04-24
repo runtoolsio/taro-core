@@ -1,10 +1,9 @@
 import logging
-from collections import OrderedDict
 from typing import List
 
 from taro import util
 from taro.execution import ExecutionState, ExecutionError, ExecutionLifecycle
-from taro.job import ExecutionStateObserver, JobInstanceData, JobInstance
+from taro.job import ExecutionStateObserver, JobInfo, JobInstance
 
 log = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ def _to_job_instance(t):
 
     lifecycle = ExecutionLifecycle(*((state, dt_for_state(state)) for state in states))
     exec_error = ExecutionError(t[7], states[-1]) if t[7] else None  # TODO more data
-    return JobInstanceData(t[0], t[1], lifecycle, t[6], exec_error)
+    return JobInfo(t[0], t[1], lifecycle, t[6], exec_error)
 
 
 class Rdbms(ExecutionStateObserver):
@@ -51,7 +50,7 @@ class Rdbms(ExecutionStateObserver):
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
-    def read_finished(self, *, chronological) -> List[JobInstanceData]:
+    def read_finished(self, *, chronological) -> List[JobInfo]:
         c = self._conn.execute("SELECT * FROM history ORDER BY finished " + ("ASC" if chronological else "DESC"))
         return [_to_job_instance(row) for row in c.fetchall()]
 

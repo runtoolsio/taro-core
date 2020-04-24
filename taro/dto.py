@@ -1,6 +1,6 @@
 from taro import util
 from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycle
-from taro.job import JobInstanceData
+from taro.job import JobInfo
 
 
 def job_instance(inst):
@@ -25,7 +25,7 @@ def to_job_instance_data(as_dict):
     else:
         exec_error = None
 
-    return JobInstanceData(
+    return JobInfo(
         as_dict['job_id'],
         as_dict['instance_id'],
         lifecycle,

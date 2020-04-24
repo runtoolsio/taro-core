@@ -2,7 +2,7 @@ import logging
 from typing import List, Tuple
 
 from taro import dto
-from taro.job import JobInstanceData
+from taro.job import JobInfo
 from taro.socket import SocketServer, SocketClient
 from taro.util import iterates
 
@@ -61,7 +61,7 @@ class Client(SocketClient):
     def __init__(self):
         super().__init__(API_FILE_EXTENSION, bidirectional=True)
 
-    def read_jobs_info(self) -> List[JobInstanceData]:
+    def read_jobs_info(self) -> List[JobInfo]:
         responses = self.communicate({'req': {'api': '/job'}})
         return [_create_job_instance(inst_resp) for inst_resp in responses]
 
@@ -74,7 +74,7 @@ class Client(SocketClient):
             if resp['data']['released']:
                 print(resp)  # TODO Do not print, but returned released (use communicate)
 
-    def stop_jobs(self, instances, interrupt: bool) -> List[Tuple[JobInstanceData, str]]:
+    def stop_jobs(self, instances, interrupt: bool) -> List[Tuple[JobInfo, str]]:
         if not instances:
             raise ValueError('Instances to be stopped cannot be empty')
 

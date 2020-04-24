@@ -57,12 +57,19 @@ class JobInstance(abc.ABC):
     def exec_error(self) -> ExecutionError:
         """Job execution error if occurred otherwise None"""
 
-    def __repr__(self):
-        return "{}({!r}, {!r}, {!r}, {!r})".format(
-            self.__class__.__name__, self.instance_id, self.job_id, self.lifecycle, self.exec_error)
+    @abc.abstractmethod
+    def create_info(self):
+        """
+        Create consistent (thread-safe) snapshot of job instance state
+
+        :return job (instance) info
+        """
 
 
-class JobInstanceData(JobInstance):
+class JobInfo:
+    """
+    Immutable snapshot of job instance state
+    """
 
     def __init__(self, job_id: str, instance_id: str, lifecycle, progress, exec_error: ExecutionError):
         self._job_id = job_id
@@ -91,6 +98,10 @@ class JobInstanceData(JobInstance):
     def exec_error(self) -> ExecutionError:
         return self._exec_error
 
+    def __repr__(self) -> str:
+        return "{}({!r}, {!r})".format(
+            self.__class__.__name__, self._job_id, self.instance_id, self._lifecycle, self._progress, self._exec_error)
+
 
 class JobControl(JobInstance):
 
@@ -99,7 +110,7 @@ class JobControl(JobInstance):
         """
         Trigger job execution waiting for a given condition. Ignore if the instance doesn't wait for the condition.
         :param pending: name of the condition
-        :return: whether job has been released
+        :return whether job has been released
         """
 
     @abc.abstractmethod

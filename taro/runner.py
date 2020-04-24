@@ -1,13 +1,14 @@
 """
 Implementation of job management framework based on :mod:`job` module.
 """
+import copy
 import logging
 from threading import Lock, Event
 from typing import List, Union
 
 from taro import util
 from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement
-from taro.job import ExecutionStateObserver, JobControl
+from taro.job import ExecutionStateObserver, JobControl, JobInfo
 
 log = logging.getLogger(__name__)
 
@@ -29,10 +30,15 @@ class RunnerJobInstance(JobControl):
         self._executing = False
         self._stopped_or_interrupted: bool = False
         self._executing_flag_lock: Lock = Lock()
+        self._state_lock: Lock = Lock()
         if job.pending:
             self._pending_condition: Event = Event()
 
         self._set_state(ExecutionState.CREATED)
+
+    def __repr__(self):
+        return "{}({!r}, {!r})".format(
+            self.__class__.__name__, self._job, self._execution)
 
     @property
     def instance_id(self) -> str:
@@ -54,6 +60,11 @@ class RunnerJobInstance(JobControl):
     def exec_error(self) -> Union[ExecutionError, None]:
         return self._exec_error
 
+    def create_info(self):
+        with self._state_lock:
+            return JobInfo(
+                self.job_id, self.instance_id, copy.deepcopy(self._lifecycle), self.progress, self.exec_error)
+
     def run(self):
         if self._job.pending and not self._stopped_or_interrupted:
             self._set_state(ExecutionState.PENDING)
@@ -74,8 +85,7 @@ class RunnerJobInstance(JobControl):
             self._set_state(new_state)
         except Exception as e:
             exec_error = e if isinstance(e, ExecutionError) else ExecutionError.from_unexpected_error(e)
-            self._set_error(exec_error)
-            self._set_state(exec_error.exec_state)
+            self._set_state(exec_error.exec_state, exec_error)
 
     def release(self, pending: str) -> bool:
         if pending and self._job.pending == pending and not self._pending_condition.is_set():
@@ -116,23 +126,25 @@ class RunnerJobInstance(JobControl):
     def _log(self, event: str, msg: str):
         return "event=[{}] job_id=[{}] instance_id=[{}] {}".format(event, self._job.id, self._instance_id, msg)
 
-    def _set_state(self, new_state):
+    def _set_state(self, new_state, exec_error: ExecutionError = None):
         prev_state = self._lifecycle.state()
-        if not self._lifecycle.set_state(new_state):
-            return
+        with self._state_lock:
+            is_new_state = self._lifecycle.set_state(new_state)
+            if exec_error:
+                self._exec_error = exec_error
 
-        level = logging.WARN if new_state.is_failure() else logging.INFO
-        log.log(level, self._log('job_state_changed', "new_state=[{}] prev_state=[{}]".format(
-            new_state.name, prev_state.name)))
+        if exec_error:
+            if exec_error.exec_state == ExecutionState.ERROR or exec_error.unexpected_error:
+                log.exception(self._log('job_error', "reason=[{}]".format(exec_error)), exc_info=True)
+            else:
+                log.warning(self._log('job_not_completed', "reason=[{}]".format(exec_error)))
 
-        self._notify_observers()
+        if is_new_state:
+            level = logging.WARN if new_state.is_failure() else logging.INFO
+            log.log(level, self._log('job_state_changed', "new_state=[{}] prev_state=[{}]".format(
+                new_state.name, prev_state.name)))
 
-    def _set_error(self, exec_error: ExecutionError):
-        self._exec_error = exec_error
-        if exec_error.exec_state == ExecutionState.ERROR or exec_error.unexpected_error:
-            log.exception(self._log('job_error', "reason=[{}]".format(exec_error)), exc_info=True)
-        else:
-            log.warning(self._log('job_not_completed', "reason=[{}]".format(exec_error)))
+            self._notify_observers()
 
     def _notify_observers(self):
         for observer in (self._job.observers + _observers):
