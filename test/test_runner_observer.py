@@ -8,6 +8,7 @@ import pytest
 import taro.runner as runner
 from taro.execution import ExecutionState
 from taro.job import Job, ExecutionStateObserver, JobInfo
+from taro.runner import RunnerJobInstance
 from taro.test.execution import TestExecution  # TODO package import
 from taro.test.observer import TestObserver
 
@@ -59,7 +60,9 @@ def test_observer_raises_exception():
     """
     observer = ExceptionRaisingObserver(BaseException('Should be captured by runner'))
     execution = TestExecution(ExecutionState.COMPLETED)
-    runner.run(Job('j1', observers=[observer]), execution)
+    job_instance = RunnerJobInstance(Job('j1'), execution)
+    job_instance.add_observer(observer)
+    job_instance.run()
     assert execution.executed_count() == 1  # No exception thrown before
 
 

@@ -17,17 +17,16 @@ from taro.execution import ExecutionError
 
 
 class Job:
-    def __init__(self, job_id: str, observers=(), pending: str = ''):
+    def __init__(self, job_id: str, pending: str = ''):
         if not job_id:
             raise ValueError('Job ID cannot be None or empty')
 
         self.id = job_id
-        self.observers = list(observers)
         self.pending = pending
 
     def __repr__(self):
-        return "{}({!r}, {!r}, {!r})".format(
-            self.__class__.__name__, self.id, self.observers, self.pending)
+        return "{}({!r}, {!r})".format(
+            self.__class__.__name__, self.id, self.pending)
 
 
 class JobInstance(abc.ABC):
@@ -63,6 +62,22 @@ class JobInstance(abc.ABC):
         Create consistent (thread-safe) snapshot of job instance state
 
         :return job (instance) info
+        """
+
+    @abc.abstractmethod
+    def add_observer(self, observer):
+        """
+        Register job instance execution state observer
+
+        :param observer observer to register
+        """
+
+    @abc.abstractmethod
+    def remove_observer(self, observer):
+        """
+        De-register job instance execution state observer
+
+        :param observer observer to de-register
         """
 
 

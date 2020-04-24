@@ -33,6 +33,7 @@ class RunnerJobInstance(JobControl):
         self._state_lock: RLock = RLock()
         if job.pending:
             self._pending_condition: Event = Event()
+        self._observers = []
 
         self._set_state(ExecutionState.CREATED)
 
@@ -64,6 +65,12 @@ class RunnerJobInstance(JobControl):
         with self._state_lock:
             return JobInfo(
                 self.job_id, self.instance_id, copy.deepcopy(self._lifecycle), self.progress, self.exec_error)
+
+    def add_observer(self, observer):
+        self._observers.append(observer)
+
+    def remove_observer(self, observer):
+        self._observers.remove(observer)
 
     def run(self):
         if self._job.pending and not self._stopped_or_interrupted:
@@ -149,7 +156,7 @@ class RunnerJobInstance(JobControl):
             self._notify_observers(job_info)
 
     def _notify_observers(self, job_info: JobInfo):
-        for observer in (self._job.observers + _observers):
+        for observer in (self._observers + _observers):
             # noinspection PyBroadException
             try:
                 observer.state_update(job_info)
