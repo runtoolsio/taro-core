@@ -11,8 +11,8 @@ log = logging.getLogger(__name__)
 API_FILE_EXTENSION = '.api'
 
 
-def _create_socket_name(job_instance):
-    return job_instance.instance_id + API_FILE_EXTENSION
+def _create_socket_name(job_info):
+    return job_info.instance_id + API_FILE_EXTENSION
 
 
 class Server(SocketServer):
@@ -27,10 +27,10 @@ class Server(SocketServer):
         if 'api' not in req_body['req']:
             return {"resp": {"error": "missing_req_api"}}
 
-        instance = dto.job_instance(self._job_control)
+        info_dto = dto.to_info_dto(self._job_control.create_info())
 
         if req_body['req']['api'] == '/job':
-            return {"resp": {"code": 200}, "data": {"job_instance": instance}}
+            return {"resp": {"code": 200}, "data": {"job_info": info_dto}}
 
         if req_body['req']['api'] == '/release':
             if 'data' not in req_body:
@@ -39,21 +39,21 @@ class Server(SocketServer):
                 return {"resp": {"error": "missing_data_field", "field": "pending"}}
 
             released = self._job_control.release(req_body.get('data').get('pending'))
-            return {"resp": {"code": 200}, "data": {"job_instance": instance, "released": released}}
+            return {"resp": {"code": 200}, "data": {"job_info": info_dto, "released": released}}
 
         if req_body['req']['api'] == '/stop':
             self._job_control.stop()
-            return {"resp": {"code": 200}, "data": {"job_instance": instance, "result": "stop_performed"}}
+            return {"resp": {"code": 200}, "data": {"job_info": info_dto, "result": "stop_performed"}}
 
         if req_body['req']['api'] == '/interrupt':
             self._job_control.interrupt()
-            return {"resp": {"code": 200}, "data": {"job_instance": instance, "result": "interrupt_performed"}}
+            return {"resp": {"code": 200}, "data": {"job_info": info_dto, "result": "interrupt_performed"}}
 
         return {"resp": {"error": "unknown_req_api"}}
 
 
-def _create_job_instance(inst_resp):
-    return dto.to_job_instance_data(inst_resp.response['data']['job_instance'])
+def _create_job_info(info_resp):
+    return dto.to_job_info(info_resp.response['data']['job_info'])
 
 
 class Client(SocketClient):
@@ -63,7 +63,7 @@ class Client(SocketClient):
 
     def read_jobs_info(self) -> List[JobInfo]:
         responses = self.communicate({'req': {'api': '/job'}})
-        return [_create_job_instance(inst_resp) for inst_resp in responses]
+        return [_create_job_info(inst_resp) for inst_resp in responses]
 
     @iterates
     def release_jobs(self, pending):
@@ -79,4 +79,4 @@ class Client(SocketClient):
             raise ValueError('Instances to be stopped cannot be empty')
 
         inst_responses = self.communicate({'req': {'api': '/interrupt' if interrupt else '/stop'}}, instances)
-        return [(_create_job_instance(inst_resp), inst_resp.response['data']['result']) for inst_resp in inst_responses]
+        return [(_create_job_info(inst_resp), inst_resp.response['data']['result']) for inst_resp in inst_responses]
