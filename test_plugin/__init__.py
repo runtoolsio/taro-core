@@ -1,4 +1,4 @@
-# For plugin testing in test_plugin.py
+# For plugin testing in test_plugin.py and test_app_exec_plugin.py
 from typing import List, Optional
 from weakref import ref
 

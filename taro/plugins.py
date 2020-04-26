@@ -14,12 +14,19 @@ class PluginBase(abc.ABC):
     name2subclass = {}
 
     def __init_subclass__(cls, name=None, **kwargs):
+        """
+        All plugins are registered using subclass registration:
+        https://www.python.org/dev/peps/pep-0487/#subclass-registration
+        """
+
         super().__init_subclass__(**kwargs)
         cls.name2subclass[name or cls.__module__] = cls
+        log.debug("event=[plugin_registered] name=[%s] class=[%s]", name, cls)
 
     @staticmethod
     def create_plugins(ext_prefix, names) -> Dict[str, 'PluginBase']:
-        discover_plugins(ext_prefix, names)
+        discover_ext_plugins(ext_prefix, names)
+
         name2plugin = {}
         for name in names:
             try:
@@ -43,23 +50,23 @@ class PluginBase(abc.ABC):
         """
 
 
-def discover_plugins(ext_prefix, names, skip_imported=True) -> Dict[str, ModuleType]:
+def discover_ext_plugins(ext_prefix, names, skip_imported=True) -> Dict[str, ModuleType]:
     discovered_names = [name for finder, name, is_pkg in pkgutil.iter_modules() if name.startswith(ext_prefix)]
-    log.debug("event=[plugin_modules_discovered] names=[%s]", ",".join(discovered_names))
+    log.debug("event=[ext_plugin_modules_discovered] names=[%s]", ",".join(discovered_names))
 
     name2module = {}
     for name in names:
         if skip_imported and name in PluginBase.name2subclass.keys():
             continue  # Already imported
         if name not in discovered_names:
-            log.warning("event=[plugin_module_not_found] module=[%s]", name)
+            log.warning("event=[ext_plugin_module_not_found] module=[%s]", name)
             continue
 
         try:
             module = importlib.import_module(name)
             name2module[name] = module
-            log.debug("event=[plugin_module_imported] name=[%s] module=[%s]", name, module)
+            log.debug("event=[ext_plugin_module_imported] name=[%s] module=[%s]", name, module)
         except BaseException as e:
-            log.exception("event=[plugin_module_invalid] reason=[import_failed] name=[%s] detail=[%s]", name, e)
+            log.exception("event=[ext_plugin_module_invalid] reason=[import_failed] name=[%s] detail=[%s]", name, e)
 
     return name2module
