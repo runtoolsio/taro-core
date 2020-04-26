@@ -10,18 +10,20 @@ from taro.job import JobControl
 log = logging.getLogger(__name__)
 
 
+# TODO plugin collisions
 class PluginBase(abc.ABC):
     name2subclass = {}
 
-    def __init_subclass__(cls, name=None, **kwargs):
+    def __init_subclass__(cls, *, plugin_name=None, **kwargs):
         """
         All plugins are registered using subclass registration:
         https://www.python.org/dev/peps/pep-0487/#subclass-registration
         """
 
         super().__init_subclass__(**kwargs)
-        cls.name2subclass[name or cls.__module__] = cls
-        log.debug("event=[plugin_registered] name=[%s] class=[%s]", name, cls)
+        res_name = plugin_name or cls.__module__
+        cls.name2subclass[res_name] = cls
+        log.debug("event=[plugin_registered] name=[%s] class=[%s]", res_name, cls)
 
     @staticmethod
     def create_plugins(ext_prefix, names) -> Dict[str, 'PluginBase']:
