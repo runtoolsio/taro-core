@@ -6,7 +6,7 @@ import sqlite3
 import itertools
 import sys
 
-from taro import cli, paths, cnf, runner, ps, jfilter, plugin, log
+from taro import cli, paths, cnf, runner, ps, jfilter, log, PluginBase
 from taro.api import Server, Client
 from taro.cnf import Config
 from taro.execution import ExecutionState
@@ -22,7 +22,7 @@ from taro.util import set_attr, expand_user
 logger = logging.getLogger(__name__)
 
 USE_MINIMAL_CONFIG = False
-PLUGIN_MODULE_PREFIX = 'taro_'
+EXT_PLUGIN_MODULE_PREFIX = 'taro_'
 DEFAULT_PS_COLUMNS = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.STATE, ps.PROGRESS)
 
 
@@ -77,8 +77,8 @@ def run_exec(args):
         runner.register_observer(persistence)
     dispatcher = Dispatcher()
     runner.register_observer(dispatcher)
-    for listener in plugin.discover_plugins(PLUGIN_MODULE_PREFIX, config.plugins).values():
-        runner.register_observer(listener)
+    for plugin in PluginBase.create_plugins(EXT_PLUGIN_MODULE_PREFIX, config.plugins).values():
+        plugin.new_job_instance(job_instance)
     try:
         job_instance.run()
     finally:
