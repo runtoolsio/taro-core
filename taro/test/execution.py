@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 
 
 class TestExecution(Execution):
+    __test__ = False  # To tell pytest it isn't a test class
 
     def __init__(self, after_exec_state: ExecutionState = None, raise_exc: Exception = None):
         if after_exec_state and raise_exc:

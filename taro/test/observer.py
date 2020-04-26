@@ -21,6 +21,7 @@ type_id = 'test'
 
 
 class TestObserver(ExecutionStateObserver):
+    __test__ = False  # To tell pytest it isn't a test class
 
     def __init__(self):
         self._events: List[Tuple[datetime, JobInfo, ExecutionState, ExecutionError]] = []
