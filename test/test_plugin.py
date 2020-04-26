@@ -1,8 +1,8 @@
 import pytest
 
 from taro import plugin
+from taro.plugin import PluginBase
 from test import plugins
-from test_plugin_valid import LISTENER
 from test.plugins import invalid_listener, none_listener
 
 
@@ -23,9 +23,11 @@ def test_load_invalid_listener():
 
 
 def test_plugin_discovered():
-    plugins_ = plugin.discover_plugins('test_', ['test_plugin_valid'])
-    assert len(plugins_) == 1
-    assert plugins_['test_plugin_valid'] is LISTENER
+    name2module = plugin.discover_plugins('test_', ['test_plugin_valid'])
+    assert len(name2module) == 1
+    assert name2module['test_plugin_valid'].__name__ == 'test_plugin_valid'
+    assert len(PluginBase.name2subclass) == 1
+    assert PluginBase.name2subclass['test_plugin_valid'].__name__ == 'ValidPlugin'
 
 
 def test_invalid_plugin_ignored():

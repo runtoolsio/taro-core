@@ -1,8 +1,6 @@
 # For plugin testing in test_plugin.py
-from taro.test.observer import TestObserver
-
-LISTENER = TestObserver()
+from taro import PluginBase
 
 
-def create_execution_listener():
-    return LISTENER
+class ValidPlugin(PluginBase):
+    pass
