@@ -2,9 +2,9 @@ from taro import plugins
 
 
 def test_plugin_discovered():
-    name2module = plugins.discover_plugins('test_', ['test_plugin_valid'], skip_imported=False)
+    name2module = plugins.discover_plugins('test_', ['test_plugin'], skip_imported=False)
     assert len(name2module) == 1
-    assert name2module['test_plugin_valid'].__name__ == 'test_plugin_valid'
+    assert name2module['test_plugin'].__name__ == 'test_plugin'
 
 
 def test_invalid_plugin_ignored():

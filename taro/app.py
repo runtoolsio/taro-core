@@ -78,7 +78,10 @@ def run_exec(args):
     dispatcher = Dispatcher()
     runner.register_observer(dispatcher)
     for plugin in PluginBase.create_plugins(EXT_PLUGIN_MODULE_PREFIX, config.plugins).values():
-        plugin.new_job_instance(job_instance)
+        try:
+            plugin.new_job_instance(job_instance)
+        except BaseException as e:
+            logger.warning("event=[plugin_failed] reason=[exception_on_new_job_instance] detail=[%s]", e)
     try:
         job_instance.run()
     finally:
