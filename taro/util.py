@@ -2,6 +2,29 @@ import functools
 import os
 import secrets
 from datetime import datetime
+from types import SimpleNamespace
+
+
+class NestedNamespace(SimpleNamespace):
+
+    def get(self, fields: str, default=None, type_=None):
+        return get_attr(self, fields, default, type_)
+
+
+# Martijn Pieters' solution below: https://stackoverflow.com/questions/50490856
+@functools.singledispatch
+def wrap_namespace(ob):
+    return ob
+
+
+@wrap_namespace.register(dict)
+def _wrap_dict(ob):
+    return NestedNamespace(**{k: wrap_namespace(v) for k, v in ob.items()})
+
+
+@wrap_namespace.register(list)
+def _wrap_list(ob):
+    return [wrap_namespace(v) for v in ob]
 
 
 def get_attr(obj, fields, default=None, type_=None):

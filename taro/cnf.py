@@ -1,10 +1,9 @@
 from collections.abc import Iterable
-from functools import singledispatch
 from types import SimpleNamespace
 
 import yaml
 
-from taro.util import get_attr
+from taro.util import wrap_namespace
 
 LOG_ENABLED = 'log.enabled'
 LOG_STDOUT_LEVEL = 'log.stdout.level'
@@ -26,32 +25,16 @@ def print_config(config_file_path):
         print(file.read())
 
 
-# Martijn Pieters' solution below: https://stackoverflow.com/questions/50490856
-@singledispatch
-def wrap_namespace(ob):
-    return ob
-
-
-@wrap_namespace.register(dict)
-def _wrap_dict(ob):
-    return SimpleNamespace(**{k: wrap_namespace(v) for k, v in ob.items()})
-
-
-@wrap_namespace.register(list)
-def _wrap_list(ob):
-    return [wrap_namespace(v) for v in ob]
-
-
 class Config:
 
     def __init__(self, cns):
-        self.log_enabled = get_attr(cns, LOG_ENABLED, default=True)
-        self.log_stdout_level = get_attr(cns, LOG_STDOUT_LEVEL, default='off', type_=str).lower()
-        self.log_file_level = get_attr(cns, LOG_FILE_LEVEL, default='off', type_=str).lower()
-        self.log_file_path = get_attr(cns, LOG_FILE_PATH, type_=str)
+        self.log_enabled = cns.get(LOG_ENABLED, default=True)
+        self.log_stdout_level = cns.get(LOG_STDOUT_LEVEL, default='off', type_=str).lower()
+        self.log_file_level = cns.get(LOG_FILE_LEVEL, default='off', type_=str).lower()
+        self.log_file_path = cns.get(LOG_FILE_PATH, type_=str)
 
-        self.persistence_enabled = get_attr(cns, PERSISTENCE_ENABLED, default=False)
-        plugins = get_attr(cns, PLUGINS)
+        self.persistence_enabled = cns.get(PERSISTENCE_ENABLED, default=False)
+        plugins = cns.get(PLUGINS)
         if isinstance(plugins, str):
             self.plugins = (plugins,)
         elif isinstance(plugins, Iterable):
