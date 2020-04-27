@@ -50,7 +50,11 @@ There's usually a multi-step search for the configuration file.
 """
 
 
-def lookup_config_file_path() -> Path:
+def lookup_config_file():
+    return lookup_config_file_path(_DEFAULT_CONFIG_FILE)
+
+
+def lookup_config_file_path(file) -> Path:
     """
     1. If non-root user search: ${XDG_CONFIG_HOME}/taro/{config-file}
     2. If not found or root user search: /etc/taro/{config-file}
@@ -63,12 +67,12 @@ def lookup_config_file_path() -> Path:
 
     if not _is_root():
         home_dir = Path.home()
-        user_config = home_dir / '.config' / 'taro' / _DEFAULT_CONFIG_FILE
+        user_config = home_dir / '.config' / 'taro' / file
         paths.append(user_config)
         if user_config.exists():
             return user_config
 
-    system_config = Path('/etc/taro') / _DEFAULT_CONFIG_FILE
+    system_config = Path('/etc/taro') / file
     paths.append(system_config)
     if system_config.exists():
         return system_config

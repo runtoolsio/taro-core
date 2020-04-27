@@ -40,6 +40,8 @@ class PluginBase(abc.ABC):
                 plugin = plugin_cls()
                 name2plugin[name] = plugin
                 log.debug("event=[plugin_created] name=[%s] plugin=[%s]", name, plugin)
+            except PluginDisabledError as e:
+                log.warning("event=[plugin_disabled] name=[%s] detail=[%s]", name, e)
             except BaseException as e:
                 log.warning("event=[plugin_instantiation_failed] name=[%s] detail=[%s]", name, e)
 
@@ -50,6 +52,16 @@ class PluginBase(abc.ABC):
         """
         New job instance created.
         """
+
+
+class PluginDisabledError(Exception):
+    """
+    This exception can be thrown from plugin's init method to signalise that there is a condition preventing
+    the plugin to work. It can be an initialization error, missing configuration, etc.
+    """
+
+    def __init__(self, message: str):
+        super().__init__(message)
 
 
 def discover_ext_plugins(ext_prefix, names, skip_imported=True) -> Dict[str, ModuleType]:

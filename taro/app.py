@@ -1,9 +1,8 @@
+import itertools
 import logging
 import os
 import signal
 import sqlite3
-
-import itertools
 import sys
 
 from taro import cli, paths, cnf, runner, ps, jfilter, log, PluginBase
@@ -210,7 +209,7 @@ def get_config_file_path(args):
     if (hasattr(args, 'min_config') and args.min_config) or USE_MINIMAL_CONFIG:
         return paths.minimal_config_file_path()
 
-    return paths.lookup_config_file_path()
+    return paths.lookup_config_file()
 
 
 def override_config(args, config):
