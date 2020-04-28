@@ -13,7 +13,7 @@ class NestedNamespace(SimpleNamespace):
 
 # Martijn Pieters' solution below: https://stackoverflow.com/questions/50490856
 @functools.singledispatch
-def wrap_namespace(ob):
+def wrap_namespace(ob) -> NestedNamespace:
     return ob
 
 

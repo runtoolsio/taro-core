@@ -3,7 +3,8 @@ from types import SimpleNamespace
 
 import yaml
 
-from taro.util import wrap_namespace
+from taro import util
+from taro.util import NestedNamespace
 
 LOG_ENABLED = 'log.enabled'
 LOG_STDOUT_LEVEL = 'log.stdout.level'
@@ -14,9 +15,9 @@ PERSISTENCE_TYPE = 'persistence.type'
 PLUGINS = 'plugins'
 
 
-def read_config(config_file_path) -> SimpleNamespace:
+def read_config(config_file_path) -> NestedNamespace:
     with open(config_file_path, 'r') as file:
-        return wrap_namespace(yaml.safe_load(file))
+        return util.wrap_namespace(yaml.safe_load(file))
 
 
 def print_config(config_file_path):
