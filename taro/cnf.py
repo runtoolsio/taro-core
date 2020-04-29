@@ -13,7 +13,7 @@ PLUGINS = 'plugins'
 
 
 def read_config(config_file_path) -> NestedNamespace:
-    import yaml  # 'cnf' module is imported to main 'taro' module, this prevents to automatically import 'yaml' too
+    import yaml  # 'cnf' module is imported into main 'taro' module, this prevents to automatically import 'yaml' too
     with open(config_file_path, 'r') as file:
         return util.wrap_namespace(yaml.safe_load(file))
 
