@@ -1,7 +1,4 @@
 from collections.abc import Iterable
-from types import SimpleNamespace
-
-import yaml
 
 from taro import util
 from taro.util import NestedNamespace
@@ -16,6 +13,7 @@ PLUGINS = 'plugins'
 
 
 def read_config(config_file_path) -> NestedNamespace:
+    import yaml  # 'cnf' module is imported to main 'taro' module, this prevents to automatically import 'yaml' too
     with open(config_file_path, 'r') as file:
         return util.wrap_namespace(yaml.safe_load(file))
 
