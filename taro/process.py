@@ -11,9 +11,9 @@ USE_SHELL = False  # For testing only
 
 class ProcessExecution(Execution):
 
-    def __init__(self, args, read_progress: bool):
+    def __init__(self, args, read_output: bool):
         self.args = args
-        self.read_progress: bool = read_progress
+        self.read_output: bool = read_output
         self._popen: Union[Popen, None] = None
         self._progress = None
         self._stopped: bool = False
@@ -25,15 +25,19 @@ class ProcessExecution(Execution):
     def execute(self) -> ExecutionState:
         ret_code = -1
         if not self._stopped and not self._interrupted:
-            stdout = PIPE if self.read_progress else None
+            stdout = PIPE if self.read_output else None
             try:
                 self._popen = Popen(" ".join(self.args) if USE_SHELL else self.args, stdout=stdout, shell=USE_SHELL)
-                if self.read_progress:
-                    Thread(target=self._read_progress, name='Progress-Reader', daemon=True).start()
+                output_reader = None
+                if self.read_output:
+                    output_reader = Thread(target=self._read_output, name='Output-Reader', daemon=True)
+                    output_reader.start()
 
                 # print(psutil.Process(self.popen.pid).memory_info().rss)
 
                 ret_code = self._popen.wait()
+                if output_reader:
+                    output_reader.join(timeout=1)
                 if ret_code == 0:
                     return ExecutionState.COMPLETED
             except KeyboardInterrupt:
@@ -53,7 +57,7 @@ class ProcessExecution(Execution):
     def progress(self):
         return self._progress
 
-    def _read_progress(self):
+    def _read_output(self):
         for line in io.TextIOWrapper(self._popen.stdout, encoding="utf-8"):
             self._progress = line.rstrip()
             print(self._progress)
