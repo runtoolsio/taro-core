@@ -122,10 +122,6 @@ def execution_time(job_info):
     return util.format_timedelta(exec_time)
 
 
-def status(job_info, limit):
-    return _limit_text(job_info.status, limit) or ''
-
-
 def _limit_text(text, limit):
     if not text or len(text) <= limit:
         return text
