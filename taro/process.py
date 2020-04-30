@@ -1,6 +1,6 @@
 import io
 import sys
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, STDOUT
 from threading import Thread
 from typing import Union
 
@@ -26,8 +26,10 @@ class ProcessExecution(Execution):
         ret_code = -1
         if not self._stopped and not self._interrupted:
             stdout = PIPE if self.read_output else None
+            stderr = STDOUT if self.read_output else None
             try:
-                self._popen = Popen(" ".join(self.args) if USE_SHELL else self.args, stdout=stdout, shell=USE_SHELL)
+                self._popen = Popen(" ".join(self.args) if USE_SHELL else self.args, stdout=stdout, stderr=stderr,
+                                    shell=USE_SHELL)
                 output_reader = None
                 if self.read_output:
                     output_reader = Thread(target=self._read_output, name='Output-Reader', daemon=True)
