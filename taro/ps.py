@@ -1,9 +1,10 @@
 import datetime
-import itertools
+import os
 import re
 from collections import namedtuple
 from typing import Iterable, List, Dict
 
+import itertools
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import FormattedText as FTxt
 from pypager.pager import Pager
@@ -22,11 +23,11 @@ EXECUTED = Column('EXECUTED', 25, lambda j: _format_dt(j.lifecycle.execution_sta
 ENDED = Column('ENDED', 25, lambda j: _format_dt(j.lifecycle.execution_finished()))
 EXEC_TIME = Column('EXECUTION TIME', 18, lambda j: execution_time(j))
 STATE = Column('STATE', max(len(s.name) for s in ExecutionState) + 2, lambda j: j.state.name)
-STATUS = Column('STATUS', 25, lambda j: status(j, 25 - 2))
+STATUS = Column('STATUS', 30, lambda j: j.status or '')
 
 
 @iterates
-def print_jobs(job_infos, columns: Iterable[Column], *, show_header: bool, pager: bool):
+def print_jobs(job_infos, columns: List[Column], *, show_header: bool, pager: bool):
     gen = output_gen(job_infos, columns, show_header)
 
     if pager:
@@ -38,7 +39,7 @@ def print_jobs(job_infos, columns: Iterable[Column], *, show_header: bool, pager
             print_formatted_text(next(gen))
 
 
-def output_gen(job_infos, columns: Iterable[Column], show_header: bool):
+def output_gen(job_infos, columns: List[Column], show_header: bool):
     """
     Table Representation:
         Each column has padding of size 1 from each side applied in both header and values
@@ -65,11 +66,23 @@ def output_gen(job_infos, columns: Iterable[Column], show_header: bool):
         yield FTxt([(_get_color(j), line)])
 
 
-def _calc_widths(job_infos, columns: Iterable[Column]):
+def _calc_widths(job_infos, columns: List[Column]):
     column_width = {c: len(c.name) + 2 for c in columns}  # +2 for left and right padding
     for j in job_infos:
         for c in columns:
             column_width[c] = max(column_width[c], min(len(c.value_fnc(j)) + 2, c.max_width))  # +2 for padding
+
+    # vv Add spare terminal length to the last column vv
+    try:
+        terminal_length = os.get_terminal_size().columns
+    except OSError:
+        return column_width  # Failing in tests
+
+    actual_length = sum(column_width.values()) + len(column_width)
+    spare_length = terminal_length - actual_length
+    if spare_length > 0:
+        column_width[columns[-1]] += spare_length
+
     return column_width
 
 
