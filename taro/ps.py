@@ -105,7 +105,7 @@ def execution_time(job_info):
     if job_info.state.is_executing():
         exec_time = datetime.datetime.now(datetime.timezone.utc) - job_info.lifecycle.execution_started()
     else:
-        exec_time = job_info.lifecycle.last_changed() - job_info.lifecycle.execution_started()
+        exec_time = job_info.lifecycle.execution_time()
     return util.format_timedelta(exec_time)
 
 

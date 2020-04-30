@@ -10,7 +10,7 @@ import abc
 import datetime
 from collections import OrderedDict
 from enum import Enum, auto
-from typing import Tuple, List, Iterable, Union, Set
+from typing import Tuple, List, Iterable, Set, Optional
 
 
 class ExecutionStateGroup(Enum):
@@ -165,14 +165,24 @@ class ExecutionLifecycle:
     def executed(self):
         return self.execution_started() is not None
 
-    def execution_started(self) -> Union[datetime.datetime, None]:
+    def execution_started(self) -> Optional[datetime.datetime]:
         return next((changed for state, changed in self._state_changes.items() if state.is_executing()), None)
 
-    def execution_finished(self) -> Union[datetime.datetime, None]:
+    def execution_finished(self) -> Optional[datetime.datetime]:
         state = self.state()
         if not state.is_terminal():
             return None
         return self.changed(state)
+
+    def execution_time(self) -> Optional[datetime.timedelta]:
+        finished = self.execution_finished()
+        if not finished:
+            return None
+        started = self.execution_started()
+        if not started:
+            return None
+
+        return finished - started
 
 
 class ExecutionLifecycleManagement(ExecutionLifecycle):
