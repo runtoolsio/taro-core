@@ -110,7 +110,7 @@ class Execution(abc.ABC):
         """
 
     @abc.abstractmethod
-    def progress(self):
+    def status(self):
         """
         If progress monitoring is not supported then this method must return None
 

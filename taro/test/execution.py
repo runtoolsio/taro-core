@@ -57,7 +57,7 @@ class TestExecution(Execution):
     def last_execution_occurrence(self) -> datetime:
         return self._execution_occurrences[-1]
 
-    def progress(self):
+    def status(self):
         return None
 
     def stop(self):

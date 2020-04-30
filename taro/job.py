@@ -48,8 +48,8 @@ class JobInstance(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def progress(self):
-        """Current progress of the job or None if not supported"""
+    def status(self):
+        """Current status of the job or None if not supported"""
 
     @property
     @abc.abstractmethod
@@ -86,11 +86,11 @@ class JobInfo:
     Immutable snapshot of job instance state
     """
 
-    def __init__(self, job_id: str, instance_id: str, lifecycle, progress, exec_error: ExecutionError):
+    def __init__(self, job_id: str, instance_id: str, lifecycle, status, exec_error: ExecutionError):
         self._job_id = job_id
         self._instance_id = instance_id
         self._lifecycle = lifecycle
-        self._progress = progress
+        self._status = status
         self._exec_error = exec_error
 
     @property
@@ -110,8 +110,8 @@ class JobInfo:
         return self._lifecycle.state()
 
     @property
-    def progress(self):
-        return self._progress
+    def status(self):
+        return self._status
 
     @property
     def exec_error(self) -> ExecutionError:
@@ -119,7 +119,7 @@ class JobInfo:
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r})".format(
-            self.__class__.__name__, self._job_id, self.instance_id, self._lifecycle, self._progress, self._exec_error)
+            self.__class__.__name__, self._job_id, self.instance_id, self._lifecycle, self._status, self._exec_error)
 
 
 class JobControl(JobInstance):

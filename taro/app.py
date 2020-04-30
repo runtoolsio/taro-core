@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 USE_MINIMAL_CONFIG = False
 EXT_PLUGIN_MODULE_PREFIX = 'taro_'
-DEFAULT_PS_COLUMNS = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.STATE, ps.PROGRESS)
+DEFAULT_PS_COLUMNS = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.STATE, ps.STATUS)
 
 
 def main_cli():
@@ -115,7 +115,7 @@ def run_jobs(args):
     finally:
         db_con.close()
 
-    columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE, ps.RESULT)
+    columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE, ps.STATUS)
     sorted_jobs = sorted(jobs, key=lambda j: j.lifecycle.changed(ExecutionState.CREATED),
                          reverse=not args.chronological)
     job_filter = _build_job_filter(args)
@@ -175,7 +175,7 @@ def run_stop(args):
         if len(jobs) > 1 and not args.all:
             print('No action performed, because the criteria matches more than one job.'
                   'Use --all flag if you wish to stop them all:' + os.linesep)
-            columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.RESULT, ps.STATE)
+            columns = (ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.STATE, ps.STATUS)
             ps.print_jobs(jobs, columns, show_header=True, pager=False)
             return  # Exit code non-zero?
 

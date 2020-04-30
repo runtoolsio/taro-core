@@ -29,8 +29,8 @@ def test_job_waiting(capsys):
     assert ExecutionState.PENDING.name.casefold() == jobs[0][ps.STATE].casefold()
 
 
-def test_job_progress(capsys):
-    # Shell to use && to combine commands
+def test_job_status(capsys):
+    # Shell to use '&&' to combine commands
     run_app_as_process_and_wait('exec --id p_test --read-output echo progress1 && sleep 1',
                                 wait_for=ExecutionState.RUNNING, daemon=True, shell=True)
 
@@ -38,4 +38,4 @@ def test_job_progress(capsys):
     output = capsys.readouterr().out
 
     jobs = ps.parse_jobs_table(output, app.DEFAULT_PS_COLUMNS)
-    assert 'progress1' == jobs[0][ps.PROGRESS]
+    assert 'progress1' == jobs[0][ps.STATUS]

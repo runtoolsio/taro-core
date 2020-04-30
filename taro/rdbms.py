@@ -64,7 +64,7 @@ class Rdbms(ExecutionStateObserver):
                  job_info.lifecycle.execution_started(),
                  job_info.lifecycle.last_changed(),
                  ",".join([state.name for state in job_info.lifecycle.states()]),
-                 job_info.progress,
+                 job_info.status,
                  job_info.exec_error.message if job_info.exec_error else None
                  )
             )

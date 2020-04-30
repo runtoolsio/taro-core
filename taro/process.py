@@ -15,7 +15,7 @@ class ProcessExecution(Execution):
         self.args = args
         self.read_output: bool = read_output
         self._popen: Union[Popen, None] = None
-        self._progress = None
+        self._status = None
         self._stopped: bool = False
         self._interrupted: bool = False
 
@@ -54,13 +54,13 @@ class ProcessExecution(Execution):
             raise ExecutionError("Process interrupted", ExecutionState.INTERRUPTED)
         raise ExecutionError("Process returned non-zero code " + str(ret_code), ExecutionState.FAILED)
 
-    def progress(self):
-        return self._progress
+    def status(self):
+        return self._status
 
     def _read_output(self):
         for line in io.TextIOWrapper(self._popen.stdout, encoding="utf-8"):
-            self._progress = line.rstrip()
-            print(self._progress)
+            self._status = line.rstrip()
+            print(self._status)
 
     def stop(self):
         self._stopped = True

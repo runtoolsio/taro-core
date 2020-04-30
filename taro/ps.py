@@ -1,9 +1,9 @@
 import datetime
+import itertools
 import re
 from collections import namedtuple
 from typing import Iterable, List, Dict
 
-import itertools
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import FormattedText as FTxt
 from pypager.pager import Pager
@@ -22,8 +22,7 @@ EXECUTED = Column('EXECUTED', 25, lambda j: _format_dt(j.lifecycle.execution_sta
 ENDED = Column('ENDED', 25, lambda j: _format_dt(j.lifecycle.execution_finished()))
 EXEC_TIME = Column('EXECUTION TIME', 18, lambda j: execution_time(j))
 STATE = Column('STATE', max(len(s.name) for s in ExecutionState) + 2, lambda j: j.state.name)
-PROGRESS = Column('PROGRESS', 25, lambda j: progress(j))
-RESULT = Column('RESULT', 25, lambda j: result(j))
+STATUS = Column('STATUS', 25, lambda j: status(j, 25 - 2))
 
 
 @iterates
@@ -110,18 +109,8 @@ def execution_time(job_info):
     return util.format_timedelta(exec_time)
 
 
-def progress(job_info):
-    if job_info.state.is_terminal():
-        return 'N/A'
-
-    return _limit_text(job_info.progress, 35) or ''
-
-
-def result(job_info):
-    if not job_info.state.is_terminal():
-        return 'N/A'
-
-    return _limit_text(job_info.progress, 35) or ''
+def status(job_info, limit):
+    return _limit_text(job_info.status, limit) or ''
 
 
 def _limit_text(text, limit):

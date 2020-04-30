@@ -54,8 +54,8 @@ class RunnerJobInstance(JobControl):
         return self._lifecycle
 
     @property
-    def progress(self):
-        return self._execution.progress()
+    def status(self):
+        return self._execution.status()
 
     @property
     def exec_error(self) -> Union[ExecutionError, None]:
@@ -64,7 +64,7 @@ class RunnerJobInstance(JobControl):
     def create_info(self):
         with self._state_lock:
             return JobInfo(
-                self.job_id, self.instance_id, copy.deepcopy(self._lifecycle), self.progress, self.exec_error)
+                self.job_id, self.instance_id, copy.deepcopy(self._lifecycle), self.status, self.exec_error)
 
     def add_observer(self, observer):
         self._observers.append(observer)
