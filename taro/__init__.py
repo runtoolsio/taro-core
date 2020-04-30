@@ -7,7 +7,7 @@ IMPLEMENTATION NOTE:
     additional packages.
 """
 from .plugins import PluginBase, PluginDisabledError
-from .util import NestedNamespace
+from .util import NestedNamespace, format_timedelta
 from .cnf import read_config
 from .execution import ExecutionStateGroup, ExecutionState, ExecutionError, ExecutionLifecycle
 from .job import JobInstance, JobControl, JobInfo, ExecutionStateObserver
