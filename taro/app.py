@@ -5,7 +5,7 @@ import signal
 import sqlite3
 import sys
 
-from taro import cli, paths, cnf, runner, ps, jfilter, log, PluginBase
+from taro import cli, paths, cnf, runner, ps, jfilter, log, PluginBase, persistence
 from taro.api import Server, Client
 from taro.cnf import Config
 from taro.execution import ExecutionState
@@ -13,7 +13,6 @@ from taro.jfilter import AllFilter
 from taro.job import Job
 from taro.listening import Dispatcher, Receiver, EventPrint, StoppingListener
 from taro.process import ProcessExecution
-from taro.persistence.sqlite import Rdbms
 from taro.runner import RunnerJobInstance
 from taro.term import Term
 from taro.util import set_attr, expand_user
@@ -72,8 +71,7 @@ def run_exec(args):
     db_con = None
     if config.persistence_enabled:
         db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
-        persistence = Rdbms(db_con)
-        runner.register_observer(persistence)
+        persistence.init_sqlite(db_con)
     dispatcher = Dispatcher()
     runner.register_observer(dispatcher)
     for plugin in PluginBase.create_plugins(EXT_PLUGIN_MODULE_PREFIX, config.plugins).values():
@@ -110,8 +108,8 @@ def run_jobs(args):
 
     db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
     try:
-        persistence = Rdbms(db_con)
-        jobs += persistence.read_finished(chronological=args.chronological)
+        persistence.init_sqlite(db_con)
+        jobs += persistence.read_jobs(chronological=args.chronological)
     finally:
         db_con.close()
 

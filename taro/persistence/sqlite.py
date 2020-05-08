@@ -3,8 +3,7 @@ from typing import List
 
 from taro import util
 from taro.execution import ExecutionState, ExecutionError, ExecutionLifecycle
-from taro.job import ExecutionStateObserver, JobInfo
-from taro.persistence import _Persistence
+from taro.job import JobInfo
 
 log = logging.getLogger(__name__)
 
@@ -28,11 +27,10 @@ def _to_job_info(t):
     return JobInfo(t[0], t[1], lifecycle, t[6], exec_error)
 
 
-class SQLite(_Persistence):
+class SQLite:
 
     def __init__(self, connection):
         self._conn = connection
-        self.check_tables_exist()
 
     def check_tables_exist(self):
         c = self._conn.cursor()
@@ -51,26 +49,21 @@ class SQLite(_Persistence):
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
-    def read_finished(self, *, chronological) -> List[JobInfo]:
+    def read_jobs(self, *, chronological) -> List[JobInfo]:
         c = self._conn.execute("SELECT * FROM history ORDER BY finished " + ("ASC" if chronological else "DESC"))
         return [_to_job_info(row) for row in c.fetchall()]
 
-    def store_ended_job(self, job_info):
-        if job_info.state.is_terminal():
-            self._conn.execute(
-                "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (job_info.job_id,
-                 job_info.instance_id,
-                 job_info.lifecycle.changed(ExecutionState.CREATED),
-                 job_info.lifecycle.execution_started(),
-                 job_info.lifecycle.last_changed(),
-                 ",".join([state.name for state in job_info.lifecycle.states()]),
-                 job_info.status,
-                 job_info.exec_error.message if job_info.exec_error else None
-                 )
-            )
-            self._conn.commit()
-
-    def close(self):
-        if self._conn:
-            self._conn.close()
+    def store_job(self, job_info):
+        self._conn.execute(
+            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (job_info.job_id,
+             job_info.instance_id,
+             job_info.lifecycle.changed(ExecutionState.CREATED),
+             job_info.lifecycle.execution_started(),
+             job_info.lifecycle.last_changed(),
+             ",".join([state.name for state in job_info.lifecycle.states()]),
+             job_info.status,
+             job_info.exec_error.message if job_info.exec_error else None
+             )
+        )
+        self._conn.commit()

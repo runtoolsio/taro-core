@@ -6,9 +6,10 @@ import logging
 from threading import Lock, Event, RLock
 from typing import List, Union
 
-from taro import util
+from taro import util, persistence
 from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement
 from taro.job import ExecutionStateObserver, JobControl, JobInfo
+from taro.persistence import DisabledError
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class RunnerJobInstance(JobControl):
             self._pending_condition: Event = Event()
         self._observers = []
 
-        self._set_state(ExecutionState.CREATED)
+        self._state_change(ExecutionState.CREATED)
 
     def __repr__(self):
         return "{}({!r}, {!r})".format(
@@ -74,7 +75,7 @@ class RunnerJobInstance(JobControl):
 
     def run(self):
         if self._job.pending and not self._stopped_or_interrupted:
-            self._set_state(ExecutionState.PENDING)
+            self._state_change(ExecutionState.PENDING)
             self._pending_condition.wait()
 
         # Is variable assignment atomic? Better be sure with lock:
@@ -83,16 +84,16 @@ class RunnerJobInstance(JobControl):
             self._executing = not self._stopped_or_interrupted
 
         if not self._executing:
-            self._set_state(ExecutionState.CANCELLED)
+            self._state_change(ExecutionState.CANCELLED)
             return
 
-        self._set_state(ExecutionState.TRIGGERED if self._execution.is_async() else ExecutionState.RUNNING)
+        self._state_change(ExecutionState.TRIGGERED if self._execution.is_async() else ExecutionState.RUNNING)
         try:
             new_state = self._execution.execute()
-            self._set_state(new_state)
+            self._state_change(new_state)
         except Exception as e:
             exec_error = e if isinstance(e, ExecutionError) else ExecutionError.from_unexpected_error(e)
-            self._set_state(exec_error.exec_state, exec_error)
+            self._state_change(exec_error.exec_state, exec_error)
 
     def release(self, pending: str) -> bool:
         if pending and self._job.pending == pending and not self._pending_condition.is_set():
@@ -133,7 +134,7 @@ class RunnerJobInstance(JobControl):
     def _log(self, event: str, msg: str):
         return "event=[{}] job_id=[{}] instance_id=[{}] {}".format(event, self._job.id, self._instance_id, msg)
 
-    def _set_state(self, new_state, exec_error: ExecutionError = None):
+    def _state_change(self, new_state, exec_error: ExecutionError = None):
         # It is not necessary to lock all this code, but it would be if this method is not confined to one thread
         # However locking is still needed for correct creation of job info when job_info method is called (anywhere)
         job_info = None
@@ -153,6 +154,11 @@ class RunnerJobInstance(JobControl):
                 job_info = self.create_info()  # Be sure both new_state and exec_error are already set
 
         if job_info:
+            if new_state.is_terminal():
+                try:
+                    persistence.store_job(job_info)
+                except DisabledError:
+                    pass
             self._notify_observers(job_info)
 
     def _notify_observers(self, job_info: JobInfo):
