@@ -4,6 +4,7 @@ from typing import List
 from taro import util
 from taro.execution import ExecutionState, ExecutionError, ExecutionLifecycle
 from taro.job import ExecutionStateObserver, JobInfo
+from taro.persistence import _Persistence
 
 log = logging.getLogger(__name__)
 
@@ -27,13 +28,13 @@ def _to_job_info(t):
     return JobInfo(t[0], t[1], lifecycle, t[6], exec_error)
 
 
-class Rdbms(ExecutionStateObserver):
+class SQLite(_Persistence):
 
     def __init__(self, connection):
         self._conn = connection
-        self._check_tables_exist()
+        self.check_tables_exist()
 
-    def _check_tables_exist(self):
+    def check_tables_exist(self):
         c = self._conn.cursor()
         c.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='history' ''')
         if c.fetchone()[0] != 1:
@@ -54,7 +55,7 @@ class Rdbms(ExecutionStateObserver):
         c = self._conn.execute("SELECT * FROM history ORDER BY finished " + ("ASC" if chronological else "DESC"))
         return [_to_job_info(row) for row in c.fetchall()]
 
-    def state_update(self, job_info: JobInfo):
+    def store_ended_job(self, job_info):
         if job_info.state.is_terminal():
             self._conn.execute(
                 "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -69,3 +70,7 @@ class Rdbms(ExecutionStateObserver):
                  )
             )
             self._conn.commit()
+
+    def close(self):
+        if self._conn:
+            self._conn.close()

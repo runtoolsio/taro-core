@@ -13,7 +13,7 @@ from taro.jfilter import AllFilter
 from taro.job import Job
 from taro.listening import Dispatcher, Receiver, EventPrint, StoppingListener
 from taro.process import ProcessExecution
-from taro.rdbms import Rdbms
+from taro.persistence.sqlite import Rdbms
 from taro.runner import RunnerJobInstance
 from taro.term import Term
 from taro.util import set_attr, expand_user
