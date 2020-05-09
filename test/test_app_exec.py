@@ -6,13 +6,13 @@ import os
 
 import pytest
 
-from taro import runner, util
+from taro import runner, util, persistence
 from taro.execution import ExecutionState
 from taro.test.observer import TestObserver
 from test.util import run_app
 
 
-@pytest.fixture
+@pytest.fixture()
 def observer():
     observer = TestObserver()
     runner.register_observer(observer)
@@ -20,12 +20,12 @@ def observer():
     runner.deregister_observer(observer)
 
 
-def test_successful(capsys, observer: TestObserver):
+def test_successful(observer: TestObserver):
     dir_name = util.unique_timestamp_hex()
     run_app('exec mkdir ' + dir_name)
 
     assert observer.exec_state(-1) == ExecutionState.COMPLETED
-    os.rmdir(dir_name)
+    os.rmdir(dir_name)  # Exc if not existed
 
 
 def test_invalid_command(observer: TestObserver):
@@ -51,3 +51,8 @@ def test_default_job_id(observer: TestObserver):
 def test_explicit_job_id(observer: TestObserver):
     run_app('exec --id this_is_an_id echo not an id')
     assert observer.last_job().job_id == 'this_is_an_id'
+
+
+def test_job_persisted():
+    run_app('exec --id persisted_job echo')
+    assert len(persistence.read_jobs(chronological=True)) == 1

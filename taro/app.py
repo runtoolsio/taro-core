@@ -72,6 +72,8 @@ def run_exec(args):
     if config.persistence_enabled:
         db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
         persistence.init_sqlite(db_con)
+    else:
+        persistence.disable()
     dispatcher = Dispatcher()
     runner.register_observer(dispatcher)
     for plugin in PluginBase.create_plugins(EXT_PLUGIN_MODULE_PREFIX, config.plugins).values():

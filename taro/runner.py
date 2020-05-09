@@ -9,7 +9,6 @@ from typing import List, Union
 from taro import util, persistence
 from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement
 from taro.job import ExecutionStateObserver, JobControl, JobInfo
-from taro.persistence import DisabledError
 
 log = logging.getLogger(__name__)
 
@@ -155,10 +154,7 @@ class RunnerJobInstance(JobControl):
 
         if job_info:
             if new_state.is_terminal():
-                try:
-                    persistence.store_job(job_info)
-                except DisabledError:
-                    pass
+                persistence.store_job(job_info)
             self._notify_observers(job_info)
 
     def _notify_observers(self, job_info: JobInfo):
