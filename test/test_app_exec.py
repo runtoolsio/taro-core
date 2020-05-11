@@ -55,4 +55,4 @@ def test_explicit_job_id(observer: TestObserver):
 
 def test_job_persisted():
     run_app('exec --id persisted_job echo')
-    assert len(persistence.read_jobs(chronological=True)) == 1
+    assert persistence.read_jobs(chronological=True)[0].job_id == 'persisted_job'
