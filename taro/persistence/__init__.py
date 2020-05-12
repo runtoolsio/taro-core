@@ -1,6 +1,26 @@
 from taro.persistence.sqlite import SQLite
 
-_persistence = None
+
+class NoPersistence:
+
+    def __init__(self):
+        self._jobs = []
+        self._disabled = []
+
+    def read_jobs(self, *, chronological):
+        return list(reversed(self._jobs)) if chronological else self._jobs
+
+    def store_job(self, job_info):
+        self._jobs.append(job_info)
+
+    def disable_job(self, job_id):
+        self._disabled(job_id)
+
+    def read_disabled_jobs(self):
+        return self._disabled
+
+
+_persistence = NoPersistence()
 
 
 def disable():
@@ -23,13 +43,9 @@ def store_job(job_info):
     _persistence.store_job(job_info)
 
 
-class NoPersistence:
+def disable_job(job_id):
+    _persistence.disable_job(job_id)
 
-    def __init__(self):
-        self._jobs = []
 
-    def read_jobs(self, *, chronological):
-        return list(reversed(self._jobs)) if chronological else self._jobs
-
-    def store_job(self, job_info):
-        self._jobs.append(job_info)
+def read_disabled_jobs():
+    return _persistence.read_disabled_jobs()

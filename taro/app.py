@@ -35,6 +35,8 @@ def main(args):
         run_exec(args)
     elif args.action == cli.ACTION_PS:
         run_ps(args)
+    elif args.action == cli.ACTION_JOB:
+        run_job(args)
     elif args.action == cli.ACTION_JOBS:
         run_jobs(args)
     elif args.action == cli.ACTION_RELEASE:
@@ -97,6 +99,11 @@ def run_ps(args):
         ps.print_jobs(jobs, DEFAULT_PS_COLUMNS, show_header=True, pager=False)
     finally:
         client.close()
+
+
+def run_job(args):
+    if args.command == 'disable':
+
 
 
 def run_jobs(args):

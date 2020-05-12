@@ -56,3 +56,11 @@ def test_explicit_job_id(observer: TestObserver):
 def test_job_persisted():
     run_app('exec --id persisted_job echo')
     assert persistence.read_jobs(chronological=True)[0].job_id == 'persisted_job'
+
+
+def test_disable_job_id(observer: TestObserver):
+    run_app('job disable job_to_disable')
+    run_app('exec --id job_to_disable echo')
+
+    assert observer.last_job().job_id == 'job_to_disable'
+    assert observer.exec_state(-1) == ExecutionState.DISABLED

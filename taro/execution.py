@@ -25,6 +25,8 @@ class ExecutionState(Enum):
     NONE = {}
     CREATED = {ExecutionStateGroup.BEFORE_EXECUTION}
 
+    DISABLED = {ExecutionStateGroup.TERMINAL}
+
     PENDING = {ExecutionStateGroup.BEFORE_EXECUTION}  # Until released
     WAITING = {ExecutionStateGroup.BEFORE_EXECUTION}  # For another job
     # ON_HOLD or same as pending?
