@@ -9,6 +9,7 @@ LOG_FILE_LEVEL = 'log.file.level'
 LOG_FILE_PATH = 'log.file.path'
 PERSISTENCE_ENABLED = 'persistence.enabled'
 PERSISTENCE_TYPE = 'persistence.type'
+PERSISTENCE_DATABASE = 'persistence.database'
 PLUGINS = 'plugins'
 
 
@@ -33,6 +34,8 @@ class Config:
         self.log_file_path = cns.get(LOG_FILE_PATH, type_=str)
 
         self.persistence_enabled = cns.get(PERSISTENCE_ENABLED, default=False)
+        self.persistence_database = cns.get(PERSISTENCE_DATABASE)
+
         plugins = cns.get(PLUGINS)
         if isinstance(plugins, str):
             self.plugins = (plugins,)

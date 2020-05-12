@@ -73,9 +73,20 @@ def remove_test_config():
         config.unlink()
 
 
+def remove_test_db():
+    test_db = test_db_path()
+    if test_db.exists():
+        test_db.unlink()
+
+
 def _test_config_path() -> Path:
     base_path = Path(__file__).parent
     return base_path / 'test.yaml'
+
+
+def test_db_path() -> Path:
+    base_path = Path(__file__).parent
+    return base_path / 'test.db'
 
 
 class NoFormattingOutput(DummyOutput):

@@ -3,6 +3,7 @@ Implementation of job management framework based on :mod:`job` module.
 """
 import copy
 import logging
+import re
 from threading import Lock, Event, RLock
 from typing import List, Union
 
@@ -73,6 +74,11 @@ class RunnerJobInstance(JobControl):
         self._observers.remove(observer)
 
     def run(self):
+        for disabled in persistence.read_disabled_jobs():
+            if re.compile(disabled).search(self.job_id):
+                self._state_change(ExecutionState.DISABLED)
+                return
+
         if self._job.pending and not self._stopped_or_interrupted:
             self._state_change(ExecutionState.PENDING)
             self._pending_condition.wait()

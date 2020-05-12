@@ -11,6 +11,7 @@ log:
 persistence:
   enabled: true
   type: sqlite
+#  database: ~/.local/share/taro/taro.db
 
 plugins: []
 #plugins: ['taro_sns']

@@ -72,8 +72,7 @@ def run_exec(args):
         logger.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")
     db_con = None
     if config.persistence_enabled:
-        db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
-        persistence.init_sqlite(db_con)
+        db_con = init_sqlite(config.persistence_database)
     else:
         persistence.disable()
     dispatcher = Dispatcher()
@@ -92,6 +91,12 @@ def run_exec(args):
             db_con.close()
 
 
+def init_sqlite(database_path):
+    db_con = sqlite3.connect(database_path or str(paths.sqlite_db_path(True)))
+    persistence.init_sqlite(db_con)
+    return db_con
+
+
 def run_ps(args):
     client = Client()
     try:
@@ -102,8 +107,20 @@ def run_ps(args):
 
 
 def run_job(args):
+    config = Config(get_config(args))
     if args.command == 'disable':
-
+        if not config.persistence_enabled:
+            print('Persistence is disabled. Enable persistence in config file to be able to store disabled jobs',
+                  file=sys.stderr)
+            exit(1)
+        db_con = init_sqlite(config.persistence_database)
+        jobs = args.arg
+        try:
+            persistence.disable_jobs(jobs)
+            print("Jobs disabled: {}".format(",".join(jobs)))
+        finally:
+            if db_con:
+                db_con.close()
 
 
 def run_jobs(args):

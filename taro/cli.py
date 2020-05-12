@@ -108,6 +108,8 @@ def _init_job_parser(common, subparsers):
     job_parser = subparsers.add_parser(
         ACTION_JOB, parents=[common], description='Configure jobs', add_help=False)
 
+    job_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
+
     job_parser.add_argument('command', type=str, metavar='COMMAND', choices=_job_commands, help='command to execute')
     job_parser.add_argument('arg', type=str, metavar='ARG', nargs=argparse.REMAINDER, help="command arguments")
 

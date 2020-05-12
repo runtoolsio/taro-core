@@ -9,15 +9,17 @@ import pytest
 from taro import runner, util, persistence
 from taro.execution import ExecutionState
 from taro.test.observer import TestObserver
-from test.util import run_app
+from test.util import run_app, create_test_config, remove_test_config, remove_test_db, test_db_path
 
 
-@pytest.fixture()
+@pytest.fixture(autouse=True)
 def observer():
     observer = TestObserver()
     runner.register_observer(observer)
     yield observer
     runner.deregister_observer(observer)
+    remove_test_config()
+    remove_test_db()
 
 
 def test_successful(observer: TestObserver):
@@ -59,8 +61,9 @@ def test_job_persisted():
 
 
 def test_disable_job_id(observer: TestObserver):
-    run_app('job disable job_to_disable')
-    run_app('exec --id job_to_disable echo')
+    create_test_config({"persistence": {"enabled": True, "type": "sqlite", "database": str(test_db_path())}})
+    run_app('job -C test.yaml disable job_to_disable')
+    run_app('exec -C test.yaml --id job_to_disable echo')
 
     assert observer.last_job().job_id == 'job_to_disable'
     assert observer.exec_state(-1) == ExecutionState.DISABLED

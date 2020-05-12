@@ -49,6 +49,12 @@ class SQLite:
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
+        c.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='disabled_jobs' ''')
+        if c.fetchone()[0] != 1:
+            c.execute('''CREATE TABLE disabled_jobs (job_id text) ''')
+            log.debug('event=[table_created] table=[disabled_jobs]')
+            self._conn.commit()
+
     def read_jobs(self, *, chronological) -> List[JobInfo]:
         c = self._conn.execute("SELECT * FROM history ORDER BY finished " + ("ASC" if chronological else "DESC"))
         return [_to_job_info(row) for row in c.fetchall()]
@@ -67,3 +73,12 @@ class SQLite:
              )
         )
         self._conn.commit()
+
+    def disable_jobs(self, job_ids):
+        for job_id in job_ids:
+            self._conn.execute("INSERT INTO disabled_jobs VALUES (?)", (job_id,))
+        self._conn.commit()
+
+    def read_disabled_jobs(self):
+        c = self._conn.execute("SELECT * FROM disabled_jobs ")
+        return [row[0] for row in c.fetchall()]
