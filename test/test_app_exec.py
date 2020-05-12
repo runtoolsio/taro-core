@@ -60,10 +60,27 @@ def test_job_persisted():
     assert persistence.read_jobs(chronological=True)[0].job_id == 'persisted_job'
 
 
-def test_disable_job_id(observer: TestObserver):
+def test_disable_job(observer: TestObserver):
     create_test_config({"persistence": {"enabled": True, "type": "sqlite", "database": str(test_db_path())}})
     run_app('job -C test.yaml disable job_to_disable')
     run_app('exec -C test.yaml --id job_to_disable echo')
 
     assert observer.last_job().job_id == 'job_to_disable'
+    assert observer.exec_state(-1) == ExecutionState.DISABLED
+
+
+def test_disable_jobs(observer: TestObserver):
+    create_test_config({"persistence": {"enabled": True, "type": "sqlite", "database": str(test_db_path())}})
+    run_app('job -C test.yaml disable job1 job3')
+
+    run_app('exec -C test.yaml --id job1 echo')
+    assert observer.last_job().job_id == 'job1'
+    assert observer.exec_state(-1) == ExecutionState.DISABLED
+
+    run_app('exec -C test.yaml --id job2 echo')
+    assert observer.last_job().job_id == 'job2'
+    assert observer.exec_state(-1) == ExecutionState.COMPLETED
+
+    run_app('exec -C test.yaml --id job3 echo')
+    assert observer.last_job().job_id == 'job3'
     assert observer.exec_state(-1) == ExecutionState.DISABLED
