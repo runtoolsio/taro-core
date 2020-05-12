@@ -74,13 +74,9 @@ def test_disable_jobs(observer: TestObserver):
     run_app('job -C test.yaml disable job1 job3')
 
     run_app('exec -C test.yaml --id job1 echo')
-    assert observer.last_job().job_id == 'job1'
-    assert observer.exec_state(-1) == ExecutionState.DISABLED
-
     run_app('exec -C test.yaml --id job2 echo')
-    assert observer.last_job().job_id == 'job2'
-    assert observer.exec_state(-1) == ExecutionState.COMPLETED
-
     run_app('exec -C test.yaml --id job3 echo')
-    assert observer.last_job().job_id == 'job3'
-    assert observer.exec_state(-1) == ExecutionState.DISABLED
+
+    assert observer.last_state('job1') == ExecutionState.DISABLED
+    assert observer.last_state('job2') == ExecutionState.COMPLETED
+    assert observer.last_state('job3') == ExecutionState.DISABLED

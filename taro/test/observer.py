@@ -38,6 +38,12 @@ class TestObserver(ExecutionStateObserver):
         """
         return self._events[-1][1]
 
+    def last_state(self, job_id) -> JobInfo:
+        """
+        :return: last state of the specified job
+        """
+        return next(e[2] for e in reversed(self._events) if e[1].job_id == job_id)
+
     def exec_state(self, event_idx: int) -> ExecutionState:
         """
         :param event_idx: event index
