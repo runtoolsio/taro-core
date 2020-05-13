@@ -80,3 +80,16 @@ def test_disable_jobs(observer: TestObserver):
     assert observer.last_state('job1') == ExecutionState.DISABLED
     assert observer.last_state('job2') == ExecutionState.COMPLETED
     assert observer.last_state('job3') == ExecutionState.DISABLED
+
+
+def test_disable_jobs_by_regex(observer: TestObserver):
+    create_test_config({"persistence": {"enabled": True, "type": "sqlite", "database": str(test_db_path())}})
+    run_app('job -C test.yaml disable disabled.*')
+
+    run_app('exec -C test.yaml --id disable echo')
+    run_app('exec -C test.yaml --id disabled echo')
+    run_app('exec -C test.yaml --id disabled1 echo')
+
+    assert observer.last_state('disable') == ExecutionState.COMPLETED
+    assert observer.last_state('disabled') == ExecutionState.DISABLED
+    assert observer.last_state('disabled1') == ExecutionState.DISABLED

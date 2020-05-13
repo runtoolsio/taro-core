@@ -75,7 +75,7 @@ class RunnerJobInstance(JobControl):
 
     def run(self):
         for disabled in persistence.read_disabled_jobs():
-            if re.compile(disabled).search(self.job_id):
+            if re.compile(disabled).match(self.job_id):
                 self._state_change(ExecutionState.DISABLED)
                 return
 
