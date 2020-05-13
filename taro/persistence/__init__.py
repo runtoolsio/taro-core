@@ -13,7 +13,7 @@ class NoPersistence:
     def store_job(self, job_info):
         self._jobs.append(job_info)
 
-    def disable_jobs(self, job_ids):
+    def add_disabled_jobs(self, job_ids):
         self._disabled += job_ids
 
     def read_disabled_jobs(self):
@@ -43,8 +43,8 @@ def store_job(job_info):
     _persistence.store_job(job_info)
 
 
-def disable_jobs(job_ids):
-    _persistence.disable_jobs(job_ids)
+def add_disabled_jobs(job_ids):
+    _persistence.add_disabled_jobs(job_ids)
 
 
 def read_disabled_jobs():

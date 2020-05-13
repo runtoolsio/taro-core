@@ -74,7 +74,7 @@ class SQLite:
         )
         self._conn.commit()
 
-    def disable_jobs(self, job_ids):
+    def add_disabled_jobs(self, job_ids):
         for job_id in job_ids:
             self._conn.execute("INSERT INTO disabled_jobs VALUES (?)", (job_id,))
         self._conn.commit()

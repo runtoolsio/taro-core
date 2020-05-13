@@ -116,7 +116,7 @@ def run_job(args):
         db_con = init_sqlite(config.persistence_database)
         jobs = args.arg
         try:
-            persistence.disable_jobs(jobs)
+            persistence.add_disabled_jobs(jobs)
             print("Jobs disabled: {}".format(",".join(jobs)))
         finally:
             if db_con:
