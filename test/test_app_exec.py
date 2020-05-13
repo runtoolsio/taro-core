@@ -9,7 +9,7 @@ import pytest
 from taro import runner, util, persistence
 from taro.execution import ExecutionState
 from taro.test.observer import TestObserver
-from test.util import run_app, create_test_config, remove_test_config, remove_test_db, test_db_path
+from test.util import run_app
 
 
 @pytest.fixture(autouse=True)
@@ -18,8 +18,6 @@ def observer():
     runner.register_observer(observer)
     yield observer
     runner.deregister_observer(observer)
-    remove_test_config()
-    remove_test_db()
 
 
 def test_successful(observer: TestObserver):
@@ -58,38 +56,3 @@ def test_explicit_job_id(observer: TestObserver):
 def test_job_persisted():
     run_app('exec --id persisted_job echo')
     assert persistence.read_jobs(chronological=True)[0].job_id == 'persisted_job'
-
-
-def test_disable_job(observer: TestObserver):
-    create_test_config({"persistence": {"enabled": True, "type": "sqlite", "database": str(test_db_path())}})
-    run_app('job -C test.yaml disable job_to_disable')
-    run_app('exec -C test.yaml --id job_to_disable echo')
-
-    assert observer.last_job().job_id == 'job_to_disable'
-    assert observer.exec_state(-1) == ExecutionState.DISABLED
-
-
-def test_disable_jobs(observer: TestObserver):
-    create_test_config({"persistence": {"enabled": True, "type": "sqlite", "database": str(test_db_path())}})
-    run_app('job -C test.yaml disable job1 job3')
-
-    run_app('exec -C test.yaml --id job1 echo')
-    run_app('exec -C test.yaml --id job2 echo')
-    run_app('exec -C test.yaml --id job3 echo')
-
-    assert observer.last_state('job1') == ExecutionState.DISABLED
-    assert observer.last_state('job2') == ExecutionState.COMPLETED
-    assert observer.last_state('job3') == ExecutionState.DISABLED
-
-
-def test_disable_jobs_by_regex(observer: TestObserver):
-    create_test_config({"persistence": {"enabled": True, "type": "sqlite", "database": str(test_db_path())}})
-    run_app('job -C test.yaml disable disabled.*')
-
-    run_app('exec -C test.yaml --id disable echo')
-    run_app('exec -C test.yaml --id disabled echo')
-    run_app('exec -C test.yaml --id disabled1 echo')
-
-    assert observer.last_state('disable') == ExecutionState.COMPLETED
-    assert observer.last_state('disabled') == ExecutionState.DISABLED
-    assert observer.last_state('disabled1') == ExecutionState.DISABLED
