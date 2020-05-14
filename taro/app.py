@@ -121,6 +121,16 @@ def run_job(args):
         finally:
             if db_con:
                 db_con.close()
+    elif args.command == 'list-disabled':
+        if config.persistence_enabled:
+            db_con = init_sqlite(config.persistence_database)
+            try:
+                print("\n".join(persistence.read_disabled_jobs()))
+            finally:
+                if db_con:
+                    db_con.close()
+        else:
+            print("Persistence is disabled")
 
 
 def run_jobs(args):
