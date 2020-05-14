@@ -2,8 +2,16 @@
 Tests :mod:`app` module
 Command: job [disable|list-disabled]
 """
+import pytest
 
-from test.util import run_app, create_test_config, test_db_path
+from test.util import run_app, create_test_config, test_db_path, remove_test_config, remove_test_db
+
+
+@pytest.fixture(autouse=True)
+def remove_config_if_created():
+    yield
+    remove_test_config()
+    remove_test_db()
 
 
 def test_disable_jobs(capsys):
