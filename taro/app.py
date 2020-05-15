@@ -13,6 +13,7 @@ from taro.jfilter import AllFilter
 from taro.job import Job
 from taro.listening import Dispatcher, Receiver, EventPrint, StoppingListener
 from taro.process import ProcessExecution
+from taro.ps import Column
 from taro.runner import RunnerJobInstance
 from taro.term import Term
 from taro.util import set_attr, expand_user
@@ -101,7 +102,7 @@ def run_ps(args):
     client = Client()
     try:
         jobs = client.read_jobs_info()
-        ps.print_jobs(jobs, DEFAULT_PS_COLUMNS, show_header=True, pager=False)
+        ps.print_table(jobs, DEFAULT_PS_COLUMNS, show_header=True, pager=False)
     finally:
         client.close()
 
@@ -125,7 +126,9 @@ def run_job(args):
         if config.persistence_enabled:
             db_con = init_sqlite(config.persistence_database)
             try:
-                print("\n".join(persistence.read_disabled_jobs()))
+                disabled_jobs = persistence.read_disabled_jobs()
+                JOB_ID = Column('JOB ID', 30, lambda i: i)
+                ps.print_table(disabled_jobs, [JOB_ID], show_header=True, pager=False)
             finally:
                 if db_con:
                     db_con.close()
@@ -155,7 +158,7 @@ def run_jobs(args):
     job_filter = _build_job_filter(args)
     filtered_jobs = filter(job_filter, sorted_jobs)
     limited_jobs = itertools.islice(filtered_jobs, 0, args.lines or None)
-    ps.print_jobs(limited_jobs, columns, show_header=True, pager=not args.no_pager)
+    ps.print_table(limited_jobs, columns, show_header=True, pager=not args.no_pager)
 
 
 def _build_job_filter(args):
@@ -210,7 +213,7 @@ def run_stop(args):
             print('No action performed, because the criteria matches more than one job.'
                   'Use --all flag if you wish to stop them all:' + os.linesep)
             columns = [ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.STATE, ps.STATUS]
-            ps.print_jobs(jobs, columns, show_header=True, pager=False)
+            ps.print_table(jobs, columns, show_header=True, pager=False)
             return  # Exit code non-zero?
 
         inst_results = client.stop_jobs([job.instance_id for job in jobs], args.interrupt)

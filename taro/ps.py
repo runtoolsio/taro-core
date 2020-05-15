@@ -27,8 +27,8 @@ STATUS = Column('STATUS', 30, lambda j: j.status or '')
 
 
 @iterates
-def print_jobs(job_infos, columns: List[Column], *, show_header: bool, pager: bool):
-    gen = output_gen(job_infos, columns, show_header)
+def print_table(items, columns: List[Column], *, show_header: bool, pager: bool):
+    gen = output_gen(items, columns, show_header, stretch_last_column=pager)
 
     if pager:
         p = Pager()
@@ -39,7 +39,7 @@ def print_jobs(job_infos, columns: List[Column], *, show_header: bool, pager: bo
             print_formatted_text(next(gen))
 
 
-def output_gen(job_infos, columns: List[Column], show_header: bool):
+def output_gen(items, columns: List[Column], show_header: bool, stretch_last_column: bool):
     """
     Table Representation:
         Each column has padding of size 1 from each side applied in both header and values
@@ -50,9 +50,9 @@ def output_gen(job_infos, columns: List[Column], show_header: bool):
     Column Widths:
         First 50 rows are examined to find optimal width of the columns
     """
-    job_iter = iter(job_infos)
+    job_iter = iter(items)
     first_fifty = list(itertools.islice(job_iter, 50))
-    column_width = _calc_widths(first_fifty, columns)
+    column_width = _calc_widths(first_fifty, columns, stretch_last_column)
     f = " ".join(" {:" + str(column_width[c] - 1) + "}" for c in columns)
 
     if show_header:
@@ -66,27 +66,30 @@ def output_gen(job_infos, columns: List[Column], show_header: bool):
         yield FTxt([(_get_color(j), line)])
 
 
-def _calc_widths(job_infos, columns: List[Column]):
+def _calc_widths(items, columns: List[Column], stretch_last_column: bool):
     column_width = {c: len(c.name) + 2 for c in columns}  # +2 for left and right padding
-    for j in job_infos:
+    for i in items:
         for c in columns:
-            column_width[c] = max(column_width[c], min(len(c.value_fnc(j)) + 2, c.max_width))  # +2 for padding
+            column_width[c] = max(column_width[c], min(len(c.value_fnc(i)) + 2, c.max_width))  # +2 for padding
 
-    # vv Add spare terminal length to the last column vv
-    try:
-        terminal_length = os.get_terminal_size().columns
-    except OSError:
-        return column_width  # Failing in tests
+    if stretch_last_column:
+        # vv Add spare terminal length to the last column vv
+        try:
+            terminal_length = os.get_terminal_size().columns
+        except OSError:
+            return column_width  # Failing in tests
 
-    actual_length = sum(column_width.values()) + len(column_width)
-    spare_length = terminal_length - actual_length
-    if spare_length > 0:
-        column_width[columns[-1]] += spare_length
+        actual_length = sum(column_width.values()) + len(column_width)
+        spare_length = terminal_length - actual_length
+        if spare_length > 0:
+            column_width[columns[-1]] += spare_length
 
     return column_width
 
 
 def _get_color(job_info):
+    if not hasattr(job_info, 'state'):  # TODO redesign
+        return ''
     state = job_info.state
 
     if state.is_before_execution():
