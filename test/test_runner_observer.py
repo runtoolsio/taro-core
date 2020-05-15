@@ -6,6 +6,7 @@ Tests that :mod:`runner` sends correct notification to observers.
 import pytest
 
 import taro.runner as runner
+from taro import persistence
 from taro.execution import ExecutionState
 from taro.job import Job, ExecutionStateObserver, JobInfo
 from taro.runner import RunnerJobInstance
@@ -15,6 +16,8 @@ from taro.test.observer import TestObserver
 
 @pytest.fixture
 def observer():
+    persistence.disable()
+
     observer = TestObserver()
     runner.register_observer(observer)
     yield observer
