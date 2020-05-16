@@ -21,7 +21,7 @@ _all_boolean_options = _true_options + _false_options
 
 _log_levels = ['critical', 'fatal', 'error', 'warn', 'warning', 'info', 'debug', 'off']
 
-_job_commands = ['disable', 'list-disabled']
+_job_commands = ['enable', 'disable', 'list-disabled']
 
 
 def parse_args(args):

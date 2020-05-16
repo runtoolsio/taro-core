@@ -27,6 +27,7 @@ def _to_job_info(t):
     return JobInfo(t[0], t[1], lifecycle, t[6], exec_error)
 
 
+# TODO indices
 class SQLite:
 
     def __init__(self, connection):
@@ -78,6 +79,12 @@ class SQLite:
         for job_id in job_ids:
             self._conn.execute("INSERT INTO disabled_jobs VALUES (?)", (job_id,))
         self._conn.commit()
+
+    def remove_disabled_jobs(self, job_ids):
+        for job_id in job_ids:
+            c = self._conn.execute("DELETE FROM disabled_jobs WHERE job_id = (?)", (job_id,))
+            print(c)
+            print(type(c))
 
     def read_disabled_jobs(self):
         c = self._conn.execute("SELECT * FROM disabled_jobs ")

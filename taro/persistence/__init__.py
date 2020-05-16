@@ -16,6 +16,16 @@ class NoPersistence:
     def add_disabled_jobs(self, job_ids):
         self._disabled += job_ids
 
+    def remove_disabled_jobs(self, job_ids):
+        removed = []
+        for job_id in job_ids:
+            try:
+                self._disabled.remove(job_id)
+                removed.append(job_id)
+            except ValueError:
+                continue
+        return removed
+
     def read_disabled_jobs(self):
         return self._disabled
 
@@ -45,6 +55,10 @@ def store_job(job_info):
 
 def add_disabled_jobs(job_ids):
     _persistence.add_disabled_jobs(job_ids)
+
+
+def remove_disabled_jobs(job_ids):
+    _persistence.remove_disabled_jobs(job_ids)
 
 
 def read_disabled_jobs():
