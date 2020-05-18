@@ -1,6 +1,6 @@
 """
 Tests :mod:`app` module
-Command: job [disable|list-disabled]
+Command: [disable|list-disabled]
 """
 import pytest
 
@@ -16,12 +16,12 @@ def remove_config_if_created():
 
 def test_disable_jobs(capsys):
     create_test_config({"persistence": {"enabled": True, "type": "sqlite", "database": str(test_db_path())}})
-    run_app('job -C test.yaml disable j1 j2')
+    run_app('disable -C test.yaml  j1 j2')
     output = capsys.readouterr().out
     assert 'j1' in output
     assert 'j2' in output
 
-    run_app('job -C test.yaml list-disabled')
+    run_app('list-disabled -C test.yaml')
     output = capsys.readouterr().out
     assert 'j1' in output
     assert 'j2' in output

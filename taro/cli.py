@@ -12,6 +12,8 @@ ACTION_RELEASE = 'release'
 ACTION_LISTEN = 'listen'
 ACTION_WAIT = 'wait'
 ACTION_STOP = 'stop'
+ACTION_DISABLE = 'disable'
+ACTION_LIST_DISABLED = 'list-disabled'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
 
@@ -38,6 +40,8 @@ def parse_args(args):
     _init_listen_parser(common, subparsers)
     _init_wait_parser(common, subparsers)
     _init_stop_parser(common, subparsers)
+    _init_disable_parser(common, subparsers)
+    _init_list_disabled_parser(common, subparsers)
     _init_show_config_parser(common, subparsers)
 
     parsed = parser.parse_args(args)
@@ -190,6 +194,38 @@ def _init_stop_parser(common, subparsers):
                              help='Set final state to INTERRUPTED which is an error state')
     stop_parser.add_argument('--all', action='store_true', help='Force stop all if there are more jobs to stop')
     stop_parser.add_argument('job', type=str, metavar='JOB', help='ID of the job to stop')
+
+
+def _init_disable_parser(common, subparsers):
+    """
+    Creates parsers for `disable` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for disable parser to be added to
+    """
+
+    disable_parser = subparsers.add_parser(
+        ACTION_DISABLE, parents=[common], description='Disable jobs (persistence required)', add_help=False)
+
+    disable_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
+    disable_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
+
+    disable_parser.add_argument('jobs', type=str, metavar='JOB', nargs=argparse.REMAINDER, help="jobs to disable")
+
+
+def _init_list_disabled_parser(common, subparsers):
+    """
+    Creates parsers for `list-disabled` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for list-disabled parser to be added to
+    """
+
+    ld_parser = subparsers.add_parser(
+        ACTION_LIST_DISABLED, parents=[common], description='List disabled jobs (persistence required)', add_help=False)
+
+    ld_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
+    ld_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
 
 
 def _init_show_config_parser(common, subparsers):

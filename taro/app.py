@@ -36,8 +36,6 @@ def main(args):
         run_exec(args)
     elif args.action == cli.ACTION_PS:
         run_ps(args)
-    elif args.action == cli.ACTION_JOB:
-        run_job(args)
     elif args.action == cli.ACTION_JOBS:
         run_jobs(args)
     elif args.action == cli.ACTION_RELEASE:
@@ -48,6 +46,10 @@ def main(args):
         run_wait(args)
     elif args.action == cli.ACTION_STOP:
         run_stop(args)
+    elif args.action == cli.ACTION_DISABLE:
+        run_disable(args)
+    elif args.action == cli.ACTION_LIST_DISABLED:
+        run_list_disabled(args)
     elif args.action == cli.ACTION_CONFIG:
         if args.config_action == cli.ACTION_CONFIG_SHOW:
             run_show_config(args)
@@ -105,35 +107,6 @@ def run_ps(args):
         ps.print_table(jobs, DEFAULT_PS_COLUMNS, show_header=True, pager=False)
     finally:
         client.close()
-
-
-def run_job(args):
-    config = Config(get_config(args))
-    if args.command == 'disable':
-        if not config.persistence_enabled:
-            print('Persistence is disabled. Enable persistence in config file to be able to store disabled jobs',
-                  file=sys.stderr)
-            exit(1)
-        db_con = init_sqlite(config.persistence_database)
-        jobs = args.arg
-        try:
-            persistence.add_disabled_jobs(jobs)
-            print("Jobs disabled: {}".format(",".join(jobs)))
-        finally:
-            if db_con:
-                db_con.close()
-    elif args.command == 'list-disabled':
-        if config.persistence_enabled:
-            db_con = init_sqlite(config.persistence_database)
-            try:
-                disabled_jobs = persistence.read_disabled_jobs()
-                JOB_ID = Column('JOB ID', 30, lambda i: i)
-                ps.print_table(disabled_jobs, [JOB_ID], show_header=True, pager=False)
-            finally:
-                if db_con:
-                    db_con.close()
-        else:
-            print("Persistence is disabled")
 
 
 def run_jobs(args):
@@ -226,6 +199,39 @@ def run_stop(args):
 def stop_server_and_exit(server, signal_number: int):
     server.stop()
     sys.exit(128 + signal_number)
+
+
+def run_disable(args):
+    config = Config(get_config(args))
+    if not config.persistence_enabled:
+        print('Persistence is disabled. Enable persistence in config file to be able to store disabled jobs',
+              file=sys.stderr)
+        exit(1)
+
+    db_con = init_sqlite(config.persistence_database)
+    jobs = args.jobs
+    try:
+        persistence.add_disabled_jobs(jobs)
+        print("Jobs disabled: {}".format(",".join(jobs)))
+    finally:
+        if db_con:
+            db_con.close()
+
+
+def run_list_disabled(args):
+    config = Config(get_config(args))
+    if not config.persistence_enabled:
+        print("Persistence is disabled")
+        exit(1)
+
+    db_con = init_sqlite(config.persistence_database)
+    try:
+        disabled_jobs = persistence.read_disabled_jobs()
+        JOB_ID = Column('JOB ID', 30, lambda i: i)
+        ps.print_table(disabled_jobs, [JOB_ID], show_header=True, pager=False)
+    finally:
+        if db_con:
+            db_con.close()
 
 
 def run_show_config(args):

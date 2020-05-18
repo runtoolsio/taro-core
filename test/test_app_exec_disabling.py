@@ -23,7 +23,7 @@ def observer():
 
 def test_disable_job(observer: TestObserver):
     create_test_config({"persistence": {"enabled": True, "type": "sqlite", "database": str(test_db_path())}})
-    run_app('job -C test.yaml disable job_to_disable')
+    run_app('disable -C test.yaml job_to_disable')
     run_app('exec -C test.yaml --id job_to_disable echo')
 
     assert observer.last_job().job_id == 'job_to_disable'
@@ -32,7 +32,7 @@ def test_disable_job(observer: TestObserver):
 
 def test_disable_jobs(observer: TestObserver):
     create_test_config({"persistence": {"enabled": True, "type": "sqlite", "database": str(test_db_path())}})
-    run_app('job -C test.yaml disable job1 job3')
+    run_app('disable -C test.yaml job1 job3')
 
     run_app('exec -C test.yaml --id job1 echo')
     run_app('exec -C test.yaml --id job2 echo')
@@ -45,7 +45,7 @@ def test_disable_jobs(observer: TestObserver):
 
 def test_disable_jobs_by_regex(observer: TestObserver):
     create_test_config({"persistence": {"enabled": True, "type": "sqlite", "database": str(test_db_path())}})
-    run_app('job -C test.yaml disable disabled.*')
+    run_app('disable -C test.yaml disabled.*')
 
     run_app('exec -C test.yaml --id disable echo')
     run_app('exec -C test.yaml --id disabled echo')
