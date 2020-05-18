@@ -2,7 +2,7 @@ import datetime
 import os
 import re
 from collections import namedtuple
-from typing import Iterable, List, Dict
+from typing import List, Dict
 
 import itertools
 from prompt_toolkit import print_formatted_text
@@ -15,15 +15,6 @@ from taro.execution import ExecutionState
 from taro.util import iterates
 
 Column = namedtuple('Column', 'name max_width value_fnc')
-
-JOB_ID = Column('JOB ID', 30, lambda j: j.job_id)
-INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.instance_id)
-CREATED = Column('CREATED', 25, lambda j: format_dt(j.lifecycle.changed(ExecutionState.CREATED)))
-EXECUTED = Column('EXECUTED', 25, lambda j: format_dt(j.lifecycle.execution_started()))
-ENDED = Column('ENDED', 25, lambda j: format_dt(j.lifecycle.execution_finished()))
-EXEC_TIME = Column('EXECUTION TIME', 18, lambda j: execution_time(j))
-STATE = Column('STATE', max(len(s.name) for s in ExecutionState) + 2, lambda j: j.state.name)
-STATUS = Column('STATUS', 30, lambda j: j.status or '')
 
 
 @iterates
@@ -135,14 +126,14 @@ def print_state_change(job_info):
     print(f"{job_info.job_id}@{job_info.instance_id} -> {job_info.state.name}")
 
 
-def parse_jobs_table(output, columns) -> List[Dict[Column, str]]:
+def parse_table(output, columns) -> List[Dict[Column, str]]:
     """
-    Parses individual job lines from provided string containing job table (must include both header and sep line).
+    Parses individual lines from provided string containing ps table (must include both header and sep line).
     Columns of the table must be specified.
 
-    :param output: output containing job table
-    :param columns: exact columns of the job table in correct order
-    :return: list of dictionaries where each dictionary represent one job line by column -> value mapping
+    :param output: output containing ps table
+    :param columns: exact columns of the ps table in correct order
+    :return: list of dictionaries where each dictionary represent one item line by column -> value mapping
     """
 
     lines = [line for line in output.splitlines() if line]  # Ignore empty lines

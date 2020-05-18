@@ -2,7 +2,8 @@
 Tests :mod:`app` module
 Command: ps
 """
-from taro import ps, app
+import taro.view.instance as view_inst
+from taro import ps
 from taro.execution import ExecutionState
 from test.util import run_app, run_app_as_process_and_wait
 
@@ -13,9 +14,9 @@ def test_job_running(capsys):
     run_app('ps')
     output = capsys.readouterr().out
 
-    jobs = ps.parse_jobs_table(output, app.DEFAULT_PS_COLUMNS)
-    assert 'sleep 1' == jobs[0][ps.JOB_ID]
-    assert ExecutionState.RUNNING.name.casefold() == jobs[0][ps.STATE].casefold()
+    jobs = ps.parse_table(output, view_inst.DEFAULT_COLUMNS)
+    assert 'sleep 1' == jobs[0][view_inst.JOB_ID]
+    assert ExecutionState.RUNNING.name.casefold() == jobs[0][view_inst.STATE].casefold()
 
 
 def test_job_waiting(capsys):
@@ -24,9 +25,9 @@ def test_job_waiting(capsys):
     run_app('ps')
     output = capsys.readouterr().out
 
-    jobs = ps.parse_jobs_table(output, app.DEFAULT_PS_COLUMNS)
-    assert 'sleep 1' == jobs[0][ps.JOB_ID]
-    assert ExecutionState.PENDING.name.casefold() == jobs[0][ps.STATE].casefold()
+    jobs = ps.parse_table(output, view_inst.DEFAULT_COLUMNS)
+    assert 'sleep 1' == jobs[0][view_inst.JOB_ID]
+    assert ExecutionState.PENDING.name.casefold() == jobs[0][view_inst.STATE].casefold()
 
 
 def test_job_status(capsys):
@@ -37,5 +38,5 @@ def test_job_status(capsys):
     run_app('ps')
     output = capsys.readouterr().out
 
-    jobs = ps.parse_jobs_table(output, app.DEFAULT_PS_COLUMNS)
-    assert 'progress1' == jobs[0][ps.STATUS]
+    jobs = ps.parse_table(output, view_inst.DEFAULT_COLUMNS)
+    assert 'progress1' == jobs[0][view_inst.STATUS]

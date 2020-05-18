@@ -1,8 +1,9 @@
-import itertools
 import logging
 import os
 import signal
 import sqlite3
+
+import itertools
 import sys
 
 from taro import cli, paths, cnf, runner, ps, jfilter, log, PluginBase, persistence
@@ -13,16 +14,16 @@ from taro.jfilter import AllFilter
 from taro.job import Job, DisabledJob
 from taro.listening import Dispatcher, Receiver, EventPrint, StoppingListener
 from taro.process import ProcessExecution
-from taro.ps import Column
 from taro.runner import RunnerJobInstance
 from taro.term import Term
 from taro.util import set_attr, expand_user, utc_now
+from taro.view import instance as view_inst
+from taro.view import disabled as view_dis
 
 logger = logging.getLogger(__name__)
 
 USE_MINIMAL_CONFIG = False
 EXT_PLUGIN_MODULE_PREFIX = 'taro_'
-DEFAULT_PS_COLUMNS = [ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.STATE, ps.STATUS]
 
 
 def main_cli():
@@ -104,7 +105,7 @@ def run_ps(args):
     client = Client()
     try:
         jobs = client.read_jobs_info()
-        ps.print_table(jobs, DEFAULT_PS_COLUMNS, show_header=True, pager=False)
+        ps.print_table(jobs, view_inst.DEFAULT_COLUMNS, show_header=True, pager=False)
     finally:
         client.close()
 
@@ -125,7 +126,8 @@ def run_jobs(args):
     finally:
         db_con.close()
 
-    columns = [ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.ENDED, ps.EXEC_TIME, ps.STATE, ps.STATUS]
+    columns = [view_inst.JOB_ID, view_inst.INSTANCE_ID, view_inst.CREATED, view_inst.ENDED, view_inst.EXEC_TIME,
+               view_inst.STATE, view_inst.STATUS]
     sorted_jobs = sorted(jobs, key=lambda j: j.lifecycle.changed(ExecutionState.CREATED),
                          reverse=not args.chronological)
     job_filter = _build_job_filter(args)
@@ -185,8 +187,7 @@ def run_stop(args):
         if len(jobs) > 1 and not args.all:
             print('No action performed, because the criteria matches more than one job.'
                   'Use --all flag if you wish to stop them all:' + os.linesep)
-            columns = [ps.JOB_ID, ps.INSTANCE_ID, ps.CREATED, ps.EXEC_TIME, ps.STATE, ps.STATUS]
-            ps.print_table(jobs, columns, show_header=True, pager=False)
+            ps.print_table(jobs, view_inst.DEFAULT_COLUMNS, show_header=True, pager=False)
             return  # Exit code non-zero?
 
         inst_results = client.stop_jobs([job.instance_id for job in jobs], args.interrupt)
@@ -228,10 +229,7 @@ def run_list_disabled(args):
     db_con = init_sqlite(config.persistence_database)
     try:
         disabled_jobs = persistence.read_disabled_jobs()
-        JOB_ID = Column('DISABLED JOB ID', 30, lambda dj: dj.job_id)
-        REGEX = Column('REGEX', 30, lambda dj: 'yes' if dj.regex else 'no')
-        CREATED = Column('DISABLED', 30, lambda dj: ps.format_dt(dj.created))
-        ps.print_table(disabled_jobs, [JOB_ID, REGEX, CREATED], show_header=True, pager=False)
+        ps.print_table(disabled_jobs, view_dis.DEFAULT_COLUMNS, show_header=True, pager=False)
     finally:
         if db_con:
             db_con.close()
