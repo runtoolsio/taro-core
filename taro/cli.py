@@ -209,8 +209,9 @@ def _init_disable_parser(common, subparsers):
 
     disable_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
     disable_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
+    disable_parser.add_argument('-regex', action='store_true', help='job ID is regular expression')
 
-    disable_parser.add_argument('jobs', type=str, metavar='JOB', nargs=argparse.REMAINDER, help="jobs to disable")
+    disable_parser.add_argument('jobs', type=str, metavar='JOB', nargs=argparse.REMAINDER, help="job IDs to disable")
 
 
 def _init_list_disabled_parser(common, subparsers):

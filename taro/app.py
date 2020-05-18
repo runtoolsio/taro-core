@@ -10,13 +10,13 @@ from taro.api import Server, Client
 from taro.cnf import Config
 from taro.execution import ExecutionState
 from taro.jfilter import AllFilter
-from taro.job import Job
+from taro.job import Job, DisabledJob
 from taro.listening import Dispatcher, Receiver, EventPrint, StoppingListener
 from taro.process import ProcessExecution
 from taro.ps import Column
 from taro.runner import RunnerJobInstance
 from taro.term import Term
-from taro.util import set_attr, expand_user
+from taro.util import set_attr, expand_user, utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -208,10 +208,11 @@ def run_disable(args):
               file=sys.stderr)
         exit(1)
 
-    db_con = init_sqlite(config.persistence_database)
     jobs = args.jobs
+    disabled_jobs = [DisabledJob(j, args.regex, utc_now(), None) for j in args.jobs]
+    db_con = init_sqlite(config.persistence_database)
     try:
-        persistence.add_disabled_jobs(jobs)
+        persistence.add_disabled_jobs(disabled_jobs)
         print("Jobs disabled: {}".format(",".join(jobs)))
     finally:
         if db_con:
@@ -227,7 +228,7 @@ def run_list_disabled(args):
     db_con = init_sqlite(config.persistence_database)
     try:
         disabled_jobs = persistence.read_disabled_jobs()
-        JOB_ID = Column('JOB ID', 30, lambda i: i)
+        JOB_ID = Column('JOB ID', 30, lambda dj: dj.job_id)
         ps.print_table(disabled_jobs, [JOB_ID], show_header=True, pager=False)
     finally:
         if db_con:

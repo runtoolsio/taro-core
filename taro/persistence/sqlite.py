@@ -3,7 +3,7 @@ from typing import List
 
 from taro import util
 from taro.execution import ExecutionState, ExecutionError, ExecutionLifecycle
-from taro.job import JobInfo
+from taro.job import JobInfo, DisabledJob
 
 log = logging.getLogger(__name__)
 
@@ -52,7 +52,12 @@ class SQLite:
 
         c.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='disabled_jobs' ''')
         if c.fetchone()[0] != 1:
-            c.execute('''CREATE TABLE disabled_jobs (job_id text) ''')
+            c.execute('''CREATE TABLE disabled_jobs
+                        (job_id text,
+                        regex integer,
+                        created timestamp,
+                        expires timestamp)
+                        ''')
             log.debug('event=[table_created] table=[disabled_jobs]')
             self._conn.commit()
 
@@ -75,9 +80,10 @@ class SQLite:
         )
         self._conn.commit()
 
-    def add_disabled_jobs(self, job_ids):
-        for job_id in job_ids:
-            self._conn.execute("INSERT INTO disabled_jobs VALUES (?)", (job_id,))
+    def add_disabled_jobs(self, disabled_jobs):
+        for j in disabled_jobs:
+            self._conn.execute("INSERT INTO disabled_jobs VALUES (?, ?, ?, ?)",
+                               (j.job_id, j.regex, j.created, j.expires))
         self._conn.commit()
 
     def remove_disabled_jobs(self, job_ids):
@@ -88,4 +94,8 @@ class SQLite:
 
     def read_disabled_jobs(self):
         c = self._conn.execute("SELECT * FROM disabled_jobs ")
-        return [row[0] for row in c.fetchall()]
+        return [DisabledJob(row[0],
+                            row[1],
+                            util.dt_from_utc_str(row[2], is_iso=False),
+                            util.dt_from_utc_str(row[3], is_iso=False))
+                for row in c.fetchall()]

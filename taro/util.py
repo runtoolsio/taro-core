@@ -1,7 +1,7 @@
 import functools
 import os
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 
@@ -76,7 +76,13 @@ def unique_timestamp_hex(random_suffix_length=4):
     return secrets.token_hex(random_suffix_length) + format(int(datetime.utcnow().timestamp() * 1000000), 'x')[::-1]
 
 
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 def dt_from_utc_str(str_ts, is_iso=True):
+    if not str_ts:
+        return None
     sep = "T" if is_iso else " "
 
     # Workaround: https://stackoverflow.com/questions/30999230/how-to-parse-timezone-with-colon to support Python <3.7

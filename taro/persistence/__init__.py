@@ -5,7 +5,7 @@ class NoPersistence:
 
     def __init__(self):
         self._jobs = []
-        self._disabled = []
+        self._disabled_jobs = []
 
     def read_jobs(self, *, chronological):
         return list(reversed(self._jobs)) if chronological else self._jobs
@@ -13,21 +13,21 @@ class NoPersistence:
     def store_job(self, job_info):
         self._jobs.append(job_info)
 
-    def add_disabled_jobs(self, job_ids):
-        self._disabled += job_ids
+    def add_disabled_jobs(self, disabled_jobs):
+        self._disabled_jobs += disabled_jobs
 
     def remove_disabled_jobs(self, job_ids):
         removed = []
         for job_id in job_ids:
             try:
-                self._disabled.remove(job_id)
+                self._disabled_jobs.remove(job_id)
                 removed.append(job_id)
             except ValueError:
                 continue
         return removed
 
     def read_disabled_jobs(self):
-        return self._disabled
+        return self._disabled_jobs
 
 
 _persistence = NoPersistence()
@@ -53,8 +53,8 @@ def store_job(job_info):
     _persistence.store_job(job_info)
 
 
-def add_disabled_jobs(job_ids):
-    _persistence.add_disabled_jobs(job_ids)
+def add_disabled_jobs(disabled_jobs):
+    _persistence.add_disabled_jobs(disabled_jobs)
 
 
 def remove_disabled_jobs(job_ids):

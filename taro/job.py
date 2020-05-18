@@ -12,6 +12,7 @@ There are two type of clients of the framework:
 """
 
 import abc
+from collections import namedtuple
 
 from taro.execution import ExecutionError
 
@@ -150,3 +151,6 @@ class ExecutionStateObserver(abc.ABC):
     @abc.abstractmethod
     def state_update(self, job_info: JobInfo):
         """This method is called when job instance execution state is changed."""
+
+
+DisabledJob = namedtuple('DisabledJob', 'job_id regex created expires')
