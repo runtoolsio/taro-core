@@ -18,9 +18,9 @@ Column = namedtuple('Column', 'name max_width value_fnc')
 
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id)
 INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.instance_id)
-CREATED = Column('CREATED', 25, lambda j: _format_dt(j.lifecycle.changed(ExecutionState.CREATED)))
-EXECUTED = Column('EXECUTED', 25, lambda j: _format_dt(j.lifecycle.execution_started()))
-ENDED = Column('ENDED', 25, lambda j: _format_dt(j.lifecycle.execution_finished()))
+CREATED = Column('CREATED', 25, lambda j: format_dt(j.lifecycle.changed(ExecutionState.CREATED)))
+EXECUTED = Column('EXECUTED', 25, lambda j: format_dt(j.lifecycle.execution_started()))
+ENDED = Column('ENDED', 25, lambda j: format_dt(j.lifecycle.execution_finished()))
 EXEC_TIME = Column('EXECUTION TIME', 18, lambda j: execution_time(j))
 STATE = Column('STATE', max(len(s.name) for s in ExecutionState) + 2, lambda j: j.state.name)
 STATUS = Column('STATUS', 30, lambda j: j.status or '')
@@ -107,7 +107,7 @@ def _get_color(job_info):
     return ''
 
 
-def _format_dt(dt):
+def format_dt(dt):
     if not dt:
         return 'N/A'
 

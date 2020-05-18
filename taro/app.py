@@ -228,8 +228,10 @@ def run_list_disabled(args):
     db_con = init_sqlite(config.persistence_database)
     try:
         disabled_jobs = persistence.read_disabled_jobs()
-        JOB_ID = Column('JOB ID', 30, lambda dj: dj.job_id)
-        ps.print_table(disabled_jobs, [JOB_ID], show_header=True, pager=False)
+        JOB_ID = Column('DISABLED JOB ID', 30, lambda dj: dj.job_id)
+        REGEX = Column('REGEX', 30, lambda dj: 'yes' if dj.regex else 'no')
+        CREATED = Column('DISABLED', 30, lambda dj: ps.format_dt(dj.created))
+        ps.print_table(disabled_jobs, [JOB_ID, REGEX, CREATED], show_header=True, pager=False)
     finally:
         if db_con:
             db_con.close()

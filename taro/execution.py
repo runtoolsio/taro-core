@@ -12,6 +12,8 @@ from collections import OrderedDict
 from enum import Enum, auto
 from typing import Tuple, List, Iterable, Set, Optional
 
+from taro.util import utc_now
+
 
 class ExecutionStateGroup(Enum):
     BEFORE_EXECUTION = auto()
@@ -196,5 +198,5 @@ class ExecutionLifecycleManagement(ExecutionLifecycle):
         if not new_state or new_state == ExecutionState.NONE or self.state() == new_state:
             return False
         else:
-            self._state_changes[new_state] = datetime.datetime.now(datetime.timezone.utc)
+            self._state_changes[new_state] = utc_now()
             return True
