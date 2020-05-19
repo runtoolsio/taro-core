@@ -1,16 +1,18 @@
-import sys
-import urllib3
 import json
+import sys
+
+import urllib3
+import yaql as yaql
 
 from taro import util
 
 
-def run(trigger_url, trigger_body, monitor_url):
+def run(trigger_url, trigger_body, monitor_url, is_running, status):
     http = urllib3.PoolManager()
     headers = {'Content-type': 'application/json'}
     resp = http.request('POST', trigger_url, headers=headers, body=trigger_body)
     resp_body = resp.data.decode("utf-8")
-    print(resp_body, file=sys.stderr)
+    print(resp_body)
 
     if resp.status >= 300:
         print(f'HTTP trigger non-2xx code: {resp.status}', file=sys.stderr)
@@ -22,10 +24,21 @@ def run(trigger_url, trigger_body, monitor_url):
 
     resp_body_obj = util.wrap_namespace(json.loads(resp_body))
     res_monitor_url = monitor_url.format(resp_body=resp_body_obj)
-    mon_resp = http.request('GET', res_monitor_url)
-    print(res_monitor_url)
-    print(mon_resp.status)
 
+    engine = yaql.factory.YaqlFactory().create()
+    is_running_exp = engine(is_running or 'false')
 
-def _ctx():
-    return {'UTC_NOW': util.utc_now()}
+    while True:
+        mon_resp = http.request('GET', res_monitor_url)
+        mon_resp_body = mon_resp.data.decode("utf-8")
+        ctx = yaql.create_context()
+        ctx['status'] = mon_resp.status
+        ctx['resp_body'] = json.loads(mon_resp_body) if mon_resp.headers[
+                                                            'Content-Type'] == 'application/json' else mon_resp_body
+        if is_running_exp.evaluate(context=ctx):
+            if status:
+                print(engine(status).evaluate(context=ctx))
+            else:
+                print(mon_resp_body)
+        else:
+            break

@@ -1,9 +1,8 @@
+import itertools
 import logging
 import os
 import signal
 import sqlite3
-
-import itertools
 import sys
 
 from taro import cli, paths, cnf, runner, ps, jfilter, log, PluginBase, persistence, http
@@ -17,8 +16,8 @@ from taro.process import ProcessExecution
 from taro.runner import RunnerJobInstance
 from taro.term import Term
 from taro.util import set_attr, expand_user, utc_now
-from taro.view import instance as view_inst
 from taro.view import disabled as view_dis
+from taro.view import instance as view_inst
 
 logger = logging.getLogger(__name__)
 
@@ -238,7 +237,7 @@ def run_list_disabled(args):
 
 
 def run_http(args):
-    http.run(args.trigger_url, args.trigger_body, args.monitor_url)
+    http.run(args.trigger_url, args.trigger_body, args.monitor_url, args.is_running, args.status)
 
 
 def run_show_config(args):

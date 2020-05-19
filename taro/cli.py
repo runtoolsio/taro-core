@@ -245,6 +245,8 @@ def _init_http_parser(common, subparsers):
     ld_parser.add_argument('-T', '--trigger-url', required=True, type=str, help='URL for triggering the job')
     ld_parser.add_argument('-B', '--trigger-body', type=str, help='Request body for the job trigger')
     ld_parser.add_argument('-M', '--monitor-url', type=str, help='URL for monitoring of the job')
+    ld_parser.add_argument('-R', '--is-running', type=str, help='Condition to find out if the job is running')
+    ld_parser.add_argument('-S', '--status', type=str, help='TODO')
 
 
 def _init_show_config_parser(common, subparsers):
