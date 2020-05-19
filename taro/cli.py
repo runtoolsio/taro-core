@@ -242,8 +242,9 @@ def _init_http_parser(common, subparsers):
     ld_parser = subparsers.add_parser(
         ACTION_HTTP, parents=[common], description='Execute job controlled by HTTP interface', add_help=False)
 
-    ld_parser.add_argument('-T', '--trigger-url', type=str, help='URL for triggering the job')
+    ld_parser.add_argument('-T', '--trigger-url', required=True, type=str, help='URL for triggering the job')
     ld_parser.add_argument('-B', '--trigger-body', type=str, help='Request body for the job trigger')
+    ld_parser.add_argument('-M', '--monitor-url', type=str, help='URL for monitoring of the job')
 
 
 def _init_show_config_parser(common, subparsers):

@@ -238,7 +238,7 @@ def run_list_disabled(args):
 
 
 def run_http(args):
-    http.run(args.trigger_url, args.trigger_body)
+    http.run(args.trigger_url, args.trigger_body, args.monitor_url)
 
 
 def run_show_config(args):
