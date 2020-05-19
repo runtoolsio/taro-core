@@ -14,6 +14,7 @@ ACTION_WAIT = 'wait'
 ACTION_STOP = 'stop'
 ACTION_DISABLE = 'disable'
 ACTION_LIST_DISABLED = 'list-disabled'
+ACTION_HTTP = 'http'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
 
@@ -42,6 +43,7 @@ def parse_args(args):
     _init_stop_parser(common, subparsers)
     _init_disable_parser(common, subparsers)
     _init_list_disabled_parser(common, subparsers)
+    _init_http_parser(common, subparsers)
     _init_show_config_parser(common, subparsers)
 
     parsed = parser.parse_args(args)
@@ -227,6 +229,21 @@ def _init_list_disabled_parser(common, subparsers):
 
     ld_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
     ld_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
+
+
+def _init_http_parser(common, subparsers):
+    """
+    Creates parsers for `http` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for http parser to be added to
+    """
+
+    ld_parser = subparsers.add_parser(
+        ACTION_HTTP, parents=[common], description='Execute job controlled by HTTP interface', add_help=False)
+
+    ld_parser.add_argument('-T', '--trigger-url', type=str, help='URL for triggering the job')
+    ld_parser.add_argument('-B', '--trigger-body', type=str, help='Request body for the job trigger')
 
 
 def _init_show_config_parser(common, subparsers):

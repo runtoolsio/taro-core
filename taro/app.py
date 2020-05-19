@@ -6,7 +6,7 @@ import sqlite3
 import itertools
 import sys
 
-from taro import cli, paths, cnf, runner, ps, jfilter, log, PluginBase, persistence
+from taro import cli, paths, cnf, runner, ps, jfilter, log, PluginBase, persistence, http
 from taro.api import Server, Client
 from taro.cnf import Config
 from taro.execution import ExecutionState
@@ -51,6 +51,8 @@ def main(args):
         run_disable(args)
     elif args.action == cli.ACTION_LIST_DISABLED:
         run_list_disabled(args)
+    elif args.action == cli.ACTION_HTTP:
+        run_http(args)
     elif args.action == cli.ACTION_CONFIG:
         if args.config_action == cli.ACTION_CONFIG_SHOW:
             run_show_config(args)
@@ -233,6 +235,10 @@ def run_list_disabled(args):
     finally:
         if db_con:
             db_con.close()
+
+
+def run_http(args):
+    http.run(args.trigger_url, args.trigger_body)
 
 
 def run_show_config(args):

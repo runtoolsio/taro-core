@@ -8,6 +8,6 @@ EXECUTED = Column('EXECUTED', 25, lambda j: format_dt(j.lifecycle.execution_star
 ENDED = Column('ENDED', 25, lambda j: format_dt(j.lifecycle.execution_finished()))
 EXEC_TIME = Column('EXECUTION TIME', 18, lambda j: execution_time(j))
 STATE = Column('STATE', max(len(s.name) for s in ExecutionState) + 2, lambda j: j.state.name)
-STATUS = Column('STATUS', 30, lambda j: j.status or '')
+STATUS = Column('STATUS', 50, lambda j: j.status or '')
 
 DEFAULT_COLUMNS = [JOB_ID, INSTANCE_ID, CREATED, EXEC_TIME, STATE, STATUS]
