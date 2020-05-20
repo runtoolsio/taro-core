@@ -3,6 +3,7 @@ import sys
 
 import urllib3
 import yaql as yaql
+from yaql.language.exceptions import YaqlException
 
 from taro import util
 
@@ -37,7 +38,11 @@ def run(trigger_url, trigger_body, monitor_url, is_running, status):
                                                             'Content-Type'] == 'application/json' else mon_resp_body
         if is_running_exp.evaluate(context=ctx):
             if status:
-                print(engine(status).evaluate(context=ctx))
+                try:
+                    print(engine(status).evaluate(context=ctx))
+                except YaqlException as e:
+                    print(mon_resp_body)
+                    print("Invalid status expression: " + str(e), file=sys.stderr)
             else:
                 print(mon_resp_body)
         else:
