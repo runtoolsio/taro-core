@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="taro",
-    version="0.0.5",
+    version="0.0.6",
     author="Stan Svec",
     author_email="stan.x.svec@gmail.com",
     description="Tool for managing your (mainly cron) jobs",
@@ -22,10 +22,12 @@ setuptools.setup(
         "Operating System :: POSIX :: Linux",
     ],
     python_requires='>=3.6',
-    packages=setuptools.find_packages(include=("taro",), exclude=("test",)),
+    packages=setuptools.find_packages(exclude=("test",)),
     install_requires=[
         "PyYAML>=5.1.2",
         "pypager>=3.0.0",
+        "urllib3>=1.25.6",
+        "yaql>=1.1.3",
     ],
     package_data={
         'taro': ['config/*.yaml'],

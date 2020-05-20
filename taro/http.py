@@ -8,10 +8,10 @@ from yaql.language.exceptions import YaqlException
 from taro import util
 
 
-def run(trigger_url, trigger_body, monitor_url, is_running, status):
+def run(url, data, monitor_url, is_running, status):
     http = urllib3.PoolManager()
     headers = {'Content-type': 'application/json'}
-    resp = http.request('POST', trigger_url, headers=headers, body=trigger_body)
+    resp = http.request('POST', url, headers=headers, body=data)
     resp_body = resp.data.decode("utf-8")
     print(resp_body)
 
