@@ -23,7 +23,10 @@ def run(url, data, monitor_url, is_running, status):
         print(f'Job completed with status code: {resp.status}')
         return
 
-    resp_body_obj = util.wrap_namespace(json.loads(resp_body))
+    if resp_body and resp.headers.get('Content-Type') == 'application/json':
+        resp_body_obj = util.wrap_namespace(json.loads(resp_body))
+    else:
+        resp_body_obj = None
     res_monitor_url = monitor_url.format(resp_body=resp_body_obj)
 
     engine = yaql.factory.YaqlFactory().create()
