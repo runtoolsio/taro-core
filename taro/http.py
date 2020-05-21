@@ -11,7 +11,7 @@ from taro import util
 def run(url, data, monitor_url, is_running, status):
     http = urllib3.PoolManager()
     headers = {'Content-type': 'application/json'}
-    resp = http.request('POST', url, headers=headers, body=data)
+    resp = http.request('POST', _ensure_schema(url), headers=headers, body=data)
     resp_body = resp.data.decode("utf-8")
     print(resp_body)
 
@@ -27,7 +27,7 @@ def run(url, data, monitor_url, is_running, status):
         resp_body_obj = util.wrap_namespace(json.loads(resp_body))
     else:
         resp_body_obj = None
-    res_monitor_url = monitor_url.format(resp_body=resp_body_obj)
+    res_monitor_url = _ensure_schema(monitor_url.format(resp_body=resp_body_obj))
 
     engine = yaql.factory.YaqlFactory().create()
     is_running_exp = engine(is_running or 'false')
@@ -50,3 +50,10 @@ def run(url, data, monitor_url, is_running, status):
                 print(mon_resp_body)
         else:
             break
+
+
+def _ensure_schema(url: str):
+    if url.startswith('http'):
+        return url
+    else:
+        return 'http://' + url
