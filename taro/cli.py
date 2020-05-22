@@ -69,7 +69,7 @@ def _init_exec_parser(common, subparsers):
                              help='ignore config files and use minimum configuration')
     exec_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
     exec_parser.add_argument('--id', type=str, help='defines job ID')
-    exec_parser.add_argument('-o', '--read-output', action='store_true', help='read stdout for status reading, etc.')
+    exec_parser.add_argument('-b', '--bypass-output', action='store_true', help='output is not piped')
     # TODO delay
     # exec_parser.add_argument('-t', '--timeout', type=int) TODO implement
     exec_parser.add_argument('-p', '--pending', type=str, help='specifies pending value for releasing of this job')

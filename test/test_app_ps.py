@@ -32,7 +32,7 @@ def test_job_waiting(capsys):
 
 def test_job_status(capsys):
     # Shell to use '&&' to combine commands
-    run_app_as_process_and_wait('exec --id p_test --read-output echo progress1 && sleep 1',
+    run_app_as_process_and_wait('exec --id p_test echo progress1 && sleep 1',
                                 wait_for=ExecutionState.RUNNING, daemon=True, shell=True)
 
     run_app('ps')
