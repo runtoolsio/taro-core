@@ -2,7 +2,6 @@ import itertools
 import logging
 import os
 import signal
-import sqlite3
 import sys
 
 from taro import cli, paths, cnf, runner, ps, jfilter, log, PluginBase, persistence, http
@@ -57,11 +56,18 @@ def main(args):
             run_show_config(args)
 
 
-def run_exec(args):
+def setup_config(args):
     config_ns = get_config(args)
     override_config(args, config_ns)
     config = Config(config_ns)
-    log.setup(config)
+    cnf.config = config
+    return config
+
+
+def run_exec(args):
+    config = setup_config(args)
+    log.init()
+    persistence.init()
 
     all_args = [args.command] + args.arg
     execution = ProcessExecution(all_args, read_output=not args.bypass_output)
@@ -75,14 +81,9 @@ def run_exec(args):
     api_started = api.start()
     if not api_started:
         logger.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")
-    db_con = None
-    if config.persistence_enabled:
-        db_con = init_sqlite(config.persistence_database)
-    else:
-        persistence.disable()
     dispatcher = Dispatcher()
     runner.register_observer(dispatcher)
-    for plugin in PluginBase.create_plugins(EXT_PLUGIN_MODULE_PREFIX, config.plugins).values():
+    for plugin in PluginBase.create_plugins(EXT_PLUGIN_MODULE_PREFIX, config.plugins).values():  # TODO to plugin module
         try:
             plugin.new_job_instance(job_instance)
         except BaseException as e:
@@ -92,14 +93,7 @@ def run_exec(args):
     finally:
         api.stop()
         dispatcher.close()
-        if db_con:
-            db_con.close()
-
-
-def init_sqlite(database_path):
-    db_con = sqlite3.connect(database_path or str(paths.sqlite_db_path(True)))
-    persistence.init_sqlite(db_con)
-    return db_con
+        persistence.close()
 
 
 def run_ps(args):
@@ -112,6 +106,8 @@ def run_ps(args):
 
 
 def run_jobs(args):
+    setup_config(args)
+
     jobs = []
 
     client = Client()
@@ -120,12 +116,11 @@ def run_jobs(args):
     finally:
         client.close()
 
-    db_con = sqlite3.connect(str(paths.sqlite_db_path(True)))
+    persistence.init()
     try:
-        persistence.init_sqlite(db_con)
         jobs += persistence.read_jobs(chronological=args.chronological)
     finally:
-        db_con.close()
+        persistence.close()
 
     columns = [view_inst.JOB_ID, view_inst.INSTANCE_ID, view_inst.CREATED, view_inst.ENDED, view_inst.EXEC_TIME,
                view_inst.STATE, view_inst.STATUS]
@@ -204,36 +199,35 @@ def stop_server_and_exit(server, signal_number: int):
 
 
 def run_disable(args):
-    config = Config(get_config(args))
-    if not config.persistence_enabled:
+    setup_config(args)
+    persistence_enabled = persistence.init()
+
+    if not persistence_enabled:
         print('Persistence is disabled. Enable persistence in config file to be able to store disabled jobs',
               file=sys.stderr)
         exit(1)
 
     jobs = args.jobs
     disabled_jobs = [DisabledJob(j, args.regex, utc_now(), None) for j in args.jobs]
-    db_con = init_sqlite(config.persistence_database)
     try:
         persistence.add_disabled_jobs(disabled_jobs)
         print("Jobs disabled: {}".format(",".join(jobs)))
     finally:
-        if db_con:
-            db_con.close()
+        persistence.close()
 
 
 def run_list_disabled(args):
-    config = Config(get_config(args))
-    if not config.persistence_enabled:
+    setup_config(args)
+    persistence_enabled = persistence.init()
+    if not persistence_enabled:
         print("Persistence is disabled")
         exit(1)
 
-    db_con = init_sqlite(config.persistence_database)
     try:
         disabled_jobs = persistence.read_disabled_jobs()
         ps.print_table(disabled_jobs, view_dis.DEFAULT_COLUMNS, show_header=True, pager=False)
     finally:
-        if db_con:
-            db_con.close()
+        persistence.close()
 
 
 def run_http(args):
@@ -277,6 +271,8 @@ def override_config(args, config):
     }
 
     for arg, conf in arg_to_config.items():
+        if not hasattr(args, arg):
+            continue
         arg_value = getattr(args, arg)
         if arg_value is not None:
             set_attr(config, conf.split('.'), arg_value)

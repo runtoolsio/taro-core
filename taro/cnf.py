@@ -12,6 +12,8 @@ PERSISTENCE_TYPE = 'persistence.type'
 PERSISTENCE_DATABASE = 'persistence.database'
 PLUGINS = 'plugins'
 
+config = None
+
 
 def read_config(config_file_path) -> NestedNamespace:
     import yaml  # 'cnf' module is imported into main 'taro' module, this prevents to automatically import 'yaml' too

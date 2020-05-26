@@ -99,3 +99,6 @@ class SQLite:
                             util.dt_from_utc_str(row[2], is_iso=False),
                             util.dt_from_utc_str(row[3], is_iso=False))
                 for row in c.fetchall()]
+
+    def close(self):
+        self._conn.close()

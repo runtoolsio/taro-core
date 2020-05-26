@@ -1,6 +1,7 @@
 import logging
 import sys
 
+from taro import cnf
 from taro import paths
 from taro.util import expand_user
 
@@ -13,8 +14,10 @@ STDERR_HANDLER = 'stderr-handler'
 FILE_HANDLER = 'file-handler'
 
 
-def setup(config):
-    init()
+def init():
+    config = cnf.config
+
+    _root_logger.disabled = False  # Resetting required for tests
 
     if not config.log_enabled:
         disable()
@@ -26,13 +29,6 @@ def setup(config):
     if config.log_file_level != 'off':
         log_file_path = expand_user(config.log_file_path) or paths.log_file_path(create=True)
         setup_file(config.log_file_level, log_file_path)
-
-
-def init():
-    """
-    Resetting needed for tests
-    """
-    _root_logger.disabled = False
 
 
 def disable():

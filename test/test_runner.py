@@ -1,10 +1,10 @@
 """
 Tests :mod:`runner` module
 """
+import time
 from threading import Thread
 
 import pytest
-import time
 
 import taro.runner as runner
 from taro import persistence

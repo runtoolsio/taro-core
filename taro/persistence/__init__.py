@@ -1,4 +1,5 @@
-from taro.persistence.sqlite import SQLite
+from taro import cnf
+from taro import paths
 
 
 class NoPersistence:
@@ -29,20 +30,34 @@ class NoPersistence:
     def read_disabled_jobs(self):
         return self._disabled_jobs
 
+    def close(self):
+        pass
+
 
 _persistence = NoPersistence()
 
 
+def init():
+    global _persistence
+
+    if cnf.config.persistence_enabled:  # TODO check is sqlite
+        import sqlite3
+        from taro.persistence.sqlite import SQLite
+
+        db_con = sqlite3.connect(cnf.config.persistence_database or str(paths.sqlite_db_path(True)))
+        sqlite_ = SQLite(db_con)
+        sqlite_.check_tables_exist()
+        _persistence = sqlite_
+        return True
+    else:
+        disable()
+        return False
+
+
 def disable():
     global _persistence
+    _persistence.close()
     _persistence = NoPersistence()
-
-
-def init_sqlite(db_connection):
-    global _persistence
-    sqlite_ = SQLite(db_connection)
-    sqlite_.check_tables_exist()
-    _persistence = sqlite_
 
 
 def read_jobs(*, chronological):
@@ -63,3 +78,7 @@ def remove_disabled_jobs(job_ids):
 
 def read_disabled_jobs():
     return _persistence.read_disabled_jobs()
+
+
+def close():
+    _persistence.close()
