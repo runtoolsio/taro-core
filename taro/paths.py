@@ -16,6 +16,7 @@ from typing import Generator
 
 _DEFAULT_CONFIG_FILE = 'taro.yaml'
 _MINIMAL_CONFIG_FILE = 'minimal.yaml'
+_HOSTINFO_FILE = 'hostinfo'
 _LOG_FILE = 'taro.log'
 
 
@@ -52,6 +53,10 @@ There's usually a multi-step search for the configuration file.
 
 def lookup_config_file():
     return lookup_config_file_path(_DEFAULT_CONFIG_FILE)
+
+
+def lookup_hostinfo_file():
+    return lookup_config_file_path(_HOSTINFO_FILE)
 
 
 def lookup_config_file_path(file) -> Path:
