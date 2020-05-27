@@ -1,6 +1,9 @@
-import re
 import configparser
+import json
+import re
 from configparser import ParsingError
+
+import urllib3
 
 from taro import paths
 
@@ -8,15 +11,14 @@ variable_pattern = re.compile('\\{.+\\}')
 
 
 def read():
+    host_info = {}
+    host_info_file = configparser.ConfigParser()
     try:
-        with open(paths.lookup_hostinfo_file(), 'r') as f:
-            # Add [config] to satisfy ConfigParser section requirements
-            hostinfo_str = '[config]\n' + f.read()
-            hostinfo_cnf = configparser.ConfigParser()
-            # Prevent converting option names to lower case
-            hostinfo_cnf.optionxform = str
-            hostinfo_cnf.read_string(hostinfo_str)
-            return {k: _resolve(v) for k, v in hostinfo_cnf['config'].items()}
+        host_info_file.read(paths.lookup_hostinfo_file())
+        if 'const' in host_info_file:
+            host_info.update(host_info_file['const'])
+        # return {k: _resolve(v) for k, v in host_info_file['config'].items()}
+        print(host_info)
     except ParsingError as e:
         raise LookupError('Hostinfo file corrupted') from e
     except FileNotFoundError as e:
@@ -26,8 +28,17 @@ def read():
 def _resolve(v):
     if variable_pattern.match(v):
         var = v[1:-1]
-        return var
+        if var == 'ec2.region':
+            return _resolve_ec2_region()
+        return 'Unknown variable: ' + var
     else:
         return v
 
-print(read())
+
+def _resolve_ec2_region():
+    http = urllib3.PoolManager()
+    resp = http.request('GET', 'http://169.254.169.254/latest/dynamic/instance-identity/document', timeout=0.3)
+    return json.loads(resp.data.decode("utf-8"))['region']
+
+
+read()
