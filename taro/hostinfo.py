@@ -2,6 +2,7 @@ import configparser
 import json
 import re
 from configparser import ParsingError
+import subprocess
 
 import urllib3
 
@@ -38,7 +39,13 @@ def _resolve(v):
 def _resolve_ec2_region():
     http = urllib3.PoolManager()
     resp = http.request('GET', 'http://169.254.169.254/latest/dynamic/instance-identity/document', timeout=0.3)
-    return json.loads(resp.data.decode("utf-8"))['region']
+    region = json.loads(resp.data.decode("utf-8"))['region']
+
+    resp = http.request('GET', 'http://169.254.169.254/latest/meta-data/instance-id', timeout=0.3)
+    instance_id = resp.data.decode("utf-8")
+
+    tags = subprocess.check_output(
+        ['aws', 'ec2', 'describe-tags', '--region', region, '--filters', f'Name=resource-id,Values={instance_id}'])
 
 
 read()
