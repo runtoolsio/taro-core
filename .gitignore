@@ -1,3 +1,6 @@
+# Project specific files
+test/test_temp/*
+
 # IDE
 .idea/
 

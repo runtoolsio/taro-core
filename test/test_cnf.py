@@ -66,4 +66,4 @@ def test_not_str_type_ignored():
 
 
 def _read_config():
-    return cnf.read_config('test.yaml')
+    return cnf.read_config(paths.lookup_config_file())

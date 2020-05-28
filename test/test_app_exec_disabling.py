@@ -23,8 +23,8 @@ def observer():
 
 def test_disable_job(observer: TestObserver):
     create_test_config({"persistence": {"enabled": True, "type": "sqlite", "database": str(test_db_path())}})
-    run_app('disable -C test.yaml job_to_disable')
-    run_app('exec -C test.yaml --id job_to_disable echo')
+    run_app('disable job_to_disable')
+    run_app('exec --id job_to_disable echo')
 
     assert observer.last_job().job_id == 'job_to_disable'
     assert observer.exec_state(-1) == ExecutionState.DISABLED
@@ -32,11 +32,11 @@ def test_disable_job(observer: TestObserver):
 
 def test_disable_jobs(observer: TestObserver):
     create_test_config({"persistence": {"enabled": True, "type": "sqlite", "database": str(test_db_path())}})
-    run_app('disable -C test.yaml job1 job3 j.*')  # 'j.*' not a regular expression here as -regex opt not used
+    run_app('disable job1 job3 j.*')  # 'j.*' not a regular expression here as -regex opt not used
 
-    run_app('exec -C test.yaml --id job1 echo')
-    run_app('exec -C test.yaml --id j2 echo')
-    run_app('exec -C test.yaml --id job3 echo')
+    run_app('exec --id job1 echo')
+    run_app('exec --id j2 echo')
+    run_app('exec --id job3 echo')
 
     assert observer.last_state('job1') == ExecutionState.DISABLED
     assert observer.last_state('j2') == ExecutionState.COMPLETED
@@ -45,11 +45,11 @@ def test_disable_jobs(observer: TestObserver):
 
 def test_disable_jobs_by_regex(observer: TestObserver):
     create_test_config({"persistence": {"enabled": True, "type": "sqlite", "database": str(test_db_path())}})
-    run_app('disable -C test.yaml -regex disabled.*')
+    run_app('disable -regex disabled.*')
 
-    run_app('exec -C test.yaml --id disable echo')
-    run_app('exec -C test.yaml --id disabled echo')
-    run_app('exec -C test.yaml --id disabled1 echo')
+    run_app('exec --id disable echo')
+    run_app('exec --id disabled echo')
+    run_app('exec --id disabled1 echo')
 
     assert observer.last_state('disable') == ExecutionState.COMPLETED
     assert observer.last_state('disabled') == ExecutionState.DISABLED

@@ -31,7 +31,7 @@ def observer():
 
 def test_plugin_executed():
     create_test_config({"plugins": ["test_plugin"]})  # Use testing plugin in package 'test_plugin'
-    run_app('exec -C test.yaml --id run_with_test_plugin echo')
+    run_app('exec --id run_with_test_plugin echo')
 
     assert test_plugin.TestPlugin.instance_ref().job_instances[-1].job_id == 'run_with_test_plugin'
 
@@ -39,6 +39,6 @@ def test_plugin_executed():
 def test_invalid_plugin_ignored(observer: TestObserver):
     test_plugin.TestPlugin.error_on_new_job_instance = BaseException('Must be captured')
     create_test_config({"plugins": ["test_plugin"]})  # Use testing plugin in package 'test_plugin'
-    run_app('exec -C test.yaml --id run_with_failing_plugin echo')
+    run_app('exec --id run_with_failing_plugin echo')
 
     assert observer.exec_state(-1) == ExecutionState.COMPLETED

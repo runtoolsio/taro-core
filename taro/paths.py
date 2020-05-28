@@ -14,7 +14,9 @@ import os
 from pathlib import Path
 from typing import Generator
 
-_DEFAULT_CONFIG_FILE = 'taro.yaml'
+TEST_DIR = 'test_temp'
+
+DEFAULT_CONFIG_FILE = 'taro.yaml'
 _MINIMAL_CONFIG_FILE = 'minimal.yaml'
 _HOSTINFO_FILE = 'hostinfo'
 _LOG_FILE = 'taro.log'
@@ -25,7 +27,7 @@ def _is_root():
 
 
 def default_config_file_path() -> Path:
-    return config_file_path(_DEFAULT_CONFIG_FILE)
+    return config_file_path(DEFAULT_CONFIG_FILE)
 
 
 def minimal_config_file_path() -> Path:
@@ -52,7 +54,7 @@ There's usually a multi-step search for the configuration file.
 
 
 def lookup_config_file():
-    return lookup_config_file_path(_DEFAULT_CONFIG_FILE)
+    return lookup_config_file_path(DEFAULT_CONFIG_FILE)
 
 
 def lookup_hostinfo_file():
@@ -61,12 +63,17 @@ def lookup_hostinfo_file():
 
 def lookup_config_file_path(file) -> Path:
     """
-    1. If non-root user search: ${XDG_CONFIG_HOME}/taro/{config-file}
-    2. If not found or root user search: /etc/taro/{config-file}
+    1. Search in the test directory first
+    2. If non-root user search: ${XDG_CONFIG_HOME}/taro/{config-file}
+    3. If not found or root user search: /etc/taro/{config-file}
 
     :return: config file path
     :raise FileNotFoundError: when config lookup failed
     """
+
+    test_config = Path(TEST_DIR) / file
+    if test_config.exists():
+        return test_config
 
     paths = []
 

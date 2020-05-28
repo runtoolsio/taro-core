@@ -18,14 +18,14 @@ def remove_config_if_created():
 
 def test_disable_jobs(capsys):
     create_test_config({"persistence": {"enabled": True, "type": "sqlite", "database": str(test_db_path())}})
-    run_app('disable -C test.yaml j1 j2')
-    run_app('disable -C test.yaml -regex j3')
+    run_app('disable j1 j2')
+    run_app('disable -regex j3')
     output = capsys.readouterr().out
     assert 'j1' in output
     assert 'j2' in output
     assert 'j3' in output
 
-    run_app('list-disabled -C test.yaml')
+    run_app('list-disabled')
     output = capsys.readouterr().out
     disabled = ps.parse_table(output, view_dis.DEFAULT_COLUMNS)
 

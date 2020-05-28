@@ -20,7 +20,6 @@ from taro.view import instance as view_inst
 
 logger = logging.getLogger(__name__)
 
-USE_MINIMAL_CONFIG = False
 EXT_PLUGIN_MODULE_PREFIX = 'taro_'
 
 
@@ -248,8 +247,7 @@ def get_config_file_path(args):
         return expand_user(args.config)
     if hasattr(args, 'def_config') and args.def_config:
         return paths.default_config_file_path()
-    # Keep following condition as the last one so USE_MINIMAL_CONFIG can be overridden by args
-    if (hasattr(args, 'min_config') and args.min_config) or USE_MINIMAL_CONFIG:
+    if hasattr(args, 'min_config') and args.min_config:
         return paths.minimal_config_file_path()
 
     return paths.lookup_config_file()
