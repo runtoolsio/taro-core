@@ -1,7 +1,6 @@
 import configparser
 import json
 import logging
-import re
 import subprocess
 from configparser import ParsingError
 from subprocess import SubprocessError
@@ -12,12 +11,12 @@ from urllib3.exceptions import HTTPError
 from taro import paths
 
 log = logging.getLogger(__name__)
-variable_pattern = re.compile('\\{.+\\}')
 
 
 def read():
     host_info = {}
     host_info_file = configparser.ConfigParser()
+    host_info_file.optionxform = str
     try:
         host_info_file.read(paths.lookup_hostinfo_file())
     except ParsingError as e:
@@ -31,16 +30,16 @@ def read():
 
     if 'ec2' in host_info_file:
         try:
-            _resolve_ec2_variables(host_info_file['ec2'], host_info)
+            _resolve_ec2_section(host_info_file['ec2'], host_info)
         except (HTTPError, SubprocessError) as e:
             log.warning("event=[ec2_hostinfo_error] detail=[{}]".format(e))
             host_info.update({k: '<error>' for k, _ in host_info_file['ec2'].items() if k not in host_info})
 
-    print(host_info)
+    return host_info
 
 
-def _resolve_ec2_variables(mapping, host_info):
-    rev_mapping = {v.lower(): k for k, v in mapping}
+def _resolve_ec2_section(mapping, host_info):
+    rev_mapping = {v.lower(): k for k, v in mapping.items()}
     http = urllib3.PoolManager()
 
     resp = http.request('GET', 'http://169.254.169.254/latest/dynamic/instance-identity/document',
@@ -58,14 +57,13 @@ def _resolve_ec2_variables(mapping, host_info):
     tags_row = subprocess.check_output(
         ['aws', 'ec2', 'describe-tags', '--region', region, '--filters', f'Name=resource-id,Values={instance_id}'])
     tags = json.loads(tags_row)["Tags"]
+    tag2value = {tag['Key'].lower(): tag['Value'] for tag in tags}
 
     for k, v in mapping.items():
         if k in host_info:  # Already resolved
             continue
         if v.lower().startswith('tag.'):
-            pass
+            tag_name = v.lower()[len('tag.'):]
+            host_info[k] = tag2value.get(tag_name, 'Unknown tag: ' + tag_name)
         else:
             host_info[k] = 'Unknown variable: ' + v
-
-
-read()
