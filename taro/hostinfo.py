@@ -1,13 +1,17 @@
 import configparser
 import json
+import logging
 import re
-from configparser import ParsingError
 import subprocess
+from configparser import ParsingError
+from subprocess import SubprocessError
 
 import urllib3
+from urllib3.exceptions import HTTPError
 
 from taro import paths
 
+log = logging.getLogger(__name__)
 variable_pattern = re.compile('\\{.+\\}')
 
 
@@ -16,36 +20,52 @@ def read():
     host_info_file = configparser.ConfigParser()
     try:
         host_info_file.read(paths.lookup_hostinfo_file())
-        if 'const' in host_info_file:
-            host_info.update(host_info_file['const'])
-        # return {k: _resolve(v) for k, v in host_info_file['config'].items()}
-        print(host_info)
     except ParsingError as e:
         raise LookupError('Hostinfo file corrupted') from e
-    except FileNotFoundError as e:
-        raise LookupError('Hostinfo lookup failed') from e
+    except FileNotFoundError:
+        log.debug('event=[no_hostinfo_file]')
+        return {}
+
+    if 'const' in host_info_file:
+        host_info.update(host_info_file['const'])
+
+    if 'ec2' in host_info_file:
+        try:
+            _resolve_ec2_variables(host_info_file['ec2'], host_info)
+        except (HTTPError, SubprocessError) as e:
+            log.warning("event=[ec2_hostinfo_error] detail=[{}]".format(e))
+            host_info.update({k: '<error>' for k, _ in host_info_file['ec2'].items() if k not in host_info})
+
+    print(host_info)
 
 
-def _resolve(v):
-    if variable_pattern.match(v):
-        var = v[1:-1]
-        if var == 'ec2.region':
-            return _resolve_ec2_region()
-        return 'Unknown variable: ' + var
-    else:
-        return v
-
-
-def _resolve_ec2_region():
+def _resolve_ec2_variables(mapping, host_info):
+    rev_mapping = {v.lower(): k for k, v in mapping}
     http = urllib3.PoolManager()
-    resp = http.request('GET', 'http://169.254.169.254/latest/dynamic/instance-identity/document', timeout=0.3)
+
+    resp = http.request('GET', 'http://169.254.169.254/latest/dynamic/instance-identity/document',
+                        timeout=0.3, retries=False)
     region = json.loads(resp.data.decode("utf-8"))['region']
+    if 'region' in rev_mapping:
+        host_info[rev_mapping['region']] = region
 
-    resp = http.request('GET', 'http://169.254.169.254/latest/meta-data/instance-id', timeout=0.3)
+    resp = http.request('GET', 'http://169.254.169.254/latest/meta-data/instance-id', timeout=0.3, retries=False)
     instance_id = resp.data.decode("utf-8")
+    for k, v in mapping.items():
+        if v.lower() in ('instance_id', 'instance-id', 'instanceid'):
+            host_info[k] = instance_id
 
-    tags = subprocess.check_output(
+    tags_row = subprocess.check_output(
         ['aws', 'ec2', 'describe-tags', '--region', region, '--filters', f'Name=resource-id,Values={instance_id}'])
+    tags = json.loads(tags_row)["Tags"]
+
+    for k, v in mapping.items():
+        if k in host_info:  # Already resolved
+            continue
+        if v.lower().startswith('tag.'):
+            pass
+        else:
+            host_info[k] = 'Unknown variable: ' + v
 
 
 read()
