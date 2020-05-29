@@ -20,7 +20,7 @@ def read():
     try:
         host_info_file.read(paths.lookup_hostinfo_file())
     except ParsingError as e:
-        raise LookupError('Hostinfo file corrupted') from e
+        raise HostinfoError('Hostinfo file corrupted') from e
     except FileNotFoundError:
         log.debug('event=[no_hostinfo_file]')
         return {}
@@ -67,3 +67,9 @@ def _resolve_ec2_section(mapping, host_info):
             host_info[k] = tag2value.get(tag_name, 'Unknown tag: ' + tag_name)
         else:
             host_info[k] = 'Unknown variable: ' + v
+
+
+class HostinfoError(Exception):
+
+    def __init__(self, message: str):
+        super().__init__(message)
