@@ -1,4 +1,5 @@
 import configparser
+import functools
 import json
 import logging
 import subprocess
@@ -13,6 +14,7 @@ from taro import paths
 log = logging.getLogger(__name__)
 
 
+@functools.lru_cache()
 def read_hostinfo():
     host_info = {}
     host_info_file = configparser.ConfigParser()
