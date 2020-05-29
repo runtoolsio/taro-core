@@ -3,6 +3,7 @@ import functools
 import json
 import logging
 import subprocess
+from collections import OrderedDict
 from configparser import ParsingError
 from subprocess import SubprocessError
 from typing import Dict
@@ -17,7 +18,7 @@ log = logging.getLogger(__name__)
 
 @functools.lru_cache()
 def read_hostinfo() -> Dict[str, str]:
-    host_info = {}
+    host_info = OrderedDict()
     host_info_file = configparser.ConfigParser()
     host_info_file.optionxform = str
     try:
