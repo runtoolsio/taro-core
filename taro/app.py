@@ -4,7 +4,7 @@ import os
 import signal
 import sys
 
-from taro import cli, paths, cnf, runner, ps, jfilter, log, PluginBase, persistence, http
+from taro import cli, paths, cnf, runner, ps, jfilter, log, PluginBase, persistence, http, hostinfo
 from taro.api import Server, Client
 from taro.cnf import Config
 from taro.execution import ExecutionState
@@ -53,6 +53,8 @@ def main(args):
     elif args.action == cli.ACTION_CONFIG:
         if args.config_action == cli.ACTION_CONFIG_SHOW:
             run_show_config(args)
+    elif args.action == cli.ACTION_HOSTINFO:
+        run_hostinfo()
 
 
 def setup_config(args):
@@ -235,6 +237,12 @@ def run_http(args):
 
 def run_show_config(args):
     cnf.print_config(get_config_file_path(args))
+
+
+def run_hostinfo():
+    host_info = hostinfo.read_hostinfo()
+    for name, value in host_info.items():
+        print(f"{name}: {value}")
 
 
 def get_config(args):

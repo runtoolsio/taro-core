@@ -17,6 +17,7 @@ ACTION_LIST_DISABLED = 'list-disabled'
 ACTION_HTTP = 'http'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
+ACTION_HOSTINFO = 'hostinfo'
 
 _true_options = ['yes', 'true', 't', 'y', '1', 'on']
 _false_options = ['no', 'false', 'f', 'n', '0', 'off']
@@ -45,6 +46,7 @@ def parse_args(args):
     _init_list_disabled_parser(common, subparsers)
     _init_http_parser(common, subparsers)
     _init_show_config_parser(common, subparsers)
+    _init_hostinfo_parser(common, subparsers)
 
     parsed = parser.parse_args(args)
     _check_collisions(parser, parsed)
@@ -265,6 +267,18 @@ def _init_show_config_parser(common, subparsers):
         description='Print config used by exec command or config specified by an option', add_help=False)
     show_config_parser.add_argument('-dc', '--def-config', action='store_true', help='show default config')
     show_config_parser.add_argument('-mc', '--min-config', action='store_true', help='show minimum config')
+
+
+def _init_hostinfo_parser(common, subparsers):
+    """
+    Creates parsers for `hostinfo` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for hostinfo parser to be added to
+    """
+
+    hostinfo_parser = subparsers.add_parser(
+        ACTION_HOSTINFO, parents=[common], description='Show host info', add_help=False)
 
 
 # Maxim's solution: https://stackoverflow.com/questions/15008758
