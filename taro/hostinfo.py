@@ -13,7 +13,7 @@ from taro import paths
 log = logging.getLogger(__name__)
 
 
-def read():
+def read_hostinfo():
     host_info = {}
     host_info_file = configparser.ConfigParser()
     host_info_file.optionxform = str
