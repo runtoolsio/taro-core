@@ -5,6 +5,7 @@ import logging
 import subprocess
 from configparser import ParsingError
 from subprocess import SubprocessError
+from typing import Dict
 
 import urllib3
 from urllib3.exceptions import HTTPError
@@ -15,7 +16,7 @@ log = logging.getLogger(__name__)
 
 
 @functools.lru_cache()
-def read_hostinfo():
+def read_hostinfo() -> Dict[str, str]:
     host_info = {}
     host_info_file = configparser.ConfigParser()
     host_info_file.optionxform = str
