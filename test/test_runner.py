@@ -9,7 +9,6 @@ import pytest
 import taro.runner as runner
 from taro import persistence
 from taro.execution import ExecutionState as ExSt, ExecutionError
-from taro.job import Job
 from taro.runner import RunnerJobInstance
 from taro.test.execution import TestExecution  # TODO package import
 
@@ -23,47 +22,46 @@ def test_executed():
     execution = TestExecution()
     assert execution.executed_count() == 0
 
-    runner.run(Job('j'), execution)
+    runner.run('j', execution)
     assert execution.executed_count() == 1
 
 
 def test_state_changes():
-    instance = runner.run(Job('j'), TestExecution())
+    instance = runner.run('j', TestExecution())
     assert instance.lifecycle.state() == ExSt.COMPLETED
     assert instance.lifecycle.states() == [ExSt.CREATED, ExSt.RUNNING, ExSt.COMPLETED]
 
 
 def test_state_created():
-    instance = RunnerJobInstance(Job('j'), TestExecution())
+    instance = RunnerJobInstance('j', TestExecution())
     assert instance.lifecycle.state() == ExSt.CREATED
 
 
 def test_pending():
-    instance = RunnerJobInstance(Job('j', pending='w1'), TestExecution())
+    instance = RunnerJobInstance('j', TestExecution())
+    latch = instance.create_latch(ExSt.PENDING)
     t = Thread(target=instance.run)
     t.start()
 
     wait_for_pending_state(instance)
 
-    # Different wait label -> keep waiting
-    assert not instance.release('w2')
     assert instance.lifecycle.state() == ExSt.PENDING
 
-    # Release and wait for completion
-    assert instance.release('w1')
+    latch()
     t.join(timeout=1)
 
     assert instance.lifecycle.state() == ExSt.COMPLETED
     assert instance.lifecycle.states() == [ExSt.CREATED, ExSt.PENDING, ExSt.RUNNING, ExSt.COMPLETED]
 
 
-def test_cancellation_after_start():
-    instance = RunnerJobInstance(Job('j', pending='w1'), TestExecution())
+def test_cancellation_after_start():  # TODO unreliable test relying on timing (stopped before latch fully released)?
+    instance = RunnerJobInstance('j', TestExecution())
+    latch = instance.create_latch(ExSt.PENDING)
     t = Thread(target=instance.run)
     t.start()
 
     wait_for_pending_state(instance)
-    instance.release('w1')
+    latch()
 
     instance.stop()
     t.join(timeout=1)
@@ -73,7 +71,8 @@ def test_cancellation_after_start():
 
 
 def test_cancellation_before_start():
-    instance = RunnerJobInstance(Job('j', pending='w1'), TestExecution())
+    instance = RunnerJobInstance('j', TestExecution())
+    instance.create_latch(ExSt.PENDING)
     t = Thread(target=instance.run)
 
     instance.stop()
@@ -88,7 +87,7 @@ def test_error():
     execution = TestExecution()
     exception = Exception()
     execution.raise_exception(exception)
-    instance = runner.run(Job('j'), execution)
+    instance = runner.run('j', execution)
 
     assert instance.lifecycle.state() == ExSt.ERROR
     assert isinstance(instance.exec_error, ExecutionError)

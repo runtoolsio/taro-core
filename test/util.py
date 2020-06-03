@@ -79,7 +79,9 @@ def remove_test_db():
 
 def _test_config_path() -> Path:
     base_path = Path(__file__).parent
-    return base_path / paths.TEST_DIR / paths.DEFAULT_CONFIG_FILE
+    test_dir_path = base_path / paths.TEST_DIR
+    test_dir_path.mkdir(exist_ok=True)
+    return test_dir_path / paths.DEFAULT_CONFIG_FILE
 
 
 def test_db_path() -> Path:

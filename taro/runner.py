@@ -5,25 +5,26 @@ import copy
 import logging
 import re
 from threading import Lock, Event, RLock
-from typing import List, Union
+from typing import List, Union, Optional
 
 from taro import util, persistence
+from taro.err import IllegalStateError
 from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement
 from taro.job import ExecutionStateObserver, JobControl, JobInfo
 
 log = logging.getLogger(__name__)
 
 
-def run(job, execution):
-    instance = RunnerJobInstance(job, execution)
+def run(job_id, execution):
+    instance = RunnerJobInstance(job_id, execution)
     instance.run()
     return instance
 
 
 class RunnerJobInstance(JobControl):
 
-    def __init__(self, job, execution):
-        self._job = job
+    def __init__(self, job_id, execution):
+        self._job_id = job_id
         self._execution = execution
         self._instance_id: str = util.unique_timestamp_hex()
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
@@ -32,15 +33,30 @@ class RunnerJobInstance(JobControl):
         self._stopped_or_interrupted: bool = False
         self._executing_flag_lock: Lock = Lock()
         self._state_lock: RLock = RLock()
-        if job.pending:
-            self._pending_condition: Event = Event()
+        self._latch: Optional[Event] = None
+        self._latch_wait_state: Optional[ExecutionState] = None
         self._observers = []
 
         self._state_change(ExecutionState.CREATED)
 
     def __repr__(self):
         return "{}({!r}, {!r})".format(
-            self.__class__.__name__, self._job, self._execution)
+            self.__class__.__name__, self._job_id, self._execution)
+
+    def create_latch(self, wait_state: ExecutionState):
+        if not wait_state.is_before_execution():
+            raise ValueError(str(wait_state) + "is not before execution state!")
+        with self._executing_flag_lock:
+            if self._executing:
+                raise IllegalStateError("The latch cannot be created because the job has been already started")
+            if self._stopped_or_interrupted:
+                raise IllegalStateError("The latch cannot be created because the job execution has already ended")
+            if self._latch:
+                raise IllegalStateError("The latch has been already created")
+            self._latch_wait_state = wait_state
+            self._latch = Event()
+
+        return self._latch.set
 
     @property
     def instance_id(self) -> str:
@@ -48,7 +64,7 @@ class RunnerJobInstance(JobControl):
 
     @property
     def job_id(self) -> str:
-        return self._job.id
+        return self._job_id
 
     @property
     def lifecycle(self):
@@ -79,9 +95,9 @@ class RunnerJobInstance(JobControl):
                 self._state_change(ExecutionState.DISABLED)
                 return
 
-        if self._job.pending and not self._stopped_or_interrupted:
-            self._state_change(ExecutionState.PENDING)
-            self._pending_condition.wait()
+        if self._latch and not self._stopped_or_interrupted:
+            self._state_change(self._latch_wait_state)  # TODO Race condition?
+            self._latch.wait()
 
         # Is variable assignment atomic? Better be sure with lock:
         # https://stackoverflow.com/questions/2291069/is-python-variable-assignment-atomic
@@ -100,13 +116,6 @@ class RunnerJobInstance(JobControl):
             exec_error = e if isinstance(e, ExecutionError) else ExecutionError.from_unexpected_error(e)
             self._state_change(exec_error.exec_state, exec_error)
 
-    def release(self, pending: str) -> bool:
-        if pending and self._job.pending == pending and not self._pending_condition.is_set():
-            self._pending_condition.set()
-            return True
-        else:
-            return False
-
     def stop(self):
         """
         Cancel not yet started execution or stop started execution.
@@ -116,8 +125,8 @@ class RunnerJobInstance(JobControl):
         with self._executing_flag_lock:
             self._stopped_or_interrupted = True
 
-        if self._job.pending:
-            self._pending_condition.set()
+        if self._latch:
+            self._latch.set()
         if self._executing:
             self._execution.stop()
 
@@ -130,14 +139,14 @@ class RunnerJobInstance(JobControl):
         with self._executing_flag_lock:
             self._stopped_or_interrupted = True
 
-        if self._job.pending:
-            self._pending_condition.set()
+        if self._latch:
+            self._latch.set()
         if self._executing:
             self._execution.interrupt()
 
     # Inline?
     def _log(self, event: str, msg: str):
-        return "event=[{}] job_id=[{}] instance_id=[{}] {}".format(event, self._job.id, self._instance_id, msg)
+        return "event=[{}] job_id=[{}] instance_id=[{}] {}".format(event, self._job_id, self._instance_id, msg)
 
     def _state_change(self, new_state, exec_error: ExecutionError = None):
         # It is not necessary to lock all this code, but it would be if this method is not confined to one thread

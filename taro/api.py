@@ -17,9 +17,10 @@ def _create_socket_name(job_info):
 
 class Server(SocketServer):
 
-    def __init__(self, job_control):
+    def __init__(self, job_control, latch_release):
         super().__init__(_create_socket_name(job_control))
         self._job_control = job_control
+        self._latch_release = latch_release
 
     def handle(self, req_body):
         if 'req' not in req_body:
@@ -38,7 +39,10 @@ class Server(SocketServer):
             if 'pending' not in req_body['data']:
                 return {"resp": {"error": "missing_data_field", "field": "pending"}}
 
-            released = self._job_control.release(req_body.get('data').get('pending'))
+            if self._latch_release:
+                released = self._latch_release.release(req_body.get('data').get('pending'))
+            else:
+                released = False
             return {"resp": {"code": 200}, "data": {"job_info": info_dto, "released": released}}
 
         if req_body['req']['api'] == '/stop':

@@ -9,7 +9,7 @@ from taro.api import Server, Client
 from taro.cnf import Config
 from taro.execution import ExecutionState
 from taro.jfilter import AllFilter
-from taro.job import Job, DisabledJob
+from taro.job import DisabledJob
 from taro.listening import Dispatcher, Receiver, EventPrint, StoppingListener
 from taro.process import ProcessExecution
 from taro.runner import RunnerJobInstance
@@ -73,12 +73,15 @@ def run_exec(args):
     all_args = [args.command] + args.arg
     execution = ProcessExecution(all_args, read_output=not args.bypass_output)
     job_id = args.id or " ".join(all_args)
-    job = Job(job_id, pending=args.pending or '')
-    job_instance = RunnerJobInstance(job, execution)
+    job_instance = RunnerJobInstance(job_id, execution)
     term = Term(job_instance)
     signal.signal(signal.SIGTERM, term.terminate)
     signal.signal(signal.SIGINT, term.interrupt)
-    api = Server(job_instance)
+    if args.pending:
+        pending_latch = PendingLatch(args.pending, job_instance.create_latch(ExecutionState.PENDING))
+    else:
+        pending_latch = None
+    api = Server(job_instance, pending_latch)
     api_started = api.start()
     if not api_started:
         logger.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")
@@ -95,6 +98,20 @@ def run_exec(args):
         api.stop()
         dispatcher.close()
         persistence.close()
+
+
+class PendingLatch:
+
+    def __init__(self, value, latch):
+        self.value = value
+        self.latch = latch
+
+    def release(self, value):
+        if self.value == value:
+            self.latch()
+            return True
+        else:
+            return False
 
 
 def run_ps(args):

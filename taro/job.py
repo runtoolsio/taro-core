@@ -126,14 +126,6 @@ class JobInfo:
 class JobControl(JobInstance):
 
     @abc.abstractmethod
-    def release(self, pending: str) -> bool:
-        """
-        Trigger job execution waiting for a given condition. Ignore if the instance doesn't wait for the condition.
-        :param pending: name of the condition
-        :return whether job has been released
-        """
-
-    @abc.abstractmethod
     def stop(self):
         """
         Stop running execution gracefully

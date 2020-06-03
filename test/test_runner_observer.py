@@ -8,7 +8,7 @@ import pytest
 import taro.runner as runner
 from taro import persistence
 from taro.execution import ExecutionState
-from taro.job import Job, ExecutionStateObserver, JobInfo
+from taro.job import ExecutionStateObserver, JobInfo
 from taro.runner import RunnerJobInstance
 from taro.test.execution import TestExecution  # TODO package import
 from taro.test.observer import TestObserver
@@ -25,13 +25,13 @@ def observer():
 
 
 def test_job_passed(observer: TestObserver):
-    runner.run(Job('j1'), TestExecution(ExecutionState.COMPLETED))
+    runner.run('j1', TestExecution(ExecutionState.COMPLETED))
 
     assert observer.last_job().job_id == 'j1'
 
 
 def test_execution_completed(observer: TestObserver):
-    runner.run(Job('j1'), TestExecution(ExecutionState.COMPLETED))
+    runner.run('j1', TestExecution(ExecutionState.COMPLETED))
 
     assert observer.exec_state(0) == ExecutionState.CREATED
     assert observer.exec_state(1) == ExecutionState.RUNNING
@@ -39,7 +39,7 @@ def test_execution_completed(observer: TestObserver):
 
 
 def test_execution_started(observer: TestObserver):
-    runner.run(Job('j1'), TestExecution(ExecutionState.STARTED))
+    runner.run('j1', TestExecution(ExecutionState.STARTED))
 
     assert observer.exec_state(0) == ExecutionState.CREATED
     assert observer.exec_state(1) == ExecutionState.RUNNING
@@ -48,7 +48,7 @@ def test_execution_started(observer: TestObserver):
 
 def test_execution_raises_exc(observer: TestObserver):
     exc_to_raise = Exception()
-    runner.run(Job('j1'), TestExecution(raise_exc=exc_to_raise))
+    runner.run('j1', TestExecution(raise_exc=exc_to_raise))
 
     assert observer.exec_state(0) == ExecutionState.CREATED
     assert observer.exec_state(1) == ExecutionState.RUNNING
@@ -63,7 +63,7 @@ def test_observer_raises_exception():
     """
     observer = ExceptionRaisingObserver(BaseException('Should be captured by runner'))
     execution = TestExecution(ExecutionState.COMPLETED)
-    job_instance = RunnerJobInstance(Job('j1'), execution)
+    job_instance = RunnerJobInstance('j1', execution)
     job_instance.add_observer(observer)
     job_instance.run()
     assert execution.executed_count() == 1  # No exception thrown before
