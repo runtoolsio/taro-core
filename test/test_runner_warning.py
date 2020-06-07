@@ -20,10 +20,23 @@ def observer():
     runner.deregister_warning_observer(observer)
 
 
-def test_job_passed(observer: TestJobWarningObserver):
+def test_warning_added(observer: TestJobWarningObserver):
     job = RunnerJobInstance('j1', TestExecution(ExecutionState.COMPLETED))
     warn = Warn('test_warn', None)
     job.add_warning(warn)
 
+    assert next(iter(job.warnings)) == warn
     assert observer.warnings['test_warn'][0].job_id == 'j1'
     assert observer.warnings['test_warn'][1] == warn
+
+
+def test_warning_removed(observer: TestJobWarningObserver):
+    job = RunnerJobInstance('j1', TestExecution(ExecutionState.COMPLETED))
+    warn1 = Warn('test_warn1', None)
+    warn2 = Warn('test_warn2', None)
+    job.add_warning(warn1)
+    job.add_warning(warn2)
+    job.remove_warning('test_warn1')
+
+    assert len(job.warnings) == 1
+    assert next(iter(job.warnings)) == warn2

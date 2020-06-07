@@ -52,6 +52,14 @@ class JobInstance(abc.ABC):
     def status(self):
         """Current status of the job or None if not supported"""
 
+    @abc.abstractmethod
+    def warnings(self):
+        """
+        Return sequence of warnings of this instance or empty sequence if no warnings
+
+        :return: warnings
+        """
+
     @property
     @abc.abstractmethod
     def exec_error(self) -> ExecutionError:
@@ -103,11 +111,12 @@ class JobInfo:
     Immutable snapshot of job instance state
     """
 
-    def __init__(self, job_id: str, instance_id: str, lifecycle, status, exec_error: ExecutionError):
+    def __init__(self, job_id: str, instance_id: str, lifecycle, status, warnings, exec_error: ExecutionError):
         self._job_id = job_id
         self._instance_id = instance_id
         self._lifecycle = lifecycle
         self._status = status
+        self._warnings = warnings
         self._exec_error = exec_error
 
     @property
@@ -131,12 +140,17 @@ class JobInfo:
         return self._status
 
     @property
+    def warnings(self):
+        return self._warnings
+
+    @property
     def exec_error(self) -> ExecutionError:
         return self._exec_error
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r})".format(
-            self.__class__.__name__, self._job_id, self.instance_id, self._lifecycle, self._status, self._exec_error)
+            self.__class__.__name__, self._job_id, self.instance_id, self._lifecycle, self._status, self._warnings,
+            self._exec_error)
 
 
 class JobControl(JobInstance):

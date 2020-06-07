@@ -78,13 +78,18 @@ class RunnerJobInstance(JobControl):
         return self._execution.status()
 
     @property
+    def warnings(self):
+        return self._warnings.values()
+
+    @property
     def exec_error(self) -> Union[ExecutionError, None]:
         return self._exec_error
 
     def create_info(self):
         with self._state_lock:
             return JobInfo(
-                self.job_id, self.instance_id, copy.deepcopy(self._lifecycle), self.status, self.exec_error)
+                self.job_id, self.instance_id, copy.deepcopy(self._lifecycle), self.status, self.warnings,
+                self.exec_error)
 
     def add_state_observer(self, observer):
         self._state_observers.append(observer)
