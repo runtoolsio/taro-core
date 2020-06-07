@@ -66,17 +66,33 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_observer(self, observer):
+    def add_state_observer(self, observer):
         """
-        Register job instance execution state observer
+        Register execution state observer
 
         :param observer observer to register
         """
 
     @abc.abstractmethod
-    def remove_observer(self, observer):
+    def remove_state_observer(self, observer):
         """
-        De-register job instance execution state observer
+        De-register execution state observer
+
+        :param observer observer to de-register
+        """
+
+    @abc.abstractmethod
+    def add_warning_observer(self, observer):
+        """
+        Register warning observer
+
+        :param observer observer to register
+        """
+
+    @abc.abstractmethod
+    def remove_warning_observer(self, observer):
+        """
+        De-register warning observer
 
         :param observer observer to de-register
         """
@@ -135,6 +151,22 @@ class JobControl(JobInstance):
     def interrupt(self):
         """
         Stop running execution immediately
+        """
+
+    @abc.abstractmethod
+    def add_warning(self, warning):
+        """
+        Add warning to the instance or update an existing warning if a warning of the same type is already added
+
+        :param warning waring to add or update
+        """
+
+    @abc.abstractmethod
+    def remove_warning(self, warning_type: str):
+        """
+        Remove warning by its type from the instance
+
+        :param warning_type type of warning to remove
         """
 
 

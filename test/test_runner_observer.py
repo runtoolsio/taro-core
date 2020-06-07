@@ -64,7 +64,7 @@ def test_observer_raises_exception():
     observer = ExceptionRaisingObserver(BaseException('Should be captured by runner'))
     execution = TestExecution(ExecutionState.COMPLETED)
     job_instance = RunnerJobInstance('j1', execution)
-    job_instance.add_observer(observer)
+    job_instance.add_state_observer(observer)
     job_instance.run()
     assert execution.executed_count() == 1  # No exception thrown before
 

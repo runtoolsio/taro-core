@@ -83,10 +83,10 @@ class RunnerJobInstance(JobControl):
             return JobInfo(
                 self.job_id, self.instance_id, copy.deepcopy(self._lifecycle), self.status, self.exec_error)
 
-    def add_observer(self, observer):
+    def add_state_observer(self, observer):
         self._observers.append(observer)
 
-    def remove_observer(self, observer):
+    def remove_state_observer(self, observer):
         self._observers.remove(observer)
 
     def run(self):
@@ -143,6 +143,18 @@ class RunnerJobInstance(JobControl):
             self._latch.set()
         if self._executing:
             self._execution.interrupt()
+
+    def add_warning(self, warning):
+        pass
+
+    def remove_warning(self, warning_type: str):
+        pass
+
+    def add_warning_observer(self, observer):
+        pass
+
+    def remove_warning_observer(self, observer):
+        pass
 
     # Inline?
     def _log(self, event: str, msg: str):
