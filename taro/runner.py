@@ -11,6 +11,7 @@ from taro import util, persistence
 from taro.err import IllegalStateError
 from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement
 from taro.job import ExecutionStateObserver, JobControl, JobInfo
+from taro.warning import JobWarningObserver
 
 log = logging.getLogger(__name__)
 
@@ -136,6 +137,7 @@ class RunnerJobInstance(JobControl):
         if warning:
             del self._warnings[warning_type]
             self._notify_warning_observers(self.create_info(), warning, added=False)
+            return True
         else:
             return False
 
@@ -195,7 +197,7 @@ class RunnerJobInstance(JobControl):
             self._notify_state_observers(job_info)
 
     def _notify_state_observers(self, job_info: JobInfo):
-        for observer in (self._state_observers + _observers):
+        for observer in (self._state_observers + _state_observers):
             # noinspection PyBroadException
             try:
                 observer.state_update(job_info)
@@ -203,7 +205,7 @@ class RunnerJobInstance(JobControl):
                 log.exception("event=[state_observer_exception]")
 
     def _notify_warning_observers(self, job_info: JobInfo, warning, added):
-        for observer in self._warning_observers:
+        for observer in (self._warning_observers + _warning_observers):
             # noinspection PyBroadException
             try:
                 if added:
@@ -214,12 +216,21 @@ class RunnerJobInstance(JobControl):
                 log.exception("event=[warning_observer_exception]")
 
 
-_observers: List[ExecutionStateObserver] = []
+_state_observers: List[ExecutionStateObserver] = []
+_warning_observers: List[JobWarningObserver] = []
 
 
-def register_observer(observer):
-    _observers.append(observer)
+def register_state_observer(observer):
+    _state_observers.append(observer)
 
 
-def deregister_observer(observer):
-    _observers.remove(observer)
+def deregister_state_observer(observer):
+    _state_observers.remove(observer)
+
+
+def register_warning_observer(observer):
+    _warning_observers.append(observer)
+
+
+def deregister_warning_observer(observer):
+    _warning_observers.remove(observer)

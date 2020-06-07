@@ -8,19 +8,19 @@ import pytest
 
 from taro import runner, util, persistence
 from taro.execution import ExecutionState
-from taro.test.observer import TestObserver
+from taro.test.observer import TestStateObserver
 from test.util import run_app
 
 
 @pytest.fixture(autouse=True)
 def observer():
-    observer = TestObserver()
-    runner.register_observer(observer)
+    observer = TestStateObserver()
+    runner.register_state_observer(observer)
     yield observer
-    runner.deregister_observer(observer)
+    runner.deregister_state_observer(observer)
 
 
-def test_successful(observer: TestObserver):
+def test_successful(observer: TestStateObserver):
     dir_name = util.unique_timestamp_hex()
     run_app('exec -mc mkdir ' + dir_name)
 
@@ -28,12 +28,12 @@ def test_successful(observer: TestObserver):
     os.rmdir(dir_name)  # Exc if not existed
 
 
-def test_invalid_command(observer: TestObserver):
+def test_invalid_command(observer: TestStateObserver):
     run_app('exec -mc non_existing_command')
     assert observer.exec_state(-1) == ExecutionState.FAILED
 
 
-def test_failed_command(observer: TestObserver):
+def test_failed_command(observer: TestStateObserver):
     run_app('exec -mc ls --no-such-option')
     assert observer.exec_state(-1) == ExecutionState.FAILED
 
@@ -43,12 +43,12 @@ def test_invalid_command_print_to_stderr(capsys):
     assert 'No such file' in capsys.readouterr().err
 
 
-def test_default_job_id(observer: TestObserver):
+def test_default_job_id(observer: TestStateObserver):
     run_app('exec -mc echo life is dukkha')
     assert observer.last_job().job_id == 'echo life is dukkha'
 
 
-def test_explicit_job_id(observer: TestObserver):
+def test_explicit_job_id(observer: TestStateObserver):
     run_app('exec -mc --id this_is_an_id echo not an id')
     assert observer.last_job().job_id == 'this_is_an_id'
 

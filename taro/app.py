@@ -86,7 +86,7 @@ def run_exec(args):
     if not api_started:
         logger.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")
     dispatcher = Dispatcher()
-    runner.register_observer(dispatcher)
+    runner.register_state_observer(dispatcher)
     for plugin in PluginBase.create_plugins(EXT_PLUGIN_MODULE_PREFIX, config.plugins).values():  # TODO to plugin module
         try:
             plugin.new_job_instance(job_instance)

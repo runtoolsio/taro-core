@@ -1,6 +1,6 @@
 """
-Tests that :mod:`runner` sends correct notification to observers.
-:class:`TestObserver` is used for verifying the behavior.
+Tests that :mod:`runner` sends correct notification to state observers.
+:class:`TestStateObserver` is used for verifying the behavior.
 """
 
 import pytest
@@ -11,26 +11,26 @@ from taro.execution import ExecutionState
 from taro.job import ExecutionStateObserver, JobInfo
 from taro.runner import RunnerJobInstance
 from taro.test.execution import TestExecution  # TODO package import
-from taro.test.observer import TestObserver
+from taro.test.observer import TestStateObserver
 
 
 @pytest.fixture
 def observer():
     persistence.disable()
 
-    observer = TestObserver()
-    runner.register_observer(observer)
+    observer = TestStateObserver()
+    runner.register_state_observer(observer)
     yield observer
-    runner.deregister_observer(observer)
+    runner.deregister_state_observer(observer)
 
 
-def test_job_passed(observer: TestObserver):
+def test_job_passed(observer: TestStateObserver):
     runner.run('j1', TestExecution(ExecutionState.COMPLETED))
 
     assert observer.last_job().job_id == 'j1'
 
 
-def test_execution_completed(observer: TestObserver):
+def test_execution_completed(observer: TestStateObserver):
     runner.run('j1', TestExecution(ExecutionState.COMPLETED))
 
     assert observer.exec_state(0) == ExecutionState.CREATED
@@ -38,7 +38,7 @@ def test_execution_completed(observer: TestObserver):
     assert observer.exec_state(2) == ExecutionState.COMPLETED
 
 
-def test_execution_started(observer: TestObserver):
+def test_execution_started(observer: TestStateObserver):
     runner.run('j1', TestExecution(ExecutionState.STARTED))
 
     assert observer.exec_state(0) == ExecutionState.CREATED
@@ -46,7 +46,7 @@ def test_execution_started(observer: TestObserver):
     assert observer.exec_state(2) == ExecutionState.STARTED
 
 
-def test_execution_raises_exc(observer: TestObserver):
+def test_execution_raises_exc(observer: TestStateObserver):
     exc_to_raise = Exception()
     runner.run('j1', TestExecution(raise_exc=exc_to_raise))
 

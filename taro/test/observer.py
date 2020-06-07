@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 type_id = 'test'
 
 
-class TestObserver(ExecutionStateObserver):
+class TestStateObserver(ExecutionStateObserver):
     __test__ = False  # To tell pytest it isn't a test class
 
     def __init__(self):
@@ -38,7 +38,7 @@ class TestObserver(ExecutionStateObserver):
         """
         return self._events[-1][1]
 
-    def last_state(self, job_id) -> JobInfo:
+    def last_state(self, job_id) -> ExecutionState:
         """
         :return: last state of the specified job
         """

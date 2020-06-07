@@ -1,11 +1,13 @@
 from multiprocessing.context import Process
 from pathlib import Path
+from typing import Dict, Tuple
 
 import prompt_toolkit
 import yaml
 from prompt_toolkit.output import DummyOutput
 
-from taro import app, process, paths
+from taro import app, process, paths, JobInfo
+from taro.warning import JobWarningObserver, Warn
 
 
 def run_app_as_process(command, daemon=False, shell=False) -> Process:
@@ -98,3 +100,15 @@ class NoFormattingOutput(DummyOutput):
 
     def fileno(self) -> int:
         raise NotImplementedError()
+
+
+class TestJobWarningObserver(JobWarningObserver):
+
+    def __init__(self):
+        self.warnings: Dict[str, Tuple[JobInfo, Warn]] = {}
+
+    def warning_added(self, job_info: JobInfo, warning: Warn):
+        self.warnings[warning.type] = (job_info, warning)
+
+    def warning_removed(self, job_info: JobInfo, warning: Warn):
+        del self.warnings[warning.type]
