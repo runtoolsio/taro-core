@@ -35,7 +35,9 @@ class RunnerJobInstance(JobControl):
         self._state_lock: RLock = RLock()
         self._latch: Optional[Event] = None
         self._latch_wait_state: Optional[ExecutionState] = None
-        self._observers = []
+        self._warnings = {}
+        self._state_observers = []
+        self._warning_observers = []
 
         self._state_change(ExecutionState.CREATED)
 
@@ -84,37 +86,16 @@ class RunnerJobInstance(JobControl):
                 self.job_id, self.instance_id, copy.deepcopy(self._lifecycle), self.status, self.exec_error)
 
     def add_state_observer(self, observer):
-        self._observers.append(observer)
+        self._state_observers.append(observer)
 
     def remove_state_observer(self, observer):
-        self._observers.remove(observer)
+        self._state_observers.remove(observer)
 
-    def run(self):
-        for disabled in persistence.read_disabled_jobs():
-            if (disabled.regex and re.compile(disabled.job_id).match(self.job_id)) or disabled.job_id == self.job_id:
-                self._state_change(ExecutionState.DISABLED)
-                return
+    def add_warning_observer(self, observer):
+        self._warning_observers.append(observer)
 
-        if self._latch and not self._stopped_or_interrupted:
-            self._state_change(self._latch_wait_state)  # TODO Race condition?
-            self._latch.wait()
-
-        # Is variable assignment atomic? Better be sure with lock:
-        # https://stackoverflow.com/questions/2291069/is-python-variable-assignment-atomic
-        with self._executing_flag_lock:
-            self._executing = not self._stopped_or_interrupted
-
-        if not self._executing:
-            self._state_change(ExecutionState.CANCELLED)
-            return
-
-        self._state_change(ExecutionState.TRIGGERED if self._execution.is_async() else ExecutionState.RUNNING)
-        try:
-            new_state = self._execution.execute()
-            self._state_change(new_state)
-        except Exception as e:
-            exec_error = e if isinstance(e, ExecutionError) else ExecutionError.from_unexpected_error(e)
-            self._state_change(exec_error.exec_state, exec_error)
+    def remove_warning_observer(self, observer):
+        self._warning_observers.remove(observer)
 
     def stop(self):
         """
@@ -145,16 +126,45 @@ class RunnerJobInstance(JobControl):
             self._execution.interrupt()
 
     def add_warning(self, warning):
-        pass
+        exists = warning.type in self._warnings
+        self._warnings[warning.type] = warning
+        self._notify_warning_observers(self.create_info(), warning, added=True)
+        return not exists
 
     def remove_warning(self, warning_type: str):
-        pass
+        warning = self._warnings.get(warning_type)
+        if warning:
+            del self._warnings[warning_type]
+            self._notify_warning_observers(self.create_info(), warning, added=False)
+        else:
+            return False
 
-    def add_warning_observer(self, observer):
-        pass
+    def run(self):
+        for disabled in persistence.read_disabled_jobs():
+            if (disabled.regex and re.compile(disabled.job_id).match(self.job_id)) or disabled.job_id == self.job_id:
+                self._state_change(ExecutionState.DISABLED)
+                return
 
-    def remove_warning_observer(self, observer):
-        pass
+        if self._latch and not self._stopped_or_interrupted:
+            self._state_change(self._latch_wait_state)  # TODO Race condition?
+            self._latch.wait()
+
+        # Is variable assignment atomic? Better be sure with lock:
+        # https://stackoverflow.com/questions/2291069/is-python-variable-assignment-atomic
+        with self._executing_flag_lock:
+            self._executing = not self._stopped_or_interrupted
+
+        if not self._executing:
+            self._state_change(ExecutionState.CANCELLED)
+            return
+
+        self._state_change(ExecutionState.TRIGGERED if self._execution.is_async() else ExecutionState.RUNNING)
+        try:
+            new_state = self._execution.execute()
+            self._state_change(new_state)
+        except Exception as e:
+            exec_error = e if isinstance(e, ExecutionError) else ExecutionError.from_unexpected_error(e)
+            self._state_change(exec_error.exec_state, exec_error)
 
     # Inline?
     def _log(self, event: str, msg: str):
@@ -182,15 +192,26 @@ class RunnerJobInstance(JobControl):
         if job_info:
             if new_state.is_terminal():
                 persistence.store_job(job_info)
-            self._notify_observers(job_info)
+            self._notify_state_observers(job_info)
 
-    def _notify_observers(self, job_info: JobInfo):
-        for observer in (self._observers + _observers):
+    def _notify_state_observers(self, job_info: JobInfo):
+        for observer in (self._state_observers + _observers):
             # noinspection PyBroadException
             try:
                 observer.state_update(job_info)
             except BaseException:
-                log.exception("event=[observer_exception]")
+                log.exception("event=[state_observer_exception]")
+
+    def _notify_warning_observers(self, job_info: JobInfo, warning, added):
+        for observer in self._warning_observers:
+            # noinspection PyBroadException
+            try:
+                if added:
+                    observer.warning_added(job_info, warning)
+                else:
+                    observer.warning_removed(job_info, warning)
+            except BaseException:
+                log.exception("event=[warning_observer_exception]")
 
 
 _observers: List[ExecutionStateObserver] = []
