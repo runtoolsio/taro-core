@@ -14,6 +14,7 @@ from typing import Tuple, List, Callable
 from taro.execution import ExecutionState, ExecutionError
 from taro.job import JobInfo
 from taro.runner import ExecutionStateObserver
+from taro.warning import JobWarningObserver, Warn
 
 log = logging.getLogger(__name__)
 
@@ -84,3 +85,19 @@ class TestStateObserver(ExecutionStateObserver):
     def _wait_for_state_condition(self, state_condition: Callable[[], bool], timeout: float):
         with self.completion_lock:
             return self.completion_lock.wait_for(state_condition, timeout)
+
+
+class TestWarnObserver(JobWarningObserver):
+
+    def __init__(self):
+        self.added: List[Tuple[JobInfo, Warn]] = []
+        self.removed: List[Tuple[JobInfo, Warn]] = []
+
+    def warning_added(self, job_info: JobInfo, warning: Warn):
+        self.added.append((job_info, warning))
+
+    def warning_removed(self, job_info: JobInfo, warning: Warn):
+        self.removed.append((job_info, warning))
+
+    def is_empty(self):
+        return not self.added and not self.removed
