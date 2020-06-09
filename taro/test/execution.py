@@ -8,8 +8,10 @@ Alternatively the execution can raise an exception set to raise_exc: :func:`Test
 
 import logging
 from datetime import datetime
+from threading import Event
 from typing import List
 
+from taro.err import IllegalStateError
 from taro.execution import Execution, ExecutionState
 
 log = logging.getLogger(__name__)
@@ -18,11 +20,12 @@ log = logging.getLogger(__name__)
 class TestExecution(Execution):
     __test__ = False  # To tell pytest it isn't a test class
 
-    def __init__(self, after_exec_state: ExecutionState = None, raise_exc: Exception = None):
+    def __init__(self, after_exec_state: ExecutionState = None, raise_exc: Exception = None, *, wait: bool = False):
         if after_exec_state and raise_exc:
             raise ValueError("either after_exec_state or throw_exc must be set", after_exec_state, raise_exc)
         self._after_exec_state = after_exec_state or (None if raise_exc else ExecutionState.COMPLETED)
         self._raise_exc = raise_exc
+        self._wait = Event() if wait else None
         self._execution_occurrences: List[datetime] = []
 
     def __repr__(self):
@@ -42,8 +45,16 @@ class TestExecution(Execution):
     def is_async(self) -> bool:
         return False
 
+    def release(self):
+        if self._wait:
+            self._wait.set()
+        else:
+            raise IllegalStateError('Wait not set')
+
     def execute(self) -> ExecutionState:
         self._execution_occurrences.append(datetime.now())
+        if self._wait:
+            self._wait.wait(5)
         if self._after_exec_state:
             log.info('event=[executed] new_state=[{}]', self._after_exec_state)
             return self._after_exec_state
