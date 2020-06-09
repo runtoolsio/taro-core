@@ -1,5 +1,7 @@
 from collections import deque
 
+import pytest
+
 from taro import warning
 from taro.runner import RunnerJobInstance
 from taro.test.execution import TestExecution
@@ -7,38 +9,21 @@ from taro.test.observer import TestWarnObserver
 from taro.warning import WarningCheck, Warn
 
 
-def test_no_warning():
-    execution = TestExecution(wait=True)
-    job = RunnerJobInstance('j1', execution)
-    warn_observer = TestWarnObserver()
-    job.add_warning_observer(warn_observer)
-    test_warn = TestWarning(execution, None, None)
-
-    warning.start_checking(job, test_warn)
-    job.run()
-
-    assert not test_warn.warnings
-    assert len(job.warnings) == 0
-    assert warn_observer.is_empty()
+@pytest.fixture
+def execution():
+    return TestExecution(wait=True)
 
 
-def test_warning():
-    execution = TestExecution(wait=True)
-    job = RunnerJobInstance('j1', execution)
-    warn_observer = TestWarnObserver()
-    job.add_warning_observer(warn_observer)
-    warn = Warn('test', {})
-    test_warn = TestWarning(execution, None, warn)
+@pytest.fixture
+def job(execution):
+    return RunnerJobInstance('j1', execution)
 
-    warning.start_checking(job, test_warn)
-    job.run()
 
-    assert not test_warn.warnings
-    assert len(job.warnings) == 1
-    assert next(iter(job.warnings)) == warn
-    assert len(warn_observer.added) == 1
-    assert warn_observer.added[0][0].job_id == job.job_id
-    assert warn_observer.added[0][1] == warn
+@pytest.fixture
+def observer(job):
+    observer = TestWarnObserver()
+    job.add_warning_observer(observer)
+    return observer
 
 
 class TestWarning(WarningCheck):
@@ -58,3 +43,27 @@ class TestWarning(WarningCheck):
         if not self.warnings:
             self.execution.release()
         return warn
+
+
+def test_no_warning(execution, job, observer):
+    test_warn = TestWarning(execution, None, None)
+    warning.start_checking(job, test_warn)
+    job.run()
+
+    assert not test_warn.warnings
+    assert len(job.warnings) == 0
+    assert observer.is_empty()
+
+
+def test_warning(execution, job, observer):
+    warn = Warn('test', {})
+    test_warn = TestWarning(execution, None, warn)
+    warning.start_checking(job, test_warn)
+    job.run()
+
+    assert not test_warn.warnings
+    assert len(job.warnings) == 1
+    assert next(iter(job.warnings)) == warn
+    assert len(observer.added) == 1
+    assert observer.added[0][0].job_id == job.job_id
+    assert observer.added[0][1] == warn
