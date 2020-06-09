@@ -52,6 +52,7 @@ class JobInstance(abc.ABC):
     def status(self):
         """Current status of the job or None if not supported"""
 
+    @property
     @abc.abstractmethod
     def warnings(self):
         """
@@ -77,6 +78,9 @@ class JobInstance(abc.ABC):
     def add_state_observer(self, observer):
         """
         Register execution state observer
+        Observer can be:
+            1. An instance of ExecutionStateObserver
+            2. Callable object with single parameter of JobInfo type
 
         :param observer observer to register
         """

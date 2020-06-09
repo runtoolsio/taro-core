@@ -5,7 +5,7 @@ import copy
 import logging
 import re
 from threading import Lock, Event, RLock
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Callable
 
 from taro import util, persistence
 from taro.err import IllegalStateError
@@ -205,7 +205,12 @@ class RunnerJobInstance(JobControl):
         for observer in (self._state_observers + _state_observers):
             # noinspection PyBroadException
             try:
-                observer.state_update(job_info)
+                if isinstance(observer, ExecutionStateObserver):
+                    observer.state_update(job_info)
+                elif callable(observer):
+                    observer(job_info)
+                else:
+                    log.warning("event=[unsupported_state_observer] observer=[%s]", observer)
             except BaseException:
                 log.exception("event=[state_observer_exception]")
 
@@ -221,7 +226,7 @@ class RunnerJobInstance(JobControl):
                 log.exception("event=[warning_observer_exception]")
 
 
-_state_observers: List[ExecutionStateObserver] = []
+_state_observers: List[Union[ExecutionStateObserver, Callable]] = []
 _warning_observers: List[JobWarningObserver] = []
 
 
