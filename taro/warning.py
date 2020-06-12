@@ -3,7 +3,7 @@ import logging
 from collections import namedtuple
 from threading import Event, Thread
 
-from taro import JobInfo, ExecutionStateObserver
+from taro import JobInfo, ExecutionStateObserver, util
 
 log = logging.getLogger(__name__)
 
@@ -30,6 +30,15 @@ class WarningCheck(abc.ABC):
         """
 
     @abc.abstractmethod
+    def check(self, job_instance):
+        """
+        Check warning condition and return Warn object if the warning condition is met otherwise return None.
+
+        :param job_instance: checked job
+        :return: warning or None
+        """
+
+    @abc.abstractmethod
     def next_check(self, job_instance) -> float:
         """
         Returns maximum time in seconds after next check must be performed.
@@ -37,15 +46,6 @@ class WarningCheck(abc.ABC):
 
         :param job_instance: checked job
         :return: next latest check
-        """
-
-    @abc.abstractmethod
-    def check(self, job_instance):
-        """
-        Check warning condition and return Warn object if the warning condition is met otherwise return None.
-
-        :param job_instance: checked job
-        :return: warning or None
         """
 
 
@@ -91,3 +91,39 @@ class _WarnChecking(ExecutionStateObserver):
 def start_checking(job_control, *warning):
     checking = _WarnChecking(job_control, warning)
     job_control.add_state_observer(checking)
+
+
+class ExecTimeWarning(WarningCheck):
+
+    def __init__(self, time: int):
+        self.time = time
+        self.warn = None
+
+    def warning_type(self):
+        return 'exec_time'
+
+    def remaining_time_sec(self, job_instance):
+        started = job_instance.lifecycle.execution_started()
+        if not started:
+            return None
+        exec_time = util.utc_now() - job_instance.lifecycle.execution_started()
+        return self.time - exec_time.total_seconds()
+
+    def check(self, job_instance):
+        remaining_time = self.remaining_time_sec(job_instance)
+        if not remaining_time or remaining_time >= 0:
+            return None
+
+        self.warn = Warn(self.warning_type(), {'warn_time_sec': self.time})
+        return self.warn
+
+    def next_check(self, job_instance) -> float:
+        remaining_time = self.remaining_time_sec(job_instance)
+        if not remaining_time:
+            return self.time + 1.0
+        if remaining_time > 0:
+            return remaining_time + 1.0
+        if self.warn:
+            return -1.0
+        else:
+            return 1.0

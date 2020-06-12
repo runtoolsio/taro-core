@@ -1,4 +1,5 @@
 import argparse
+import re
 from argparse import RawTextHelpFormatter
 from datetime import datetime
 
@@ -76,6 +77,7 @@ def _init_exec_parser(common, subparsers):
     # exec_parser.add_argument('-t', '--timeout', type=int) TODO implement
     exec_parser.add_argument('-p', '--pending', type=str, help='specifies pending value for releasing of this job')
     # exec_parser.add_argument('-w', '--wait', type=str, help='execution will wait for other jobs') TODO implement
+    exec_parser.add_argument('-W', '--warn', type=_warn_type, help='Add warning check')
 
     # Config override options
     config_group = exec_parser.add_argument_group('config override', 'these options override entries from config file')
@@ -301,6 +303,14 @@ def _str2dt(v):
             return datetime.strptime(v, "%Y-%m-%d %H:%M")
         except ValueError:
             return datetime.strptime(v, "%Y-%m-%d")
+
+
+def _warn_type(arg_value):
+    p = r"^(exec_time>\d+[smh]|free_disk_space->.*<\d+[KMGT]B)$"
+    pattern = re.compile(p)
+    if not pattern.match(arg_value.rstrip()):
+        raise argparse.ArgumentTypeError(f"Warning value {arg_value} does not match pattern {p}")
+    return arg_value
 
 
 def _check_collisions(parser, parsed):

@@ -166,7 +166,7 @@ class ExecutionLifecycle:
     def last_changed(self):
         return next(reversed(self._state_changes.values()), None)
 
-    def executed(self):
+    def executed(self) -> bool:
         return self.execution_started() is not None
 
     def execution_started(self) -> Optional[datetime.datetime]:
