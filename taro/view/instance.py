@@ -11,4 +11,4 @@ STATE = Column('STATE', max(len(s.name) for s in ExecutionState) + 2, lambda j: 
 WARNINGS = Column('WARNINGS', 40, lambda j: ', '.join([w.id for w in j.warnings]))
 STATUS = Column('STATUS', 50, lambda j: j.status or '')
 
-DEFAULT_COLUMNS = [JOB_ID, INSTANCE_ID, CREATED, EXEC_TIME, STATE, STATUS]
+DEFAULT_COLUMNS = [JOB_ID, INSTANCE_ID, CREATED, EXEC_TIME, STATE, WARNINGS, STATUS]
