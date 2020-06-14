@@ -1,5 +1,6 @@
 import abc
 import logging
+import re
 from collections import namedtuple
 from threading import Event, Thread
 
@@ -8,6 +9,8 @@ from taro import JobInfo, ExecutionStateObserver, util
 log = logging.getLogger(__name__)
 
 Warn = namedtuple('Warn', 'id params')
+
+EXEC_TIME_WARN_REGEX = r'exec_time>(\d+)([smh])'
 
 
 class JobWarningObserver(abc.ABC):
@@ -95,14 +98,34 @@ def start_checking(job_control, *warning):
     job_control.add_state_observer(checking)
 
 
+def create_and_start_checking(job_control, *warning: str):
+    warns = [create_warn_from_str(w_str) for w_str in warning]
+    start_checking(job_control, *warns)
+
+
+def create_warn_from_str(val) -> WarningCheck:
+    m = re.compile(EXEC_TIME_WARN_REGEX).match(val.replace(" ", "").rstrip())
+    if not m:
+        raise ValueError('Unknown warning: ' + val)
+    value = int(m.group(1))
+    unit = m.group(2)
+    if unit == 'm':
+        value *= 60
+    if unit == 'h':
+        value *= 60 * 60
+
+    return ExecTimeWarning(m.group(0), value)
+
+
 class ExecTimeWarning(WarningCheck):
 
-    def __init__(self, time: int):
+    def __init__(self, w_id, time: int):
+        self.id = w_id
         self.time = time
-        self.warn = None
+        self.warn = False
 
     def warning_id(self):
-        return 'exec_time'
+        return self.id
 
     def remaining_time_sec(self, job_instance):
         started = job_instance.lifecycle.execution_started()
@@ -115,8 +138,9 @@ class ExecTimeWarning(WarningCheck):
         remaining_time = self.remaining_time_sec(job_instance)
         if not remaining_time or remaining_time >= 0:
             return False
-        else:
-            return True
+
+        self.warn = True
+        return True
 
     def next_check(self, job_instance) -> float:
         remaining_time = self.remaining_time_sec(job_instance)
@@ -128,3 +152,7 @@ class ExecTimeWarning(WarningCheck):
             return -1.0
         else:
             return 1.0
+
+    def __repr__(self):
+        return "{}({!r}, {!r})".format(
+            self.__class__.__name__, self.id, self.time)
