@@ -4,7 +4,7 @@ import os
 import signal
 import sys
 
-from taro import cli, paths, cnf, runner, ps, jfilter, log, PluginBase, persistence, http, hostinfo
+from taro import cli, paths, cnf, runner, ps, jfilter, log, PluginBase, persistence, http, hostinfo, warning
 from taro.api import Server, Client
 from taro.cnf import Config
 from taro.execution import ExecutionState
@@ -17,6 +17,7 @@ from taro.term import Term
 from taro.util import set_attr, expand_user, utc_now
 from taro.view import disabled as view_dis
 from taro.view import instance as view_inst
+from taro.warning import ExecTimeWarning
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,7 @@ def run_exec(args):
             plugin.new_job_instance(job_instance)
         except BaseException as e:
             logger.warning("event=[plugin_failed] reason=[exception_on_new_job_instance] detail=[%s]", e)
+    warning.start_checking(job_instance, ExecTimeWarning(5), ExecTimeWarning(7))
     try:
         job_instance.run()
     finally:

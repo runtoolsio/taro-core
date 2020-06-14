@@ -132,10 +132,19 @@ class RunnerJobInstance(JobControl):
             self._execution.interrupt()
 
     def add_warning(self, warning):
-        exists = warning.type in self._warnings
+        print(warning.type)
+        print(self._warnings.keys())
+        print(warning.type in self._warnings.keys())
+
+        exists = warning.type in self._warnings.keys()
         self._warnings[warning.type] = warning
         self._notify_warning_observers(self.create_info(), warning, added=True)
-        return not exists
+        if exists:
+            log.warning('event=[updated_warning] warning=%s', warning)
+            return False
+        else:
+            log.warning('event=[new_warning] warning=%s', warning)
+            return True
 
     def remove_warning(self, warning_type: str):
         warning = self._warnings.get(warning_type)
