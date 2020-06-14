@@ -108,7 +108,7 @@ class TestJobWarningObserver(JobWarningObserver):
         self.warnings: Dict[str, Tuple[JobInfo, Warn]] = {}
 
     def warning_added(self, job_info: JobInfo, warning: Warn):
-        self.warnings[warning.type] = (job_info, warning)
+        self.warnings[warning.id] = (job_info, warning)
 
     def warning_removed(self, job_info: JobInfo, warning: Warn):
-        del self.warnings[warning.type]
+        del self.warnings[warning.id]
