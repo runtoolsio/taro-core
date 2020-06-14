@@ -9,7 +9,7 @@ import pytest
 from taro import runner, util, persistence
 from taro.execution import ExecutionState
 from taro.test.observer import TestStateObserver
-from test.util import run_app
+from test.util import run_app, TestJobWarningObserver
 
 
 @pytest.fixture(autouse=True)
@@ -56,3 +56,14 @@ def test_explicit_job_id(observer: TestStateObserver):
 def test_job_persisted():
     run_app('exec -mc --id persisted_job echo')
     assert persistence.read_jobs(chronological=True)[0].job_id == 'persisted_job'
+
+
+def test_exec_time_warning():
+    observer = TestJobWarningObserver()
+    runner.register_warning_observer(observer)
+    try:
+        run_app("exec -mc -W exec_time>1s sleep 1.2")
+    finally:
+        runner.deregister_warning_observer(observer)
+
+    assert observer.warnings['exec_time>1s']
