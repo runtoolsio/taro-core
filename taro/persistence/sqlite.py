@@ -4,6 +4,7 @@ from typing import List
 from taro import util
 from taro.execution import ExecutionState, ExecutionError, ExecutionLifecycle
 from taro.job import JobInfo, DisabledJob
+from taro.warning import Warn
 
 log = logging.getLogger(__name__)
 
@@ -23,8 +24,9 @@ def _to_job_info(t):
         return util.dt_from_utc_str(ts, is_iso=False) if ts else None
 
     lifecycle = ExecutionLifecycle(*((state, dt_for_state(state)) for state in states))
-    exec_error = ExecutionError(t[7], states[-1]) if t[7] else None  # TODO more data
-    return JobInfo(t[0], t[1], lifecycle, t[6], exec_error)
+    warnings = [Warn(w_id, {}) for w_id in t[7].split(',')]  # Escape ','
+    exec_error = ExecutionError(t[7], states[-1]) if t[8] else None  # TODO more data
+    return JobInfo(t[0], t[1], lifecycle, t[6], warnings, exec_error)
 
 
 # TODO indices
@@ -45,6 +47,7 @@ class SQLite:
                          finished timestamp,
                          states text,
                          result text,
+                         warnings text,
                          error text)
                          ''')
             log.debug('event=[table_created] table=[history]')
@@ -67,7 +70,7 @@ class SQLite:
 
     def store_job(self, job_info):
         self._conn.execute(
-            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (job_info.job_id,
              job_info.instance_id,
              job_info.lifecycle.changed(ExecutionState.CREATED),
@@ -75,7 +78,8 @@ class SQLite:
              job_info.lifecycle.last_changed(),
              ",".join([state.name for state in job_info.lifecycle.states()]),
              job_info.status,
-             job_info.exec_error.message if job_info.exec_error else None
+             ",".join((w.id for w in job_info.warnings)),
+             job_info.exec_error.message if job_info.exec_error else None,
              )
         )
         self._conn.commit()

@@ -145,7 +145,7 @@ def run_jobs(args):
         persistence.close()
 
     columns = [view_inst.JOB_ID, view_inst.INSTANCE_ID, view_inst.CREATED, view_inst.ENDED, view_inst.EXEC_TIME,
-               view_inst.STATE, view_inst.STATUS]
+               view_inst.STATE, view_inst.WARNINGS, view_inst.STATUS]
     sorted_jobs = sorted(jobs, key=lambda j: j.lifecycle.changed(ExecutionState.CREATED),
                          reverse=not args.chronological)
     job_filter = _build_job_filter(args)
