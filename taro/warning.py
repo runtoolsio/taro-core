@@ -114,10 +114,9 @@ class ExecTimeWarning(WarningCheck):
     def check(self, job_instance):
         remaining_time = self.remaining_time_sec(job_instance)
         if not remaining_time or remaining_time >= 0:
-            return None
-
-        self.warn = Warn(self.warning_id(), {'warn_time_sec': self.time})
-        return self.warn
+            return False
+        else:
+            return True
 
     def next_check(self, job_instance) -> float:
         remaining_time = self.remaining_time_sec(job_instance)
