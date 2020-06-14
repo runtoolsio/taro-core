@@ -7,7 +7,7 @@ from taro import JobInfo, ExecutionStateObserver, util
 
 log = logging.getLogger(__name__)
 
-Warn = namedtuple('Warn', 'type params')
+Warn = namedtuple('Warn', 'id params')
 
 
 class JobWarningObserver(abc.ABC):
@@ -24,18 +24,18 @@ class JobWarningObserver(abc.ABC):
 class WarningCheck(abc.ABC):
 
     @abc.abstractmethod
-    def warning_type(self):
+    def warning_id(self):
         """
-        :return: type of warning
+        :return: identifier of the warning
         """
 
     @abc.abstractmethod
-    def check(self, job_instance):
+    def check(self, job_instance) -> bool:
         """
-        Check warning condition and return Warn object if the warning condition is met otherwise return None.
+        Check warning condition.
 
         :param job_instance: checked job
-        :return: warning or None
+        :return: True if warning or False otherwise
         """
 
     @abc.abstractmethod
@@ -53,7 +53,7 @@ class _WarnChecking(ExecutionStateObserver):
 
     def __init__(self, job_control, *warning):
         self._job_control = job_control
-        self._warnings = list(*warning)  # TODO check no duplicated warning type
+        self._warnings = list(*warning)  # TODO check no duplicated warning ID
         self._run_condition = Event()
         self._checker = Thread(target=self.run, name='Warning-Checker', daemon=True)
         self._started = False
@@ -71,11 +71,13 @@ class _WarnChecking(ExecutionStateObserver):
         while not self._run_condition.is_set():
             next_check = 1
             for warning in list(self._warnings):
-                warn = warning.check(self._job_control)
-                if warn:
-                    self._job_control.add_warning(warn)
-                elif warning.warning_type() in (w.type for w in self._job_control.warnings):
-                    self._job_control.remove_warning(warning.warning_type())
+                is_warn = warning.check(self._job_control)
+                already_added = warning.warning_id() in (w.id for w in self._job_control.warnings)
+
+                if is_warn and not already_added:
+                    self._job_control.add_warning(Warn(warning.warning_id(), {}))  # Params needed?
+                elif already_added and not is_warn:
+                    self._job_control.remove_warning(warning.warning_id())
 
                 w_next_check = warning.next_check(self._job_control)
                 if w_next_check <= 0:
@@ -99,7 +101,7 @@ class ExecTimeWarning(WarningCheck):
         self.time = time
         self.warn = None
 
-    def warning_type(self):
+    def warning_id(self):
         return 'exec_time'
 
     def remaining_time_sec(self, job_instance):
@@ -114,7 +116,7 @@ class ExecTimeWarning(WarningCheck):
         if not remaining_time or remaining_time >= 0:
             return None
 
-        self.warn = Warn(self.warning_type(), {'warn_time_sec': self.time})
+        self.warn = Warn(self.warning_id(), {'warn_time_sec': self.time})
         return self.warn
 
     def next_check(self, job_instance) -> float:
