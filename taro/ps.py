@@ -1,17 +1,15 @@
-import datetime
+import itertools
 import os
 import re
 from collections import namedtuple
 from typing import List, Dict
 
-import itertools
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import FormattedText as FTxt
 from pypager.pager import Pager
 from pypager.source import GeneratorSource
 
 from taro import util
-from taro.execution import ExecutionState
 from taro.util import iterates
 
 Column = namedtuple('Column', 'name max_width value_fnc')
