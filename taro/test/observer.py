@@ -14,7 +14,7 @@ from typing import Tuple, List, Callable
 from taro.execution import ExecutionState, ExecutionError
 from taro.job import JobInfo
 from taro.runner import ExecutionStateObserver
-from taro.warning import JobWarningObserver, Warn
+from taro.warning import JobWarningObserver, Warn, WarningEvent
 
 log = logging.getLogger(__name__)
 
@@ -93,11 +93,11 @@ class TestWarnObserver(JobWarningObserver):
         self.added: List[Tuple[JobInfo, Warn]] = []
         self.removed: List[Tuple[JobInfo, Warn]] = []
 
-    def warning_added(self, job_info: JobInfo, warning: Warn):
-        self.added.append((job_info, warning))
-
-    def warning_removed(self, job_info: JobInfo, warning: Warn):
-        self.removed.append((job_info, warning))
+    def warning_update(self, job_info: JobInfo, warning: Warn, event: WarningEvent):
+        if event == WarningEvent.NEW_WARNING:
+            self.added.append((job_info, warning))
+        elif event == WarningEvent.WARNING_CEASED:
+            self.removed.append((job_info, warning))
 
     def is_empty(self):
         return not self.added and not self.removed

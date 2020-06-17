@@ -2,6 +2,7 @@ import abc
 import logging
 import re
 from collections import namedtuple
+from enum import Enum
 from threading import Event, Thread
 
 from taro import JobInfo, ExecutionStateObserver, util
@@ -13,15 +14,17 @@ Warn = namedtuple('Warn', 'id params')
 EXEC_TIME_WARN_REGEX = r'exec_time>(\d+)([smh])'
 
 
+class WarningEvent(Enum):
+    NEW_WARNING = 1
+    WARNING_UPDATE = 2
+    WARNING_CEASED = 3
+
+
 class JobWarningObserver(abc.ABC):
 
     @abc.abstractmethod
-    def warning_added(self, job_info: JobInfo, warning: Warn):
-        """This method is called when job instance execution state is changed."""
-
-    @abc.abstractmethod
-    def warning_removed(self, job_info: JobInfo, warning: Warn):
-        """This method is called when job instance execution state is changed."""
+    def warning_update(self, job_info: JobInfo, warning: Warn, event: WarningEvent):
+        """This method is called when there is a new warning event."""
 
 
 class WarningCheck(abc.ABC):

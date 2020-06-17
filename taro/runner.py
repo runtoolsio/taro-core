@@ -11,7 +11,7 @@ from taro import util, persistence
 from taro.err import IllegalStateError
 from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement
 from taro.job import ExecutionStateObserver, JobControl, JobInfo
-from taro.warning import JobWarningObserver
+from taro.warning import JobWarningObserver, WarningEvent
 
 log = logging.getLogger(__name__)
 
@@ -134,7 +134,9 @@ class RunnerJobInstance(JobControl):
     def add_warning(self, warning):
         exists = warning.id in self._warnings.keys()
         self._warnings[warning.id] = warning
-        self._notify_warning_observers(self.create_info(), warning, added=True)
+
+        event = WarningEvent.WARNING_UPDATE if exists else WarningEvent.NEW_WARNING
+        self._notify_warning_observers(self.create_info(), warning, event)
         if exists:
             log.warning('event=[updated_warning] warning=%s', warning)
             return False
@@ -146,7 +148,7 @@ class RunnerJobInstance(JobControl):
         warning = self._warnings.get(warning_id)
         if warning:
             del self._warnings[warning_id]
-            self._notify_warning_observers(self.create_info(), warning, added=False)
+            self._notify_warning_observers(self.create_info(), warning, WarningEvent.WARNING_CEASED)
             return True
         else:
             return False
@@ -219,14 +221,16 @@ class RunnerJobInstance(JobControl):
             except BaseException:
                 log.exception("event=[state_observer_exception]")
 
-    def _notify_warning_observers(self, job_info: JobInfo, warning, added):
+    def _notify_warning_observers(self, job_info: JobInfo, warning, event: WarningEvent):
         for observer in (self._warning_observers + _warning_observers):
             # noinspection PyBroadException
             try:
-                if added:
-                    observer.warning_added(job_info, warning)
+                if isinstance(observer, JobWarningObserver):
+                    observer.warning_update(job_info, warning, event)
+                elif callable(observer):
+                    observer(job_info, warning, event)
                 else:
-                    observer.warning_removed(job_info, warning)
+                    log.warning("event=[unsupported_warning_observer] observer=[%s]", observer)
             except BaseException:
                 log.exception("event=[warning_observer_exception]")
 
