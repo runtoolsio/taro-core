@@ -135,7 +135,7 @@ class RunnerJobInstance(JobControl):
         exists = warning.id in self._warnings.keys()
         self._warnings[warning.id] = warning
 
-        event = WarningEvent.WARNING_UPDATE if exists else WarningEvent.NEW_WARNING
+        event = WarningEvent.WARNING_UPDATED if exists else WarningEvent.NEW_WARNING
         self._notify_warning_observers(self.create_info(), warning, event)
         if exists:
             log.warning('event=[updated_warning] warning=%s', warning)
@@ -148,7 +148,8 @@ class RunnerJobInstance(JobControl):
         warning = self._warnings.get(warning_id)
         if warning:
             del self._warnings[warning_id]
-            self._notify_warning_observers(self.create_info(), warning, WarningEvent.WARNING_CEASED)
+            self._notify_warning_observers(self.create_info(), warning, WarningEvent.WARNING_REMOVED)
+            log.info('event=[warning_removed] warning=%s', warning)
             return True
         else:
             return False

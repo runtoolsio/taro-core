@@ -16,8 +16,8 @@ EXEC_TIME_WARN_REGEX = r'exec_time>(\d+)([smh])'
 
 class WarningEvent(Enum):
     NEW_WARNING = 1
-    WARNING_UPDATE = 2
-    WARNING_CEASED = 3
+    WARNING_UPDATED = 2
+    WARNING_REMOVED = 3
 
 
 class JobWarningObserver(abc.ABC):

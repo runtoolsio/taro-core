@@ -96,7 +96,7 @@ class TestWarnObserver(JobWarningObserver):
     def warning_update(self, job_info: JobInfo, warning: Warn, event: WarningEvent):
         if event == WarningEvent.NEW_WARNING:
             self.added.append((job_info, warning))
-        elif event == WarningEvent.WARNING_CEASED:
+        elif event == WarningEvent.WARNING_REMOVED:
             self.removed.append((job_info, warning))
 
     def is_empty(self):

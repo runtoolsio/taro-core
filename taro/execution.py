@@ -12,6 +12,7 @@ from collections import OrderedDict
 from enum import Enum, auto
 from typing import Tuple, List, Iterable, Set, Optional
 
+from taro import util
 from taro.util import utc_now
 
 
@@ -179,13 +180,11 @@ class ExecutionLifecycle:
         return self.changed(state)
 
     def execution_time(self) -> Optional[datetime.timedelta]:
-        finished = self.execution_finished()
-        if not finished:
-            return None
         started = self.execution_started()
         if not started:
             return None
 
+        finished = self.execution_finished() or util.utc_now()
         return finished - started
 
 

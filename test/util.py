@@ -110,5 +110,5 @@ class TestJobWarningObserver(JobWarningObserver):
     def warning_update(self, job_info: JobInfo, warning: Warn, event: WarningEvent):
         if event == WarningEvent.NEW_WARNING:
             self.warnings[warning.id] = (job_info, warning)
-        elif event == WarningEvent.WARNING_CEASED:
+        elif event == WarningEvent.WARNING_REMOVED:
             del self.warnings[warning.id]
