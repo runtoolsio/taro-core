@@ -306,7 +306,7 @@ def _str2dt(v):
 
 
 def _warn_type(arg_value):
-    p = r"^(" + warning.EXEC_TIME_WARN_REGEX + r"|free_disk_space:.*<\d+[KMGT]B)$"
+    p = r"^(" + warning.EXEC_TIME_WARN_REGEX + "|" + warning.FILE_CONTAINS_REGEX + r"|free_disk_space:.+<\d+[KMGT]B)$"
     pattern = re.compile(p)
     if not pattern.match(arg_value.replace(" ", "").rstrip()):
         raise argparse.ArgumentTypeError(f"Warning value {arg_value} does not match pattern {p}")

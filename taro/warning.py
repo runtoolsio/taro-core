@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 Warn = namedtuple('Warn', 'id params')
 
 EXEC_TIME_WARN_REGEX = r'exec_time>(\d+)([smh])'
+FILE_CONTAINS_REGEX = r'file:(.+)=~(.+)'
 
 
 class WarningEvent(Enum):
@@ -66,7 +67,7 @@ class _WarnChecking(ExecutionStateObserver):
 
     def state_update(self, job_info: JobInfo):
         if job_info.state == job_info.lifecycle.first_executing_state():
-            self._checker.start()   # Execution started
+            self._checker.start()  # Execution started
         if job_info.state.is_terminal():
             self._stop = True
             self._run_condition.set()
@@ -111,16 +112,24 @@ def create_and_start_checking(job_control, *warning: str):
 
 def create_warn_from_str(val) -> WarningCheck:
     m = re.compile(EXEC_TIME_WARN_REGEX).match(val.replace(" ", "").rstrip())
-    if not m:
-        raise ValueError('Unknown warning: ' + val)
-    value = int(m.group(1))
-    unit = m.group(2)
-    if unit == 'm':
-        value *= 60
-    if unit == 'h':
-        value *= 60 * 60
+    if m:
+        value = int(m.group(1))
+        unit = m.group(2)
+        if unit == 'm':
+            value *= 60
+        if unit == 'h':
+            value *= 60 * 60
 
-    return ExecTimeWarning(m.group(0), value)
+        return ExecTimeWarning(m.group(0), value)
+
+    m = re.compile(FILE_CONTAINS_REGEX).match(val.replace(" ", "").rstrip())
+    if m:
+        file = m.group(1)
+        string = m.group(2)
+        return FileContainsWarning(m.group(0), file, string)
+
+    else:
+        raise ValueError('Unknown warning: ' + val)
 
 
 class ExecTimeWarning(WarningCheck):
@@ -162,3 +171,24 @@ class ExecTimeWarning(WarningCheck):
     def __repr__(self):
         return "{}({!r}, {!r})".format(
             self.__class__.__name__, self.id, self.time)
+
+
+class FileContainsWarning(WarningCheck):
+
+    def __init__(self, w_id, file_path, string):
+        self.id = w_id
+        self.file_path = file_path
+        self.string = string
+        self.warn = False
+
+    def warning_id(self):
+        return self.id
+
+    def check(self, job_instance) -> bool:
+        pass
+
+    def next_check(self, job_instance) -> float:
+        if self.warn:
+            return -1
+
+        return 3.0  # Check at least every 3 seconds
