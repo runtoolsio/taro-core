@@ -61,21 +61,21 @@ class _WarnChecking(ExecutionStateObserver):
         self._job_control = job_control
         self._warnings = list(*warning)  # TODO check no duplicated warning ID
         self._run_condition = Event()
-        self._checker = Thread(target=self.run, name='Warning-Checker', daemon=True)
-        self._started = False
+        self._checker = Thread(target=self.run, name='Warning-Checker')
+        self._stop = False
 
     def state_update(self, job_info: JobInfo):
-        if not self._started and not self._run_condition.is_set() and job_info.state.is_executing():
-            self._started = True
-            self._checker.start()
-        if self._started and job_info.state.is_terminal():
+        if job_info.state == job_info.lifecycle.first_executing_state():
+            self._checker.start()   # Execution started
+        if job_info.state.is_terminal():
+            self._stop = True
             self._run_condition.set()
 
     def run(self):
         log.debug("event=[warn_checking_started]")
 
-        while not self._run_condition.is_set():
-            next_check = 1
+        while True:
+            next_check = -1 if self._stop else 1
             for warning in list(self._warnings):
                 is_warn = warning.check(self._job_control)
                 already_added = warning.warning_id() in (w.id for w in self._job_control.warnings)
@@ -91,7 +91,10 @@ class _WarnChecking(ExecutionStateObserver):
                 else:
                     next_check = min(next_check, w_next_check)
 
-            self._run_condition.wait(next_check)
+            if next_check >= 0:
+                self._run_condition.wait(next_check)
+            else:
+                break
 
         log.debug("event=[warn_checking_ended]")
 
