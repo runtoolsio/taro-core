@@ -1,4 +1,7 @@
 from collections import deque
+from threading import Thread
+
+import time
 from typing import Union
 
 import pytest
@@ -7,7 +10,7 @@ from taro import warning
 from taro.runner import RunnerJobInstance
 from taro.test.execution import TestExecution
 from taro.test.observer import TestWarnObserver
-from taro.warning import WarningCheck
+from taro.warning import WarningCheck, ExecTimeWarning
 
 
 @pytest.fixture
@@ -98,3 +101,18 @@ def test_more_warnings(execution, job, observer):
     assert len(observer.added) == 3
     assert len(observer.removed) == 2
     assert next(iter(job.warnings)).id == 'w2'
+
+
+def test_exec_time_warning(execution, job, observer):
+    warning.start_checking(job, ExecTimeWarning('wid', 0.5))
+    run_thread = Thread(target=job.run)
+    run_thread.start()
+
+    assert not observer.added
+    time.sleep(0.1)
+    assert not observer.added
+    time.sleep(0.5)
+
+    execution.release()
+    run_thread.join(1)
+    assert len(observer.added) == 1

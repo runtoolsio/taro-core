@@ -141,7 +141,7 @@ def create_warn_from_str(val) -> WarningCheck:
 
 class ExecTimeWarning(WarningCheck):
 
-    def __init__(self, w_id, time: int):
+    def __init__(self, w_id, time: float):
         self.id = w_id
         self.time = time
         self.warn = False
@@ -169,7 +169,7 @@ class ExecTimeWarning(WarningCheck):
         if not remaining_time:
             return self.time + 1.0
         if remaining_time > 0:
-            return remaining_time + 1.0
+            return remaining_time + 0.5
         if self.warn:
             return -1.0
         else:
