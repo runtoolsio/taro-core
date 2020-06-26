@@ -40,7 +40,7 @@ class TestWarning(WarningCheck):
     def next_check(self, job_instance) -> float:
         return 0.1 if self.warnings else -1
 
-    def check(self, job_instance):
+    def check(self, job_instance, last_check: bool):
         warn = self.warnings.popleft()
         if not self.warnings and self.execution:
             self.execution.release()
