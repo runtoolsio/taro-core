@@ -1,0 +1,7 @@
+import importlib
+
+
+def run(args):
+    action = args.action
+    cmd = importlib.import_module('.' + action, __name__)
+    cmd.run(args)

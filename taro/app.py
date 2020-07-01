@@ -1,12 +1,12 @@
-import itertools
 import logging
 import os
 import signal
+
+import itertools
 import sys
 
-from taro import cli, paths, cnf, runner, ps, jfilter, log, PluginBase, persistence, http, hostinfo, warning
+from taro import cli, cnf, runner, ps, jfilter, log, PluginBase, persistence, http, hostinfo, warning, cmd
 from taro.api import Server, Client
-from taro.cnf import Config
 from taro.execution import ExecutionState
 from taro.jfilter import AllFilter
 from taro.job import DisabledJob
@@ -14,7 +14,7 @@ from taro.listening import Dispatcher, Receiver, EventPrint, StoppingListener
 from taro.process import ProcessExecution
 from taro.runner import RunnerJobInstance
 from taro.term import Term
-from taro.util import set_attr, expand_user, utc_now
+from taro.util import utc_now
 from taro.view import disabled as view_dis
 from taro.view import instance as view_inst
 
@@ -29,6 +29,7 @@ def main_cli():
 
 def main(args):
     args = cli.parse_args(args)
+    # cmd.run(args)
 
     if args.action == cli.ACTION_EXEC:
         run_exec(args)
@@ -57,16 +58,8 @@ def main(args):
         run_hostinfo()
 
 
-def setup_config(args):
-    config_ns = get_config(args)
-    override_config(args, config_ns)
-    config = Config(config_ns)
-    cnf.config = config
-    return config
-
-
 def run_exec(args):
-    config = setup_config(args)
+    cnf.init(args)
     log.init()
     persistence.init()
 
@@ -87,7 +80,7 @@ def run_exec(args):
         logger.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")
     dispatcher = Dispatcher()
     runner.register_state_observer(dispatcher)
-    for plugin in PluginBase.create_plugins(EXT_PLUGIN_MODULE_PREFIX, config.plugins).values():  # TODO to plugin module
+    for plugin in PluginBase.create_plugins(EXT_PLUGIN_MODULE_PREFIX, cnf.config.plugins).values():  # TODO to plugin module
         try:
             plugin.new_job_instance(job_instance)
         except BaseException as e:
@@ -128,7 +121,7 @@ def run_ps(args):
 
 
 def run_jobs(args):
-    setup_config(args)
+    cnf.init(args)
 
     jobs = []
 
@@ -221,7 +214,7 @@ def stop_server_and_exit(server, signal_number: int):
 
 
 def run_disable(args):
-    setup_config(args)
+    cnf.init(args)
     persistence_enabled = persistence.init()
 
     if not persistence_enabled:
@@ -239,7 +232,7 @@ def run_disable(args):
 
 
 def run_list_disabled(args):
-    setup_config(args)
+    cnf.init(args)
     persistence_enabled = persistence.init()
     if not persistence_enabled:
         print("Persistence is disabled")
@@ -257,52 +250,13 @@ def run_http(args):
 
 
 def run_show_config(args):
-    cnf.print_config(get_config_file_path(args))
+    cnf.print_config(args)
 
 
 def run_hostinfo():
     host_info = hostinfo.read_hostinfo()
     for name, value in host_info.items():
         print(f"{name}: {value}")
-
-
-def get_config(args):
-    config_file_path = get_config_file_path(args)
-    return cnf.read_config(config_file_path)
-
-
-def get_config_file_path(args):
-    if hasattr(args, 'config') and args.config:
-        return expand_user(args.config)
-    if hasattr(args, 'def_config') and args.def_config:
-        return paths.default_config_file_path()
-    if hasattr(args, 'min_config') and args.min_config:
-        return paths.minimal_config_file_path()
-
-    return paths.lookup_config_file()
-
-
-def override_config(args, config):
-    """
-    Overrides values in configuration with cli option values for those specified on command line
-
-    :param args: command line arguments
-    :param config: configuration
-    """
-
-    arg_to_config = {
-        'log_enabled': cnf.LOG_ENABLED,
-        'log_stdout': cnf.LOG_STDOUT_LEVEL,
-        'log_file': cnf.LOG_FILE_LEVEL,
-        'log_file_path': cnf.LOG_FILE_PATH,
-    }
-
-    for arg, conf in arg_to_config.items():
-        if not hasattr(args, arg):
-            continue
-        arg_value = getattr(args, arg)
-        if arg_value is not None:
-            set_attr(config, conf.split('.'), arg_value)
 
 
 if __name__ == '__main__':
