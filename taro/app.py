@@ -34,7 +34,7 @@ def main(args):
     elif args.action == cli.ACTION_LISTEN:
         cmd.run(args)
     elif args.action == cli.ACTION_WAIT:
-        run_wait(args)
+        cmd.run(args)
     elif args.action == cli.ACTION_STOP:
         run_stop(args)
     elif args.action == cli.ACTION_DISABLE:
@@ -50,15 +50,6 @@ def main(args):
         run_hostinfo()
 
 
-def run_wait(args):
-    def condition(job_info): return not args.states or job_info.state.name in args.states
-
-    receiver = Receiver()
-    receiver.listeners.append(EventPrint(condition))
-    receiver.listeners.append(StoppingListener(receiver, condition, args.count))
-    signal.signal(signal.SIGTERM, lambda _, __: stop_server_and_exit(receiver, signal.SIGTERM))
-    signal.signal(signal.SIGINT, lambda _, __: stop_server_and_exit(receiver, signal.SIGINT))
-    receiver.start()
 
 
 def run_stop(args):
@@ -77,11 +68,6 @@ def run_stop(args):
             print(f"{i_res[0].job_id}@{i_res[0].instance_id} -> {i_res[1]}")
     finally:
         client.close()
-
-
-def stop_server_and_exit(server, signal_number: int):
-    server.stop()
-    sys.exit(128 + signal_number)
 
 
 def run_disable(args):
