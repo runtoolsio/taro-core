@@ -30,7 +30,7 @@ def main(args):
     elif args.action == cli.ACTION_JOBS:
         cmd.run(args)
     elif args.action == cli.ACTION_RELEASE:
-        run_release(args)
+        cmd.run(args)
     elif args.action == cli.ACTION_LISTEN:
         run_listen(args)
     elif args.action == cli.ACTION_WAIT:
@@ -48,14 +48,6 @@ def main(args):
             run_show_config(args)
     elif args.action == cli.ACTION_HOSTINFO:
         run_hostinfo()
-
-
-def run_release(args):
-    client = Client()
-    try:
-        client.release_jobs(args.pending)
-    finally:
-        client.close()
 
 
 def run_listen(args):
