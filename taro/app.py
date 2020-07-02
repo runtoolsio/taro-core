@@ -32,7 +32,7 @@ def main(args):
     elif args.action == cli.ACTION_RELEASE:
         cmd.run(args)
     elif args.action == cli.ACTION_LISTEN:
-        run_listen(args)
+        cmd.run(args)
     elif args.action == cli.ACTION_WAIT:
         run_wait(args)
     elif args.action == cli.ACTION_STOP:
@@ -48,14 +48,6 @@ def main(args):
             run_show_config(args)
     elif args.action == cli.ACTION_HOSTINFO:
         run_hostinfo()
-
-
-def run_listen(args):
-    receiver = Receiver()
-    receiver.listeners.append(EventPrint())
-    signal.signal(signal.SIGTERM, lambda _, __: receiver.stop())
-    signal.signal(signal.SIGINT, lambda _, __: receiver.stop())
-    receiver.start()
 
 
 def run_wait(args):
