@@ -106,7 +106,7 @@ def start_checking(job_control, *warning):
     job_control.add_state_observer(checking)
 
 
-def create_and_start_checking(job_control, *warning: str):
+def setup_checking(job_control, *warning: str):
     warns = []
     for w_str in warning:
         try:

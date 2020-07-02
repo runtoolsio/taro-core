@@ -6,7 +6,8 @@ Command: exec
 import pytest
 
 import test_plugin
-from taro import app, runner
+import taro.cmd.exec
+from taro import runner
 from taro.execution import ExecutionState
 from taro.test.observer import TestStateObserver
 from test.util import run_app, remove_test_config, create_test_config
@@ -14,10 +15,10 @@ from test.util import run_app, remove_test_config, create_test_config
 
 @pytest.fixture(autouse=True)
 def setup():
-    ext_module_prefix = app.EXT_PLUGIN_MODULE_PREFIX
-    app.EXT_PLUGIN_MODULE_PREFIX = 'test_'
+    ext_module_prefix = taro.cmd.exec.EXT_PLUGIN_MODULE_PREFIX
+    taro.cmd.exec.EXT_PLUGIN_MODULE_PREFIX = 'test_'
     yield
-    app.EXT_PLUGIN_MODULE_PREFIX = ext_module_prefix
+    taro.cmd.exec.EXT_PLUGIN_MODULE_PREFIX = ext_module_prefix
     remove_test_config()
 
 
