@@ -1,16 +1,11 @@
 import logging
-import os
-import signal
 
 import sys
 
 from taro import cli, cnf, ps, persistence, http, hostinfo, cmd
-from taro.api import Client
 from taro.job import DisabledJob
-from taro.listening import Receiver, EventPrint, StoppingListener
 from taro.util import utc_now
 from taro.view import disabled as view_dis
-from taro.view import instance as view_inst
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +31,7 @@ def main(args):
     elif args.action == cli.ACTION_WAIT:
         cmd.run(args)
     elif args.action == cli.ACTION_STOP:
-        run_stop(args)
+        cmd.run(args)
     elif args.action == cli.ACTION_DISABLE:
         run_disable(args)
     elif args.action == cli.ACTION_LIST_DISABLED:
@@ -48,26 +43,6 @@ def main(args):
             run_show_config(args)
     elif args.action == cli.ACTION_HOSTINFO:
         run_hostinfo()
-
-
-
-
-def run_stop(args):
-    client = Client()
-    try:
-        all_jobs = client.read_jobs_info()
-        jobs = [job for job in all_jobs if job.job_id == args.job or job.instance_id == args.job]
-        if len(jobs) > 1 and not args.all:
-            print('No action performed, because the criteria matches more than one job.'
-                  'Use --all flag if you wish to stop them all:' + os.linesep)
-            ps.print_table(jobs, view_inst.DEFAULT_COLUMNS, show_header=True, pager=False)
-            return  # Exit code non-zero?
-
-        inst_results = client.stop_jobs([job.instance_id for job in jobs], args.interrupt)
-        for i_res in inst_results:
-            print(f"{i_res[0].job_id}@{i_res[0].instance_id} -> {i_res[1]}")
-    finally:
-        client.close()
 
 
 def run_disable(args):
