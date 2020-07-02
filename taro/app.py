@@ -2,10 +2,7 @@ import logging
 
 import sys
 
-from taro import cli, cnf, ps, persistence, http, hostinfo, cmd
-from taro.job import DisabledJob
-from taro.util import utc_now
-from taro.view import disabled as view_dis
+from taro import cli, cnf, http, hostinfo, cmd
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +30,9 @@ def main(args):
     elif args.action == cli.ACTION_STOP:
         cmd.run(args)
     elif args.action == cli.ACTION_DISABLE:
-        run_disable(args)
+        cmd.run(args)
     elif args.action == cli.ACTION_LIST_DISABLED:
-        run_list_disabled(args)
+        cmd.run(args)
     elif args.action == cli.ACTION_HTTP:
         run_http(args)
     elif args.action == cli.ACTION_CONFIG:
@@ -43,38 +40,6 @@ def main(args):
             run_show_config(args)
     elif args.action == cli.ACTION_HOSTINFO:
         run_hostinfo()
-
-
-def run_disable(args):
-    cnf.init(args)
-    persistence_enabled = persistence.init()
-
-    if not persistence_enabled:
-        print('Persistence is disabled. Enable persistence in config file to be able to store disabled jobs',
-              file=sys.stderr)
-        exit(1)
-
-    jobs = args.jobs
-    disabled_jobs = [DisabledJob(j, args.regex, utc_now(), None) for j in args.jobs]
-    try:
-        persistence.add_disabled_jobs(disabled_jobs)
-        print("Jobs disabled: {}".format(",".join(jobs)))
-    finally:
-        persistence.close()
-
-
-def run_list_disabled(args):
-    cnf.init(args)
-    persistence_enabled = persistence.init()
-    if not persistence_enabled:
-        print("Persistence is disabled")
-        exit(1)
-
-    try:
-        disabled_jobs = persistence.read_disabled_jobs()
-        ps.print_table(disabled_jobs, view_dis.DEFAULT_COLUMNS, show_header=True, pager=False)
-    finally:
-        persistence.close()
 
 
 def run_http(args):
