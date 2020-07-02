@@ -143,6 +143,8 @@ def _init_jobs_parser(common, subparsers):
     filter_group.add_argument('-S', '--since', type=_str2dt, help='Show entries not older than the specified date')
     filter_group.add_argument('-U', '--until', type=_str2dt, help='Show entries not newer than the specified date')
 
+    jobs_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
+    jobs_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
     jobs_parser.add_argument('-n', '--lines', type=int, help='Number of job entries to show')
     jobs_parser.add_argument('-c', '--chronological', action='store_true', help='Display jobs in chronological order')
     jobs_parser.add_argument('-P', '--no-pager', action='store_true', help='Do not use pager for output')

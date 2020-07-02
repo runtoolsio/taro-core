@@ -44,4 +44,3 @@ def create_since_filter(since):
 
 def create_until_filter(until):
     return lambda j: not create_since_filter(until)(j)
-
