@@ -2,8 +2,5 @@ from taro.api import Client
 
 
 def run(args):
-    client = Client()
-    try:
+    with Client() as client:
         client.release_jobs(args.pending)
-    finally:
-        client.close()

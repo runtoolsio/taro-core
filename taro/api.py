@@ -65,6 +65,12 @@ class Client(SocketClient):
     def __init__(self):
         super().__init__(API_FILE_EXTENSION, bidirectional=True)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
     def read_jobs_info(self) -> List[JobInfo]:
         responses = self.communicate({'req': {'api': '/job'}})
         return [_create_job_info(inst_resp) for inst_resp in responses]

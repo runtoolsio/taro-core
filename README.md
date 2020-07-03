@@ -11,10 +11,10 @@ Job management library
 6. ~~SNS notifications~~
 7. ~~Execution history~~
 8. Log rotation
-9. Warnings
+~~9. Warnings~~
 10. Overlaps
 11. Advanced Output
-12. Disabled jobs
+~~12. Disabled jobs~~
 
 ### Optional
 - job timeout

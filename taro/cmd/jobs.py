@@ -11,11 +11,8 @@ def run(args):
 
     jobs = []
 
-    client = Client()
-    try:
+    with Client() as client:
         jobs += client.read_jobs_info()
-    finally:
-        client.close()
 
     persistence.init()
     try:
