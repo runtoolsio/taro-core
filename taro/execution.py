@@ -28,8 +28,6 @@ class ExecutionState(Enum):
     NONE = {}
     CREATED = {ExecutionStateGroup.BEFORE_EXECUTION}
 
-    DISABLED = {ExecutionStateGroup.TERMINAL}
-
     PENDING = {ExecutionStateGroup.BEFORE_EXECUTION}  # Until released
     WAITING = {ExecutionStateGroup.BEFORE_EXECUTION}  # For another job
     # ON_HOLD or same as pending?
@@ -41,6 +39,7 @@ class ExecutionState(Enum):
     COMPLETED = {ExecutionStateGroup.TERMINAL}
     STOPPED = {ExecutionStateGroup.TERMINAL}
 
+    DISABLED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}
     CANCELLED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}
     SKIPPED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}
     SUSPENDED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}  # Temporarily disabled
@@ -64,6 +63,9 @@ class ExecutionState(Enum):
 
     def is_executing(self):
         return ExecutionStateGroup.EXECUTING in self.groups
+
+    def is_unexecuted(self):
+        return ExecutionStateGroup.NOT_EXECUTED in self.groups
 
     def is_terminal(self) -> bool:
         return ExecutionStateGroup.TERMINAL in self.groups
