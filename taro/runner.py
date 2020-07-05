@@ -7,7 +7,7 @@ import re
 from threading import Lock, Event, RLock
 from typing import List, Union, Optional, Callable
 
-from taro import util, persistence
+from taro import util, persistence, client
 from taro.err import IllegalStateError
 from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement
 from taro.job import ExecutionStateObserver, JobControl, JobInfo
@@ -16,17 +16,18 @@ from taro.warning import JobWarningObserver, WarningEvent
 log = logging.getLogger(__name__)
 
 
-def run(job_id, execution):
-    instance = RunnerJobInstance(job_id, execution)
+def run(job_id, execution, no_overlap: bool = False):
+    instance = RunnerJobInstance(job_id, execution, no_overlap=no_overlap)
     instance.run()
     return instance
 
 
 class RunnerJobInstance(JobControl):
 
-    def __init__(self, job_id, execution):
+    def __init__(self, job_id, execution, *, no_overlap: bool = False):
         self._job_id = job_id
         self._execution = execution
+        self._no_overlap = no_overlap
         self._instance_id: str = util.unique_timestamp_hex()
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
         self._exec_error = None
@@ -172,6 +173,13 @@ class RunnerJobInstance(JobControl):
         if not self._executing:
             self._state_change(ExecutionState.CANCELLED)
             return
+
+        try:
+            if self._no_overlap and self.job_id in (j.job_id for j in client.read_jobs_info()):
+                self._state_change(ExecutionState.SKIPPED)
+                return
+        except Exception as e:
+            log.warning("event=[read_jobs_info_error] error=[%s]", e)
 
         self._state_change(ExecutionState.TRIGGERED if self._execution.is_async() else ExecutionState.RUNNING)
         try:
