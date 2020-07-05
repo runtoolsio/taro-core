@@ -175,7 +175,8 @@ class RunnerJobInstance(JobControl):
             return
 
         try:
-            if self._no_overlap and self.job_id in (j.job_id for j in client.read_jobs_info()):
+            if self._no_overlap and any(j for j in client.read_jobs_info()
+                                        if j.job_id == self.job_id and j.instance_id != self._instance_id):
                 self._state_change(ExecutionState.SKIPPED)
                 return
         except Exception as e:
