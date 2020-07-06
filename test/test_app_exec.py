@@ -9,7 +9,7 @@ import pytest
 from taro import runner, util, persistence
 from taro.execution import ExecutionState
 from taro.test.observer import TestStateObserver
-from test.util import run_app, TestJobWarningObserver
+from test.util import run_app, TestJobWarningObserver, run_wait, run_app_as_process
 
 
 @pytest.fixture(autouse=True)
@@ -51,6 +51,15 @@ def test_default_job_id(observer: TestStateObserver):
 def test_explicit_job_id(observer: TestStateObserver):
     run_app('exec -mc --id this_is_an_id echo not an id')
     assert observer.last_job().job_id == 'this_is_an_id'
+
+
+def test_no_overlap(observer: TestStateObserver):
+    run_w = run_wait(ExecutionState.RUNNING, 1)
+    run_app_as_process('exec -mc --id j1 sleep 2', daemon=True)
+    run_w.join()  # Wait for exec to run
+
+    run_app('exec -mc --no-overlap --id j1 echo I love JAVA!')
+    assert observer.last_state('j1') == ExecutionState.SKIPPED
 
 
 def test_job_persisted():
