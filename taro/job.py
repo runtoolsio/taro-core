@@ -174,19 +174,10 @@ class JobControl(JobInstance):
     @abc.abstractmethod
     def add_warning(self, warning) -> bool:
         """
-        Add warning to the instance or update an existing warning if a warning of the same ID is already added
+        Add warning to the instance or update an existing warning
 
-        :param warning waring to add or update
-        :return True if added, False if updated
-        """
-
-    @abc.abstractmethod
-    def remove_warning(self, warning_id: str) -> bool:
-        """
-        Remove warning by its ID from the instance
-
-        :param warning_id ID of warning to remove
-        :return whether warning was removed
+        :param warning warning to add or update
+        :return True if added or updated
         """
 
 

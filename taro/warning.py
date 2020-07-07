@@ -4,12 +4,13 @@ import re
 from collections import namedtuple
 from enum import Enum
 from threading import Event, Thread
+from typing import Optional
 
 from taro import JobInfo, ExecutionStateObserver, util
 
 log = logging.getLogger(__name__)
 
-Warn = namedtuple('Warn', 'id params')
+Warn = namedtuple('Warn', 'id params')  # Must be comparable its attributes to detect updates
 
 EXEC_TIME_WARN_REGEX = r'exec_time>(\d+)([smh])'
 FILE_CONTAINS_REGEX = r'file:(.+)=~(.+)'
@@ -18,7 +19,6 @@ FILE_CONTAINS_REGEX = r'file:(.+)=~(.+)'
 class WarningEvent(Enum):
     NEW_WARNING = 1
     WARNING_UPDATED = 2
-    WARNING_REMOVED = 3
 
 
 class JobWarningObserver(abc.ABC):
@@ -31,29 +31,23 @@ class JobWarningObserver(abc.ABC):
 class WarningCheck(abc.ABC):
 
     @abc.abstractmethod
-    def warning_id(self):
-        """
-        :return: identifier of the warning
-        """
-
-    @abc.abstractmethod
-    def check(self, job_instance, last_check: bool) -> bool:
+    def check(self, job_instance, last_check: bool) -> Optional[Warn]:
         """
         Check warning condition.
 
         :param job_instance: checked job
         :param last_check: True if no more checks are scheduled
-        :return: True if warning or False otherwise
+        :return: Warn instance if warning or None otherwise
         """
 
     @abc.abstractmethod
     def next_check(self, job_instance) -> float:
         """
         Returns maximum time in seconds after next check must be performed.
-        However next check can be performed anytime sooner than after then interval specified by this method.
+        However next check can be performed anytime sooner than interval specified by this method.
 
         :param job_instance: checked job
-        :return: next latest check
+        :return: max time for next check
         """
 
 
@@ -61,7 +55,7 @@ class _WarnChecking(ExecutionStateObserver):
 
     def __init__(self, job_control, *warning):
         self._job_control = job_control
-        self._warnings = list(*warning)  # TODO check no duplicated warning ID
+        self._warnings = list(*warning)
         self._run_condition = Event()
         self._checker = Thread(target=self.run, name='Warning-Checker')
         self._stop = False
@@ -78,20 +72,23 @@ class _WarnChecking(ExecutionStateObserver):
 
         while True:
             next_check = -1 if self._stop else 1
+
             for warning in list(self._warnings):
-                is_warn = warning.check(self._job_control, last_check=next_check == -1)
-                already_added = warning.warning_id() in (w.id for w in self._job_control.warnings)
-
-                if is_warn and not already_added:
-                    self._job_control.add_warning(Warn(warning.warning_id(), {}))  # Params needed?
-                elif already_added and not is_warn:
-                    self._job_control.remove_warning(warning.warning_id())
-
+                warn = warning.check(self._job_control, last_check=(next_check == -1))
                 w_next_check = warning.next_check(self._job_control)
+
                 if w_next_check <= 0:
                     self._warnings.remove(warning)
                 else:
                     next_check = min(next_check, w_next_check)
+
+                if not warn:
+                    continue
+
+                prev_warn = next((w for w in self._job_control.warnings if w.id == warn.id), None)
+
+                if not prev_warn or prev_warn != warn:
+                    self._job_control.add_warning(warn)  # Add or update
 
             if next_check >= 0:
                 self._run_condition.wait(next_check)
@@ -144,10 +141,7 @@ class ExecTimeWarning(WarningCheck):
     def __init__(self, w_id, time: float):
         self.id = w_id
         self.time = time
-        self.warn = False
-
-    def warning_id(self):
-        return self.id
+        self.warn = None
 
     def remaining_time_sec(self, job_instance):
         started = job_instance.lifecycle.execution_started()
@@ -156,13 +150,13 @@ class ExecTimeWarning(WarningCheck):
         exec_time = util.utc_now() - job_instance.lifecycle.execution_started()
         return self.time - exec_time.total_seconds()
 
-    def check(self, job_instance, last_check: bool):
+    def check(self, job_instance, last_check: bool) -> Optional[Warn]:
         remaining_time = self.remaining_time_sec(job_instance)
         if not remaining_time or remaining_time >= 0:
-            return False
+            return None
 
-        self.warn = True
-        return True
+        self.warn = Warn(self.id, None)
+        return self.warn
 
     def next_check(self, job_instance) -> float:
         remaining_time = self.remaining_time_sec(job_instance)
@@ -189,26 +183,23 @@ class FileContainsWarning(WarningCheck):
         self.file = None
         self.warn = False
 
-    def warning_id(self):
-        return self.id
-
-    def check(self, job_instance, last_check: bool) -> bool:
+    def check(self, job_instance, last_check: bool) -> Optional[Warn]:
         if not self.file:
             try:
                 self.file = open(self.file_path, 'r')
             except FileNotFoundError:
-                return False
+                return None
 
         while True:
             new = self.file.readline()
-            # Once all lines are read this just returns ''
-            # until the file changes and a new line appears
+            # Once all lines are read this just returns '' until the file changes and a new line appears
 
             if not new:
                 break
 
-            if self.regex.search(new):
-                self.warn = True
+            m = self.regex.search(new)
+            if m:
+                self.warn = Warn(self.id, {'match': m[0]})
                 break
 
         if last_check or self.warn:

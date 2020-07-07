@@ -133,27 +133,20 @@ class RunnerJobInstance(JobControl):
             self._execution.interrupt()
 
     def add_warning(self, warning):
-        exists = warning.id in self._warnings.keys()
+        prev_warn = self._warnings.get(warning.id)
+        if prev_warn == warning:
+            return False  # No change
+
         self._warnings[warning.id] = warning
+        if prev_warn:
+            event = WarningEvent.WARNING_UPDATED
+            log.warning('event=[updated_warning] new_warning=[%s] previous_warning=[%s]', warning, prev_warn)
+        else:
+            event = WarningEvent.NEW_WARNING
+            log.warning('event=[new_warning] warning=[%s]', warning)
 
-        event = WarningEvent.WARNING_UPDATED if exists else WarningEvent.NEW_WARNING
         self._notify_warning_observers(self.create_info(), warning, event)
-        if exists:
-            log.warning('event=[updated_warning] warning=%s', warning)
-            return False
-        else:
-            log.warning('event=[new_warning] warning=%s', warning)
-            return True
-
-    def remove_warning(self, warning_id: str):
-        warning = self._warnings.get(warning_id)
-        if warning:
-            del self._warnings[warning_id]
-            self._notify_warning_observers(self.create_info(), warning, WarningEvent.WARNING_REMOVED)
-            log.info('event=[warning_removed] warning=%s', warning)
-            return True
-        else:
-            return False
+        return True
 
     def run(self):
         for disabled in persistence.read_disabled_jobs():
