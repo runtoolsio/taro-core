@@ -32,11 +32,10 @@ def test_warning_added(observer: TestJobWarningObserver):
 
 def test_warning_updated(observer: TestJobWarningObserver):
     job = RunnerJobInstance('j1', TestExecution(ExecutionState.COMPLETED))
-    warn1 = Warn('test_warn1', None)
-    warn2 = Warn('test_warn2', None)
-    job.add_warning(warn1)
-    job.add_warning(warn2)
-    job.remove_warning('test_warn1')
+    warn = Warn('test_warn1', None)
+    updated = Warn('test_warn1', {'p': 1})
+    job.add_warning(warn)
+    job.add_warning(updated)
 
     assert len(job.warnings) == 1
-    assert next(iter(job.warnings)) == warn2
+    assert next(iter(job.warnings)) == updated
