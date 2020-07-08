@@ -51,13 +51,13 @@ class WarningCheck(abc.ABC):
         """
 
 
-class _WarnChecking(ExecutionStateObserver):
+class WarnChecking(ExecutionStateObserver):
 
     def __init__(self, job_control, *warning):
         self._job_control = job_control
         self._warnings = list(*warning)
         self._run_condition = Event()
-        self._checker = Thread(target=self.run, name='Warning-Checker')
+        self._checker = Thread(target=self._run, name='Warning-Checker')
         self._stop = False
 
     def state_update(self, job_info: JobInfo):
@@ -67,7 +67,10 @@ class _WarnChecking(ExecutionStateObserver):
             self._stop = True
             self._run_condition.set()
 
-    def run(self):
+    def wait_for_finish(self, timeout=1):
+        self._checker.join(timeout=timeout)
+
+    def _run(self):
         log.debug("event=[warn_checking_started]")
 
         while True:
@@ -98,9 +101,10 @@ class _WarnChecking(ExecutionStateObserver):
         log.debug("event=[warn_checking_ended]")
 
 
-def start_checking(job_control, *warning):
-    checking = _WarnChecking(job_control, warning)
+def start_checking(job_control, *warning) -> WarnChecking:
+    checking = WarnChecking(job_control, warning)
     job_control.add_state_observer(checking)
+    return checking
 
 
 def setup_checking(job_control, *warning: str):

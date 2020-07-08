@@ -90,14 +90,10 @@ class TestStateObserver(ExecutionStateObserver):
 class TestWarnObserver(JobWarningObserver):
 
     def __init__(self):
-        self.added: List[Tuple[JobInfo, Warn]] = []
-        self.removed: List[Tuple[JobInfo, Warn]] = []
+        self.events: List[Tuple[JobInfo, Warn, WarningEvent]] = []
 
     def warning_update(self, job_info: JobInfo, warning: Warn, event: WarningEvent):
-        if event == WarningEvent.NEW_WARNING:
-            self.added.append((job_info, warning))
-        elif event == WarningEvent.WARNING_REMOVED:
-            self.removed.append((job_info, warning))
+        self.events.append((job_info, warning, event))
 
     def is_empty(self):
-        return not self.added and not self.removed
+        return not self.events
