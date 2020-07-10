@@ -24,7 +24,7 @@ def _to_job_info(t):
         return util.dt_from_utc_str(ts, is_iso=False) if ts else None
 
     lifecycle = ExecutionLifecycle(*((state, dt_for_state(state)) for state in states))
-    warnings = [Warn(w_id, {}) for w_id in t[7].split(',')]  # Escape ','
+    warnings = [Warn(w_id, {}) for w_id in t[7].split(',') if w_id]  # Escape ','
     exec_error = ExecutionError(t[7], states[-1]) if t[8] else None  # TODO more data
     return JobInfo(t[0], t[1], lifecycle, t[6], warnings, exec_error)
 

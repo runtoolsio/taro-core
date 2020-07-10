@@ -90,7 +90,7 @@ def _get_color(job_info):
     if state.is_failure():
         return 'red'
 
-    if state.is_unexecuted():
+    if state.is_unexecuted() or job_info.warnings:
         return 'orange'
 
     return ''
