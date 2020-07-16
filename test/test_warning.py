@@ -36,7 +36,7 @@ class TestWarning(WarningCheck):
         self.execution = execution
         self.warnings = deque(warnings)
 
-    def next_check(self, job_instance) -> float:
+    def next_check(self, job_info) -> float:
         return 0.1 if self.warnings else -1
 
     def check(self, job_instance, last_check: bool):

@@ -31,22 +31,22 @@ class JobWarningObserver(abc.ABC):
 class WarningCheck(abc.ABC):
 
     @abc.abstractmethod
-    def check(self, job_instance, last_check: bool) -> Optional[Warn]:
+    def check(self, job_info, last_check: bool) -> Optional[Warn]:
         """
         Check warning condition.
 
-        :param job_instance: checked job
+        :param job_info: checked job
         :param last_check: True if no more checks are scheduled
         :return: Warn instance if warning or None otherwise
         """
 
     @abc.abstractmethod
-    def next_check(self, job_instance) -> float:
+    def next_check(self, job_info) -> float:
         """
         Returns maximum time in seconds after next check must be performed.
         However next check can be performed anytime sooner than interval specified by this method.
 
-        :param job_instance: checked job
+        :param job_info: checked job
         :return: max time for next check
         """
 
@@ -77,8 +77,9 @@ class WarnChecking(ExecutionStateObserver):
             next_check = -1 if self._stop else 1
 
             for warning in list(self._warnings):
-                warn = warning.check(self._job_control, last_check=(next_check == -1))
-                w_next_check = warning.next_check(self._job_control)
+                job_info = self._job_control.create_info()
+                warn = warning.check(job_info, last_check=(next_check == -1))
+                w_next_check = warning.next_check(job_info)
 
                 if w_next_check <= 0:
                     self._warnings.remove(warning)
@@ -154,16 +155,16 @@ class ExecTimeWarning(WarningCheck):
         exec_time = util.utc_now() - job_instance.lifecycle.execution_started()
         return self.time - exec_time.total_seconds()
 
-    def check(self, job_instance, last_check: bool) -> Optional[Warn]:
-        remaining_time = self.remaining_time_sec(job_instance)
+    def check(self, job_info, last_check: bool) -> Optional[Warn]:
+        remaining_time = self.remaining_time_sec(job_info)
         if not remaining_time or remaining_time >= 0:
             return None
 
         self.warn = Warn(self.id, None)
         return self.warn
 
-    def next_check(self, job_instance) -> float:
-        remaining_time = self.remaining_time_sec(job_instance)
+    def next_check(self, job_info) -> float:
+        remaining_time = self.remaining_time_sec(job_info)
         if not remaining_time:
             return self.time + 1.0
         if remaining_time > 0:
@@ -187,7 +188,7 @@ class FileContainsWarning(WarningCheck):
         self.file = None
         self.warn = False
 
-    def check(self, job_instance, last_check: bool) -> Optional[Warn]:
+    def check(self, job_info, last_check: bool) -> Optional[Warn]:
         if not self.file:
             try:
                 self.file = open(self.file_path, 'r')
@@ -211,7 +212,7 @@ class FileContainsWarning(WarningCheck):
 
         return self.warn
 
-    def next_check(self, job_instance) -> float:
+    def next_check(self, job_info) -> float:
         if self.warn:
             return -1
 
