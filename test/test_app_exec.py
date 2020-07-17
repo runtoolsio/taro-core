@@ -9,7 +9,7 @@ import pytest
 from taro import runner, util, persistence
 from taro.execution import ExecutionState
 from taro.test.observer import TestStateObserver
-from test.util import run_app, TestJobWarningObserver, run_wait, run_app_as_process
+from test.util import run_app, TestWarningObserver, run_wait, run_app_as_process
 
 
 @pytest.fixture(autouse=True)
@@ -68,7 +68,7 @@ def test_job_persisted():
 
 
 def test_exec_time_warning():
-    observer = TestJobWarningObserver()
+    observer = TestWarningObserver()
     runner.register_warning_observer(observer)
     try:
         run_app("exec -mc -W exec_time>1s sleep 1.2")

@@ -12,9 +12,8 @@ from threading import Condition
 from typing import Tuple, List, Callable
 
 from taro.execution import ExecutionState, ExecutionError
-from taro.job import JobInfo
+from taro.job import JobInfo, Warn, WarningEvent, WarningObserver
 from taro.runner import ExecutionStateObserver
-from taro.warning import JobWarningObserver, Warn, WarningEvent
 
 log = logging.getLogger(__name__)
 
@@ -87,7 +86,7 @@ class TestStateObserver(ExecutionStateObserver):
             return self.completion_lock.wait_for(state_condition, timeout)
 
 
-class TestWarnObserver(JobWarningObserver):
+class TestWarnObserver(WarningObserver):
 
     def __init__(self):
         self.events: List[Tuple[JobInfo, Warn, WarningEvent]] = []

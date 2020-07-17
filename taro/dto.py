@@ -2,8 +2,7 @@ from typing import Dict, Any
 
 from taro import util
 from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycle
-from taro.job import JobInfo
-from taro.warning import Warn
+from taro.job import JobInfo, Warn
 
 
 def to_info_dto(info) -> Dict[str, Any]:

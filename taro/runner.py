@@ -10,8 +10,7 @@ from typing import List, Union, Optional, Callable
 from taro import util, persistence, client
 from taro.err import IllegalStateError
 from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement
-from taro.job import ExecutionStateObserver, JobControl, JobInfo
-from taro.warning import JobWarningObserver, WarningEvent
+from taro.job import ExecutionStateObserver, JobControl, JobInfo, WarningEvent, WarningObserver
 
 log = logging.getLogger(__name__)
 
@@ -228,7 +227,7 @@ class RunnerJobInstance(JobControl):
         for observer in (self._warning_observers + _warning_observers):
             # noinspection PyBroadException
             try:
-                if isinstance(observer, JobWarningObserver):
+                if isinstance(observer, WarningObserver):
                     observer.warning_update(job_info, warning, event)
                 elif callable(observer):
                     observer(job_info, warning, event)
@@ -239,7 +238,7 @@ class RunnerJobInstance(JobControl):
 
 
 _state_observers: List[Union[ExecutionStateObserver, Callable]] = []
-_warning_observers: List[JobWarningObserver] = []
+_warning_observers: List[WarningObserver] = []
 
 
 def register_state_observer(observer):

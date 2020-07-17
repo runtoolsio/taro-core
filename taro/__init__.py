@@ -6,11 +6,10 @@ IMPLEMENTATION NOTE:
     Avoid importing any module depending on any external package. This allows to use this module without installing
     additional packages.
 """
-from .plugins import PluginBase, PluginDisabledError
-from .util import NestedNamespace, format_timedelta
 from .cnf import read_config
 from .execution import ExecutionStateGroup, ExecutionState, ExecutionError, ExecutionLifecycle
-from .job import JobInstance, JobControl, JobInfo, ExecutionStateObserver
-from .paths import lookup_config_file_path
 from .hostinfo import read_hostinfo, HostinfoError
-from .warning import Warn, WarningEvent, JobWarningObserver
+from .job import JobInstance, JobControl, JobInfo, ExecutionStateObserver, Warn, WarningEvent, WarningObserver
+from .paths import lookup_config_file_path
+from .plugins import PluginBase, PluginDisabledError
+from .util import NestedNamespace, format_timedelta

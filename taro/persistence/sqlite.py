@@ -3,8 +3,7 @@ from typing import List
 
 from taro import util
 from taro.execution import ExecutionState, ExecutionError, ExecutionLifecycle
-from taro.job import JobInfo, DisabledJob
-from taro.warning import Warn
+from taro.job import JobInfo, DisabledJob, Warn
 
 log = logging.getLogger(__name__)
 

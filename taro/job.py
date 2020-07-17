@@ -13,6 +13,7 @@ There are two type of clients of the framework:
 
 import abc
 from collections import namedtuple
+from enum import Enum
 
 from taro.execution import ExecutionError
 
@@ -189,3 +190,17 @@ class ExecutionStateObserver(abc.ABC):
 
 
 DisabledJob = namedtuple('DisabledJob', 'job_id regex created expires')
+
+Warn = namedtuple('Warn', 'id params')  # Must be comparable its attributes to detect updates
+
+
+class WarningEvent(Enum):
+    NEW_WARNING = 1
+    WARNING_UPDATED = 2
+
+
+class WarningObserver(abc.ABC):
+
+    @abc.abstractmethod
+    def warning_update(self, job_info: JobInfo, warning: Warn, event: WarningEvent):
+        """This method is called when there is a new warning event."""

@@ -1,31 +1,15 @@
 import abc
 import logging
 import re
-from collections import namedtuple
-from enum import Enum
 from threading import Event, Thread
 from typing import Optional
 
-from taro import JobInfo, ExecutionStateObserver, util
+from taro import JobInfo, ExecutionStateObserver, util, Warn
 
 log = logging.getLogger(__name__)
 
-Warn = namedtuple('Warn', 'id params')  # Must be comparable its attributes to detect updates
-
 EXEC_TIME_WARN_REGEX = r'exec_time>(\d+)([smh])'
 FILE_CONTAINS_REGEX = r'file:(.+)=~(.+)'
-
-
-class WarningEvent(Enum):
-    NEW_WARNING = 1
-    WARNING_UPDATED = 2
-
-
-class JobWarningObserver(abc.ABC):
-
-    @abc.abstractmethod
-    def warning_update(self, job_info: JobInfo, warning: Warn, event: WarningEvent):
-        """This method is called when there is a new warning event."""
 
 
 class WarningCheck(abc.ABC):

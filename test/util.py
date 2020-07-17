@@ -6,8 +6,7 @@ import prompt_toolkit
 import yaml
 from prompt_toolkit.output import DummyOutput
 
-from taro import app, process, paths, JobInfo
-from taro.warning import JobWarningObserver, Warn, WarningEvent
+from taro import app, process, paths, JobInfo, Warn, WarningEvent, WarningObserver
 
 
 def run_app_as_process(command, daemon=False, shell=False) -> Process:
@@ -102,7 +101,7 @@ class NoFormattingOutput(DummyOutput):
         raise NotImplementedError()
 
 
-class TestJobWarningObserver(JobWarningObserver):
+class TestWarningObserver(WarningObserver):
 
     def __init__(self):
         self.warnings: Dict[str, Tuple[JobInfo, Warn]] = {}
