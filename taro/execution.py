@@ -119,9 +119,11 @@ class Execution(abc.ABC):
     @abc.abstractmethod
     def status(self):
         """
-        If progress monitoring is not supported then this method must return None
+        If progress monitoring is not supported then this method will always return None otherwise:
+         - if executing -> current progress
+         - when finished -> result
 
-        :return: Current progress if executing or result when finished or None when not supported
+        :return: progress/result or None
         """
 
     @abc.abstractmethod
