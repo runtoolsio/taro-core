@@ -143,7 +143,7 @@ class Execution(abc.ABC):
         """
 
 
-class OutputableExecution(Execution):
+class OutputExecution(Execution):
 
     @abc.abstractmethod
     def add_output_observer(self, observer):

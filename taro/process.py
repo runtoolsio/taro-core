@@ -1,15 +1,18 @@
 import io
+import logging
 import sys
 from subprocess import Popen, PIPE, STDOUT
 from threading import Thread
 from typing import Union
 
-from taro.execution import Execution, ExecutionState, ExecutionError
+from taro.execution import ExecutionState, ExecutionError, OutputExecution, ExecutionOutputObserver
 
 USE_SHELL = False  # For testing only
 
+log = logging.getLogger(__name__)
 
-class ProcessExecution(Execution):
+
+class ProcessExecution(OutputExecution):
 
     def __init__(self, args, read_output: bool):
         self.args = args
@@ -18,6 +21,7 @@ class ProcessExecution(Execution):
         self._status = None
         self._stopped: bool = False
         self._interrupted: bool = False
+        self._output_observers = []
 
     def is_async(self) -> bool:
         return False
@@ -59,11 +63,6 @@ class ProcessExecution(Execution):
     def status(self):
         return self._status
 
-    def _read_output(self):
-        for line in io.TextIOWrapper(self._popen.stdout, encoding="utf-8"):
-            self._status = line.rstrip()
-            print(self._status)
-
     def stop(self):
         self._stopped = True
         if self._popen:
@@ -73,3 +72,29 @@ class ProcessExecution(Execution):
         self._interrupted = True
         if self._popen:
             self._popen.terminate()
+
+    def add_output_observer(self, observer):
+        self._output_observers.append(observer)
+
+    def remove_output_observer(self, observer):
+        self._output_observers.remove(observer)
+
+    def _read_output(self):
+        for line in io.TextIOWrapper(self._popen.stdout, encoding="utf-8"):
+            line_stripped = line.rstrip()
+            self._status = line_stripped
+            print(line_stripped)
+            self._notify_output_observers(line_stripped)
+
+    def _notify_output_observers(self, output):
+        for observer in self._output_observers:
+            # noinspection PyBroadException
+            try:
+                if isinstance(observer, ExecutionOutputObserver):
+                    observer.output_update(output)
+                elif callable(observer):
+                    observer(output)
+                else:
+                    log.warning("event=[unsupported_output_observer] observer=[%s]", observer)
+            except BaseException:
+                log.exception("event=[state_observer_exception]")
