@@ -4,7 +4,8 @@ import re
 from threading import Event, Thread
 from typing import Optional
 
-from taro import JobInfo, ExecutionStateObserver, util, Warn
+from taro import util
+from taro.job import JobInfo, ExecutionStateObserver, Warn
 
 log = logging.getLogger(__name__)
 

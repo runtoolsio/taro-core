@@ -143,6 +143,25 @@ class Execution(abc.ABC):
         """
 
 
+class OutputableExecution(Execution):
+
+    @abc.abstractmethod
+    def add_output_observer(self, observer):
+        """
+        Register output observer
+
+        :param observer observer to register
+        """
+
+    @abc.abstractmethod
+    def remove_output_observer(self, observer):
+        """
+        De-register output observer
+
+        :param observer observer to de-register
+        """
+
+
 class ExecutionLifecycle:
 
     def __init__(self, *state_changes: Tuple[ExecutionState, datetime.datetime]):
@@ -206,3 +225,9 @@ class ExecutionLifecycleManagement(ExecutionLifecycle):
         else:
             self._state_changes[new_state] = utc_now()
             return True
+
+
+class ExecutionOutputObserver(abc.ABC):
+
+    def output_update(self, output):
+        """Executed when new output line is available"""
