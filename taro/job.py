@@ -204,3 +204,10 @@ class WarningObserver(abc.ABC):
     @abc.abstractmethod
     def warning_update(self, job_info: JobInfo, warning: Warn, event: WarningEvent):
         """This method is called when there is a new warning event."""
+
+
+class JobOutputObserver(abc.ABC):
+
+    @abc.abstractmethod
+    def output_update(self, job_info: JobInfo, output):
+        """Executed when new output line is available."""

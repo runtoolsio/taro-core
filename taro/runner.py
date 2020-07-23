@@ -9,8 +9,8 @@ from typing import List, Union, Optional, Callable
 
 from taro import util, persistence, client
 from taro.err import IllegalStateError
-from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement
-from taro.job import ExecutionStateObserver, JobControl, JobInfo, WarningEvent, WarningObserver
+from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver
+from taro.job import ExecutionStateObserver, JobControl, JobInfo, WarningEvent, WarningObserver, JobOutputObserver
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ def run(job_id, execution, no_overlap: bool = False):
     return instance
 
 
-class RunnerJobInstance(JobControl):
+class RunnerJobInstance(JobControl, ExecutionOutputObserver):
 
     def __init__(self, job_id, execution, *, no_overlap: bool = False):
         self._job_id = job_id
@@ -39,6 +39,7 @@ class RunnerJobInstance(JobControl):
         self._warnings = {}
         self._state_observers = []
         self._warning_observers = []
+        self._output_observers = []
 
         self._state_change(ExecutionState.CREATED)
 
@@ -236,9 +237,27 @@ class RunnerJobInstance(JobControl):
             except BaseException:
                 log.exception("event=[warning_observer_exception]")
 
+    def output_update(self, output):
+        """Executed when new output line is available"""
+        self._notify_output_observers(self.create_info(), output)
+
+    def _notify_output_observers(self, job_info: JobInfo, output):
+        for observer in (self._output_observers + _output_observers):
+            # noinspection PyBroadException
+            try:
+                if isinstance(observer, JobOutputObserver):
+                    observer.output_update(output, job_info)
+                elif callable(observer):
+                    observer(output, job_info)
+                else:
+                    log.warning("event=[unsupported_output_observer] observer=[%s]", observer)
+            except BaseException:
+                log.exception("event=[output_observer_exception]")
+
 
 _state_observers: List[Union[ExecutionStateObserver, Callable]] = []
-_warning_observers: List[WarningObserver] = []
+_warning_observers: List[Union[WarningObserver, Callable]] = []
+_output_observers: List[Union[JobOutputObserver, Callable]] = []
 
 
 def register_state_observer(observer):
@@ -254,4 +273,12 @@ def register_warning_observer(observer):
 
 
 def deregister_warning_observer(observer):
+    _warning_observers.remove(observer)
+
+
+def register_output_observer(observer):
+    _warning_observers.append(observer)
+
+
+def deregister_output_observer(observer):
     _warning_observers.remove(observer)
