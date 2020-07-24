@@ -18,19 +18,6 @@ from enum import Enum
 from taro.execution import ExecutionError
 
 
-class Job:
-    def __init__(self, job_id: str, pending: str = ''):
-        if not job_id:
-            raise ValueError('Job ID cannot be None or empty')
-
-        self.id = job_id
-        self.pending = pending
-
-    def __repr__(self):
-        return "{}({!r}, {!r})".format(
-            self.__class__.__name__, self.id, self.pending)
-
-
 class JobInstance(abc.ABC):
 
     @property
