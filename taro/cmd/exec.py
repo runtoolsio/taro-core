@@ -23,6 +23,7 @@ def run(args):
     execution = ProcessExecution(all_args, read_output=not args.bypass_output)
     job_id = args.id or " ".join(all_args)
     job_instance = RunnerJobInstance(job_id, execution, no_overlap=args.no_overlap)
+    execution.add_output_observer(job_instance)
     term = Term(job_instance)
     signal.signal(signal.SIGTERM, term.terminate)
     signal.signal(signal.SIGINT, term.interrupt)

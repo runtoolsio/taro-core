@@ -246,9 +246,9 @@ class RunnerJobInstance(JobControl, ExecutionOutputObserver):
             # noinspection PyBroadException
             try:
                 if isinstance(observer, JobOutputObserver):
-                    observer.output_update(output, job_info)
+                    observer.output_update(job_info, output)
                 elif callable(observer):
-                    observer(output, job_info)
+                    observer(job_info, output)
                 else:
                     log.warning("event=[unsupported_output_observer] observer=[%s]", observer)
             except BaseException:
@@ -277,8 +277,8 @@ def deregister_warning_observer(observer):
 
 
 def register_output_observer(observer):
-    _warning_observers.append(observer)
+    _output_observers.append(observer)
 
 
 def deregister_output_observer(observer):
-    _warning_observers.remove(observer)
+    _output_observers.remove(observer)
