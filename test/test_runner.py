@@ -9,6 +9,7 @@ import pytest
 import taro.runner as runner
 from taro import persistence
 from taro.execution import ExecutionState as ExSt, ExecutionError
+from taro.process import ProcessExecution
 from taro.runner import RunnerJobInstance
 from taro.test.execution import TestExecution  # TODO package import
 
@@ -105,3 +106,12 @@ def wait_for_pending_state(instance: RunnerJobInstance):
         wait_count += 1
         if wait_count > 10:
             assert False  # Hasn't reached PENDING state
+
+
+def test_last_output():
+    execution = ProcessExecution(['echo', "3\n2\n1\neveryone\nin\nthe\nworld\nis\ndoing\nsomething\nwithout\nme"],
+                                 read_output=True)
+    instance = RunnerJobInstance('j', execution)
+    execution.add_output_observer(instance)
+    instance.run()
+    assert instance.last_output == "1 everyone in the world is doing something without me".split()

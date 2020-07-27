@@ -42,6 +42,11 @@ class JobInstance(abc.ABC):
 
     @property
     @abc.abstractmethod
+    def last_output(self):
+        """Last lines of output or None if not supported"""
+
+    @property
+    @abc.abstractmethod
     def warnings(self):
         """
         Return sequence of warnings of this instance or empty sequence if no warnings

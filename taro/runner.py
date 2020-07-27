@@ -4,6 +4,7 @@ Implementation of job management framework based on :mod:`job` module.
 import copy
 import logging
 import re
+from collections import deque
 from threading import Lock, Event, RLock
 from typing import List, Union, Optional, Callable
 
@@ -29,6 +30,7 @@ class RunnerJobInstance(JobControl, ExecutionOutputObserver):
         self._no_overlap = no_overlap
         self._instance_id: str = util.unique_timestamp_hex()
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
+        self._last_output = deque(maxlen=10)
         self._exec_error = None
         self._executing = False
         self._stopped_or_interrupted: bool = False
@@ -77,6 +79,10 @@ class RunnerJobInstance(JobControl, ExecutionOutputObserver):
     @property
     def status(self):
         return self._execution.status()
+
+    @property
+    def last_output(self) -> List[str]:
+        return list(self._last_output)
 
     @property
     def warnings(self):
@@ -239,6 +245,7 @@ class RunnerJobInstance(JobControl, ExecutionOutputObserver):
 
     def output_update(self, output):
         """Executed when new output line is available"""
+        self._last_output.append(output)
         self._notify_output_observers(self.create_info(), output)
 
     def _notify_output_observers(self, job_info: JobInfo, output):
