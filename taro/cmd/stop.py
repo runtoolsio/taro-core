@@ -18,4 +18,4 @@ def run(args):
 
         inst_results = client.stop_jobs([job.instance_id for job in jobs], args.interrupt)
         for i_res in inst_results:
-            print(f"{i_res[0].job_id}@{i_res[0].instance_id} -> {i_res[1]}")
+            print(f"{i_res[0]} -> {i_res[1]}")

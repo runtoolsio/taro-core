@@ -14,6 +14,6 @@ def release_jobs(pending):
         client.release_jobs(pending)
 
 
-def stop_jobs(instances, interrupt: bool) -> List[Tuple[JobInfo, str]]:
+def stop_jobs(instances, interrupt: bool) -> List[Tuple[str, str]]:
     with Client() as client:
         return client.stop_jobs(instances, interrupt)
