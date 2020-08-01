@@ -39,12 +39,9 @@ class Server(SocketServer):
             return _resp_err(422, "missing_req_api")
 
         inst_id = self._job_control.instance_id
-        if 'instance' in req_body:
-            req_inst = req_body['instance']
-            if 'instance_id' in req_inst and req_inst['instance_id'] != inst_id:
-                return _resp(400, inst_id, {"not_matching": "instance_id"})  # Precondition failed code
-            if 'job_id' in req_inst and req_inst['job_id'] != self._job_control.job_id:
-                return _resp(400, inst_id, {"not_matching": "instance_id"})  # Precondition failed code
+        if 'instance' in req_body and \
+                (req_body['instance'] != inst_id or req_body['instance'] != self._job_control.job_id):
+            return _resp(400, inst_id, {"reason": "instance_not_matching"})  # Precondition failed code
 
         if req_body['req']['api'] == '/job':
             info_dto = dto.to_info_dto(self._job_control.create_info())
