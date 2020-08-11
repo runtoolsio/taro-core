@@ -85,9 +85,20 @@ class Client(SocketClient):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+    def _send_request(self, api: str, *, data=None, instance: str = '', include=()):
+        req = {'req': {'api': api}}
+        if instance:
+            req['instance'] = instance
+        if data:
+            req['data'] = data
+        return self.communicate(req, include=include)
+
     def read_jobs_info(self) -> List[JobInfo]:
-        responses = self.communicate({'req': {'api': '/job'}})
+        responses = self._send_request('/job')
         return [_create_job_info(inst_resp) for inst_resp in responses]
+
+    def read_tail(self, instance):
+        pass
 
     @iterates
     def release_jobs(self, pending):
@@ -108,5 +119,5 @@ class Client(SocketClient):
         if not instances:
             raise ValueError('Instances to be stopped cannot be empty')
 
-        inst_responses = self.communicate({'req': {'api': '/interrupt' if interrupt else '/stop'}}, instances)
+        inst_responses = self._send_request('/interrupt' if interrupt else '/stop', include=instances)
         return [(inst_resp.instance, inst_resp.response['data']['result']) for inst_resp in inst_responses]
