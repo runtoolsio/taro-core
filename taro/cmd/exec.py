@@ -5,7 +5,7 @@ from taro import cnf, ExecutionState, runner, PluginBase, warning
 from taro import log
 from taro import persistence
 from taro.api import Server
-from taro.listening import Dispatcher
+from taro.listening import StateDispatcher
 from taro.process import ProcessExecution
 from taro.runner import RunnerJobInstance
 
@@ -27,7 +27,7 @@ def run(args):
     term = Term(job_instance)
     signal.signal(signal.SIGTERM, term.terminate)
     signal.signal(signal.SIGINT, term.interrupt)
-    dispatcher = Dispatcher()
+    dispatcher = StateDispatcher()
     runner.register_state_observer(dispatcher)
     for plugin in PluginBase.create_plugins(EXT_PLUGIN_MODULE_PREFIX,
                                             cnf.config.plugins).values():  # TODO to plugin module
