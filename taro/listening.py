@@ -1,5 +1,5 @@
 #  Sender, Listening
-from taro import util, dto, ps
+from taro import util, dto
 from taro.job import ExecutionStateObserver, JobInfo
 from taro.socket import SocketServer, SocketClient
 from taro.util import iterates
@@ -36,13 +36,3 @@ class StateReceiver(SocketServer):
         job_info = dto.to_job_info(req_body['event']['job_info'])
         for listener in self.listeners:
             listener.state_update(job_info)
-
-
-class EventPrint(ExecutionStateObserver):
-
-    def __init__(self, condition=lambda _: True):
-        self.condition = condition
-
-    def state_update(self, job_info: JobInfo):
-        if self.condition(job_info):
-            ps.print_state_change(job_info)

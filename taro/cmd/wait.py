@@ -1,8 +1,8 @@
 import signal
 import sys
 
-from taro import ExecutionStateObserver, JobInfo
-from taro.listening import StateReceiver, EventPrint
+from taro import ExecutionStateObserver, JobInfo, ps
+from taro.listening import StateReceiver
 
 
 def run(args):
@@ -19,6 +19,16 @@ def run(args):
 def _stop_server_and_exit(server, signal_number: int):
     server.stop()
     sys.exit(128 + signal_number)
+
+
+class EventPrint(ExecutionStateObserver):
+
+    def __init__(self, condition=lambda _: True):
+        self.condition = condition
+
+    def state_update(self, job_info: JobInfo):
+        if self.condition(job_info):
+            ps.print_state_change(job_info)
 
 
 class StoppingListener(ExecutionStateObserver):
