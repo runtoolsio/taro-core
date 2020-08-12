@@ -30,7 +30,7 @@ class RunnerJobInstance(JobControl, ExecutionOutputObserver):
         self._no_overlap = no_overlap
         self._instance_id: str = util.unique_timestamp_hex()
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
-        self._last_output = deque(maxlen=10)
+        self._last_output = deque(maxlen=20)
         self._exec_error = None
         self._executing = False
         self._stopped_or_interrupted: bool = False

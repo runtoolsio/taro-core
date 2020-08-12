@@ -3,7 +3,7 @@ from typing import List, Tuple
 
 from taro import dto
 from taro.job import JobInfo
-from taro.socket import SocketServer, SocketClient
+from taro.socket import SocketServer, SocketClient, InstanceResponse
 from taro.util import iterates
 
 log = logging.getLogger(__name__)
@@ -67,6 +67,9 @@ class Server(SocketServer):
             self._job_control.interrupt()
             return _resp(200, inst_id, {"result": "interrupt_performed"})
 
+        if req_body['req']['api'] == '/tail':
+            return _resp(200, inst_id, {"tail": self._job_control.last_output})
+
         return _resp_err(404, "req_api_not_found")
 
 
@@ -85,7 +88,7 @@ class Client(SocketClient):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def _send_request(self, api: str, *, data=None, instance: str = '', include=()):
+    def _send_request(self, api: str, *, data=None, instance: str = '', include=()) -> List[InstanceResponse]:
         req = {'req': {'api': api}}
         if instance:
             req['instance'] = instance
@@ -97,8 +100,9 @@ class Client(SocketClient):
         responses = self._send_request('/job')
         return [_create_job_info(inst_resp) for inst_resp in responses]
 
-    def read_tail(self, instance):
-        pass
+    def read_tail(self, instance) -> List[Tuple[str, List[str]]]:
+        inst_responses = self._send_request('/tail', instance=instance)
+        return [(inst_resp.instance, inst_resp.response['data']['tail']) for inst_resp in inst_responses]
 
     @iterates
     def release_jobs(self, pending):

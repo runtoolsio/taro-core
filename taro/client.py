@@ -17,3 +17,8 @@ def release_jobs(pending):
 def stop_jobs(instances, interrupt: bool) -> List[Tuple[str, str]]:
     with Client() as client:
         return client.stop_jobs(instances, interrupt)
+
+
+def read_tail(instance) -> List[Tuple[str, List[str]]]:
+    with Client() as client:
+        return client.read_tail(instance)

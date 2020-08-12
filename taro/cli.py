@@ -13,6 +13,7 @@ ACTION_RELEASE = 'release'
 ACTION_LISTEN = 'listen'
 ACTION_WAIT = 'wait'
 ACTION_STOP = 'stop'
+ACTION_TAIL = 'tail'
 ACTION_DISABLE = 'disable'
 ACTION_LIST_DISABLED = 'list-disabled'
 ACTION_HTTP = 'http'
@@ -43,6 +44,7 @@ def parse_args(args):
     _init_listen_parser(common, subparsers)
     _init_wait_parser(common, subparsers)
     _init_stop_parser(common, subparsers)
+    _init_tail_parser(common, subparsers)
     _init_disable_parser(common, subparsers)
     _init_list_disabled_parser(common, subparsers)
     _init_http_parser(common, subparsers)
@@ -204,6 +206,18 @@ def _init_stop_parser(common, subparsers):
                              help='Set final state to INTERRUPTED which is an error state')
     stop_parser.add_argument('--all', action='store_true', help='Force stop all if there are more jobs to stop')
     stop_parser.add_argument('job', type=str, metavar='JOB', help='ID of the job to stop')
+
+
+def _init_tail_parser(common, subparsers):
+    """
+    Creates parsers for `tail` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for tail parser to be added to
+    """
+
+    tail_parser = subparsers.add_parser(ACTION_TAIL, parents=[common], description='Print last output', add_help=False)
+    tail_parser.add_argument('-f', '--follow', action='store_true', help='Keep printing')
 
 
 def _init_disable_parser(common, subparsers):
