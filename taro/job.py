@@ -102,6 +102,22 @@ class JobInstance(abc.ABC):
         :param observer observer to de-register
         """
 
+    @abc.abstractmethod
+    def add_output_observer(self, observer):
+        """
+        Register output observer
+
+        :param observer observer to register
+        """
+
+    @abc.abstractmethod
+    def remove_output_observer(self, observer):
+        """
+        De-register output observer
+
+        :param observer observer to de-register
+        """
+
 
 class JobInfo:
     """

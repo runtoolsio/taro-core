@@ -110,6 +110,12 @@ class RunnerJobInstance(JobControl, ExecutionOutputObserver):
     def remove_warning_observer(self, observer):
         self._warning_observers.remove(observer)
 
+    def add_output_observer(self, observer):
+        self._output_observers.append(observer)
+
+    def remove_output_observer(self, observer):
+        self._output_observers.remove(observer)
+
     def stop(self):
         """
         Cancel not yet started execution or stop started execution.

@@ -1,11 +1,11 @@
 import logging
 import signal
 
-from taro import cnf, ExecutionState, runner, PluginBase, warning
+from taro import cnf, ExecutionState, PluginBase, warning
 from taro import log
 from taro import persistence
 from taro.api import Server
-from taro.listening import StateDispatcher
+from taro.listening import StateDispatcher, OutputDispatcher
 from taro.process import ProcessExecution
 from taro.runner import RunnerJobInstance
 
@@ -27,8 +27,10 @@ def run(args):
     term = Term(job_instance)
     signal.signal(signal.SIGTERM, term.terminate)
     signal.signal(signal.SIGINT, term.interrupt)
-    dispatcher = StateDispatcher()
-    runner.register_state_observer(dispatcher)
+    state_dispatcher = StateDispatcher()
+    job_instance.add_state_observer(state_dispatcher)
+    output_dispatcher = OutputDispatcher()
+    job_instance.add_output_observer(output_dispatcher)
     for plugin in PluginBase.create_plugins(EXT_PLUGIN_MODULE_PREFIX,
                                             cnf.config.plugins).values():  # TODO to plugin module
         try:
@@ -49,7 +51,8 @@ def run(args):
         job_instance.run()
     finally:
         api.stop()
-        dispatcher.close()
+        state_dispatcher.close()
+        output_dispatcher.close()
         persistence.close()
 
 
