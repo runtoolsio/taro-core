@@ -16,7 +16,6 @@ ACTION_STOP = 'stop'
 ACTION_TAIL = 'tail'
 ACTION_DISABLE = 'disable'
 ACTION_LIST_DISABLED = 'list-disabled'
-ACTION_HTTP = 'http'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
 ACTION_HOSTINFO = 'hostinfo'
@@ -47,7 +46,6 @@ def parse_args(args):
     _init_tail_parser(common, subparsers)
     _init_disable_parser(common, subparsers)
     _init_list_disabled_parser(common, subparsers)
-    _init_http_parser(common, subparsers)
     _init_show_config_parser(common, subparsers)
     _init_hostinfo_parser(common, subparsers)
 
@@ -251,24 +249,6 @@ def _init_list_disabled_parser(common, subparsers):
 
     ld_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
     ld_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
-
-
-def _init_http_parser(common, subparsers):
-    """
-    Creates parsers for `http` command
-
-    :param common: parent parser
-    :param subparsers: sub-parser for http parser to be added to
-    """
-
-    ld_parser = subparsers.add_parser(
-        ACTION_HTTP, parents=[common], description='Execute job controlled by HTTP interface', add_help=False)
-
-    ld_parser.add_argument('--url', required=True, type=str, help='URL for triggering the job')
-    ld_parser.add_argument('-D', '--data', type=str, help='Request body for the job trigger')
-    ld_parser.add_argument('-M', '--monitor-url', type=str, help='URL for monitoring of the job')
-    ld_parser.add_argument('-R', '--is-running', type=str, help='Condition to find out if the job is running')
-    ld_parser.add_argument('-S', '--status', type=str, help='TODO')
 
 
 def _init_show_config_parser(common, subparsers):
