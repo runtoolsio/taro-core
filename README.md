@@ -13,12 +13,11 @@ Job management library
 8. Log rotation
 ~~9. Warnings~~
 ~~10. Overlaps~~
-11. Advanced Output
+~~11. Advanced Output~~
 ~~12. Disabled jobs~~
 
 ### Optional
 - job timeout
-- job post checks
 
 ## Premature termination
 ### General
