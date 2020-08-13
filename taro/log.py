@@ -1,5 +1,6 @@
 import logging
 import sys
+from logging import handlers
 
 from taro import cnf
 from taro import paths
@@ -61,7 +62,7 @@ def get_console_level():
 
 
 def setup_file(level, file):
-    file_handler = logging.FileHandler(file)
+    file_handler = logging.handlers.WatchedFileHandler(file)
     file_handler.set_name(FILE_HANDLER)
     file_handler.setLevel(logging.getLevelName(level.upper()))
     file_handler.setFormatter(_formatter)
