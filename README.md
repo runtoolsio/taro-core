@@ -1,6 +1,14 @@
 # taro
 Job management library
 
+## Commands
+### Config
+#### Show
+Shows path and content of the config file:
+```
+taro config show
+```
+
 ## Feature priority
 ### Mandatory
 1. ~~Logging - normal to stdout and errors to stderr (https://docs.python.org/3/library/logging.handlers.html)~~

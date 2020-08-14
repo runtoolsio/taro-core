@@ -1,3 +1,8 @@
+"""
+Commands related to configuration.
+Show: shows path and content of the config file
+"""
+
 from taro import cnf, cli
 
 

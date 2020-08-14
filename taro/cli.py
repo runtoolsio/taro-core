@@ -261,7 +261,7 @@ def _init_show_config_parser(common, subparsers):
 
     config_parser = subparsers.add_parser(
         ACTION_CONFIG, parents=[common], description='Config related actions', add_help=False)
-    config_subparsers = config_parser.add_subparsers(dest='config_action')
+    config_subparsers = config_parser.add_subparsers(dest='config_action', required=True)
     show_config_parser = config_subparsers.add_parser(
         ACTION_CONFIG_SHOW, parents=[common],
         description='Print config used by exec command or config specified by an option', add_help=False)
