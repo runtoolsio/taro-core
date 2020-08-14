@@ -15,14 +15,14 @@ def _create_socket_name(job_info):
     return job_info.instance_id + API_FILE_EXTENSION
 
 
-def _resp(code: int, instance_id: str, data):
-    return {"resp": {"code": code}, "instance": {"id": instance_id}, "data": data}
+def _resp(code: int, job_instance: str, data):
+    return {"resp": {"code": code}, "job_instance": job_instance, "data": data}
 
 
-def _resp_err(code: int, error: str):
+def _resp_err(code: int, job_instance: str, error: str):
     if 400 > code >= 600:
         raise ValueError("Error code must be 4xx or 5xx")
-    return {"resp": {"code": code}, "error": error}
+    return {"resp": {"code": code}, "job_instance": job_instance, "error": error}
 
 
 class Server(SocketServer):
@@ -33,44 +33,46 @@ class Server(SocketServer):
         self._latch_release = latch_release
 
     def handle(self, req_body):
-        if 'req' not in req_body:
-            return _resp_err(422, "missing_req")
-        if 'api' not in req_body['req']:
-            return _resp_err(422, "missing_req_api")
+        job_inst = self._job_control.job_id + "@" + self._job_control.instance_id
 
-        inst_id = self._job_control.instance_id
+        if 'req' not in req_body:
+            return _resp_err(422, job_inst, "missing_req")
+        if 'api' not in req_body['req']:
+            return _resp_err(422, job_inst, "missing_req_api")
+
         if 'instance' in req_body and \
-                (req_body['instance'] != inst_id or req_body['instance'] != self._job_control.job_id):
-            return _resp(400, inst_id, {"reason": "instance_not_matching"})  # Precondition failed code
+                (req_body['instance'] != self._job_control.instance_id
+                 or req_body['instance'] != self._job_control.job_id):
+            return _resp(400, job_inst, {"reason": "instance_not_matching"})  # Precondition failed code
 
         if req_body['req']['api'] == '/job':
             info_dto = dto.to_info_dto(self._job_control.create_info())
-            return _resp(200, inst_id, {"job_info": info_dto})
+            return _resp(200, job_inst, {"job_info": info_dto})
 
         if req_body['req']['api'] == '/release':
             if 'data' not in req_body:
-                return _resp_err(422, "missing_data")
+                return _resp_err(422, job_inst, "missing_data")
             if 'pending' not in req_body['data']:
-                return _resp_err(422, "missing_data_field:pending")
+                return _resp_err(422, job_inst, "missing_data_field:pending")
 
             if self._latch_release:
                 released = self._latch_release.release(req_body.get('data').get('pending'))
             else:
                 released = False
-            return _resp(200, inst_id, {"released": released})
+            return _resp(200, job_inst, {"released": released})
 
         if req_body['req']['api'] == '/stop':
             self._job_control.stop()
-            return _resp(200, inst_id, {"result": "stop_performed"})
+            return _resp(200, job_inst, {"result": "stop_performed"})
 
         if req_body['req']['api'] == '/interrupt':
             self._job_control.interrupt()
-            return _resp(200, inst_id, {"result": "interrupt_performed"})
+            return _resp(200, job_inst, {"result": "interrupt_performed"})
 
         if req_body['req']['api'] == '/tail':
-            return _resp(200, inst_id, {"tail": self._job_control.last_output})
+            return _resp(200, job_inst, {"tail": self._job_control.last_output})
 
-        return _resp_err(404, "req_api_not_found")
+        return _resp_err(404, job_inst, "req_api_not_found")
 
 
 def _create_job_info(info_resp):
@@ -102,7 +104,8 @@ class Client(SocketClient):
 
     def read_tail(self, instance) -> List[Tuple[str, List[str]]]:
         inst_responses = self._send_request('/tail', instance=instance)
-        return [(inst_resp.instance, inst_resp.response['data']['tail']) for inst_resp in inst_responses]
+        return [(inst_resp.response['job_instance'], inst_resp.response['data']['tail']) for inst_resp in
+                inst_responses]
 
     @iterates
     def release_jobs(self, pending):
@@ -124,4 +127,5 @@ class Client(SocketClient):
             raise ValueError('Instances to be stopped cannot be empty')
 
         inst_responses = self._send_request('/interrupt' if interrupt else '/stop', include=instances)
-        return [(inst_resp.instance, inst_resp.response['data']['result']) for inst_resp in inst_responses]
+        return [(inst_resp.response['job_instance'], inst_resp.response['data']['result'])
+                for inst_resp in inst_responses]
