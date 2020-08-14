@@ -18,6 +18,10 @@ def run(args):
     disabled_jobs = [DisabledJob(j, args.regex, utc_now(), None) for j in args.jobs]
     try:
         persistence.add_disabled_jobs(disabled_jobs)
-        print("Jobs disabled: {}".format(",".join(jobs)))
+        if args.regex:
+            print("Job with IDs matching the regular expression are disabled: {}".format(",".join(jobs)))
+        else:
+            print("Job with this ID is disabled: {}".format(",".join(jobs)))
+
     finally:
         persistence.close()

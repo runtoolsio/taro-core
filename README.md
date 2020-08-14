@@ -5,8 +5,14 @@ Job management library
 ### Config
 #### Show
 Shows path and content of the config file:
-```
+```commandline
 taro config show
+```
+
+### Disable
+Disables jobs. Persistence must be enabled in the config file so the job to disable is stored in a database.
+```commandline
+taro disable job-to-disable
 ```
 
 ## Feature priority
