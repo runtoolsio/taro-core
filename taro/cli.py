@@ -18,6 +18,7 @@ ACTION_DISABLE = 'disable'
 ACTION_LIST_DISABLED = 'list-disabled'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
+ACTION_CONFIG_PATH = 'path'
 ACTION_HOSTINFO = 'hostinfo'
 
 _true_options = ['yes', 'true', 't', 'y', '1', 'on']
@@ -262,11 +263,15 @@ def _init_show_config_parser(common, subparsers):
     config_parser = subparsers.add_parser(
         ACTION_CONFIG, parents=[common], description='Config related actions', add_help=False)
     config_subparsers = config_parser.add_subparsers(dest='config_action', required=True)
+
     show_config_parser = config_subparsers.add_parser(
         ACTION_CONFIG_SHOW, parents=[common],
         description='Print config used by exec command or config specified by an option', add_help=False)
     show_config_parser.add_argument('-dc', '--def-config', action='store_true', help='show default config')
     show_config_parser.add_argument('-mc', '--min-config', action='store_true', help='show minimum config')
+
+    config_subparsers.add_parser(ACTION_CONFIG_PATH, parents=[common], description='Print path to config',
+                                 add_help=False)
 
 
 def _init_hostinfo_parser(common, subparsers):

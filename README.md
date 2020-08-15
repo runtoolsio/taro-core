@@ -9,6 +9,12 @@ Shows path and content of the config file:
 taro config show
 ```
 
+#### Path
+Shows path to the config file. This is handy in cases where path to the config is used as argument:
+```commandline
+vim `taro config path`
+```
+
 ### Disable
 Disables jobs. Persistence must be enabled in the config file so the job to disable is stored in a database.
 ```commandline
