@@ -18,7 +18,7 @@ def run(args):
     try:
         added = persistence.add_disabled_jobs(disabled_jobs)
         if added:
-            print("Added to disabled jobs: " + ",".join([a.job_id for a in added]))
+            print("Added to disabled jobs: " + ", ".join([a.job_id for a in added]))
         else:
             print("Already disabled")
 

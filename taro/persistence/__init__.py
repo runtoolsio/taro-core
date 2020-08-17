@@ -75,7 +75,7 @@ def add_disabled_jobs(disabled_jobs):
 
 
 def remove_disabled_jobs(job_ids):
-    _persistence.remove_disabled_jobs(job_ids)
+    return _persistence.remove_disabled_jobs(job_ids)
 
 
 def read_disabled_jobs():

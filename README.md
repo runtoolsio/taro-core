@@ -25,9 +25,21 @@ This in general helps to make disabling more visible and harder to forget re-ena
 
 Note: To use this feature persistence must be enabled in the config file.
 ```commandline
-taro disable job-to-disable
+taro disable job-to-disable1 job-to-disable2
 ```
 A group of jobs can be disabled by using regular expression with `-regex` option.
+
+### List Disabled
+Disabled jobs can be showed by this command.
+```commandline
+taro list-disabled
+```
+
+### Enable
+Currently disabled jobs can be re-enabled by this command.
+```commandline
+taro enable disabled-job1 disabled-job2
+```
 
 ## Feature priority
 ### Mandatory

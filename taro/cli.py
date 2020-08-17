@@ -16,6 +16,7 @@ ACTION_STOP = 'stop'
 ACTION_TAIL = 'tail'
 ACTION_DISABLE = 'disable'
 ACTION_LIST_DISABLED = 'list-disabled'
+ACTION_ENABLE = 'enable'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
 ACTION_CONFIG_PATH = 'path'
@@ -47,6 +48,7 @@ def parse_args(args):
     _init_tail_parser(common, subparsers)
     _init_disable_parser(common, subparsers)
     _init_list_disabled_parser(common, subparsers)
+    _init_enable_parser(common, subparsers)
     _init_show_config_parser(common, subparsers)
     _init_hostinfo_parser(common, subparsers)
 
@@ -250,6 +252,23 @@ def _init_list_disabled_parser(common, subparsers):
 
     ld_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
     ld_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
+
+
+def _init_enable_parser(common, subparsers):
+    """
+    Creates parsers for `enable` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for enable parser to be added to
+    """
+
+    enable_parser = subparsers.add_parser(
+        ACTION_ENABLE, parents=[common], description='Enable jobs (persistence required)', add_help=False)
+
+    enable_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
+    enable_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
+
+    enable_parser.add_argument('jobs', type=str, metavar='JOB', nargs=argparse.REMAINDER, help="job IDs to enable")
 
 
 def _init_show_config_parser(common, subparsers):

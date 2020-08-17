@@ -86,19 +86,23 @@ class SQLite:
     def add_disabled_jobs(self, disabled_jobs):
         added = []
         for j in disabled_jobs:
-            res = self._conn.execute(
-                "INSERT INTO disabled_jobs SELECT ?, ?, ?, ? WHERE NOT EXISTS(SELECT 1 FROM disabled_jobs WHERE job_id = ?)",
+            c = self._conn.execute(
+                "INSERT INTO disabled_jobs SELECT ?, ?, ?, ? "
+                "WHERE NOT EXISTS(SELECT 1 FROM disabled_jobs WHERE job_id = ?)",
                 (j.job_id, j.regex, j.created, j.expires, j.job_id))
-            if res.rowcount:
+            if c.rowcount:
                 added.append(j)
         self._conn.commit()
         return added
 
     def remove_disabled_jobs(self, job_ids):
+        removed = []
         for job_id in job_ids:
             c = self._conn.execute("DELETE FROM disabled_jobs WHERE job_id = (?)", (job_id,))
-            print(c)
-            print(type(c))
+            if c.rowcount:
+                removed.append(job_id)
+        self._conn.commit()
+        return removed
 
     def read_disabled_jobs(self):
         c = self._conn.execute("SELECT * FROM disabled_jobs ")
