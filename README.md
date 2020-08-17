@@ -16,10 +16,18 @@ vim `taro config path`
 ```
 
 ### Disable
-Disables jobs. Persistence must be enabled in the config file so the job to disable is stored in a database.
+Jobs can be disabled. When disabled job is executed it goes through these states: `None` -> `Created` -> `Disabled`.
+It means that disabled job is not started and it terminates in `disabled` state instead.
+
+This feature is mainly useful for temporary disabling of scheduled jobs as an alternative for simply commenting out of crontab entries.
+Doing it this way has advantage that the jobs are still stored in the history, can be processed by plugins, etc.
+This in general helps to make disabling more visible and harder to forget re-enabling.
+
+Note: To use this feature persistence must be enabled in the config file.
 ```commandline
 taro disable job-to-disable
 ```
+A group of jobs can be disabled by using regular expression with `-regex` option.
 
 ## Feature priority
 ### Mandatory

@@ -15,7 +15,9 @@ class NoPersistence:
         self._jobs.append(job_info)
 
     def add_disabled_jobs(self, disabled_jobs):
-        self._disabled_jobs += disabled_jobs
+        to_add = [d for d in disabled_jobs if not any(d.job_id == j.job_id for j in self._disabled_jobs)]
+        self._disabled_jobs += to_add
+        return to_add
 
     def remove_disabled_jobs(self, job_ids):
         removed = []
@@ -69,7 +71,7 @@ def store_job(job_info):
 
 
 def add_disabled_jobs(disabled_jobs):
-    _persistence.add_disabled_jobs(disabled_jobs)
+    return _persistence.add_disabled_jobs(disabled_jobs)
 
 
 def remove_disabled_jobs(job_ids):
