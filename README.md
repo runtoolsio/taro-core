@@ -41,6 +41,13 @@ Currently disabled jobs can be re-enabled by this command.
 taro enable disabled-job1 disabled-job2
 ```
 
+### Hostinfo
+Hostinfo is a description of host where taro is installed. It consists of list of parameters where each parameter has its name and value.
+This command will display hostinfo parameters:
+```commandline
+taro hostinfo
+```
+
 ## Feature priority
 ### Mandatory
 1. ~~Logging - normal to stdout and errors to stderr (https://docs.python.org/3/library/logging.handlers.html)~~
