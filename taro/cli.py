@@ -8,7 +8,7 @@ from taro import cnf, warning
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
 ACTION_JOB = 'job'
-ACTION_JOBS = 'jobs'
+ACTION_HISTORY = 'history'
 ACTION_RELEASE = 'release'
 ACTION_LISTEN = 'listen'
 ACTION_WAIT = 'wait'
@@ -40,7 +40,7 @@ def parse_args(args):
     _init_exec_parser(common, subparsers)
     _init_ps_parser(common, subparsers)
     _init_job_parser(common, subparsers)
-    _init_jobs_parser(common, subparsers)
+    _init_history_parser(common, subparsers)
     _init_release_parser(common, subparsers)
     _init_listen_parser(common, subparsers)
     _init_wait_parser(common, subparsers)
@@ -130,29 +130,29 @@ def _init_job_parser(common, subparsers):
     job_parser.add_argument('arg', type=str, metavar='ARG', nargs=argparse.REMAINDER, help="command arguments")
 
 
-def _init_jobs_parser(common, subparsers):
+def _init_history_parser(common, subparsers):
     """
-    Creates parsers for `jobs` command
+    Creates parsers for `history` command
 
     :param common: parent parser
-    :param subparsers: sub-parser for jobs parser to be added to
+    :param subparsers: sub-parser for history parser to be added to
     """
 
-    jobs_parser = subparsers.add_parser(
-        ACTION_JOBS, parents=[common], description='Show jobs', add_help=False)
+    hist_parser = subparsers.add_parser(
+        ACTION_HISTORY, aliases=['hist'], parents=[common], description='Show jobs history', add_help=False)
 
-    filter_group = jobs_parser.add_argument_group('filtering', 'These options allows to filter returned jobs')
+    filter_group = hist_parser.add_argument_group('filtering', 'These options allows to filter returned jobs')
     filter_group.add_argument('--id', type=str, help='Job or instance ID matching pattern for result filtering')
     filter_group.add_argument('-F', '--finished', action='store_true', help='Return only finished jobs')
     filter_group.add_argument('-T', '--today', action='store_true', help='Return only jobs created today (local)')
     filter_group.add_argument('-S', '--since', type=_str2dt, help='Show entries not older than the specified date')
     filter_group.add_argument('-U', '--until', type=_str2dt, help='Show entries not newer than the specified date')
 
-    jobs_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
-    jobs_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
-    jobs_parser.add_argument('-n', '--lines', type=int, help='Number of job entries to show')
-    jobs_parser.add_argument('-c', '--chronological', action='store_true', help='Display jobs in chronological order')
-    jobs_parser.add_argument('-P', '--no-pager', action='store_true', help='Do not use pager for output')
+    hist_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
+    hist_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
+    hist_parser.add_argument('-n', '--lines', type=int, help='Number of job entries to show')
+    hist_parser.add_argument('-c', '--chronological', action='store_true', help='Display jobs in chronological order')
+    hist_parser.add_argument('-P', '--no-pager', action='store_true', help='Do not use pager for output')
 
 
 def _init_release_parser(common, subparsers):

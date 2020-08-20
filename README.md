@@ -2,6 +2,10 @@
 Job management library
 
 ## Commands
+### History
+If persistence is enabled then information about every job execution is stored when the execution is finished.
+The history of all job execution can be displayed by `history` command.
+
 ### Config
 #### Show
 Shows path and content of the config file:

@@ -1,27 +1,21 @@
 import itertools
 
 from taro import cnf, persistence, ExecutionState, jfilter, ps
-from taro.api import Client
 from taro.jfilter import AllFilter
 from taro.view import instance as view_inst
 
 
 def run(args):
     cnf.init(args)
-
-    jobs = []
-
-    with Client() as client:
-        jobs += client.read_jobs_info()
-
     persistence.init()
+
     try:
-        jobs += persistence.read_jobs(chronological=args.chronological)
+        jobs = persistence.read_jobs(chronological=args.chronological)
     finally:
         persistence.close()
 
     columns = [view_inst.JOB_ID, view_inst.INSTANCE_ID, view_inst.CREATED, view_inst.ENDED, view_inst.EXEC_TIME,
-               view_inst.STATE, view_inst.WARNINGS, view_inst.STATUS]
+               view_inst.STATE, view_inst.WARNINGS, view_inst.RESULT]
     sorted_jobs = sorted(jobs, key=lambda j: j.lifecycle.changed(ExecutionState.CREATED),
                          reverse=not args.chronological)
     job_filter = _build_job_filter(args)

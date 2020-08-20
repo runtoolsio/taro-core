@@ -10,5 +10,6 @@ EXEC_TIME = Column('EXECUTION TIME', 18, lambda j: execution_time(j))
 STATE = Column('STATE', max(len(s.name) for s in ExecutionState) + 2, lambda j: j.state.name)
 WARNINGS = Column('WARNINGS', 40, lambda j: ', '.join([w.id for w in j.warnings]))
 STATUS = Column('STATUS', 50, lambda j: j.status or '')
+RESULT = Column('RESULT', 50, lambda j: j.status or '')
 
 DEFAULT_COLUMNS = [JOB_ID, INSTANCE_ID, CREATED, EXEC_TIME, STATE, WARNINGS, STATUS]
