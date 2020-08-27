@@ -4,7 +4,10 @@ Job management library
 ## Commands
 ### History
 If persistence is enabled then information about every job execution is stored when the execution is finished.
-The history of all job execution can be displayed by `history` command.
+The history of all job execution can be displayed by `history` command (or its alias `hist`).
+```commandline
+taro hist
+```
 
 ### Config
 #### Show
@@ -14,7 +17,7 @@ taro config show
 ```
 
 #### Path
-Shows path to the config file. This is handy in cases where path to the config is used as argument:
+Shows path to the config file. This is handy in cases where path to the config is used as an argument:
 ```commandline
 vim `taro config path`
 ```
@@ -24,14 +27,14 @@ Jobs can be disabled. When disabled job is executed it goes through these states
 It means that disabled job is not started and it terminates in `disabled` state instead.
 
 This feature is mainly useful for temporary disabling of scheduled jobs as an alternative for simply commenting out of crontab entries.
-Doing it this way has advantage that the jobs are still stored in the history, can be processed by plugins, etc.
+Doing it this way has advantage of jobs stored in the history, processed by plugins, etc.
 This in general helps to make disabling more visible and harder to forget re-enabling.
 
-Note: To use this feature persistence must be enabled in the config file.
+*Note: To use this feature persistence must be enabled in the config file.*
 ```commandline
 taro disable job-to-disable1 job-to-disable2
 ```
-A group of jobs can be disabled by using regular expression with `-regex` option.
+A group of jobs can be disabled using regular expression with `-regex` option.
 
 ### List Disabled
 Disabled jobs can be showed by this command.
@@ -40,7 +43,7 @@ taro list-disabled
 ```
 
 ### Enable
-Currently disabled jobs can be re-enabled by this command.
+Disabled jobs can be re-enabled by this command.
 ```commandline
 taro enable disabled-job1 disabled-job2
 ```
