@@ -34,6 +34,13 @@ json.decoder.JSONDecodeError: Unterminated string starting at: line 1 column 841
 ```
 
 ## Commands
+### Process (job) status
+You can list all running jobs (job instances) with `ps` command. This will display also more information about running jobs
+like execution start timestamp, execution time, status and others.
+```commandline
+taro ps
+```
+
 ### History
 If persistence is enabled then information about every job execution is stored when the execution is finished.
 The history of all job execution can be displayed by `history` command (or its alias `hist`).

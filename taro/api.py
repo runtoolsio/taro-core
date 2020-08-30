@@ -98,8 +98,8 @@ class Client(SocketClient):
             req['data'] = data
         return self.communicate(req, include=include)
 
-    def read_jobs_info(self) -> List[JobInfo]:
-        responses = self._send_request('/job')
+    def read_jobs_info(self, instance) -> List[JobInfo]:
+        responses = self._send_request('/job', instance=instance)
         return [_create_job_info(inst_resp) for inst_resp in responses]
 
     def read_tail(self, instance) -> List[Tuple[str, List[str]]]:
