@@ -4,9 +4,9 @@ from taro import JobInfo
 from taro.api import Client
 
 
-def read_jobs_info() -> List[JobInfo]:
+def read_jobs_info(instance="") -> List[JobInfo]:
     with Client() as client:
-        return client.read_jobs_info()
+        return client.read_jobs_info(instance)
 
 
 def release_jobs(pending):
