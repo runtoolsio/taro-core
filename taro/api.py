@@ -40,10 +40,9 @@ class Server(SocketServer):
         if 'api' not in req_body['req']:
             return _resp_err(422, job_inst, "missing_req_api")
 
-        if 'instance' in req_body and \
-                (req_body['instance'] != self._job_control.instance_id
-                 or req_body['instance'] != self._job_control.job_id):
-            return _resp(400, job_inst, {"reason": "instance_not_matching"})  # Precondition failed code
+        inst_filter = req_body.get('instance')
+        if inst_filter and inst_filter != self._job_control.instance_id and inst_filter != self._job_control.job_id:
+            return _resp(412, job_inst, {"reason": "instance_not_matching"})
 
         if req_body['req']['api'] == '/job':
             info_dto = dto.to_info_dto(self._job_control.create_info())
@@ -96,7 +95,8 @@ class Client(SocketClient):
             req['instance'] = instance
         if data:
             req['data'] = data
-        return self.communicate(req, include=include)
+        return [inst_resp for inst_resp in self.communicate(req, include=include)
+                if inst_resp.response['resp']['code'] != 412]  # Ignore precondition failed
 
     def read_jobs_info(self, instance="") -> List[JobInfo]:
         responses = self._send_request('/job', instance=instance)

@@ -110,6 +110,7 @@ def _init_ps_parser(common, subparsers):
     """
 
     ps_parser = subparsers.add_parser(ACTION_PS, parents=[common], description='Show running jobs', add_help=False)
+    ps_parser.add_argument('-i', '--inst', '--instance', type=str, help='instance filter')
 
 
 def _init_job_parser(common, subparsers):
@@ -181,7 +182,7 @@ def _init_listen_parser(common, subparsers):
 
 
 def _init_wait_parser(common, subparsers):
-    """
+    """). The special characters used in shell-style wildcards are:
     Creates parsers for `wait` command
 
     :param common: parent parser

@@ -40,3 +40,23 @@ def test_job_status(capsys):
 
     jobs = ps.parse_table(output, view_inst.DEFAULT_COLUMNS)
     assert 'progress1' == jobs[0][view_inst.STATUS]
+
+
+def test_job_instance_filter_false(capsys):
+    run_app_as_process_and_wait('exec -mc sleep 1', wait_for=ExecutionState.RUNNING, daemon=True)
+
+    run_app('ps -i not_existing_id')
+    output = capsys.readouterr().out
+
+    jobs = ps.parse_table(output, view_inst.DEFAULT_COLUMNS)
+    assert not jobs
+
+
+def test_job_instance_filter_true(capsys):
+    run_app_as_process_and_wait('exec -mc --id j1 sleep 1', wait_for=ExecutionState.RUNNING, daemon=True)
+
+    run_app('ps -i j1')
+    output = capsys.readouterr().out
+
+    jobs = ps.parse_table(output, view_inst.DEFAULT_COLUMNS)
+    assert len(jobs) == 1
