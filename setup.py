@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="taro",
-    version="0.0.10",
+    version="0.0.11",
     author="Stan Svec",
     author_email="stan.x.svec@gmail.com",
     description="Tool for managing your (mainly cron) jobs",
