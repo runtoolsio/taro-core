@@ -1,37 +1,6 @@
 # taro
 Job management library
 
-# Bug
-```
-Traceback (most recent call last):
-  File "/home/ec2-user/.local/bin/taro", line 11, in <module>
-    sys.exit(main_cli())
-  File "/home/ec2-user/.local/lib/python3.7/site-packages/taro/app.py", line 11, in main_cli
-    main(None)
-  File "/home/ec2-user/.local/lib/python3.7/site-packages/taro/app.py", line 16, in main
-    cmd.run(args)
-  File "/home/ec2-user/.local/lib/python3.7/site-packages/taro/cmd/__init__.py", line 7, in run
-    cmd.run(args)
-  File "/home/ec2-user/.local/lib/python3.7/site-packages/taro/cmd/tail.py", line 16, in run
-    for instance, tail in client.read_tail(None):
-  File "/home/ec2-user/.local/lib/python3.7/site-packages/taro/client.py", line 24, in read_tail
-    return client.read_tail(instance)
-  File "/home/ec2-user/.local/lib/python3.7/site-packages/taro/api.py", line 106, in read_tail
-    inst_responses = self._send_request('/tail', instance=instance)
-  File "/home/ec2-user/.local/lib/python3.7/site-packages/taro/api.py", line 99, in _send_request
-    return self.communicate(req, include=include)
-  File "/home/ec2-user/.local/lib/python3.7/site-packages/taro/socket.py", line 121, in communicate
-    responses.append(server.send(req))
-  File "/home/ec2-user/.local/lib/python3.7/site-packages/taro/socket.py", line 107, in servers
-    resp = InstanceResponse(instance_id, json.loads(datagram.decode()))
-  File "/usr/lib64/python3.7/json/__init__.py", line 348, in loads
-    return _default_decoder.decode(s)
-  File "/usr/lib64/python3.7/json/decoder.py", line 337, in decode
-    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
-  File "/usr/lib64/python3.7/json/decoder.py", line 353, in raw_decode
-    obj, end = self.scan_once(s, idx)
-json.decoder.JSONDecodeError: Unterminated string starting at: line 1 column 841 (char 840)
-```
 
 ## Commands
 ### Process (job) status
