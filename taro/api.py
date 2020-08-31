@@ -1,4 +1,5 @@
 import logging
+from fnmatch import fnmatch
 from typing import List, Tuple
 
 from taro import dto
@@ -41,7 +42,9 @@ class Server(SocketServer):
             return _resp_err(422, job_inst, "missing_req_api")
 
         inst_filter = req_body.get('instance')
-        if inst_filter and inst_filter != self._job_control.instance_id and inst_filter != self._job_control.job_id:
+        if inst_filter and \
+                not fnmatch(self._job_control.instance_id, inst_filter) and \
+                not fnmatch(self._job_control.job_id, inst_filter):
             return _resp(412, job_inst, {"reason": "instance_not_matching"})
 
         if req_body['req']['api'] == '/job':
