@@ -1,6 +1,9 @@
 # taro
 Job management library
 
+## TODO
+- Alarm for output
+
 
 ## Commands
 ### Job (process) status

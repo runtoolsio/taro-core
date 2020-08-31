@@ -191,8 +191,8 @@ def _init_wait_parser(common, subparsers):
     """
 
     wait_parser = subparsers.add_parser(ACTION_WAIT, parents=[common], description='Wait for job state', add_help=False)
-    wait_parser.add_argument('-c', '--count', type=int, default=1, help='Number of occurrences to finish the wait')
     wait_parser.add_argument('-i', '--inst', '--instance', type=str, help='instance filter')
+    wait_parser.add_argument('-c', '--count', type=int, default=1, help='Number of occurrences to finish the wait')
     wait_parser.add_argument('states', type=_str2state, metavar='STATES', nargs=argparse.REMAINDER,
                              help='States for which the command waits')
 
