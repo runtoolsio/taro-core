@@ -179,6 +179,7 @@ def _init_listen_parser(common, subparsers):
 
     release_parser = subparsers.add_parser(ACTION_LISTEN, parents=[common],
                                            description='Print job state changes', add_help=False)
+    release_parser.add_argument('-i', '--inst', '--instance', type=str, help='instance filter')
 
 
 def _init_wait_parser(common, subparsers):

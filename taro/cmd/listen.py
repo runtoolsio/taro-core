@@ -5,7 +5,7 @@ from taro.listening import StateReceiver
 
 
 def run(args):
-    receiver = StateReceiver()
+    receiver = StateReceiver(args.inst)
     receiver.listeners.append(EventPrint())
     signal.signal(signal.SIGTERM, lambda _, __: receiver.stop())
     signal.signal(signal.SIGINT, lambda _, __: receiver.stop())

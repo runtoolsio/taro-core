@@ -26,12 +26,15 @@ class StateDispatcher(ExecutionStateObserver):
 
 class StateReceiver(SocketServer):
 
-    def __init__(self):
+    def __init__(self, instance=""):
         super().__init__(_listener_socket_name(STATE_LISTENER_FILE_EXTENSION))
+        self.instance = instance
         self.listeners = []
 
     def handle(self, req_body):
         job_info = dto.to_job_info(req_body['event']['job_info'])
+        if self.instance and not job_info.matches(self.instance):
+            return
         for listener in self.listeners:
             listener.state_update(job_info)
 

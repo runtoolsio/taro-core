@@ -14,6 +14,7 @@ There are two type of clients of the framework:
 import abc
 from collections import namedtuple
 from enum import Enum
+from fnmatch import fnmatch
 
 from taro.execution import ExecutionError
 
@@ -159,6 +160,9 @@ class JobInfo:
     @property
     def exec_error(self) -> ExecutionError:
         return self._exec_error
+
+    def matches(self, instance):
+        return fnmatch(self.job_id, instance) or fnmatch(self.instance_id, instance)
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r})".format(
