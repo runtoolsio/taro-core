@@ -3,11 +3,20 @@ Job management library
 
 
 ## Commands
-### Process (job) status
+### Job (process) status
 You can list all running jobs (job instances) with `ps` command. This will display also more information about running jobs
 like execution start timestamp, execution time, status and others.
 ```commandline
 taro ps
+```
+
+### Listen
+A running job is primarily monitored by observing changes in its state. Each state change triggers an event which can be monitored
+by 'listen' command.
+
+*Note: Transition from 'none' to 'created' state is not currently visible by this command. This may change in the future.*
+```commandline
+taro listen
 ```
 
 ### History
