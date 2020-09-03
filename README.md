@@ -22,6 +22,14 @@ by 'listen' command.
 taro listen
 ```
 
+### Wait
+This command will wait for a state transition and then terminates. This can be used to execute an action when a job reaches certain state. 
+
+*Note: Transition from 'none' to 'created' state is not currently visible by this command. This may change in the future.*
+```commandline
+taro wait completed && echo -ne '\007' # beep on completion
+```
+
 ### History
 If persistence is enabled then information about every job execution is stored when the execution is finished.
 The history of all job execution can be displayed by `history` command (or its alias `hist`).
