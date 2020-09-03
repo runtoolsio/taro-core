@@ -3,7 +3,7 @@ import re
 from argparse import RawTextHelpFormatter
 from datetime import datetime
 
-from taro import cnf, warning
+from taro import cnf, warning, ExecutionState
 
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
@@ -192,8 +192,9 @@ def _init_wait_parser(common, subparsers):
 
     wait_parser = subparsers.add_parser(ACTION_WAIT, parents=[common], description='Wait for job state', add_help=False)
     wait_parser.add_argument('-c', '--count', type=int, default=1, help='Number of occurrences to finish the wait')
-    wait_parser.add_argument('states', type=str, metavar='STATES', nargs=argparse.REMAINDER,
-                             help='States or group of states for which the command waits')
+    wait_parser.add_argument('-i', '--inst', '--instance', type=str, help='instance filter')
+    wait_parser.add_argument('states', type=_str2state, metavar='STATES', nargs=argparse.REMAINDER,
+                             help='States for which the command waits')
 
 
 def _init_stop_parser(common, subparsers):
@@ -327,6 +328,14 @@ def _str2dt(v):
             return datetime.strptime(v, "%Y-%m-%d %H:%M")
         except ValueError:
             return datetime.strptime(v, "%Y-%m-%d")
+
+
+def _str2state(v):
+    try:
+        return ExecutionState[v.upper()]
+    except KeyError:
+        raise argparse.ArgumentTypeError('Arguments can be only valid execution states: '
+                                         + ", ".join([e.name.lower() for e in ExecutionState]))
 
 
 def _warn_type(arg_value):

@@ -1,10 +1,14 @@
 #  Sender, Listening
+import logging
+
 from taro import util, dto
 from taro.job import ExecutionStateObserver, JobInfo, JobOutputObserver
 from taro.socket import SocketServer, SocketClient
 
 STATE_LISTENER_FILE_EXTENSION = '.slistener'
 OUTPUT_LISTENER_FILE_EXTENSION = '.olistener'
+
+log = logging.getLogger(__name__)
 
 
 def _listener_socket_name(ext):
@@ -26,17 +30,25 @@ class StateDispatcher(ExecutionStateObserver):
 
 class StateReceiver(SocketServer):
 
-    def __init__(self, instance=""):
+    def __init__(self, instance="", states=()):
         super().__init__(_listener_socket_name(STATE_LISTENER_FILE_EXTENSION))
         self.instance = instance
+        self.states = states
         self.listeners = []
 
     def handle(self, req_body):
         job_info = dto.to_job_info(req_body['event']['job_info'])
         if self.instance and not job_info.matches(self.instance):
             return
+        if self.states and job_info.state not in self.states:
+            return
         for listener in self.listeners:
-            listener.state_update(job_info)
+            if isinstance(listener, ExecutionStateObserver):
+                listener.state_update(job_info)
+            elif callable(listener):
+                listener(job_info)
+            else:
+                log.warning("event=[unsupported_state_observer] observer=[%s]", listener)
 
 
 class OutputDispatcher(JobOutputObserver):
