@@ -1,4 +1,5 @@
 import signal
+from fnmatch import fnmatch
 
 from taro import client, JobInfo
 from taro.job import JobOutputObserver
@@ -13,8 +14,10 @@ def run(args):
         signal.signal(signal.SIGINT, lambda _, __: receiver.stop())
         receiver.start()
     else:
-        for instance, tail in client.read_tail(None):
-            print(instance + ':')
+        for job_id, instance_id, tail in client.read_tail(None):
+            if args.inst and not (fnmatch(job_id, args.inst) or fnmatch(instance_id, args.inst)):
+                continue
+            print(job_id + "@" + instance_id + ':')
             for line in tail:
                 print(line)
 

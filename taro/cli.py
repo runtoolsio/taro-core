@@ -221,6 +221,7 @@ def _init_tail_parser(common, subparsers):
     """
 
     tail_parser = subparsers.add_parser(ACTION_TAIL, parents=[common], description='Print last output', add_help=False)
+    tail_parser.add_argument('-i', '--inst', '--instance', type=str, help='instance filter')
     tail_parser.add_argument('-f', '--follow', action='store_true', help='Keep printing')
 
 

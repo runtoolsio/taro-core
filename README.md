@@ -30,6 +30,16 @@ This command will wait for a state transition and then terminates. This can be u
 taro wait completed && echo -ne '\007' # beep on completion
 ```
 
+### Tail
+Unless output is bypassed by `-b` argument the last lines of job output can be displayed by `tail` command.
+```commandline
+taro tail
+``` 
+The output can be followed by using `-f` option.
+```commandline
+taro tail -f
+```
+
 ### History
 If persistence is enabled then information about every job execution is stored when the execution is finished.
 The history of all job execution can be displayed by `history` command (or its alias `hist`).

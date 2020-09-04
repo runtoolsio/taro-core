@@ -15,14 +15,14 @@ def _create_socket_name(job_info):
     return job_info.instance_id + API_FILE_EXTENSION
 
 
-def _resp(code: int, job_instance: str, data):
-    return {"resp": {"code": code}, "job_instance": job_instance, "data": data}
+def _resp(code: int, job_instance: Tuple[str, str], data):
+    return {"resp": {"code": code}, "job_id": job_instance[0], "instance_id": job_instance[1], "data": data}
 
 
-def _resp_err(code: int, job_instance: str, error: str):
+def _resp_err(code: int, job_instance: Tuple[str, str], error: str):
     if 400 > code >= 600:
         raise ValueError("Error code must be 4xx or 5xx")
-    return {"resp": {"code": code}, "job_instance": job_instance, "error": error}
+    return {"resp": {"code": code}, "job_id": job_instance[0], "instance_id": job_instance[1], "error": error}
 
 
 class Server(SocketServer):
@@ -33,7 +33,7 @@ class Server(SocketServer):
         self._latch_release = latch_release
 
     def handle(self, req_body):
-        job_inst = self._job_control.job_id + "@" + self._job_control.instance_id
+        job_inst = (self._job_control.job_id, self._job_control.instance_id)
 
         if 'req' not in req_body:
             return _resp_err(422, job_inst, "missing_req")
@@ -102,10 +102,10 @@ class Client(SocketClient):
         responses = self._send_request('/job', instance=instance)
         return [_create_job_info(inst_resp) for inst_resp in responses]
 
-    def read_tail(self, instance) -> List[Tuple[str, List[str]]]:
+    def read_tail(self, instance) -> List[Tuple[str, str, List[str]]]:
         inst_responses = self._send_request('/tail', instance=instance)
-        return [(inst_resp.response['job_instance'], inst_resp.response['data']['tail']) for inst_resp in
-                inst_responses]
+        return [(resp['job_id'], resp['instance_id'], resp['data']['tail'])
+                for resp in [inst_resp.response for inst_resp in inst_responses]]
 
     @iterates
     def release_jobs(self, pending):
@@ -127,5 +127,5 @@ class Client(SocketClient):
             raise ValueError('Instances to be stopped cannot be empty')
 
         inst_responses = self._send_request('/interrupt' if interrupt else '/stop', include=instances)
-        return [(inst_resp.response['job_instance'], inst_resp.response['data']['result'])
-                for inst_resp in inst_responses]
+        return [(resp['job_id'] + "@" + resp['instance_id'], resp['data']['result'])
+                for resp in [inst_resp.response for inst_resp in inst_responses]]
