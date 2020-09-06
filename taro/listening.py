@@ -66,12 +66,15 @@ class OutputDispatcher(JobOutputObserver):
 
 class OutputReceiver(SocketServer):
 
-    def __init__(self):
+    def __init__(self, instance=""):
         super().__init__(_listener_socket_name(OUTPUT_LISTENER_FILE_EXTENSION))
+        self.instance = instance
         self.listeners = []
 
     def handle(self, req_body):
         job_info = dto.to_job_info(req_body['event']['job_info'])
+        if self.instance and not job_info.matches(self.instance):
+            return
         output = req_body['event']['output']
         for listener in self.listeners:
             listener.output_update(job_info, output)
