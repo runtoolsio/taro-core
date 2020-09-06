@@ -9,7 +9,7 @@ from taro.view import instance as view_inst
 def run(args):
     with Client() as client:
         all_jobs = client.read_jobs_info()
-        jobs = [job for job in all_jobs if job.job_id == args.job or job.instance_id == args.job]
+        jobs = [job for job in all_jobs if job.matches(args.instance)]
         if len(jobs) > 1 and not args.all:
             print('No action performed, because the criteria matches more than one job.'
                   'Use --all flag if you wish to stop them all:' + os.linesep)
