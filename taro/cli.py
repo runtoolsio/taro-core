@@ -84,6 +84,9 @@ def _init_exec_parser(common, subparsers):
     # exec_parser.add_argument('-w', '--wait', type=str, help='execution will wait for other jobs') TODO implement
     exec_parser.add_argument('-W', '--warn', type=_warn_type, action='append', help='Add warning check')
 
+    exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=ExecutionState.COMPLETED,
+                             help='executing without actual running of the command - optional termination state arg')
+
     # Config override options
     config_group = exec_parser.add_argument_group('config override', 'these options override entries from config file')
     config_group.add_argument('--log-enabled', type=_str2bool, metavar="{{{}}}".format(','.join(_all_boolean_options)),

@@ -8,6 +8,7 @@ from taro.api import Server
 from taro.listening import StateDispatcher, OutputDispatcher
 from taro.process import ProcessExecution
 from taro.runner import RunnerJobInstance
+from taro.test.execution import TestExecution
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,10 @@ def run(args):
     persistence.init()
 
     all_args = [args.command] + args.arg
-    execution = ProcessExecution(all_args, read_output=not args.bypass_output)
+    if args.dry_run:
+        execution = TestExecution(args.dry_run)
+    else:
+        execution = ProcessExecution(all_args, read_output=not args.bypass_output)
     job_id = args.id or " ".join(all_args)
     job_instance = RunnerJobInstance(job_id, execution, no_overlap=args.no_overlap)
     execution.add_output_observer(job_instance)

@@ -12,12 +12,13 @@ from threading import Event
 from typing import List
 
 from taro.err import IllegalStateError
-from taro.execution import Execution, ExecutionState
+from taro.execution import ExecutionState, OutputExecution
 
 log = logging.getLogger(__name__)
 
 
-class TestExecution(Execution):
+class TestExecution(OutputExecution):
+
     __test__ = False  # To tell pytest it isn't a test class
 
     def __init__(self, after_exec_state: ExecutionState = None, raise_exc: Exception = None, *, wait: bool = False):
@@ -56,10 +57,10 @@ class TestExecution(Execution):
         if self._wait:
             self._wait.wait(5)
         if self._after_exec_state:
-            log.info('event=[executed] new_state=[{}]', self._after_exec_state)
+            log.info('event=[executed] new_state=[%s]', self._after_exec_state.name)
             return self._after_exec_state
         else:
-            log.info('event=[executed] exception_raised=[{}]', self._raise_exc)
+            log.info('event=[executed] exception_raised=[%s]', self._raise_exc)
             raise self._raise_exc
 
     def executed_count(self):
@@ -76,3 +77,9 @@ class TestExecution(Execution):
 
     def interrupt(self):
         raise NotImplementedError()
+
+    def add_output_observer(self, observer):
+        pass
+
+    def remove_output_observer(self, observer):
+        pass

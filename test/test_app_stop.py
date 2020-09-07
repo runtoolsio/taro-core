@@ -36,6 +36,6 @@ def test_more_jobs_require_all_flag(capsys):
     run_app('stop j1')
 
     output = capsys.readouterr().out
-    assert 'more than one job' in output
+    assert 'No action performed' in output
     assert p1.is_alive()
     assert p2.is_alive()
