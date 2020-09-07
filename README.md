@@ -13,6 +13,12 @@ like execution start timestamp, execution time, status and others.
 taro ps
 ```
 
+### Stop instance
+An instance can be stopped if it correctly handles the termination signal.
+```commandline
+taro stop {job-or-instance-id}
+```
+
 ### Listen
 A running job is primarily monitored by observing changes in its state. Each state change triggers an event which can be monitored
 by 'listen' command.
