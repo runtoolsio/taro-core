@@ -6,6 +6,22 @@ Job management library
 
 
 ## Commands
+### Execute command managed by taro
+```commandline
+taro exec {command} [args..]
+```
+
+### Release pending execution
+A job can be executed in a pending mode which suspends the execution before the job is actually started.
+In such case the instance is waiting in the PENDING state to be released by `release` command.
+This mode is enabled by using `--pending` option which requires one argument for "latch" value.
+This value must be provided to `release` command. Any job waiting for the same latch is then released.
+```commandline
+taro exec --pending latch1 echo finally released
+sleep 5
+taro release latch1
+```
+
 ### Job (process) status
 You can list all running jobs (job instances) with `ps` command. This will display also more information about running jobs
 like execution start timestamp, execution time, status and others.
