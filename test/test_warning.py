@@ -1,7 +1,6 @@
+import time
 from collections import deque
 from threading import Thread
-
-import time
 from typing import Union
 
 import pytest
@@ -48,7 +47,7 @@ class TestWarning(WarningCheck):
 
 def test_no_warning(execution, job, observer):
     test_warn = TestWarning(execution, None, None)
-    checking = warning.start_checking(job, test_warn)
+    checking = warning.init_checking(job, test_warn)
     job.run()
     checking.wait_for_finish()
 
@@ -59,7 +58,7 @@ def test_no_warning(execution, job, observer):
 
 def test_warning(execution, job, observer):
     test_warn = TestWarning(execution, None, Warn('w1', None), None)
-    checking = warning.start_checking(job, test_warn)
+    checking = warning.init_checking(job, test_warn)
     job.run()
     checking.wait_for_finish()
 
@@ -75,7 +74,7 @@ def test_more_warnings(execution, job, observer):
     # This one releases execution:
     test_warn1 = TestWarning(execution, None, Warn('w1', {'p': 1}), None, Warn('w1', {'p': 2}), None, None)
     test_warn2 = TestWarning(None, Warn('w2', None))
-    checking = warning.start_checking(job, test_warn1, test_warn2)
+    checking = warning.init_checking(job, test_warn1, test_warn2)
     job.run()
     checking.wait_for_finish()
 
@@ -86,7 +85,7 @@ def test_more_warnings(execution, job, observer):
 
 
 def test_exec_time_warning(execution, job, observer):
-    warning.start_checking(job, ExecTimeWarning('wid', 0.5))
+    warning.init_checking(job, ExecTimeWarning('wid', 0.5))
     run_thread = Thread(target=job.run)
     run_thread.start()
 

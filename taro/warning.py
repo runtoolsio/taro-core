@@ -29,7 +29,7 @@ class WarningCheck(abc.ABC):
     def next_check(self, job_info) -> float:
         """
         Returns maximum time in seconds after next check must be performed.
-        However next check can be performed anytime sooner than interval specified by this method.
+        Note: The next check can be performed anytime sooner than interval specified by this method.
 
         :param job_info: checked job
         :return: max time for next check
@@ -87,7 +87,7 @@ class WarnChecking(ExecutionStateObserver):
         log.debug("event=[warn_checking_ended]")
 
 
-def start_checking(job_control, *warning) -> WarnChecking:
+def init_checking(job_control, *warning) -> WarnChecking:
     checking = WarnChecking(job_control, warning)
     job_control.add_state_observer(checking)
     return checking
@@ -101,7 +101,7 @@ def setup_checking(job_control, *warning: str):
         except Exception:
             log.exception('event=[warning_creation_error]')
 
-    start_checking(job_control, *warns)
+    init_checking(job_control, *warns)
 
 
 def create_warn_from_str(val) -> WarningCheck:

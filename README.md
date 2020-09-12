@@ -2,7 +2,10 @@
 Job management library
 
 ## TODO
-- Alarm for output
+- Warning modification
+- Warning for output
+- API
+- Alarms
 
 
 ## Commands
