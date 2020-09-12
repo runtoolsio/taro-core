@@ -13,7 +13,6 @@ There are two type of clients of the framework:
 
 import abc
 from collections import namedtuple
-from enum import Enum
 from fnmatch import fnmatch
 
 from taro.execution import ExecutionError
@@ -50,7 +49,7 @@ class JobInstance(abc.ABC):
     @abc.abstractmethod
     def warnings(self):
         """
-        Return sequence of warnings of this instance or empty sequence if no warnings
+        Return dictionary of {alarm_name: occurrence_count}
 
         :return: warnings
         """
@@ -185,12 +184,11 @@ class JobControl(JobInstance):
         """
 
     @abc.abstractmethod
-    def add_warning(self, warning) -> bool:
+    def add_warning(self, warning):
         """
-        Add warning to the instance or update an existing warning
+        Add warning to the instance
 
-        :param warning warning to add or update
-        :return True if added or updated
+        :param warning warning to add
         """
 
 
@@ -203,18 +201,13 @@ class ExecutionStateObserver(abc.ABC):
 
 DisabledJob = namedtuple('DisabledJob', 'job_id regex created expires')
 
-Warn = namedtuple('Warn', 'id params')  # Must be comparable its attributes to detect updates
-
-
-class WarningEvent(Enum):
-    NEW_WARNING = 1
-    WARNING_UPDATED = 2
+Warn = namedtuple('Warn', 'name params')
 
 
 class WarningObserver(abc.ABC):
 
     @abc.abstractmethod
-    def warning_update(self, job_info: JobInfo, warning: Warn, event: WarningEvent):
+    def new_warning(self, job_info: JobInfo, warning: Warn):
         """This method is called when there is a new warning event."""
 
 

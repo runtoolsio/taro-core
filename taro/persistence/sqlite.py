@@ -3,7 +3,7 @@ from typing import List
 
 from taro import util
 from taro.execution import ExecutionState, ExecutionError, ExecutionLifecycle
-from taro.job import JobInfo, DisabledJob, Warn
+from taro.job import JobInfo, DisabledJob
 
 log = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def _to_job_info(t):
         return util.dt_from_utc_str(ts, is_iso=False) if ts else None
 
     lifecycle = ExecutionLifecycle(*((state, dt_for_state(state)) for state in states))
-    warnings = [Warn(w_id, {}) for w_id in t[7].split(',') if w_id]  # Escape ','
+    warnings = {s[1]: int(s[0]) for s in [w.split(':', 1) for w in t[7].split(', ') if w]}
     exec_error = ExecutionError(t[7], states[-1]) if t[8] else None  # TODO more data
     return JobInfo(t[0], t[1], lifecycle, t[6], warnings, exec_error)
 
@@ -77,7 +77,7 @@ class SQLite:
              job_info.lifecycle.last_changed(),
              ",".join([state.name for state in job_info.lifecycle.states()]),
              job_info.status,
-             ",".join((w.id for w in job_info.warnings)),
+             ", ".join((str(v) + ":" + k for k, v in job_info.warnings.items())),
              job_info.exec_error.message if job_info.exec_error else None,
              )
         )

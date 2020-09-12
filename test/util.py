@@ -6,7 +6,7 @@ import prompt_toolkit
 import yaml
 from prompt_toolkit.output import DummyOutput
 
-from taro import app, process, paths, JobInfo, Warn, WarningEvent, WarningObserver
+from taro import app, process, paths, JobInfo, Warn, WarningObserver
 
 
 def run_app_as_process(command, daemon=False, shell=False) -> Process:
@@ -106,8 +106,5 @@ class TestWarningObserver(WarningObserver):
     def __init__(self):
         self.warnings: Dict[str, Tuple[JobInfo, Warn]] = {}
 
-    def warning_update(self, job_info: JobInfo, warning: Warn, event: WarningEvent):
-        if event == WarningEvent.NEW_WARNING:
-            self.warnings[warning.id] = (job_info, warning)
-        elif event == WarningEvent.WARNING_REMOVED:
-            del self.warnings[warning.id]
+    def new_warning(self, job_info: JobInfo, warning: Warn):
+        self.warnings[warning.name] = (job_info, warning)

@@ -25,17 +25,16 @@ def test_warning_added(observer: TestWarningObserver):
     warn = Warn('test_warn', None)
     job.add_warning(warn)
 
-    assert next(iter(job.warnings)) == warn
+    assert job.warnings[warn.name] == 1
     assert observer.warnings['test_warn'][0].job_id == 'j1'
     assert observer.warnings['test_warn'][1] == warn
 
 
-def test_warning_updated(observer: TestWarningObserver):
+def test_warning_repeated(observer: TestWarningObserver):
     job = RunnerJobInstance('j1', TestExecution(ExecutionState.COMPLETED))
     warn = Warn('test_warn1', None)
     updated = Warn('test_warn1', {'p': 1})
     job.add_warning(warn)
     job.add_warning(updated)
 
-    assert len(job.warnings) == 1
-    assert next(iter(job.warnings)) == updated
+    assert job.warnings[warn.name] == 2

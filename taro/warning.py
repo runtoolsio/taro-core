@@ -71,13 +71,8 @@ class WarnChecking(ExecutionStateObserver):
                 else:
                     next_check = min(next_check, w_next_check)
 
-                if not warn:
-                    continue
-
-                prev_warn = next((w for w in self._job_control.warnings if w.id == warn.id), None)
-
-                if not prev_warn or prev_warn != warn:
-                    self._job_control.add_warning(warn)  # Add or update
+                if warn:
+                    self._job_control.add_warning(warn)
 
             if next_check >= 0:
                 self._run_condition.wait(next_check)

@@ -4,14 +4,14 @@ Implementation of job management framework based on :mod:`job` module.
 import copy
 import logging
 import re
-from collections import deque
+from collections import deque, Counter
 from threading import Lock, Event, RLock
 from typing import List, Union, Optional, Callable
 
 from taro import util, persistence, client
 from taro.err import IllegalStateError
 from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver
-from taro.job import ExecutionStateObserver, JobControl, JobInfo, WarningEvent, WarningObserver, JobOutputObserver
+from taro.job import ExecutionStateObserver, JobControl, JobInfo, WarningObserver, JobOutputObserver
 
 log = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class RunnerJobInstance(JobControl, ExecutionOutputObserver):
         self._state_lock: RLock = RLock()
         self._latch: Optional[Event] = None
         self._latch_wait_state: Optional[ExecutionState] = None
-        self._warnings = {}
+        self._warnings = Counter()
         self._state_observers = []
         self._warning_observers = []
         self._output_observers = []
@@ -86,7 +86,7 @@ class RunnerJobInstance(JobControl, ExecutionOutputObserver):
 
     @property
     def warnings(self):
-        return self._warnings.values()
+        return dict(self._warnings)
 
     @property
     def exec_error(self) -> Union[ExecutionError, None]:
@@ -145,20 +145,9 @@ class RunnerJobInstance(JobControl, ExecutionOutputObserver):
             self._execution.interrupt()
 
     def add_warning(self, warning):
-        prev_warn = self._warnings.get(warning.id)
-        if prev_warn == warning:
-            return False  # No change
-
-        self._warnings[warning.id] = warning
-        if prev_warn:
-            event = WarningEvent.WARNING_UPDATED
-            log.warning('event=[updated_warning] new_warning=[%s] previous_warning=[%s]', warning, prev_warn)
-        else:
-            event = WarningEvent.NEW_WARNING
-            log.warning('event=[new_warning] warning=[%s]', warning)
-
-        self._notify_warning_observers(self.create_info(), warning, event)
-        return True
+        self._warnings.update([warning.name])
+        log.warning('event=[new_warning] warning=[%s]', warning)
+        self._notify_warning_observers(self.create_info(), warning)
 
     def run(self):
         for disabled in persistence.read_disabled_jobs():
@@ -236,14 +225,14 @@ class RunnerJobInstance(JobControl, ExecutionOutputObserver):
             except BaseException:
                 log.exception("event=[state_observer_exception]")
 
-    def _notify_warning_observers(self, job_info: JobInfo, warning, event: WarningEvent):
+    def _notify_warning_observers(self, job_info: JobInfo, warning):
         for observer in (self._warning_observers + _warning_observers):
             # noinspection PyBroadException
             try:
                 if isinstance(observer, WarningObserver):
-                    observer.warning_update(job_info, warning, event)
+                    observer.new_warning(job_info, warning)
                 elif callable(observer):
-                    observer(job_info, warning, event)
+                    observer(job_info, warning)
                 else:
                     log.warning("event=[unsupported_warning_observer] observer=[%s]", observer)
             except BaseException:

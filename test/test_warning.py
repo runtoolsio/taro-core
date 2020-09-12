@@ -64,10 +64,10 @@ def test_warning(execution, job, observer):
 
     assert not test_warn.warnings
     assert len(job.warnings) == 1
-    assert next(iter(job.warnings)).id == 'w1'
+    assert job.warnings['w1'] == 1
     assert len(observer.events) == 1
     assert observer.events[0][0].job_id == job.job_id
-    assert observer.events[0][1].id == 'w1'
+    assert observer.events[0][1].name == 'w1'
 
 
 def test_more_warnings(execution, job, observer):
@@ -81,6 +81,8 @@ def test_more_warnings(execution, job, observer):
     assert not test_warn1.warnings
     assert not test_warn2.warnings
     assert len(job.warnings) == 2
+    assert job.warnings['w1'] == 2
+    assert job.warnings['w2'] == 1
     assert len(observer.events) == 3
 
 
