@@ -2,10 +2,12 @@
 Job management library
 
 ## TODO
-- Warning modification
-- Warning for output
-- API
-- Alarms
+- [x] Warning modifications
+- [ ] Warning for output
+- [ ] Dead sockets fix
+- [ ] Clean command
+- [ ] API
+- [ ] Alarms
 
 
 ## Commands
