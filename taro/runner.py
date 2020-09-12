@@ -8,10 +8,10 @@ from collections import deque, Counter
 from threading import Lock, Event, RLock
 from typing import List, Union, Optional, Callable
 
-from taro import util, persistence, client
+from taro import util, persistence, client, Warn
 from taro.err import IllegalStateError
 from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver
-from taro.job import ExecutionStateObserver, JobControl, JobInfo, WarningObserver, JobOutputObserver
+from taro.job import ExecutionStateObserver, JobControl, JobInfo, WarningObserver, JobOutputObserver, WarnEventCtx
 
 log = logging.getLogger(__name__)
 
@@ -147,7 +147,7 @@ class RunnerJobInstance(JobControl, ExecutionOutputObserver):
     def add_warning(self, warning):
         self._warnings.update([warning.name])
         log.warning('event=[new_warning] warning=[%s]', warning)
-        self._notify_warning_observers(self.create_info(), warning)
+        self._notify_warning_observers(self.create_info(), warning, WarnEventCtx(self._warnings[warning.name]))  # Lock?
 
     def run(self):
         for disabled in persistence.read_disabled_jobs():
@@ -225,14 +225,14 @@ class RunnerJobInstance(JobControl, ExecutionOutputObserver):
             except BaseException:
                 log.exception("event=[state_observer_exception]")
 
-    def _notify_warning_observers(self, job_info: JobInfo, warning):
+    def _notify_warning_observers(self, job_info: JobInfo, warning: Warn, event_ctx: WarnEventCtx):
         for observer in (self._warning_observers + _warning_observers):
             # noinspection PyBroadException
             try:
                 if isinstance(observer, WarningObserver):
-                    observer.new_warning(job_info, warning)
+                    observer.new_warning(job_info, warning, event_ctx)
                 elif callable(observer):
-                    observer(job_info, warning)
+                    observer(job_info, warning, event_ctx)
                 else:
                     log.warning("event=[unsupported_warning_observer] observer=[%s]", observer)
             except BaseException:

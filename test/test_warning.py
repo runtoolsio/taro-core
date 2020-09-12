@@ -68,6 +68,7 @@ def test_warning(execution, job, observer):
     assert len(observer.events) == 1
     assert observer.events[0][0].job_id == job.job_id
     assert observer.events[0][1].name == 'w1'
+    assert observer.events[0][2].count == 1
 
 
 def test_more_warnings(execution, job, observer):
@@ -84,6 +85,7 @@ def test_more_warnings(execution, job, observer):
     assert job.warnings['w1'] == 2
     assert job.warnings['w2'] == 1
     assert len(observer.events) == 3
+    assert observer.events[2][2].count == 2
 
 
 def test_exec_time_warning(execution, job, observer):

@@ -202,12 +202,13 @@ class ExecutionStateObserver(abc.ABC):
 DisabledJob = namedtuple('DisabledJob', 'job_id regex created expires')
 
 Warn = namedtuple('Warn', 'name params')
+WarnEventCtx = namedtuple('WarnEventCtx', 'count')
 
 
 class WarningObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_warning(self, job_info: JobInfo, warning: Warn):
+    def new_warning(self, job_info: JobInfo, warning: Warn, event_ctx: WarnEventCtx):
         """This method is called when there is a new warning event."""
 
 

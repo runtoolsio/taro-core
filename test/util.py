@@ -7,6 +7,7 @@ import yaml
 from prompt_toolkit.output import DummyOutput
 
 from taro import app, process, paths, JobInfo, Warn, WarningObserver
+from taro.job import WarnEventCtx
 
 
 def run_app_as_process(command, daemon=False, shell=False) -> Process:
@@ -104,7 +105,7 @@ class NoFormattingOutput(DummyOutput):
 class TestWarningObserver(WarningObserver):
 
     def __init__(self):
-        self.warnings: Dict[str, Tuple[JobInfo, Warn]] = {}
+        self.warnings: Dict[str, Tuple[JobInfo, Warn, WarnEventCtx]] = {}
 
-    def new_warning(self, job_info: JobInfo, warning: Warn):
-        self.warnings[warning.name] = (job_info, warning)
+    def new_warning(self, job_info: JobInfo, warning: Warn, event_ctx):
+        self.warnings[warning.name] = (job_info, warning, event_ctx)

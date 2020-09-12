@@ -12,7 +12,7 @@ from threading import Condition
 from typing import Tuple, List, Callable
 
 from taro.execution import ExecutionState, ExecutionError
-from taro.job import JobInfo, Warn, WarningObserver, JobOutputObserver
+from taro.job import JobInfo, Warn, WarningObserver, JobOutputObserver, WarnEventCtx
 from taro.runner import ExecutionStateObserver
 
 log = logging.getLogger(__name__)
@@ -89,10 +89,10 @@ class TestStateObserver(ExecutionStateObserver):
 class TestWarnObserver(WarningObserver):
 
     def __init__(self):
-        self.events: List[Tuple[JobInfo, Warn]] = []
+        self.events: List[Tuple[JobInfo, Warn, WarnEventCtx]] = []
 
-    def new_warning(self, job_info: JobInfo, warning: Warn):
-        self.events.append((job_info, warning))
+    def new_warning(self, job_info: JobInfo, warning: Warn, event_ctx: WarnEventCtx):
+        self.events.append((job_info, warning, event_ctx))
 
     def is_empty(self):
         return not self.events
