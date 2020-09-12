@@ -8,6 +8,7 @@ Job management library
 - [ ] Clean command
 - [ ] API
 - [ ] Alarms
+- [ ] Job Timeout
 
 
 ## Commands
@@ -17,10 +18,10 @@ taro exec {command} [args..]
 ```
 
 ### Release pending execution
-A job can be executed in a pending mode which suspends the execution before the job is actually started.
+A job can be executed in pending mode which suspends the execution before the job is actually started.
 In such case the instance is waiting in the PENDING state to be released by `release` command.
-This mode is enabled by using `--pending` option which requires one argument for "latch" value.
-This value must be provided to `release` command. Any job waiting for the same latch is then released.
+This mode is enabled by using `--pending` option which requires one argument for a "latch" value.
+This value must be provided to the `release` command as an argument. Any job waiting for the same latch is released.
 ```commandline
 taro exec --pending latch1 echo finally released
 sleep 5
@@ -44,7 +45,7 @@ taro stop {job-or-instance-id}
 A running job is primarily monitored by observing changes in its state. Each state change triggers an event which can be monitored
 by 'listen' command.
 
-*Note: Transition from 'none' to 'created' state is not currently visible by this command. This may change in the future.*
+*Note: Transition from `NONE` to `CREATED` state is not currently visible by this command. This may change in the future.*
 ```commandline
 taro listen
 ```
@@ -52,7 +53,7 @@ taro listen
 ### Wait
 This command will wait for a state transition and then terminates. This can be used to execute an action when a job reaches certain state. 
 
-*Note: Transition from 'none' to 'created' state is not currently visible by this command. This may change in the future.*
+*Note: Transition from `NONE` to `CREATED` state is not currently visible by this command. This may change in the future.*
 ```commandline
 taro wait completed && echo -ne '\007' # beep on completion
 ```
@@ -119,24 +120,6 @@ This command will display hostinfo parameters:
 ```commandline
 taro hostinfo
 ```
-
-## Feature priority
-### Mandatory
-1. ~~Logging - normal to stdout and errors to stderr (https://docs.python.org/3/library/logging.handlers.html)~~
-2. ~~(Config)~~
-3. ~~Current executing jobs~~
-4. ~~Stop, interrupt~~
-5. ~~Progress of currently executing jobs~~
-6. ~~SNS notifications~~
-7. ~~Execution history~~
-~~8. Log rotation~~
-~~9. Warnings~~
-~~10. Overlaps~~
-~~11. Advanced Output~~
-~~12. Disabled jobs~~
-
-### Optional
-- job timeout
 
 ## Premature termination
 ### General
