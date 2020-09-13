@@ -343,11 +343,19 @@ def _str2state(v):
 
 
 def _warn_type(arg_value):
-    p = r"^(" + warning.EXEC_TIME_WARN_REGEX + "|" + warning.FILE_CONTAINS_REGEX + r"|free_disk_space:.+<\d+[KMGT]B)$"
+    p = _build_warn_validation_regex(
+        warning.EXEC_TIME_WARN_REGEX,
+        warning.FILE_CONTAINS_REGEX,
+        warning.OUTPUT_CONTAINS_REGEX,
+        r"free_disk_space:.+<\d+[KMGT]B")
     pattern = re.compile(p)
     if not pattern.match(arg_value.replace(" ", "").rstrip()):
         raise argparse.ArgumentTypeError(f"Warning value {arg_value} does not match pattern {p}")
     return arg_value
+
+
+def _build_warn_validation_regex(*warn_regex):
+    return "^(" + "|".join(warn_regex) + ")$"
 
 
 def _check_collisions(parser, parsed):

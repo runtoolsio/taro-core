@@ -3,7 +3,7 @@ Job management library
 
 ## TODO
 - [x] Warning modifications
-- [ ] Warning for output
+- [x] Warning for output
 - [ ] Dead sockets fix
 - [ ] Clean command
 - [ ] API

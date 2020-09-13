@@ -5,12 +5,13 @@ from threading import Event, Thread
 from typing import Optional
 
 from taro import util
-from taro.job import JobInfo, ExecutionStateObserver, Warn
+from taro.job import JobInfo, ExecutionStateObserver, Warn, JobOutputObserver
 
 log = logging.getLogger(__name__)
 
 EXEC_TIME_WARN_REGEX = r'exec_time>(\d+)([smh])'
-FILE_CONTAINS_REGEX = r'file:(.+)=~(.+)'
+FILE_CONTAINS_REGEX = 'file:(.+)=~(.+)'
+OUTPUT_CONTAINS_REGEX = 'output=~(.+)'
 
 
 class WarningCheck(abc.ABC):
@@ -91,16 +92,19 @@ def init_checking(job_control, *warning) -> WarnChecking:
 def setup_checking(job_control, *warning: str):
     warns = []
     for w_str in warning:
-        try:
-            warns.append(create_warn_from_str(w_str))
-        except Exception:
-            log.exception('event=[warning_creation_error]')
+        w_str_no_space = w_str.replace(" ", "").rstrip()
+
+        managed_warn = create_managed_warn(w_str_no_space)
+        if managed_warn:
+            warns.append(managed_warn)
+        elif not create_self_managed_warn(w_str_no_space, job_control):
+            raise ValueError('Unknown warning: ' + w_str)
 
     init_checking(job_control, *warns)
 
 
-def create_warn_from_str(val) -> WarningCheck:
-    m = re.compile(EXEC_TIME_WARN_REGEX).match(val.replace(" ", "").rstrip())
+def create_managed_warn(val: str) -> Optional[WarningCheck]:
+    m = re.compile(EXEC_TIME_WARN_REGEX).match(val)
     if m:
         value = int(m.group(1))
         unit = m.group(2)
@@ -111,14 +115,24 @@ def create_warn_from_str(val) -> WarningCheck:
 
         return ExecTimeWarning(m.group(0), value)
 
-    m = re.compile(FILE_CONTAINS_REGEX).match(val.replace(" ", "").rstrip())
+    m = re.compile(FILE_CONTAINS_REGEX).match(val)
     if m:
         file = m.group(1)
         regex = m.group(2)
-        return FileContainsWarning(m.group(0), file, regex)
+        return FileLineMatchesWarning(m.group(0), file, regex)
 
-    else:
-        raise ValueError('Unknown warning: ' + val)
+    return None
+
+
+def create_self_managed_warn(val: str, job_control):
+    m = re.compile(OUTPUT_CONTAINS_REGEX).match(val)
+    if m:
+        regex = m.group(1)
+        warning = OutputLineMatchesWarning(m.group(0), regex, job_control)
+        job_control.add_output_observer(warning)
+        return warning
+
+    return None
 
 
 class ExecTimeWarning(WarningCheck):
@@ -159,7 +173,7 @@ class ExecTimeWarning(WarningCheck):
             self.__class__.__name__, self.id, self.time)
 
 
-class FileContainsWarning(WarningCheck):
+class FileLineMatchesWarning(WarningCheck):
 
     def __init__(self, w_id, file_path, regex):
         self.id = w_id
@@ -197,3 +211,17 @@ class FileContainsWarning(WarningCheck):
             return -1
 
         return 3.0  # Check at least every 3 seconds
+
+
+class OutputLineMatchesWarning(JobOutputObserver):
+
+    def __init__(self, w_id, regex, job_control):
+        self.id = w_id
+        self.regex = re.compile(regex)
+        self.job = job_control
+
+    def output_update(self, _, output):
+        m = self.regex.search(output)
+        if m:
+            warn = Warn(self.id, {'match': m[0]})
+            self.job.add_warning(warn)
