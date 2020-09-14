@@ -54,6 +54,14 @@ class JobInstance(abc.ABC):
         :return: warnings
         """
 
+    @abc.abstractmethod
+    def add_warning(self, warning):
+        """
+        Add warning to the instance
+
+        :param warning warning to add
+        """
+
     @property
     @abc.abstractmethod
     def exec_error(self) -> ExecutionError:
@@ -65,6 +73,18 @@ class JobInstance(abc.ABC):
         Create consistent (thread-safe) snapshot of job instance state
 
         :return job (instance) info
+        """
+
+    @abc.abstractmethod
+    def stop(self):
+        """
+        Stop running execution gracefully
+        """
+
+    @abc.abstractmethod
+    def interrupt(self):
+        """
+        Stop running execution immediately
         """
 
     @abc.abstractmethod
@@ -167,29 +187,6 @@ class JobInfo:
         return "{}({!r}, {!r})".format(
             self.__class__.__name__, self._job_id, self.instance_id, self._lifecycle, self._status, self._warnings,
             self._exec_error)
-
-
-class JobControl(JobInstance):
-
-    @abc.abstractmethod
-    def stop(self):
-        """
-        Stop running execution gracefully
-        """
-
-    @abc.abstractmethod
-    def interrupt(self):
-        """
-        Stop running execution immediately
-        """
-
-    @abc.abstractmethod
-    def add_warning(self, warning):
-        """
-        Add warning to the instance
-
-        :param warning warning to add
-        """
 
 
 class ExecutionStateObserver(abc.ABC):

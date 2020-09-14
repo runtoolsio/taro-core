@@ -62,16 +62,16 @@ def run(args):
 
 class Term:
 
-    def __init__(self, job_control):
-        self.job_control = job_control
+    def __init__(self, job_instance):
+        self.job_instance = job_instance
 
     def terminate(self, _, __):
         logger.warning('event=[terminated_by_signal]')
-        self.job_control.interrupt()
+        self.job_instance.interrupt()
 
     def interrupt(self, _, __):
         logger.warning('event=[interrupted_by_keyboard]')
-        self.job_control.interrupt()  # TODO handle repeated signal
+        self.job_instance.interrupt()  # TODO handle repeated signal
 
 
 class PendingLatch:

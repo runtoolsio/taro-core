@@ -2,7 +2,7 @@
 from typing import List, Optional
 from weakref import ref
 
-from taro import JobInstance, JobControl
+from taro import JobInstance
 from taro import PluginBase
 
 
@@ -14,7 +14,7 @@ class TestPlugin(PluginBase):
         TestPlugin.instance_ref = ref(self)
         self.job_instances: List[JobInstance] = []
 
-    def new_job_instance(self, job_instance: JobControl):
+    def new_job_instance(self, job_instance: JobInstance):
         self.job_instances.append(job_instance)
         error_to_raise = TestPlugin.error_on_new_job_instance
         TestPlugin.error_on_new_job_instance = None

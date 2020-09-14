@@ -11,7 +11,7 @@ from typing import List, Union, Optional, Callable
 from taro import util, persistence, client, Warn
 from taro.err import IllegalStateError
 from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver
-from taro.job import ExecutionStateObserver, JobControl, JobInfo, WarningObserver, JobOutputObserver, WarnEventCtx
+from taro.job import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, WarnEventCtx
 
 log = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ def run(job_id, execution, no_overlap: bool = False):
     return instance
 
 
-class RunnerJobInstance(JobControl, ExecutionOutputObserver):
+class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
     def __init__(self, job_id, execution, *, no_overlap: bool = False):
         self._job_id = job_id

@@ -27,13 +27,13 @@ def _resp_err(code: int, job_instance: Tuple[str, str], error: str):
 
 class Server(SocketServer):
 
-    def __init__(self, job_control, latch_release):
-        super().__init__(_create_socket_name(job_control))
-        self._job_control = job_control
+    def __init__(self, job_instance, latch_release):
+        super().__init__(_create_socket_name(job_instance))
+        self._job_instance = job_instance
         self._latch_release = latch_release
 
     def handle(self, req_body):
-        job_inst = (self._job_control.job_id, self._job_control.instance_id)
+        job_inst = (self._job_instance.job_id, self._job_instance.instance_id)
 
         if 'req' not in req_body:
             return _resp_err(422, job_inst, "missing_req")
@@ -41,11 +41,11 @@ class Server(SocketServer):
             return _resp_err(422, job_inst, "missing_req_api")
 
         inst_filter = req_body.get('instance')
-        if inst_filter and not self._job_control.create_info().matches(inst_filter):
+        if inst_filter and not self._job_instance.create_info().matches(inst_filter):
             return _resp(412, job_inst, {"reason": "instance_not_matching"})
 
         if req_body['req']['api'] == '/job':
-            info_dto = dto.to_info_dto(self._job_control.create_info())
+            info_dto = dto.to_info_dto(self._job_instance.create_info())
             return _resp(200, job_inst, {"job_info": info_dto})
 
         if req_body['req']['api'] == '/release':
@@ -61,15 +61,15 @@ class Server(SocketServer):
             return _resp(200, job_inst, {"released": released})
 
         if req_body['req']['api'] == '/stop':
-            self._job_control.stop()
+            self._job_instance.stop()
             return _resp(200, job_inst, {"result": "stop_performed"})
 
         if req_body['req']['api'] == '/interrupt':
-            self._job_control.interrupt()
+            self._job_instance.interrupt()
             return _resp(200, job_inst, {"result": "interrupt_performed"})
 
         if req_body['req']['api'] == '/tail':
-            return _resp(200, job_inst, {"tail": self._job_control.last_output})
+            return _resp(200, job_inst, {"tail": self._job_instance.last_output})
 
         return _resp_err(404, job_inst, "req_api_not_found")
 

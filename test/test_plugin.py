@@ -1,7 +1,7 @@
 from typing import Optional
 
 import test_plugin
-from taro import plugins, PluginBase, JobControl
+from taro import plugins, PluginBase, JobInstance
 
 
 def test_plugin_discovered():
@@ -45,10 +45,10 @@ class Plugin2(PluginBase, plugin_name='plugin2'):
         if error_to_raise:
             raise error_to_raise
 
-    def new_job_instance(self, job_instance: JobControl):
+    def new_job_instance(self, job_instance: JobInstance):
         pass
 
 
 class Plugin3(PluginBase, plugin_name='plugin3'):
-    def new_job_instance(self, job_instance: JobControl):
+    def new_job_instance(self, job_instance: JobInstance):
         pass

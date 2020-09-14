@@ -5,7 +5,7 @@ import pkgutil
 from types import ModuleType
 from typing import Dict
 
-from taro.job import JobControl
+from taro import JobInstance
 
 log = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class PluginBase(abc.ABC):
         return name2plugin
 
     @abc.abstractmethod
-    def new_job_instance(self, job_instance: JobControl):
+    def new_job_instance(self, job_instance: JobInstance):
         """
         New job instance created.
         """

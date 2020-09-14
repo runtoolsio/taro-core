@@ -39,8 +39,8 @@ class WarningCheck(abc.ABC):
 
 class WarnChecking(ExecutionStateObserver):
 
-    def __init__(self, job_control, *warning):
-        self._job_control = job_control
+    def __init__(self, job_instance, *warning):
+        self._job_instance = job_instance
         self._warnings = list(*warning)
         self._run_condition = Event()
         self._checker = Thread(target=self._run, name='Warning-Checker')
@@ -63,7 +63,7 @@ class WarnChecking(ExecutionStateObserver):
             next_check = -1 if self._stop else 1
 
             for warning in list(self._warnings):
-                job_info = self._job_control.create_info()
+                job_info = self._job_instance.create_info()
                 warn = warning.check(job_info, last_check=(next_check == -1))
                 w_next_check = warning.next_check(job_info)
 
@@ -73,7 +73,7 @@ class WarnChecking(ExecutionStateObserver):
                     next_check = min(next_check, w_next_check)
 
                 if warn:
-                    self._job_control.add_warning(warn)
+                    self._job_instance.add_warning(warn)
 
             if next_check >= 0:
                 self._run_condition.wait(next_check)
@@ -83,13 +83,13 @@ class WarnChecking(ExecutionStateObserver):
         log.debug("event=[warn_checking_ended]")
 
 
-def init_checking(job_control, *warning) -> WarnChecking:
-    checking = WarnChecking(job_control, warning)
-    job_control.add_state_observer(checking)
+def init_checking(job_instance, *warning) -> WarnChecking:
+    checking = WarnChecking(job_instance, warning)
+    job_instance.add_state_observer(checking)
     return checking
 
 
-def setup_checking(job_control, *warning: str):
+def setup_checking(job_instance, *warning: str):
     warns = []
     for w_str in warning:
         w_str_no_space = w_str.replace(" ", "").rstrip()
@@ -97,10 +97,10 @@ def setup_checking(job_control, *warning: str):
         managed_warn = create_managed_warn(w_str_no_space)
         if managed_warn:
             warns.append(managed_warn)
-        elif not create_self_managed_warn(w_str_no_space, job_control):
+        elif not create_self_managed_warn(w_str_no_space, job_instance):
             raise ValueError('Unknown warning: ' + w_str)
 
-    init_checking(job_control, *warns)
+    init_checking(job_instance, *warns)
 
 
 def create_managed_warn(val: str) -> Optional[WarningCheck]:
@@ -124,12 +124,12 @@ def create_managed_warn(val: str) -> Optional[WarningCheck]:
     return None
 
 
-def create_self_managed_warn(val: str, job_control):
+def create_self_managed_warn(val: str, job_instance):
     m = re.compile(OUTPUT_CONTAINS_REGEX).match(val)
     if m:
         regex = m.group(1)
-        warning = OutputLineMatchesWarning(m.group(0), regex, job_control)
-        job_control.add_output_observer(warning)
+        warning = OutputLineMatchesWarning(m.group(0), regex, job_instance)
+        job_instance.add_output_observer(warning)
         return warning
 
     return None
@@ -215,13 +215,13 @@ class FileLineMatchesWarning(WarningCheck):
 
 class OutputLineMatchesWarning(JobOutputObserver):
 
-    def __init__(self, w_id, regex, job_control):
+    def __init__(self, w_id, regex, job_instance):
         self.id = w_id
         self.regex = re.compile(regex)
-        self.job = job_control
+        self.job_instance = job_instance
 
     def output_update(self, _, output):
         m = self.regex.search(output)
         if m:
             warn = Warn(self.id, {'match': m[0]})
-            self.job.add_warning(warn)
+            self.job_instance.add_warning(warn)
