@@ -7,6 +7,8 @@ Job management library
 - [ ] Dead sockets fix
 - [ ] Clean command
 - [ ] API
+- [ ] Restart on failure (with delay option)
+- [ ] Delayed start
 - [ ] Alarms
 - [ ] Job Timeout
 
