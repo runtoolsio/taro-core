@@ -26,6 +26,7 @@ setuptools.setup(
     install_requires=[
         "PyYAML>=5.1.2",
         "pypager>=3.0.0",
+        "bottle>=0.12.18",
     ],
     package_data={
         'taro': ['config/*.yaml'],
