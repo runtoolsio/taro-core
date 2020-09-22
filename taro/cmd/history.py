@@ -1,6 +1,4 @@
-import itertools
-
-from taro import cnf, persistence, ExecutionState, jfilter, ps
+from taro import cnf, persistence, jfilter, ps
 from taro.jfilter import AllFilter
 from taro.view import instance as view_inst
 
@@ -10,18 +8,15 @@ def run(args):
     persistence.init()
 
     try:
-        jobs = persistence.read_jobs(chronological=args.chronological)
+        jobs = persistence.read_jobs(chronological=args.chronological, limit=args.lines or -1)
     finally:
         persistence.close()
 
     columns = [view_inst.JOB_ID, view_inst.INSTANCE_ID, view_inst.CREATED, view_inst.ENDED, view_inst.EXEC_TIME,
                view_inst.STATE, view_inst.WARNINGS, view_inst.RESULT]
-    sorted_jobs = sorted(jobs, key=lambda j: j.lifecycle.changed(ExecutionState.CREATED),
-                         reverse=not args.chronological)
     job_filter = _build_job_filter(args)
-    filtered_jobs = filter(job_filter, sorted_jobs)
-    limited_jobs = itertools.islice(filtered_jobs, 0, args.lines or None)
-    ps.print_table(limited_jobs, columns, show_header=True, pager=not args.no_pager)
+    filtered_jobs = filter(job_filter, jobs)
+    ps.print_table(filtered_jobs, columns, show_header=True, pager=not args.no_pager)
 
 
 def _build_job_filter(args):

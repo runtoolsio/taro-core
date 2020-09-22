@@ -1,4 +1,6 @@
-from taro import cnf
+import itertools
+
+from taro import cnf, ExecutionState
 from taro import paths
 
 
@@ -8,8 +10,10 @@ class NoPersistence:
         self._jobs = []
         self._disabled_jobs = []
 
-    def read_jobs(self, *, chronological):
-        return list(reversed(self._jobs)) if chronological else self._jobs
+    def read_jobs(self, *, chronological, limit):
+        sorted_jobs = sorted(self._jobs, key=lambda j: j.lifecycle.changed(ExecutionState.CREATED),
+                             reverse=not chronological)
+        return itertools.islice(sorted_jobs, 0, limit if limit > 0 else None)
 
     def store_job(self, job_info):
         self._jobs.append(job_info)
@@ -62,8 +66,8 @@ def disable():
     _persistence = NoPersistence()
 
 
-def read_jobs(*, chronological):
-    return _persistence.read_jobs(chronological=chronological)
+def read_jobs(*, chronological=False, limit=-1):
+    return _persistence.read_jobs(chronological=chronological, limit=limit)
 
 
 def store_job(job_info):
