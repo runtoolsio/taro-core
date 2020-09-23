@@ -10,7 +10,7 @@ def run(args):
 
     try:
         jobs = persistence.read_jobs(
-            sort=SortCriteria[args.sort.upper()], chronological=args.chronological, limit=args.lines or -1)
+            sort=SortCriteria[args.sort.upper()], asc=args.asc, limit=args.lines or -1)
     finally:
         persistence.close()
 

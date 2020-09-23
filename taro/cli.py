@@ -156,7 +156,7 @@ def _init_history_parser(common, subparsers):
 
     hist_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
     hist_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
-    hist_parser.add_argument('-c', '--chronological', action='store_true', help='Display jobs in chronological order')
+    hist_parser.add_argument('-a', '--asc', '--ascending', action='store_true', help='Ascending sort')
     hist_parser.add_argument('-s', '--sort', type=str, choices=[s.name.lower() for s in SortCriteria],
                              default=SortCriteria.CREATED.name.lower(), help='Sorting criteria')
     hist_parser.add_argument('-P', '--no-pager', action='store_true', help='Do not use pager for output')

@@ -22,8 +22,8 @@ class NoPersistence:
         self._jobs = []
         self._disabled_jobs = []
 
-    def read_jobs(self, *, sort, chronological, limit):
-        sorted_jobs = sorted(self._jobs, key=_sort_key(sort), reverse=not chronological)
+    def read_jobs(self, *, sort, asc, limit):
+        sorted_jobs = sorted(self._jobs, key=_sort_key(sort), reverse=not asc)
         return itertools.islice(sorted_jobs, 0, limit if limit > 0 else None)
 
     def store_job(self, job_info):
@@ -77,8 +77,8 @@ def disable():
     _persistence = NoPersistence()
 
 
-def read_jobs(*, sort=SortCriteria.CREATED, chronological=False, limit=-1):
-    return _persistence.read_jobs(sort=sort, chronological=chronological, limit=limit)
+def read_jobs(*, sort=SortCriteria.CREATED, asc=False, limit=-1):
+    return _persistence.read_jobs(sort=sort, asc=asc, limit=limit)
 
 
 def store_job(job_info):

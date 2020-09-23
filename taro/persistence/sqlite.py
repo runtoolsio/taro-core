@@ -72,9 +72,9 @@ class SQLite:
             log.debug('event=[table_created] table=[disabled_jobs]')
             self._conn.commit()
 
-    def read_jobs(self, *, sort, chronological, limit) -> List[JobInfo]:
+    def read_jobs(self, *, sort, asc, limit) -> List[JobInfo]:
         c = self._conn.execute("SELECT * FROM history "
-                               + "ORDER BY  " + _sort_column(sort) + (" ASC" if chronological else " DESC")
+                               + "ORDER BY " + _sort_column(sort) + (" ASC" if asc else " DESC")
                                + " LIMIT ?",
                                (limit,))
         return [_to_job_info(row) for row in c.fetchall()]

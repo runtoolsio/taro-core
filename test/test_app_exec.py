@@ -64,7 +64,7 @@ def test_no_overlap(observer: TestStateObserver):
 
 def test_job_persisted():
     run_app('exec -mc --id persisted_job echo')
-    assert next(persistence.read_jobs(chronological=True)).job_id == 'persisted_job'
+    assert next(persistence.read_jobs(asc=True)).job_id == 'persisted_job'
 
 
 def test_exec_time_warning():
