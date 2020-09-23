@@ -1,5 +1,6 @@
 from taro import cnf, persistence, jfilter, ps
 from taro.jfilter import AllFilter
+from taro.persistence import SortCriteria
 from taro.view import instance as view_inst
 
 
@@ -8,7 +9,8 @@ def run(args):
     persistence.init()
 
     try:
-        jobs = persistence.read_jobs(chronological=args.chronological, limit=args.lines or -1)
+        jobs = persistence.read_jobs(
+            sort=SortCriteria[args.sort.upper()], chronological=args.chronological, limit=args.lines or -1)
     finally:
         persistence.close()
 

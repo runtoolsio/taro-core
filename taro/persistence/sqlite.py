@@ -4,6 +4,7 @@ from typing import List
 from taro import util
 from taro.execution import ExecutionState, ExecutionError, ExecutionLifecycle
 from taro.job import JobInfo, DisabledJob
+from taro.persistence import SortCriteria
 
 log = logging.getLogger(__name__)
 
@@ -26,6 +27,14 @@ def _to_job_info(t):
     warnings = {s[1]: int(s[0]) for s in [w.split(':', 1) for w in t[7].split(', ') if w]}
     exec_error = ExecutionError(t[7], states[-1]) if t[8] else None  # TODO more data
     return JobInfo(t[0], t[1], lifecycle, t[6], warnings, exec_error)
+
+
+def _sort_column(sort: SortCriteria):
+    if sort == SortCriteria.CREATED:
+        return 'created'
+    if sort == SortCriteria.FINISHED:
+        return 'finished'
+    raise ValueError(sort)
 
 
 # TODO indices
@@ -63,9 +72,9 @@ class SQLite:
             log.debug('event=[table_created] table=[disabled_jobs]')
             self._conn.commit()
 
-    def read_jobs(self, *, chronological, limit) -> List[JobInfo]:
-        c = self._conn.execute("SELECT * FROM history ORDER BY finished "
-                               + ("ASC" if chronological else "DESC")
+    def read_jobs(self, *, sort, chronological, limit) -> List[JobInfo]:
+        c = self._conn.execute("SELECT * FROM history "
+                               + "ORDER BY  " + _sort_column(sort) + (" ASC" if chronological else " DESC")
                                + " LIMIT ?",
                                (limit,))
         return [_to_job_info(row) for row in c.fetchall()]
