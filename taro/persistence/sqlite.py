@@ -34,6 +34,7 @@ def _sort_column(sort: SortCriteria):
         return 'created'
     if sort == SortCriteria.FINISHED:
         return 'finished'
+    # if sort == SortCriteria.TIME: julianday(finished) - julianday(created)
     raise ValueError(sort)
 
 
