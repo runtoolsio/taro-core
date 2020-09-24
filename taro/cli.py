@@ -8,7 +8,6 @@ from taro.persistence import SortCriteria
 
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
-ACTION_JOB = 'job'
 ACTION_HISTORY = 'history'
 ACTION_RELEASE = 'release'
 ACTION_LISTEN = 'listen'
@@ -29,8 +28,6 @@ _all_boolean_options = _true_options + _false_options
 
 _log_levels = ['critical', 'fatal', 'error', 'warn', 'warning', 'info', 'debug', 'off']
 
-_job_commands = ['enable', 'disable', 'list-disabled']
-
 
 def parse_args(args):
     # TODO destination required
@@ -40,7 +37,6 @@ def parse_args(args):
 
     _init_exec_parser(common, subparsers)
     _init_ps_parser(common, subparsers)
-    _init_job_parser(common, subparsers)
     _init_history_parser(common, subparsers)
     _init_release_parser(common, subparsers)
     _init_listen_parser(common, subparsers)
@@ -115,24 +111,6 @@ def _init_ps_parser(common, subparsers):
 
     ps_parser = subparsers.add_parser(ACTION_PS, parents=[common], description='Show running jobs', add_help=False)
     ps_parser.add_argument('-i', '--inst', '--instance', type=str, help='instance filter')
-
-
-def _init_job_parser(common, subparsers):
-    """
-    Creates parsers for `job` command
-
-    :param common: parent parser
-    :param subparsers: sub-parser for job parser to be added to
-    """
-
-    job_parser = subparsers.add_parser(
-        ACTION_JOB, parents=[common], description='Configure jobs', add_help=False)
-
-    job_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
-    job_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
-
-    job_parser.add_argument('command', type=str, metavar='COMMAND', choices=_job_commands, help='command to execute')
-    job_parser.add_argument('arg', type=str, metavar='ARG', nargs=argparse.REMAINDER, help="command arguments")
 
 
 def _init_history_parser(common, subparsers):
