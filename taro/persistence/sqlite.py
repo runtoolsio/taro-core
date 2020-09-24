@@ -29,12 +29,13 @@ def _to_job_info(t):
     return JobInfo(t[0], t[1], lifecycle, t[6], warnings, exec_error)
 
 
-def _sort_column(sort: SortCriteria):
+def _sort_exp(sort: SortCriteria):
     if sort == SortCriteria.CREATED:
         return 'created'
     if sort == SortCriteria.FINISHED:
         return 'finished'
-    # if sort == SortCriteria.TIME: julianday(finished) - julianday(created)
+    if sort == SortCriteria.TIME:
+        return "julianday(finished) - julianday(created)"
     raise ValueError(sort)
 
 
@@ -75,7 +76,7 @@ class SQLite:
 
     def read_jobs(self, *, sort, asc, limit) -> List[JobInfo]:
         c = self._conn.execute("SELECT * FROM history "
-                               + "ORDER BY " + _sort_column(sort) + (" ASC" if asc else " DESC")
+                               + "ORDER BY " + _sort_exp(sort) + (" ASC" if asc else " DESC")
                                + " LIMIT ?",
                                (limit,))
         return [_to_job_info(row) for row in c.fetchall()]
