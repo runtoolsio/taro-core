@@ -40,7 +40,7 @@ def read_config(config_file_path) -> NestedNamespace:
     with open(config_file_path, 'r') as file:
         config_ns = util.wrap_namespace(yaml.safe_load(file))
         if config_ns:
-            config_ns
+            return config_ns
         else:  # File is empty
             return NestedNamespace()
 

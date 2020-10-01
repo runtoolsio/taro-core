@@ -1,11 +1,17 @@
-from bottle import route, run, HTTPError
+from bottle import route, run, HTTPError, request
 
-from taro import client, dto
+from taro import client, dto, persistence, cnf
 
 
 @route('/instances')
 def instances():
-    embedded = {"instances": [resource_job_info(i) for i in client.read_jobs_info()]}
+    if request.GET.get('finished') is not None:
+        if not persistence.init():
+            raise http_error(409, "Persistence is not enabled in the config file")
+        jobs_info = persistence.read_jobs()
+    else:
+        jobs_info = client.read_jobs_info()
+    embedded = {"instances": [resource_job_info(i) for i in jobs_info]}
     return resource({}, links={"self": "/instances"}, embedded=embedded)
 
 
@@ -13,7 +19,7 @@ def instances():
 def instance(inst):
     jobs_info = client.read_jobs_info(instance=inst)
     if not jobs_info:
-        http_error(404, "Instance not found")
+        raise http_error(404, "Instance not found")
     return resource_job_info(jobs_info[0])
 
 
@@ -32,7 +38,8 @@ def resource_job_info(job_info):
 
 
 def http_error(status, message):
-    raise HTTPError(status=404, body='{"message": "' + message + '"}')
+    return HTTPError(status=status, body='{"message": "' + message + '"}')
 
 
+cnf.init(None)
 run(host='localhost', port=8080, debug=True, reloader=True)
