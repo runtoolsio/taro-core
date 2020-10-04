@@ -126,7 +126,6 @@ def _init_history_parser(common, subparsers):
 
     filter_group = hist_parser.add_argument_group('filtering', 'These options allows to filter returned jobs')
     filter_group.add_argument('--id', type=str, help='Job or instance ID matching pattern for result filtering')
-    filter_group.add_argument('-F', '--finished', action='store_true', help='Return only finished jobs')
     filter_group.add_argument('-T', '--today', action='store_true', help='Return only jobs created today (local)')
     filter_group.add_argument('-S', '--since', type=_str2dt, help='Show entries not older than the specified date')
     filter_group.add_argument('-U', '--until', type=_str2dt, help='Show entries not newer than the specified date')
