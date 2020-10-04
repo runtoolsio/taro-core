@@ -5,10 +5,14 @@ from taro import client, dto, persistence, cnf
 
 @route('/instances')
 def instances():
+    limit = request.query.limit or -1
+    if not limit.isdigit():
+        raise http_error(412, 'Limit param must be number')
+
     if request.GET.get('finished') is not None:
         if not persistence.init():
             raise http_error(409, "Persistence is not enabled in the config file")
-        jobs_info = persistence.read_jobs()
+        jobs_info = persistence.read_jobs(limit=limit)
     else:
         jobs_info = client.read_jobs_info()
     embedded = {"instances": [resource_job_info(i) for i in jobs_info]}
@@ -42,4 +46,5 @@ def http_error(status, message):
 
 
 cnf.init(None)
+
 run(host='localhost', port=8080, debug=True, reloader=True)
