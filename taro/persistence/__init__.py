@@ -1,6 +1,4 @@
-import itertools
-
-from taro import cnf, ExecutionState
+from taro import cnf, ExecutionState, util
 from taro import paths
 from taro.persistence.common import SortCriteria
 
@@ -25,8 +23,7 @@ class NoPersistence:
         self._disabled_jobs = []
 
     def read_jobs(self, *, sort, asc, limit):
-        sorted_jobs = sorted(self._jobs, key=_sort_key(sort), reverse=not asc)
-        return itertools.islice(sorted_jobs, 0, limit if limit > 0 else None)
+        return util.sequence_view(self._jobs, sort_key=_sort_key(sort), asc=asc, limit=limit)
 
     def store_job(self, job_info):
         self._jobs.append(job_info)

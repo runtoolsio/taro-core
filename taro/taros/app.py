@@ -1,20 +1,25 @@
-from bottle import route, run, HTTPError, request
+from bottle import route, run, request
 
-from taro import client, dto, persistence, cnf
+from taro import client, dto, persistence, cnf, util, ExecutionState
+from taro.taros.httputil import http_error, query_digit, query
 
 
 @route('/instances')
 def instances():
-    limit = request.query.limit or -1
-    if not limit.isdigit():
-        raise http_error(412, 'Limit param must be number')
+    limit = query_digit('limit', default=-1)
+    order = query('order', default='desc', allowed=('asc', 'desc'), aliases={'ascending': 'asc', 'descending': 'desc'})
+    asc = order == 'asc'
 
     if request.GET.get('finished') is not None:
         if not persistence.init():
             raise http_error(409, "Persistence is not enabled in the config file")
-        jobs_info = persistence.read_jobs(limit=limit)
+        jobs_info = persistence.read_jobs(asc=asc, limit=limit)
     else:
-        jobs_info = client.read_jobs_info()
+        jobs_info = util.sequence_view(
+            client.read_jobs_info(),
+            sort_key=lambda j: j.lifecycle.changed(ExecutionState.CREATED),
+            asc=asc,
+            limit=limit)
     embedded = {"instances": [resource_job_info(i) for i in jobs_info]}
     return resource({}, links={"self": "/instances"}, embedded=embedded)
 
@@ -39,10 +44,6 @@ def resource(props, *, links=None, embedded=None):
 
 def resource_job_info(job_info):
     return resource(dto.to_info_dto(job_info), links={"self": "/instances/" + job_info.instance_id})
-
-
-def http_error(status, message):
-    return HTTPError(status=status, body='{"message": "' + message + '"}')
 
 
 cnf.init(None)

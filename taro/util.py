@@ -1,4 +1,5 @@
 import functools
+import itertools
 import os
 import secrets
 from datetime import datetime, timezone
@@ -112,3 +113,8 @@ def expand_user(file):
         return file
 
     return os.path.expanduser(file)
+
+
+def sequence_view(seq, *, sort_key, asc, limit):
+    sorted_seq = sorted(seq, key=sort_key, reverse=not asc)
+    return itertools.islice(sorted_seq, 0, limit if limit > 0 else None)
