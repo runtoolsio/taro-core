@@ -10,8 +10,9 @@ def query(name: str, *, mandatory=False, default=None, aliases=None, allowed=())
     if aliases and val in aliases:
         val = aliases[val]
     if allowed and val not in allowed:
+        allowed_val = ", ".join(allowed)
         raise http_error(
-            412, "Invalid value '{}' for query parameter '{}', allowed values are {}".format(val, name, allowed))
+            412, "Invalid value '{}' for query parameter '{}'. Allowed values: {}".format(val, name, allowed_val))
     return val
 
 
