@@ -1,10 +1,6 @@
-import logging
-
 import sys
 
 from taro import cli, cmd
-
-logger = logging.getLogger(__name__)
 
 
 def main_cli():
