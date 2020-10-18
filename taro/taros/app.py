@@ -1,6 +1,6 @@
 import json
 
-from bottle import route, run, request
+from bottle import route, run, request, response
 
 from taro import client, dto, persistence, cnf, util, ExecutionState
 from taro.persistence import SortCriteria
@@ -26,6 +26,8 @@ def instances():
             sort_key=lambda j: j.lifecycle.changed(ExecutionState.CREATED),
             asc=asc,
             limit=limit)
+
+    response.content_type = 'application/hal+json'
     embedded = {"instances": [resource_job_info(i) for i in jobs_info]}
     return to_json(resource({}, links={"self": "/instances"}, embedded=embedded))
 
@@ -35,6 +37,8 @@ def instance(inst):
     jobs_info = client.read_jobs_info(instance=inst)
     if not jobs_info:
         raise http_error(404, "Instance not found")
+
+    response.content_type = 'application/hal+json'
     return resource_job_info(jobs_info[0])
 
 
