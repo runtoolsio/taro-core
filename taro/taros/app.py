@@ -13,7 +13,7 @@ def instances():
     order = query('order', default='desc', allowed=('asc', 'desc'), aliases={'ascending': 'asc', 'descending': 'desc'})
     asc = order == 'asc'
 
-    if request.GET.get('finished') is not None:
+    if request.GET.get('finished') is not None:  # Check if `finished` query param without value is present
         sort = query('sort', default='created', allowed=[c.name.lower() for c in SortCriteria])
         if not persistence.init():
             raise http_error(409, "Persistence is not enabled in the config file")
