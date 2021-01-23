@@ -1,6 +1,6 @@
 import signal
 
-from taro import ExecutionStateObserver, JobInfo, ps
+from taro.job import ExecutionStateObserver, JobInfo
 from taro.listening import StateReceiver
 
 
@@ -19,4 +19,8 @@ class EventPrint(ExecutionStateObserver):
 
     def state_update(self, job_info: JobInfo):
         if self.condition(job_info):
-            ps.print_state_change(job_info)
+            print_state_change(job_info)
+
+
+def print_state_change(job_info):
+    print(f"{job_info.job_id}@{job_info.instance_id} -> {job_info.state.name}")

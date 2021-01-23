@@ -108,10 +108,6 @@ def _limit_text(text, limit):
     return text[:limit - 2] + '..'
 
 
-def print_state_change(job_info):
-    print(f"{job_info.job_id}@{job_info.instance_id} -> {job_info.state.name}")
-
-
 def parse_table(output, columns) -> List[Dict[Column, str]]:
     """
     Parses individual lines from provided string containing ps table (must include both header and sep line).

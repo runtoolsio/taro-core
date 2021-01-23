@@ -1,14 +1,13 @@
 import signal
-
 import sys
 
-from taro import ExecutionStateObserver, JobInfo, ps
+from taro.job import ExecutionStateObserver, JobInfo
 from taro.listening import StateReceiver
 
 
 def run(args):
     receiver = StateReceiver(args.inst, args.states)
-    receiver.listeners.append(lambda job_info: ps.print_state_change(job_info))
+    receiver.listeners.append(lambda job_info: print_state_change(job_info))
     receiver.listeners.append(StoppingListener(receiver, args.count))
     signal.signal(signal.SIGTERM, lambda _, __: _stop_server_and_exit(receiver, signal.SIGTERM))
     signal.signal(signal.SIGINT, lambda _, __: _stop_server_and_exit(receiver, signal.SIGINT))
@@ -18,6 +17,10 @@ def run(args):
 def _stop_server_and_exit(server, signal_number: int):
     server.stop()
     sys.exit(128 + signal_number)
+
+
+def print_state_change(job_info):
+    print(f"{job_info.job_id}@{job_info.instance_id} -> {job_info.state.name}")
 
 
 class StoppingListener(ExecutionStateObserver):
