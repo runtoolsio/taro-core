@@ -9,7 +9,6 @@ from prompt_toolkit.formatted_text import FormattedText as FTxt
 from pypager.pager import Pager
 from pypager.source import GeneratorSource
 
-from taro import util
 from taro.util import iterates
 
 Column = namedtuple('Column', 'name max_width value_fnc')
@@ -101,17 +100,6 @@ def format_dt(dt):
         return 'N/A'
 
     return dt.astimezone().replace(tzinfo=None).isoformat(sep=' ', timespec='milliseconds')
-
-
-def execution_time(job_info):
-    if not job_info.lifecycle.executed():
-        return 'N/A'
-
-    if job_info.state.is_executing():
-        exec_time = util.utc_now() - job_info.lifecycle.execution_started()
-    else:
-        exec_time = job_info.lifecycle.execution_time()
-    return util.format_timedelta(exec_time)
 
 
 def _limit_text(text, limit):
