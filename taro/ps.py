@@ -15,8 +15,8 @@ Column = namedtuple('Column', 'name max_width value_fnc')
 
 
 @iterates
-def print_table(items, columns: List[Column], *, show_header: bool, pager: bool):
-    gen = output_gen(items, columns, show_header, stretch_last_column=pager)
+def print_table(items, columns: List[Column], colours=None, *, show_header: bool, pager: bool):
+    gen = output_gen(items, columns, colours, show_header, stretch_last_column=pager)
 
     if pager:
         p = Pager()
@@ -27,7 +27,7 @@ def print_table(items, columns: List[Column], *, show_header: bool, pager: bool)
             print_formatted_text(next(gen))
 
 
-def output_gen(items, columns: List[Column], show_header: bool, stretch_last_column: bool):
+def output_gen(items, columns: List[Column], colours, show_header: bool, stretch_last_column: bool):
     """
     Table Representation:
         Each column has padding of size 1 from each side applied in both header and values
@@ -49,9 +49,10 @@ def output_gen(items, columns: List[Column], show_header: bool, stretch_last_col
         separator_line = " ".join("-" * (column_width[c]) for c in columns)
         yield FTxt([('bold', separator_line)])
 
-    for j in itertools.chain(first_fifty, job_iter):
-        line = f.format(*(_limit_text(c.value_fnc(j), column_width[c] - 2) for c in columns))
-        yield FTxt([(_get_color(j), line)])
+    for item in itertools.chain(first_fifty, job_iter):
+        line = f.format(*(_limit_text(c.value_fnc(item), column_width[c] - 2) for c in columns))
+        colour = colours(item) if colours else ''
+        yield FTxt([(colour, line)])
 
 
 def _calc_widths(items, columns: List[Column], stretch_last_column: bool):
@@ -73,26 +74,6 @@ def _calc_widths(items, columns: List[Column], stretch_last_column: bool):
             column_width[columns[-1]] += spare_length
 
     return column_width
-
-
-def _get_color(job_info):
-    if not hasattr(job_info, 'state'):  # TODO redesign
-        return ''
-    state = job_info.state
-
-    if state.is_before_execution():
-        return 'green'
-
-    if state.is_executing():
-        return '#44aaff'
-
-    if state.is_failure():
-        return 'red'
-
-    if state.is_unexecuted() or job_info.warnings:
-        return 'orange'
-
-    return ''
 
 
 def format_dt(dt):

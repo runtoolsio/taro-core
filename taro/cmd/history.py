@@ -18,7 +18,7 @@ def run(args):
                view_inst.STATE, view_inst.WARNINGS, view_inst.RESULT]
     job_filter = _build_job_filter(args)
     filtered_jobs = filter(job_filter, jobs)
-    ps.print_table(filtered_jobs, columns, show_header=True, pager=not args.no_pager)
+    ps.print_table(filtered_jobs, columns, _colours, show_header=True, pager=not args.no_pager)
 
 
 def _build_job_filter(args):
@@ -33,3 +33,15 @@ def _build_job_filter(args):
         job_filter <<= jfilter.create_until_filter(args.until)
 
     return job_filter
+
+
+def _colours(job_info):
+    state = job_info.state
+
+    if state.is_failure():
+        return 'red'
+
+    if state.is_unexecuted() or job_info.warnings:
+        return 'orange'
+
+    return ''  # white
