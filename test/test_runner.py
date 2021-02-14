@@ -1,15 +1,15 @@
 """
 Tests :mod:`runner` module
 """
-import time
 from threading import Thread
 
 import pytest
+import time
 
 import taro.runner as runner
 from taro import persistence
 from taro.execution import ExecutionState as ExSt, ExecutionError
-from taro.process import ProcessExecution
+from taro.program import ProgramExecution
 from taro.runner import RunnerJobInstance
 from taro.test.execution import TestExecution  # TODO package import
 
@@ -109,7 +109,7 @@ def wait_for_pending_state(instance: RunnerJobInstance):
 
 
 def test_last_output():
-    execution = ProcessExecution(['echo', "3\n2\n1\neveryone\nin\nthe\nworld\nis\ndoing\nsomething\nwithout\nme"],
+    execution = ProgramExecution(['echo', "3\n2\n1\neveryone\nin\nthe\nworld\nis\ndoing\nsomething\nwithout\nme"],
                                  read_output=True)
     instance = RunnerJobInstance('j', execution)
     execution.add_output_observer(instance)

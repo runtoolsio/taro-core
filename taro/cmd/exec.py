@@ -6,7 +6,7 @@ from taro import log
 from taro import persistence
 from taro.api import Server
 from taro.listening import StateDispatcher, OutputDispatcher
-from taro.process import ProcessExecution
+from taro.program import ProgramExecution
 from taro.runner import RunnerJobInstance
 from taro.test.execution import TestExecution
 
@@ -16,16 +16,19 @@ EXT_PLUGIN_MODULE_PREFIX = 'taro_'
 
 
 def run(args):
+    if args.dry_run:
+        execution = TestExecution(args.dry_run)
+    else:
+        execution = ProgramExecution([args.command] + args.arg, read_output=not args.bypass_output)
+    execute(execution, args)
+
+
+def execute(execution, args):
     cnf.init(args)
     log.init()
     persistence.init()
 
-    all_args = [args.command] + args.arg
-    if args.dry_run:
-        execution = TestExecution(args.dry_run)
-    else:
-        execution = ProcessExecution(all_args, read_output=not args.bypass_output)
-    job_id = args.id or " ".join(all_args)
+    job_id = args.id or " ".join([args.command] + args.arg)
     job_instance = RunnerJobInstance(job_id, execution, no_overlap=args.no_overlap)
     execution.add_output_observer(job_instance)
     term = Term(job_instance)

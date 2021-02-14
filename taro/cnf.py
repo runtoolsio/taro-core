@@ -26,11 +26,11 @@ def init(args):
 
 
 def get_config_file_path(args):
-    if args.config:
+    if args.get('config'):
         return util.expand_user(args.config)
-    if args.def_config:
+    if args.get('def_config'):
         return paths.default_config_file_path()
-    if args.min_config:
+    if args.get('min_config'):
         return paths.minimal_config_file_path()
 
     return paths.lookup_config_file()

@@ -1,9 +1,10 @@
 import io
 import logging
-import sys
 from subprocess import Popen, PIPE, STDOUT
 from threading import Thread
 from typing import Union
+
+import sys
 
 from taro.execution import ExecutionState, ExecutionError, OutputExecution, ExecutionOutputObserver
 
@@ -12,7 +13,7 @@ USE_SHELL = False  # For testing only
 log = logging.getLogger(__name__)
 
 
-class ProcessExecution(OutputExecution):
+class ProgramExecution(OutputExecution):
 
     def __init__(self, args, read_output: bool):
         self.args = args

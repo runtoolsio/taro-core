@@ -6,7 +6,7 @@ import prompt_toolkit
 import yaml
 from prompt_toolkit.output import DummyOutput
 
-from taro import app, process, paths, JobInfo, Warn, WarningObserver
+from taro import app, program, paths, JobInfo, Warn, WarningObserver
 from taro.job import WarnEventCtx
 
 
@@ -23,14 +23,14 @@ def run_app(command, shell=False):
     :param shell: use shell for executing command
     :return: output of the executed command
     """
-    process.USE_SHELL = shell
+    program.USE_SHELL = shell
     # Prevent UnsupportedOperation error: https://github.com/prompt-toolkit/python-prompt-toolkit/issues/1107
     prompt_toolkit.output.defaults.create_output = NoFormattingOutput
     try:
         app.main(command.split())
     finally:
         prompt_toolkit.output.defaults.create_output = None
-        process.USE_SHELL = False
+        program.USE_SHELL = False
 
 
 def run_wait(state, count=1) -> Process:
