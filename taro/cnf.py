@@ -26,11 +26,11 @@ def init(args):
 
 
 def get_config_file_path(args):
-    if hasattr(args, 'config') and args.config:
+    if args.config:
         return util.expand_user(args.config)
-    if hasattr(args, 'def_config') and args.def_config:
+    if args.def_config:
         return paths.default_config_file_path()
-    if hasattr(args, 'min_config') and args.min_config:
+    if args.min_config:
         return paths.minimal_config_file_path()
 
     return paths.lookup_config_file()
