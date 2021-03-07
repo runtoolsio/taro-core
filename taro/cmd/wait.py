@@ -9,13 +9,13 @@ def run(args):
     receiver = StateReceiver(args.inst, args.states)
     receiver.listeners.append(lambda job_info: print_state_change(job_info))
     receiver.listeners.append(StoppingListener(receiver, args.count))
-    signal.signal(signal.SIGTERM, lambda _, __: _stop_server_and_exit(receiver, signal.SIGTERM))
-    signal.signal(signal.SIGINT, lambda _, __: _stop_server_and_exit(receiver, signal.SIGINT))
+    signal.signal(signal.SIGTERM, lambda _, __: _close_server_and_exit(receiver, signal.SIGTERM))
+    signal.signal(signal.SIGINT, lambda _, __: _close_server_and_exit(receiver, signal.SIGINT))
     receiver.start()
 
 
-def _stop_server_and_exit(server, signal_number: int):
-    server.stop()
+def _close_server_and_exit(server, signal_number: int):
+    server.close()
     sys.exit(128 + signal_number)
 
 
@@ -32,4 +32,4 @@ class StoppingListener(ExecutionStateObserver):
     def state_update(self, job_info: JobInfo):
         self.count -= 1
         if self.count <= 0:
-            self._server.stop()
+            self._server.close()

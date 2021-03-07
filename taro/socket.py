@@ -63,14 +63,20 @@ class SocketServer(abc.ABC):
 
     def stop(self):
         self._stopped = True
+
+    def close(self):
+        self.stop()
+
         if self._server is None:
             return
 
         socket_name = self._server.getsockname()
-        self._server.shutdown(socket.SHUT_RD)
-        self._server.close()
-        if os.path.exists(socket_name):
-            os.remove(socket_name)
+        try:
+            self._server.shutdown(socket.SHUT_RD)
+            self._server.close()
+        finally:
+            if os.path.exists(socket_name):
+                os.remove(socket_name)
 
 
 InstanceResponse = namedtuple('InstanceResponse', 'instance response')
@@ -99,13 +105,13 @@ class SocketClient:
                     req_body = yield resp
                 skip = False  # reset
                 if not req_body:
-                    break
+                    break  # next(this) called -> proceed to the next server
                 try:
                     self._client.sendto(json.dumps(req_body).encode(), str(api_file))
                     if self._bidirectional:
                         datagram = self._client.recv(20000)
                         resp = InstanceResponse(instance_id, json.loads(datagram.decode()))
-                except ConnectionRefusedError:
+                except ConnectionRefusedError:  # TODO what about other errors?
                     log.warning('event=[dead_socket] socket=[{}]'.format(api_file))  # TODO remove file
                     skip = True  # Ignore this one and continue with another one
                     break
@@ -116,9 +122,9 @@ class SocketClient:
         while True:
             try:
                 next(server)
+                responses.append(server.send(req))  # StopIteration is raised from this function if last socket is dead
             except StopIteration:
                 break
-            responses.append(server.send(req))
         return responses
 
     def close(self):

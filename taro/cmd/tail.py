@@ -10,8 +10,8 @@ def run(args):
     if args.follow:
         receiver = OutputReceiver(args.inst)
         receiver.listeners.append(TailPrint())
-        signal.signal(signal.SIGTERM, lambda _, __: receiver.stop())
-        signal.signal(signal.SIGINT, lambda _, __: receiver.stop())
+        signal.signal(signal.SIGTERM, lambda _, __: receiver.close())
+        signal.signal(signal.SIGINT, lambda _, __: receiver.close())
         receiver.start()
     else:
         for job_id, instance_id, tail in client.read_tail(None):
