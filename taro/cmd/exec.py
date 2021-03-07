@@ -38,8 +38,8 @@ def execute(execution, args):
     job_instance.add_state_observer(state_dispatcher)
     output_dispatcher = OutputDispatcher()
     job_instance.add_output_observer(output_dispatcher)
-    for plugin in PluginBase.create_plugins(EXT_PLUGIN_MODULE_PREFIX,
-                                            cnf.config.plugins).values():  # TODO to plugin module
+    for plugin in PluginBase.load_plugins(EXT_PLUGIN_MODULE_PREFIX,
+                                          cnf.config.plugins).values():  # TODO to plugin module
         try:
             plugin.new_job_instance(job_instance)
         except BaseException as e:

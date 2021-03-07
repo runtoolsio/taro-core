@@ -13,6 +13,7 @@ log = logging.getLogger(__name__)
 # TODO plugin collisions
 class PluginBase(abc.ABC):
     name2subclass = {}
+    name2plugin = {}
 
     def __init_subclass__(cls, *, plugin_name=None, **kwargs):
         """
@@ -25,8 +26,8 @@ class PluginBase(abc.ABC):
         cls.name2subclass[res_name] = cls
         log.debug("event=[plugin_registered] name=[%s] class=[%s]", res_name, cls)
 
-    @staticmethod
-    def create_plugins(ext_prefix, names) -> Dict[str, 'PluginBase']:
+    @classmethod
+    def load_plugins(cls, ext_prefix, names) -> Dict[str, 'PluginBase']:
         discover_ext_plugins(ext_prefix, names)
 
         name2plugin = {}
@@ -45,6 +46,7 @@ class PluginBase(abc.ABC):
             except BaseException as e:
                 log.warning("event=[plugin_instantiation_failed] name=[%s] detail=[%s]", name, e)
 
+        cls.name2plugin = name2plugin
         return name2plugin
 
     @abc.abstractmethod
