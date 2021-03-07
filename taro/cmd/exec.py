@@ -49,7 +49,7 @@ def execute(execution, args):
         warning.setup_checking(job_instance, *args.warn)
 
     pending_latch = \
-        PendingLatch(args.pending, job_instance.create_latch(ExecutionState.PENDING)) if args.pending else None
+        PendingValueLatch(args.pending, job_instance.create_latch(ExecutionState.PENDING)) if args.pending else None
     api = Server(job_instance, pending_latch)
     api_started = api.start()  # Starts a new thread
     if not api_started:
@@ -77,7 +77,7 @@ class Term:
         self.job_instance.interrupt()  # TODO handle repeated signal
 
 
-class PendingLatch:
+class PendingValueLatch:
 
     def __init__(self, value, latch):
         self.value = value
