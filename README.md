@@ -1,56 +1,97 @@
 # taro
-Tool for monitoring and managing jobs and processes.
-Created for managing cron jobs scheduled on many remote instances from a [single client application](https://github.com/taro-suite/taroc).
+
+Tool for monitoring and managing jobs and processes. Created for managing cron jobs scheduled on many remote instances
+from [single client application](https://github.com/taro-suite/taroc).
+
+## Main Features
+
+### REST API
+
+Taro jobs can be controlled by REST API provided by server component named `taros` (taro server) which is included
+with `taro` installation.
+
+### Client Application
+
+CLI client called [taroc](https://github.com/taro-suite/taroc) (taro client) communicates, via SSH tunnel, with hosts
+running `taros` server. This model allows monitor and manage jobs deployed on multiple servers from a single
+application.
+
+### Unified logging
+
+Execution events are logged into a single log file.
+
+### Access to stdout and stderr
+
+Taro reads job output by default and makes it easily accessible.
+
+### History
+
+History of job execution is stored in SQLite database.
+
+### Execution Events Notification
+
+Execution events are listenable both locally and remotely.
+
+### Plugins
+
+Plugin infrastructure is provided for adding custom extensions.
 
 ## Terminology
+
 ### Job
-Job is a definition of a unit of work or unit of execution. A job is identified by its job ID.
-A typical example of a job is an entry in crontab.
+
+Job is a definition of a unit of work or unit of execution. A job is identified by its job ID. A typical example of a
+job is an entry in crontab.
 
 ### Job Instance
+
 A concrete execution of a job.
 
 *Job instance is often called simply a 'job' (when it doesn't cause any confusion)*
 
-## Main Features
-### Single point monitoring
-#### Unified logging for all jobs
-Execution events of all jobs are logged into a single log file.
-
-
 ## Commands
+
 ### Execute command managed by taro
+
 ```commandline
 taro exec {command} [args..]
 ```
 
-### Release pending execution
-A job can be executed in pending mode which suspends the execution before the job is actually started.
-In such case the instance is waiting in the PENDING state to be released by `release` command.
-This mode is enabled by using `--pending` option which requires one argument for a "latch" value.
-This value must be provided to the `release` command as an argument. Any job waiting for the same latch is released.
-```commandline
-taro exec --pending latch1 echo finally released
-sleep 5
-taro release latch1
-```
-
 ### Job (process) status
-You can list all running jobs (job instances) with `ps` command. This will display also more information about running jobs
-like execution start timestamp, execution time, status and others.
+
+You can list all running jobs (job instances) with `ps` command. This will display also more information about running
+jobs like execution start timestamp, execution time, status and others.
+
 ```commandline
 taro ps
 ```
 
+### Release pending execution
+
+A job can be executed in pending mode which suspends the execution before the job is actually started. In such case the
+instance is waiting in the PENDING state to be released by `release` command. This mode is enabled by using `--pending`
+option which requires one argument for a "latch" value. This value must be provided to the `release` command as an
+argument. Any job waiting for the same latch is released.
+
+```commandline
+# Server
+taro exec --pending latch1 echo finally released
+# Client
+taroc release latch1
+```
+
 ### Stop instance
+
 An instance can be stopped if it correctly handles the termination signal.
+
 ```commandline
 taro stop {job-or-instance-id}
 ```
 
 ### Listen
-A running job is primarily monitored by observing changes in its state. Each state change triggers an event which can be monitored
-by 'listen' command.
+
+A running job is primarily monitored by observing changes in its state. Each state change triggers an event which can be
+monitored by 'listen' command.
 
 *Note: Transition from `NONE` to `CREATED` state is not currently visible by this command. This may change in the future.*
 ```commandline
