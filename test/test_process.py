@@ -2,8 +2,10 @@
 Tests :mod:`process` module
 """
 from multiprocessing import Pipe
+from threading import Thread
 
 import pytest
+from time import sleep
 
 from taro import ExecutionState, ExecutionError
 from taro.process import ProcessExecution
@@ -40,3 +42,34 @@ def test_failure_exit():
 
 def exec_failure_exit():
     exit(1)
+
+
+def test_stop():
+    e = ProcessExecution(exec_never_ending_story, ())
+    t = Thread(target=stop_after, args=(0.5, e))
+    t.start()
+    term_state = e.execute()
+    assert term_state == ExecutionState.STOPPED
+
+
+def exec_never_ending_story():
+    while True:
+        sleep(0.1)
+
+
+def stop_after(sec, execution):
+    sleep(sec)
+    execution.stop()
+
+
+def test_interrupt():
+    e = ProcessExecution(exec_never_ending_story, ())
+    t = Thread(target=interrupt_after, args=(0.5, e))
+    t.start()
+    with pytest.raises(ExecutionError):
+        e.execute()
+
+
+def interrupt_after(sec, execution):
+    sleep(sec)
+    execution.interrupt()
