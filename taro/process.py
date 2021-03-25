@@ -1,10 +1,14 @@
+import logging
 from contextlib import contextmanager
-from multiprocessing.context import Process
 from multiprocessing import Queue
+from multiprocessing.context import Process
+from queue import Full, Empty
 from typing import Union
 
 from taro import ExecutionState
-from taro.execution import OutputExecution, ExecutionError
+from taro.execution import OutputExecution, ExecutionError, ExecutionOutputObserver
+
+log = logging.getLogger(__name__)
 
 
 class ProcessExecution(OutputExecution):
@@ -12,10 +16,12 @@ class ProcessExecution(OutputExecution):
     def __init__(self, target, args):
         self.target = target
         self.args = args
-        self.output_queue = Queue()
+        self.output_queue = Queue(maxsize=2048)
         self._process: Union[Process, None] = None
+        self._status = None
         self._stopped: bool = False
         self._interrupted: bool = False
+        self._output_observers = []
 
     def is_async(self) -> bool:
         return False
@@ -48,6 +54,7 @@ class ProcessExecution(OutputExecution):
             yield
         finally:
             sys.stdout = original_stdout
+            self.output_queue.close()
 
     def status(self):
         pass
@@ -63,10 +70,32 @@ class ProcessExecution(OutputExecution):
             self._process.terminate()
 
     def add_output_observer(self, observer):
-        pass
+        self._output_observers.append(observer)
 
     def remove_output_observer(self, observer):
-        pass
+        self._output_observers.remove(observer)
+
+    def _read_output(self):
+        while True:
+            try:
+                line = self.output_queue.get()
+            except Empty:
+                break
+            self._status = line
+            self._notify_output_observers(line)
+
+    def _notify_output_observers(self, output):
+        for observer in self._output_observers:
+            # noinspection PyBroadException
+            try:
+                if isinstance(observer, ExecutionOutputObserver):
+                    observer.output_update(output)
+                elif callable(observer):
+                    observer(output)
+                else:
+                    log.warning("event=[unsupported_output_observer] observer=[%s]", observer)
+            except BaseException:
+                log.exception("event=[state_observer_exception]")
 
 
 class _CapturingWriter:
@@ -78,5 +107,8 @@ class _CapturingWriter:
     def write(self, text):
         text_s = text.rstrip()
         if text_s:
-            self.exec_obj.output_queue.put(text_s)
+            try:
+                self.exec_obj.output_queue.put_nowait(text_s)
+            except Full:
+                pass  # TODO what to do with this?
         self.out.write(text)
