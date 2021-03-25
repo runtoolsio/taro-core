@@ -5,7 +5,7 @@ import pkgutil
 from types import ModuleType
 from typing import Dict
 
-from taro import JobInstance
+from taro.job import JobInstance
 
 log = logging.getLogger(__name__)
 

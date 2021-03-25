@@ -1,4 +1,5 @@
-from taro import cnf, ExecutionState, util
+from taro import cnf, util
+from taro.execution import ExecutionState
 from taro import paths
 from taro.persistence.common import SortCriteria
 

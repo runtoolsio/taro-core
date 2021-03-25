@@ -1,6 +1,6 @@
 from typing import List, Tuple
 
-from taro import JobInfo
+from taro.job import JobInfo
 from taro.api import Client
 
 

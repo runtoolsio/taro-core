@@ -1,6 +1,7 @@
 import logging
 
-from taro import PluginBase, ExecutionState
+from taro.execution import ExecutionState
+from taro.plugins import PluginBase
 from taro.api import Server
 from taro.listening import StateDispatcher, OutputDispatcher
 from taro.runner import RunnerJobInstance
