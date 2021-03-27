@@ -4,7 +4,7 @@ Command: exec
 Description: Tests of execution related to the config file
 """
 
-from test.util import run_app, create_test_config, remove_test_config
+from taro_test_util import run_app, create_test_config, remove_test_config
 
 
 def test_config_file_empty():

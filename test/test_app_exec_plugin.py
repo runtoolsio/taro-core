@@ -5,12 +5,12 @@ Command: exec
 
 import pytest
 
-import test_plugin
 import taro.cmd.exec
+import test_plugin
 from taro import runner
 from taro.execution import ExecutionState
 from taro.test.observer import TestStateObserver
-from test.util import run_app, remove_test_config, create_test_config
+from taro_test_util import run_app, remove_test_config, create_test_config
 
 
 @pytest.fixture(autouse=True)

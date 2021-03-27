@@ -7,7 +7,7 @@ import pytest
 
 from taro import runner
 from taro.test.observer import TestJobOutputObserver
-from test.util import run_app
+from taro_test_util import run_app
 
 
 @pytest.fixture()

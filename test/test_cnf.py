@@ -7,7 +7,7 @@ import pytest
 
 from taro import cnf, paths
 from taro.cnf import Config
-from test.util import create_test_config, remove_test_config
+from taro_test_util import create_test_config, remove_test_config
 
 
 @pytest.fixture(autouse=True)

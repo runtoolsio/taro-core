@@ -5,7 +5,7 @@ Command: ps
 import taro.view.instance as view_inst
 from taro import ps
 from taro.execution import ExecutionState
-from test.util import run_app, run_app_as_process_and_wait
+from taro_test_util import run_app, run_app_as_process_and_wait
 
 
 def test_job_running(capsys):

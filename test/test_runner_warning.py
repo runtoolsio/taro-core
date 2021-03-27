@@ -9,7 +9,7 @@ from taro import Warn
 from taro.execution import ExecutionState
 from taro.runner import RunnerJobInstance
 from taro.test.execution import TestExecution  # TODO package import
-from test.util import TestWarningObserver
+from taro_test_util import TestWarningObserver
 
 
 @pytest.fixture

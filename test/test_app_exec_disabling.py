@@ -8,7 +8,7 @@ import pytest
 from taro import runner
 from taro.execution import ExecutionState
 from taro.test.observer import TestStateObserver
-from test.util import run_app, create_test_config, remove_test_config, remove_test_db, test_db_path
+from taro_test_util import run_app, create_test_config, remove_test_config, remove_test_db, test_db_path
 
 
 @pytest.fixture(autouse=True)

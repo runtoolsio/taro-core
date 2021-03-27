@@ -4,12 +4,12 @@ Command: exec
 Description: Test that logging is configured according to configuration file and CLI options overrides
 """
 import logging
-
-import pytest
 from pathlib import Path
 
+import pytest
+
 from taro import log
-from test.util import run_app, create_test_config, remove_test_config
+from taro_test_util import run_app, create_test_config, remove_test_config
 
 
 @pytest.fixture(autouse=True)

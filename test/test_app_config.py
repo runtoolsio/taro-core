@@ -5,7 +5,7 @@ Command: config
 import pytest
 
 from taro import paths
-from test.util import run_app
+from taro_test_util import run_app
 
 
 def test_show_default(capsys):

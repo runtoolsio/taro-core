@@ -6,7 +6,7 @@ import pytest
 
 import taro.view.disabled as view_dis
 from taro import ps
-from test.util import run_app, create_test_config, test_db_path, remove_test_config, remove_test_db
+from taro_test_util import run_app, create_test_config, test_db_path, remove_test_config, remove_test_db
 
 
 @pytest.fixture(autouse=True)

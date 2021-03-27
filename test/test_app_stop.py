@@ -5,7 +5,7 @@ Command: stop
 import pytest
 
 from taro.execution import ExecutionState
-from test.util import run_app, run_app_as_process, run_wait
+from taro_test_util import run_app, run_app_as_process, run_wait
 
 
 def test_stop_must_specify_job(capsys):

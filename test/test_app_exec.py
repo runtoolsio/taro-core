@@ -9,7 +9,7 @@ import pytest
 from taro import runner, util, persistence
 from taro.execution import ExecutionState
 from taro.test.observer import TestStateObserver
-from test.util import run_app, TestWarningObserver, run_wait, run_app_as_process
+from taro_test_util import run_app, TestWarningObserver, run_wait, run_app_as_process
 
 
 @pytest.fixture(autouse=True)
