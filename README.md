@@ -163,20 +163,32 @@ taro enable disabled-job1 disabled-job2
 ```
 
 ### Hostinfo
-Hostinfo is a description of host where taro is installed. It consists of list of parameters where each parameter has its name and value.
-This command will display hostinfo parameters:
+
+Hostinfo is a description of host where taro is installed. It consists of list of parameters where each parameter has
+its name and value. This command will display hostinfo parameters:
+
 ```commandline
 taro hostinfo
 ```
 
+## Configuration File
+
+### Lookup
+
+1. Current working directory
+2. `$XDG_CONFIG_HOME` (env variable reading to be implemented yet)
+3. `/etc/taro` (considering change to /etc/xdg)
+
 ## Premature termination
+
 ### General
-A process can be terminated either by stop or interrupt operations.
-When a process is stopped its termination (final) state is set to STOPPED.
-When a process is interrupted its termination (final) state is set to INTERRUPTED which is a failure state.
-Choosing one of these options a user can decided whether the termination is a failure or not.
+
+A process can be terminated either by stop or interrupt operations. When a process is stopped its termination (final)
+state is set to STOPPED. When a process is interrupted its termination (final) state is set to INTERRUPTED which is a
+failure state. Choosing one of these options a user can decided whether the termination is a failure or not.
 
 ### Exec command
+
 A child process executed with `exec` command is stopped or interrupted by sending kill signal.
 Received SIGTERM (normal kill) or SIGINT (Ctrl+C) signals trigger interrupt operation.
 It is expected for terminated child process to stop executing otherwise this process will continue waiting for the child.

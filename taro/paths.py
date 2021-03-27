@@ -14,8 +14,6 @@ import os
 from pathlib import Path
 from typing import Generator
 
-TEST_DIR = 'test_temp'
-
 DEFAULT_CONFIG_FILE = 'taro.yaml'
 _MINIMAL_CONFIG_FILE = 'minimal.yaml'
 _HOSTINFO_FILE = 'hostinfo'
@@ -50,6 +48,8 @@ There's usually a multi-step search for the configuration file.
 2. User's home directory (~user/myproject.conf)
 3. A standard system-wide directory (/etc/myproject/myproject.conf)
 4. A place named by an environment variable (MYPROJECT_CONF)
+
+Related discussion: https://stackoverflow.com/questions/1024114
 """
 
 
@@ -63,7 +63,7 @@ def lookup_hostinfo_file():
 
 def lookup_config_file_path(file) -> Path:
     """
-    1. Search in the test directory first
+    1. Search in the current working directory first
     2. If non-root user search: ${XDG_CONFIG_HOME}/taro/{config-file}
     3. If not found or root user search: /etc/taro/{config-file}
 
@@ -71,20 +71,20 @@ def lookup_config_file_path(file) -> Path:
     :raise FileNotFoundError: when config lookup failed
     """
 
-    test_config = Path(TEST_DIR) / file
-    if test_config.exists():
-        return test_config
+    current_config = Path.cwd() / file
+    if current_config.exists():
+        return current_config
 
     paths = []
 
-    if not _is_root():
+    if not _is_root():  # TODO Use this also for root user?
         home_dir = Path.home()
         user_config = home_dir / '.config' / 'taro' / file
         paths.append(user_config)
         if user_config.exists():
             return user_config
 
-    system_config = Path('/etc/taro') / file
+    system_config = Path('/etc/taro') / file  # TODO Should be /etc/xdg instead?
     paths.append(system_config)
     if system_config.exists():
         return system_config
