@@ -3,8 +3,7 @@ from collections import Iterable
 
 import yaml
 
-import cfg
-from taro import util, paths
+from taro import cfg, util, paths
 from taro.util import NestedNamespace
 
 LOG_ENABLED = 'log.enabled'

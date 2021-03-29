@@ -1,9 +1,10 @@
 import functools
-import itertools
 import os
 import secrets
 from datetime import datetime, timezone
 from types import SimpleNamespace
+
+import itertools
 
 
 class NestedNamespace(SimpleNamespace):
@@ -109,7 +110,7 @@ def format_timedelta(td):
 
 
 def expand_user(file):
-    if file is None or not file.startswith('~'):
+    if not isinstance(file, str) or not file.startswith('~'):
         return file
 
     return os.path.expanduser(file)
