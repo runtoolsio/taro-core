@@ -5,13 +5,9 @@ Reads CLI arguments to initialize and modify :mod:`cfg` module during initializa
 from taro import paths, cfgfile, cfg
 
 
-def init_config(args):
+def load_config(args):
     if not args.get('min_config'):
-        _load_config(args)
-
-
-def _load_config(args):
-    cfgfile.load(_get_config_file_path(args))
+        cfgfile.load(_get_config_file_path(args))
 
 
 def _get_config_file_path(args):

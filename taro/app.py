@@ -1,6 +1,7 @@
 import sys
 
-from taro import cli, cmd
+from taro import cli, cmd, argsconfig
+from taro.util import NestedNamespace
 
 
 def main_cli():
@@ -8,8 +9,27 @@ def main_cli():
 
 
 def main(args):
+    """Taro CLI app main function.
+
+    Note: Configuration is setup before execution of all commands although not all commands require it.
+          This practice increases safety (in regards with future extensions) and consistency.
+          Performance impact is expected to be negligible.
+
+    :param args: CLI arguments
+    """
     args = cli.parse_args(args)
-    cmd.run(args)
+    args_ns = NestedNamespace(**vars(args))
+    setup_config(args_ns)
+    cmd.run(args_ns)
+
+
+def setup_config(args):
+    """Load and setup config according to provided CLI arguments
+
+    :param args: CLI arguments
+    """
+    argsconfig.load_config(args)
+    argsconfig.override_config(args)
 
 
 if __name__ == '__main__':
