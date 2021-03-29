@@ -1,11 +1,10 @@
-from taro import cnf, persistence, jfilter, ps
+from taro import persistence, jfilter, ps
 from taro.jfilter import AllFilter
 from taro.persistence import SortCriteria
 from taro.view import instance as view_inst
 
 
 def run(args):
-    cnf.init(args)
     persistence.init()
 
     try:

@@ -3,7 +3,7 @@ import re
 from argparse import RawTextHelpFormatter
 from datetime import datetime
 
-from taro import cnf, warning, ExecutionState
+from taro import warning, ExecutionState, cfgfile
 from taro.persistence import SortCriteria
 
 ACTION_EXEC = 'exec'
@@ -87,13 +87,13 @@ def _init_exec_parser(common, subparsers):
     # Config override options
     config_group = exec_parser.add_argument_group('config override', 'these options override entries from config file')
     config_group.add_argument('--log-enabled', type=_str2bool, metavar="{{{}}}".format(','.join(_all_boolean_options)),
-                              help='overrides ' + cnf.LOG_ENABLED)
+                              help='overrides ' + cfgfile.LOG_ENABLED)
     config_group.add_argument('--log-stdout', type=str, choices=_log_levels,
-                              help='overrides ' + cnf.LOG_STDOUT_LEVEL)
+                              help='overrides ' + cfgfile.LOG_STDOUT_LEVEL)
     config_group.add_argument('--log-file', type=str, choices=_log_levels,
-                              help='overrides ' + cnf.LOG_FILE_LEVEL)
+                              help='overrides ' + cfgfile.LOG_FILE_LEVEL)
     config_group.add_argument('--log-file-path', type=str, metavar='PATH',
-                              help='overrides ' + cnf.LOG_FILE_PATH)
+                              help='overrides ' + cfgfile.LOG_FILE_PATH)
 
     # Terms command and arguments taken from python doc and docker run help,
     # for this app (or rather exec command) these are operands (alternatively arguments)
@@ -274,7 +274,6 @@ def _init_show_config_parser(common, subparsers):
         ACTION_CONFIG_SHOW, parents=[common],
         description='Print config used by exec command or config specified by an option', add_help=False)
     show_config_parser.add_argument('-dc', '--def-config', action='store_true', help='show default config')
-    show_config_parser.add_argument('-mc', '--min-config', action='store_true', help='show minimum config')
 
     config_subparsers.add_parser(ACTION_CONFIG_PATH, parents=[common], description='Print path to config',
                                  add_help=False)

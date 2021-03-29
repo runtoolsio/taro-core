@@ -1,9 +1,8 @@
-from taro import cnf, persistence, ps
+from taro import persistence, ps
 from taro.view import disabled as view_dis
 
 
 def run(args):
-    cnf.init(args)
     persistence_enabled = persistence.init()
     if not persistence_enabled:
         print("Persistence is disabled")

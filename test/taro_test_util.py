@@ -1,3 +1,4 @@
+import importlib
 from multiprocessing.context import Process
 from pathlib import Path
 from typing import Dict, Tuple
@@ -6,7 +7,7 @@ import prompt_toolkit
 import yaml
 from prompt_toolkit.output import DummyOutput
 
-from taro import app, program, paths, JobInfo, Warn, WarningObserver
+from taro import app, program, paths, JobInfo, Warn, WarningObserver, cfg
 from taro.job import WarnEventCtx
 
 
@@ -23,6 +24,8 @@ def run_app(command, shell=False):
     :param shell: use shell for executing command
     :return: output of the executed command
     """
+    importlib.reload(cfg)
+
     program.USE_SHELL = shell
     # Prevent UnsupportedOperation error: https://github.com/prompt-toolkit/python-prompt-toolkit/issues/1107
     prompt_toolkit.output.defaults.create_output = NoFormattingOutput

@@ -6,11 +6,11 @@ IMPLEMENTATION NOTE:
     Avoid importing any module depending on any external package. This allows to use this module without installing
     additional packages.
 """
-from .managed import create_job_instance
-from .cnf import read_config
+from .cfgfile import read_config
 from .execution import ExecutionStateGroup, ExecutionState, ExecutionError, ExecutionLifecycle
 from .hostinfo import read_hostinfo, HostinfoError
 from .job import JobInstance, JobInfo, ExecutionStateObserver, Warn, WarningObserver, WarnEventCtx
+from .managed import create_job_instance
 from .paths import lookup_config_file_path
 from .plugins import PluginBase, PluginDisabledError
 from .util import NestedNamespace, format_timedelta

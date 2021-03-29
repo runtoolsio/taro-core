@@ -18,10 +18,10 @@ def remove_config_if_created():
     remove_test_config()
 
 
-def test_logging_enabled_by_default():
+def test_logging_disabled_by_default():
     create_test_config(dict())
     run_app('exec echo')
-    assert not log.is_disabled()
+    assert log.is_disabled()
 
 
 def test_logging_enabled_in_config():
@@ -48,31 +48,31 @@ def test_logging_disabled():
 
 
 def test_logging_stdout_level_in_config():
-    create_test_config({"log": {"stdout": {"level": "error"}}})
+    create_test_config({"log": {"enabled": True, "stdout": {"level": "error"}}})
     run_app('exec echo')
     assert logging.ERROR == log.get_console_level()
 
 
 def test_logging_stdout_level_cli_override():
-    create_test_config({"log": {"stdout": {"level": "error"}}})
+    create_test_config({"log": {"enabled": True, "stdout": {"level": "error"}}})
     run_app('exec --log-stdout warn echo')
     assert logging.WARN == log.get_console_level()
 
 
 def test_logging_file_level_in_config():
-    create_test_config({"log": {"file": {"level": "error"}}})
+    create_test_config({"log": {"enabled": True, "file": {"level": "error"}}})
     run_app('exec echo')
     assert logging.ERROR == log.get_file_level()
 
 
 def test_logging_file_level_cli_override():
-    create_test_config({"log": {"file": {"level": "error"}}})
+    create_test_config({"log": {"enabled": True, "file": {"level": "error"}}})
     run_app('exec --log-file warn echo')
     assert logging.WARN == log.get_file_level()
 
 
 def test_logging_file_path_in_config():
-    create_test_config({"log": {"file": {"level": "error", "path": "to_liberation.log"}}})
+    create_test_config({"log": {"enabled": True, "file": {"level": "error", "path": "to_liberation.log"}}})
     try:
         run_app('exec echo')
         assert log.get_file_path().endswith('to_liberation.log')
@@ -83,7 +83,7 @@ def test_logging_file_path_in_config():
 
 
 def test_logging_file_path_cli_override():
-    create_test_config({"log": {"file": {"level": "error", "path": "to_liberation.log"}}})
+    create_test_config({"log": {"enabled": True, "file": {"level": "error", "path": "to_liberation.log"}}})
     try:
         run_app('exec --log-file-path to_nowhere.log echo')
         assert log.get_file_path().endswith('to_nowhere.log')

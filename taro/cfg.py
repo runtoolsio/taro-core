@@ -19,6 +19,6 @@ log_file_path = None
 
 persistence_enabled = False
 persistence_type = PersistenceType.NONE
-persistence_db = ''
+persistence_database = ''
 
 plugins = ()

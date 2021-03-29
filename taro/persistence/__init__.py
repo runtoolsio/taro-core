@@ -1,6 +1,6 @@
-from taro import cnf, util
-from taro.execution import ExecutionState
 from taro import paths
+from taro import util, cfg
+from taro.execution import ExecutionState
 from taro.persistence.common import SortCriteria
 
 
@@ -57,11 +57,11 @@ _persistence = NoPersistence()
 def init():
     global _persistence
 
-    if cnf.config.persistence_enabled:  # TODO check is sqlite
+    if cfg.persistence_enabled:  # TODO check is sqlite
         import sqlite3
         from taro.persistence.sqlite import SQLite
 
-        db_con = sqlite3.connect(cnf.config.persistence_database or str(paths.sqlite_db_path(True)))
+        db_con = sqlite3.connect(cfg.persistence_database or str(paths.sqlite_db_path(True)))
         sqlite_ = SQLite(db_con)
         sqlite_.check_tables_exist()
         _persistence = sqlite_

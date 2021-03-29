@@ -1,12 +1,11 @@
 import sys
 
-from taro import cnf, persistence
+from taro import persistence
 from taro.job import DisabledJob
 from taro.util import utc_now
 
 
 def run(args):
-    cnf.init(args)
     persistence_enabled = persistence.init()
 
     if not persistence_enabled:

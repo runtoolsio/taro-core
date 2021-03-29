@@ -1,9 +1,9 @@
 import logging
 import signal
 
-from taro import cnf, warning, managed, PluginBase
 from taro import log
 from taro import persistence
+from taro import warning, managed, PluginBase, cfg
 from taro.program import ProgramExecution
 from taro.test.execution import TestExecution
 
@@ -13,10 +13,9 @@ EXT_PLUGIN_MODULE_PREFIX = 'taro_'
 
 
 def run(args):
-    cnf.init(args)
     log.init()
     persistence.init()
-    PluginBase.load_plugins(EXT_PLUGIN_MODULE_PREFIX, cnf.config.plugins)
+    PluginBase.load_plugins(EXT_PLUGIN_MODULE_PREFIX, cfg.plugins)
 
     job_id = args.id or " ".join([args.command] + args.arg)
     if args.dry_run:

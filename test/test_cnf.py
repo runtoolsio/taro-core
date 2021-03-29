@@ -5,8 +5,7 @@ Description: Config related tests
 
 import pytest
 
-from taro import cnf, paths
-from taro.cnf import Config
+from taro import paths, cfgfile
 from taro_test_util import create_test_config, remove_test_config
 
 
@@ -66,4 +65,4 @@ def test_not_str_type_ignored():
 
 
 def _read_config():
-    return cnf.read_config(paths.lookup_config_file())
+    return cfgfile.read_config(paths.lookup_config_file())

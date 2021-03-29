@@ -1,10 +1,9 @@
 import sys
 
-from taro import cnf, persistence
+from taro import persistence
 
 
 def run(args):
-    cnf.init(args)
     persistence_enabled = persistence.init()
 
     if not persistence_enabled:

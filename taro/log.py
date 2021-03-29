@@ -1,8 +1,9 @@
 import logging
-import sys
 from logging import handlers
 
-from taro import cnf
+import sys
+
+from taro import cfg
 from taro import paths
 from taro.util import expand_user
 
@@ -16,20 +17,18 @@ FILE_HANDLER = 'file-handler'
 
 
 def init():
-    config = cnf.config
-
     _root_logger.disabled = False  # Resetting required for tests
 
-    if not config.log_enabled:
+    if not cfg.log_enabled:
         disable()
         return
 
-    if config.log_stdout_level != 'off':
-        setup_console(config.log_stdout_level)
+    if cfg.log_stdout_level != 'off':
+        setup_console(cfg.log_stdout_level)
 
-    if config.log_file_level != 'off':
-        log_file_path = expand_user(config.log_file_path) or paths.log_file_path(create=True)
-        setup_file(config.log_file_level, log_file_path)
+    if cfg.log_file_level != 'off':
+        log_file_path = expand_user(cfg.log_file_path) or paths.log_file_path(create=True)
+        setup_file(cfg.log_file_level, log_file_path)
 
 
 def disable():
