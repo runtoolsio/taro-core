@@ -8,17 +8,27 @@ from enum import Enum
 
 
 class PersistenceType(Enum):
-    NONE = 1
-    SQL_LITE = 2
+    SQL_LITE = 1
 
 
-log_enabled = False
-log_stdout_level = 'off'
-log_file_level = 'off'
-log_file_path = None
+DEF_LOG_ENABLED = False
+DEF_LOG_STDOUT_LEVEL = 'off'
+DEF_LOG_FILE_LEVEL = 'off'
+DEF_LOG_FILE_PATH = None
 
-persistence_enabled = False
-persistence_type = PersistenceType.NONE
-persistence_database = ''
+DEF_PERSISTENCE_ENABLED = False
+DEF_PERSISTENCE_TYPE = PersistenceType.SQL_LITE
+DEF_PERSISTENCE_DATABASE = ''
 
-plugins = ()
+DEF_PLUGINS = ()
+
+log_enabled = DEF_LOG_ENABLED
+log_stdout_level = DEF_LOG_STDOUT_LEVEL
+log_file_level = DEF_LOG_FILE_LEVEL
+log_file_path = DEF_LOG_FILE_PATH
+
+persistence_enabled = DEF_PERSISTENCE_ENABLED
+persistence_type = DEF_PERSISTENCE_TYPE
+persistence_database = DEF_PERSISTENCE_DATABASE
+
+plugins = DEF_PLUGINS

@@ -1,6 +1,7 @@
 import sys
 
-from taro import cli, cmd, argsconfig
+from taro import cli, cmd, argsconfig, persistence
+from taro.persistence.none import PersistenceDisabledError
 from taro.util import NestedNamespace
 
 
@@ -20,7 +21,13 @@ def main(args):
     args = cli.parse_args(args)
     args_ns = NestedNamespace(**vars(args))
     setup_config(args_ns)
-    cmd.run(args_ns)
+    try:
+        cmd.run(args_ns)
+    except PersistenceDisabledError:
+        print('This command cannot be executed with disabled persistence. Enable persistence in config file first.',
+              file=sys.stderr)
+    finally:
+        persistence.close()
 
 
 def setup_config(args):

@@ -1,22 +1,14 @@
 """
 Tests :mod:`runner` module
 """
+import time
 from threading import Thread
 
-import pytest
-import time
-
 import taro.runner as runner
-from taro import persistence
 from taro.execution import ExecutionState as ExSt, ExecutionError
 from taro.program import ProgramExecution
 from taro.runner import RunnerJobInstance
 from taro.test.execution import TestExecution  # TODO package import
-
-
-@pytest.fixture(autouse=True)
-def disable_persistence():
-    persistence.disable()
 
 
 def test_executed():

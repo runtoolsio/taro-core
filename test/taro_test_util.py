@@ -1,4 +1,3 @@
-import importlib
 from multiprocessing.context import Process
 from pathlib import Path
 from typing import Dict, Tuple
@@ -9,6 +8,19 @@ from prompt_toolkit.output import DummyOutput
 
 from taro import app, program, paths, JobInfo, Warn, WarningObserver, cfg
 from taro.job import WarnEventCtx
+
+
+def reset_config():
+    cfg.log_enabled = cfg.DEF_LOG_ENABLED
+    cfg.log_stdout_level = cfg.DEF_LOG_STDOUT_LEVEL
+    cfg.log_file_level = cfg.DEF_LOG_FILE_LEVEL
+    cfg.log_file_path = cfg.DEF_LOG_FILE_PATH
+
+    cfg.persistence_enabled = cfg.DEF_PERSISTENCE_ENABLED
+    cfg.persistence_type = cfg.PersistenceType.SQL_LITE
+    cfg.persistence_database = cfg.DEF_PERSISTENCE_DATABASE
+
+    cfg.plugins = cfg.DEF_PLUGINS
 
 
 def run_app_as_process(command, daemon=False, shell=False) -> Process:
@@ -24,8 +36,6 @@ def run_app(command, shell=False):
     :param shell: use shell for executing command
     :return: output of the executed command
     """
-    importlib.reload(cfg)
-
     program.USE_SHELL = shell
     # Prevent UnsupportedOperation error: https://github.com/prompt-toolkit/python-prompt-toolkit/issues/1107
     prompt_toolkit.output.defaults.create_output = NoFormattingOutput
@@ -87,8 +97,7 @@ def _test_config_path() -> Path:
 
 
 def test_db_path() -> Path:
-    base_path = Path(__file__).parent
-    return base_path / 'test.db'
+    return Path.cwd() / 'test.db'
 
 
 class NoFormattingOutput(DummyOutput):
