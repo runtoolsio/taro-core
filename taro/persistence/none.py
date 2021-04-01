@@ -22,4 +22,4 @@ class NoPersistence:
 class PersistenceDisabledError(Exception):
 
     def __init__(self):
-        super().__init__('Executed logic depending on data persistence. However persistence is disabled in the config.')
+        super().__init__('Executed logic depends on data persistence; however, persistence is disabled in the config.')
