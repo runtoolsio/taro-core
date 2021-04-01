@@ -29,6 +29,7 @@ def load(config=None):
     cfg.log_file_path = cns.get(LOG_FILE_PATH, default=cfg.log_file_path, type_=str)
 
     cfg.persistence_enabled = cns.get(PERSISTENCE_ENABLED, default=cfg.persistence_enabled, type_=bool)
+    cfg.persistence_type = cns.get(PERSISTENCE_TYPE, default=cfg.persistence_type, type_=str)
     cfg.persistence_database = cns.get(PERSISTENCE_DATABASE, default=cfg.persistence_database, type_=str)
 
     plugins = cns.get(PLUGINS)

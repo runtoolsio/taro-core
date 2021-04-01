@@ -7,7 +7,6 @@ import os
 import pytest
 
 from taro import runner, util, persistence, cfg
-from taro.cfg import PersistenceType
 from taro.execution import ExecutionState
 from taro.test.observer import TestStateObserver
 from taro_test_util import run_app, TestWarningObserver, run_wait, run_app_as_process, test_db_path
@@ -66,7 +65,7 @@ def test_no_overlap(observer: TestStateObserver):
 
 def test_job_persisted():
     cfg.persistence_enabled = True
-    cfg.persistence_type = PersistenceType.SQL_LITE
+    cfg.persistence_type = 'sqlite'
     cfg.persistence_database = str(test_db_path())
 
     try:

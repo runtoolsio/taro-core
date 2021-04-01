@@ -17,7 +17,7 @@ def reset_config():
     cfg.log_file_path = cfg.DEF_LOG_FILE_PATH
 
     cfg.persistence_enabled = cfg.DEF_PERSISTENCE_ENABLED
-    cfg.persistence_type = cfg.PersistenceType.SQL_LITE
+    cfg.persistence_type = cfg.DEF_PERSISTENCE_ENABLED
     cfg.persistence_database = cfg.DEF_PERSISTENCE_DATABASE
 
     cfg.plugins = cfg.DEF_PLUGINS

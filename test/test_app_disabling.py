@@ -6,14 +6,13 @@ import pytest
 
 import taro.view.disabled as view_dis
 from taro import ps, cfg
-from taro.cfg import PersistenceType
 from taro_test_util import run_app, test_db_path, remove_test_db
 
 
 @pytest.fixture(autouse=True)
 def remove_config_if_created():
     cfg.persistence_enabled = True
-    cfg.persistence_type = PersistenceType.SQL_LITE
+    cfg.persistence_type = 'sqlite'
     cfg.persistence_database = str(test_db_path())
     yield
     remove_test_db()

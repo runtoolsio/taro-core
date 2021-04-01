@@ -4,12 +4,6 @@ Implementation of config pattern:
 https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-across-modules
 """
 
-from enum import Enum
-
-
-class PersistenceType(Enum):
-    SQL_LITE = 1
-
 
 DEF_LOG_ENABLED = False
 DEF_LOG_STDOUT_LEVEL = 'off'
@@ -17,7 +11,7 @@ DEF_LOG_FILE_LEVEL = 'off'
 DEF_LOG_FILE_PATH = None
 
 DEF_PERSISTENCE_ENABLED = False
-DEF_PERSISTENCE_TYPE = PersistenceType.SQL_LITE
+DEF_PERSISTENCE_TYPE = 'sqlite'
 DEF_PERSISTENCE_DATABASE = ''
 
 DEF_PLUGINS = ()
