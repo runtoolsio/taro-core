@@ -1,7 +1,7 @@
 import sys
 
 from taro import cli, cmd, argsconfig, persistence
-from taro.persistence.none import PersistenceDisabledError
+from taro.persistence import PersistenceDisabledError
 from taro.util import NestedNamespace
 
 

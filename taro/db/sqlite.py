@@ -1,12 +1,20 @@
 import logging
+import sqlite3
 from typing import List
 
-from taro import util
+from taro import util, cfg, paths
 from taro.execution import ExecutionState, ExecutionError, ExecutionLifecycle
 from taro.job import JobInfo, DisabledJob
 from taro.persistence import SortCriteria
 
 log = logging.getLogger(__name__)
+
+
+def create_persistence():
+    db_con = sqlite3.connect(cfg.persistence_database or str(paths.sqlite_db_path(True)))
+    sqlite_ = SQLite(db_con)
+    sqlite_.check_tables_exist()
+    return sqlite_
 
 
 def _to_job_info(t):
