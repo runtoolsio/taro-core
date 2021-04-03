@@ -151,10 +151,11 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._notify_warning_observers(self.create_info(), warning, WarnEventCtx(self._warnings[warning.name]))  # Lock?
 
     def run(self):
-        for disabled in persistence.read_disabled_jobs():
-            if (disabled.regex and re.compile(disabled.job_id).match(self.job_id)) or disabled.job_id == self.job_id:
-                self._state_change(ExecutionState.DISABLED)
-                return
+        if persistence.is_enabled():
+            for disabled in persistence.read_disabled_jobs():
+                if (disabled.regex and re.compile(disabled.job_id).match(self.job_id)) or disabled.job_id == self.job_id:
+                    self._state_change(ExecutionState.DISABLED)
+                    return
 
         if self._latch and not self._stopped_or_interrupted:
             self._state_change(self._latch_wait_state)  # TODO Race condition?
@@ -209,7 +210,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 job_info = self.create_info()  # Be sure both new_state and exec_error are already set
 
         if job_info:
-            if new_state.is_terminal():
+            if new_state.is_terminal() and persistence.is_enabled():
                 persistence.store_job(job_info)
             self._notify_state_observers(job_info)
 

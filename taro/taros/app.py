@@ -15,7 +15,7 @@ def instances():
 
     if request.GET.get('finished') is not None:  # Check if `finished` query param without value is present
         sort = query('sort', default='created', allowed=[c.name.lower() for c in SortCriteria])
-        if not persistence.init():
+        if not persistence.is_enabled():
             raise http_error(409, "Persistence is not enabled in the config file")
         jobs_info = persistence.read_jobs(sort=SortCriteria[sort.upper()], asc=asc, limit=limit)
     else:

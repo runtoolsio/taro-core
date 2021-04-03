@@ -3,13 +3,17 @@ import pkgutil
 from enum import Enum
 
 import taro.db
-from taro import cfg, ExecutionState, util
-from taro import paths
+from taro import cfg
+from taro.execution import ExecutionState
+
+
+def is_enabled():
+    return cfg.persistence_enabled
 
 
 def _load_persistence(type_):
     if not cfg.persistence_enabled:
-        return MemoryPersistence()
+        return NoPersistence()
 
     for finder, name, is_pkg in pkgutil.iter_modules(taro.db.__path__, taro.db.__name__ + "."):
         if name == taro.db.__name__ + "." + type_:
@@ -39,16 +43,6 @@ _persistence = PersistenceHolder()
 
 def _instance():
     return _persistence[cfg.persistence_type]
-
-
-def _init_sqlite():
-    import sqlite3
-    from taro.db.sqlite import SQLite
-
-    db_con = sqlite3.connect(cfg.persistence_database or str(paths.sqlite_db_path(True)))
-    sqlite_ = SQLite(db_con)
-    sqlite_.check_tables_exist()
-    return sqlite_
 
 
 class SortCriteria(Enum):
@@ -81,17 +75,6 @@ def close():
     _persistence.close()
 
 
-class PersistenceError(Exception):
-    pass
-
-
-class PersistenceNotFoundError(PersistenceError):
-
-    def __init__(self, module_):
-        super().__init__(f'Cannot find persistence module {module_}. Ensure the module is installed '
-                         f'or check that persistence type value in the config is correct.')
-
-
 def _sort_key(sort: SortCriteria):
     def key(j):
         if sort == SortCriteria.CREATED:
@@ -103,40 +86,6 @@ def _sort_key(sort: SortCriteria):
         raise ValueError(sort)
 
     return key
-
-
-class MemoryPersistence:
-
-    def __init__(self):
-        self._jobs = []
-        self._disabled_jobs = []
-
-    def read_jobs(self, *, sort, asc, limit):
-        return util.sequence_view(self._jobs, sort_key=_sort_key(sort), asc=asc, limit=limit)
-
-    def store_job(self, job_info):
-        self._jobs.append(job_info)
-
-    def add_disabled_jobs(self, disabled_jobs):
-        to_add = [d for d in disabled_jobs if not any(d.job_id == j.job_id for j in self._disabled_jobs)]
-        self._disabled_jobs += to_add
-        return to_add
-
-    def remove_disabled_jobs(self, job_ids):
-        removed = []
-        for job_id in job_ids:
-            try:
-                self._disabled_jobs.remove(job_id)
-                removed.append(job_id)
-            except ValueError:
-                continue
-        return removed
-
-    def read_disabled_jobs(self):
-        return self._disabled_jobs
-
-    def close(self):
-        pass
 
 
 class NoPersistence:
@@ -160,7 +109,18 @@ class NoPersistence:
         pass
 
 
-class PersistenceDisabledError(Exception):
+class PersistenceError(Exception):
+    pass
+
+
+class PersistenceNotFoundError(PersistenceError):
+
+    def __init__(self, module_):
+        super().__init__(f'Cannot find persistence module {module_}. Ensure the module is installed '
+                         f'or check that persistence type value in the config is correct.')
+
+
+class PersistenceDisabledError(PersistenceError):
 
     def __init__(self):
         super().__init__('Executed logic depends on data persistence; however, persistence is disabled in the config.')
