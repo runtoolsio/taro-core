@@ -23,7 +23,7 @@ def load(config=None):
     cns = read_config(config_path)
     log.debug("event=[config_file_loaded] path=[%s] content=[%s]", config_path, cns)
 
-    cfg.log_enabled = cns.get('log.enabled', default=cfg.log_enabled, type_=bool)
+    cfg.log_enabled = cns.get(LOG_ENABLED, default=cfg.log_enabled, type_=bool)
     cfg.log_stdout_level = cns.get(LOG_STDOUT_LEVEL, default=cfg.log_stdout_level, type_=str).lower()
     cfg.log_file_level = cns.get(LOG_FILE_LEVEL, default=cfg.log_file_level, type_=str).lower()
     cfg.log_file_path = cns.get(LOG_FILE_PATH, default=cfg.log_file_path, type_=str)
