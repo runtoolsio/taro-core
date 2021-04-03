@@ -6,14 +6,14 @@ from taro import paths, cfgfile, cfg
 
 
 def load_config(args):
-    if not args.get('min_config'):
+    if not getattr(args, 'min_config', False):
         cfgfile.load(get_config_file_path(args))
 
 
 def get_config_file_path(args):
-    if args.get('config'):
+    if getattr(args, 'config', None):
         return args.config
-    if args.get('def_config'):
+    if getattr(args, 'def_config', False):
         return paths.default_config_file_path()
 
     return paths.lookup_config_file()
@@ -34,7 +34,7 @@ def override_config(args):
     }
 
     for arg, cfg_attr in arg2config_attr.items():
-        arg_value = args.get(arg)
+        arg_value = getattr(args, arg, None)
         if not hasattr(cfg, cfg_attr):
             raise AttributeError("Module `cfg` does not have attribute: " + cfg_attr)
         if arg_value is not None:

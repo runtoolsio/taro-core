@@ -18,8 +18,7 @@ def main(args):
 
     :param args: CLI arguments
     """
-    args = cli.parse_args(args)
-    args_ns = NestedNamespace(**vars(args))
+    args_ns = cli.parse_args(args)
     setup_config(args_ns)
     try:
         cmd.run(args_ns)
