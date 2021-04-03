@@ -10,12 +10,23 @@ import itertools
 class NestedNamespace(SimpleNamespace):
 
     def get(self, fields: str, default=None, type_=None):
+        """Similar to `getattr` but supports chained dot notation for safely accessing nested fields.
+
+        :param fields: field names separated by dot
+        :param default: value returned if (possible nested) attribute is not found or is `None`
+        :param type_: expected type of the attribute value, an exception is raised if does not match
+        :returns: a value of the attribute
+        """
         return get_attr(self, fields, default, type_)
 
 
 # Martijn Pieters' solution below: https://stackoverflow.com/questions/50490856
 @functools.singledispatch
 def wrap_namespace(ob) -> NestedNamespace:
+    """Converts provided dictionary and all dictionaries in its value trees to nested namespace.
+
+    This allows to access nested fields using chained dot notation: value = ns.top.nested
+    """
     return ob
 
 
@@ -41,7 +52,7 @@ def _getattr(obj, fields, default, type_):
 
     if len(fields) == 1:
         if type_ and not isinstance(attr, type_):
-            return default
+            raise TypeError(f"{attr} is not instance of {type_}")
         return attr
     else:
         return _getattr(attr, fields[1:], default, type_)
