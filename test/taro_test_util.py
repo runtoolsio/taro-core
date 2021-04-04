@@ -7,7 +7,7 @@ import yaml
 from prompt_toolkit.output import DummyOutput
 
 from taro import program, paths, JobInfo, Warn, WarningObserver, cfg
-from taroapp import app
+from taroapp import __main__
 from taro.job import WarnEventCtx
 
 
@@ -41,7 +41,7 @@ def run_app(command, shell=False):
     # Prevent UnsupportedOperation error: https://github.com/prompt-toolkit/python-prompt-toolkit/issues/1107
     prompt_toolkit.output.defaults.create_output = NoFormattingOutput
     try:
-        app.main(command.split())
+        __main__.main(command.split())
     finally:
         prompt_toolkit.output.defaults.create_output = None
         program.USE_SHELL = False
