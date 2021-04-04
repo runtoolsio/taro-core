@@ -2,8 +2,8 @@
 Tests :mod:`app` module
 Command: ps
 """
-import taro.view.instance as view_inst
-from taro import ps
+import taroapp.view.instance as view_inst
+from taroapp import ps
 from taro.execution import ExecutionState
 from taro_test_util import run_app, run_app_as_process_and_wait
 

@@ -1,7 +1,7 @@
 """
 Alias for history command
 """
-from taro.cmd import history
+from taroapp.cmd import history
 
 
 def run(args):

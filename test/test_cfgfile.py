@@ -12,7 +12,6 @@ from taro_test_util import create_test_config, remove_test_config
 
 @pytest.fixture(autouse=True)
 def remove_config_if_created():
-    importlib.reload(cfg)
     yield
     remove_test_config()
 
@@ -50,8 +49,7 @@ def test_plugins_array():
     assert cfg.plugins == ("p1", "p2")
 
 
-def test_not_str_type_ignored():
-    """When non-str value is used in str field then it gets default value"""
+def test_not_str_type_raises_error():
     create_test_config({"log": {"stdout": {"level": 3}}})  # Non-str value
-    cfgfile.load()
-    assert cfg.log_stdout_level == 'off'
+    with pytest.raises(TypeError):
+        cfgfile.load()

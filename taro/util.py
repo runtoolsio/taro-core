@@ -51,7 +51,7 @@ def _getattr(obj, fields, default, type_):
         return default
 
     if len(fields) == 1:
-        if type_ and not isinstance(attr, type_):
+        if attr is not None and type_ and not isinstance(attr, type_):
             raise TypeError(f"{attr} is not instance of {type_}")
         return attr
     else:

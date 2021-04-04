@@ -1,5 +1,5 @@
-from taro import ps
-from taro.ps import Column
+from taroapp import ps
+from taroapp.ps import Column
 
 JOB_ID = Column('DISABLED JOB ID', 30, lambda dj: dj.job_id)
 REGEX = Column('REGEX', 30, lambda dj: 'yes' if dj.regex else 'no')

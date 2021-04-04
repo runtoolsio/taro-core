@@ -1,8 +1,8 @@
 import sys
 
-from taro import cli, cmd, argsconfig, persistence
+from taro import persistence
+from taroapp import cmd, argsconfig, cli
 from taro.persistence import PersistenceDisabledError
-from taro.util import NestedNamespace
 
 
 def main_cli():

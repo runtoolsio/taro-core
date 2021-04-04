@@ -4,8 +4,9 @@ Command: [disable|list-disabled]
 """
 import pytest
 
-import taro.view.disabled as view_dis
-from taro import ps, cfg
+import taroapp.view.disabled as view_dis
+from taro import cfg
+from taroapp import ps
 from taro_test_util import run_app, test_db_path, remove_test_db
 
 

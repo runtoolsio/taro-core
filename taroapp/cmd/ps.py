@@ -1,5 +1,6 @@
-from taro import ps, client
-from taro.view import instance as view_inst
+from taro import client
+from taroapp import ps
+from taroapp.view import instance as view_inst
 
 
 def run(args):

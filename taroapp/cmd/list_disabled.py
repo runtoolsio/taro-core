@@ -1,5 +1,6 @@
-from taro import persistence, ps
-from taro.view import disabled as view_dis
+from taro import persistence
+from taroapp import ps
+from taroapp.view import disabled as view_dis
 
 
 def run(args):

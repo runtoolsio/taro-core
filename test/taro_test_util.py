@@ -6,7 +6,8 @@ import prompt_toolkit
 import yaml
 from prompt_toolkit.output import DummyOutput
 
-from taro import app, program, paths, JobInfo, Warn, WarningObserver, cfg
+from taro import program, paths, JobInfo, Warn, WarningObserver, cfg
+from taroapp import app
 from taro.job import WarnEventCtx
 
 

@@ -1,9 +1,10 @@
-"""
-Global configuration
+"""Global configuration
+
 Implementation of config pattern:
 https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-across-modules
 """
 
+# ------------ DEFAULT VALUES ------------ #
 
 DEF_LOG_ENABLED = False
 DEF_LOG_STDOUT_LEVEL = 'off'
@@ -15,6 +16,8 @@ DEF_PERSISTENCE_TYPE = 'sqlite'
 DEF_PERSISTENCE_DATABASE = ''
 
 DEF_PLUGINS = ()
+
+# ------------ CONFIG VALUES ------------ #
 
 log_enabled = DEF_LOG_ENABLED
 log_stdout_level = DEF_LOG_STDOUT_LEVEL

@@ -3,7 +3,8 @@ Commands related to configuration.
 Show: shows path and content of the config file
 """
 
-from taro import cli, cfgfile, argsconfig
+from taro import cfgfile
+from taroapp import argsconfig, cli
 
 
 def run(args):

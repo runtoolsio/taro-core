@@ -1,8 +1,8 @@
 import os
 
-from taro import ps
+from taroapp import ps
 from taro.api import Client
-from taro.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
+from taroapp.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
 
 
 def run(args):

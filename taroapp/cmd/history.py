@@ -1,7 +1,8 @@
-from taro import persistence, jfilter, ps
-from taro.jfilter import AllFilter
+from taro import persistence
+from taroapp import ps, jfilter
+from taroapp.jfilter import AllFilter
 from taro.persistence import SortCriteria
-from taro.view import instance as view_inst
+from taroapp.view import instance as view_inst
 
 
 def run(args):
