@@ -35,7 +35,7 @@ setuptools.setup(
     },
     entry_points={
         "console_scripts": [
-            "taro = taro.app:main_cli",
+            "taro = taroapp:main_cli",
         ]
     },
 )
