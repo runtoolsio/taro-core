@@ -2,9 +2,9 @@ import json
 
 from bottle import route, run, request, response
 
-from taro import client, dto, persistence, util, ExecutionState
+from taro import client, dto, persistence, util, ExecutionState, cfgfile
 from taro.persistence import SortCriteria
-from taro.taros.httputil import http_error, query_digit, query
+from taros.httputil import http_error, query_digit, query
 
 
 @route('/instances')
@@ -60,6 +60,6 @@ def to_json(d):
     return json.dumps(d, indent=2)
 
 
-# cnf.init(None)
+cfgfile.load()
 
 run(host='localhost', port=8080, debug=True, reloader=True)

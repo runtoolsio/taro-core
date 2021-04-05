@@ -184,7 +184,7 @@ class JobInfo:
         return fnmatch(self.job_id, instance) or fnmatch(self.instance_id, instance)
 
     def __repr__(self) -> str:
-        return "{}({!r}, {!r})".format(
+        return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.__class__.__name__, self._job_id, self.instance_id, self._lifecycle, self._status, self._warnings,
             self._exec_error)
 

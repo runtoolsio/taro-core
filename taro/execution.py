@@ -213,6 +213,10 @@ class ExecutionLifecycle:
         finished = self.execution_finished() or util.utc_now()
         return finished - started
 
+    def __repr__(self) -> str:
+        return "{}({!r})".format(
+            self.__class__.__name__, self._state_changes)
+
 
 class ExecutionLifecycleManagement(ExecutionLifecycle):
 
