@@ -19,7 +19,13 @@ def main(args):
     :param args: CLI arguments
     """
     args_ns = cli.parse_args(args)
-    setup_config(args_ns)
+
+    """
+    If config create command is chosen, config loading is skipped.
+    """
+    if not(args_ns.action == 'config' and args_ns.config_action == 'create'):
+        setup_config(args_ns)
+    
     try:
         cmd.run(args_ns)
     except PersistenceDisabledError:
