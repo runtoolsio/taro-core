@@ -12,7 +12,7 @@ Discussion:
 import getpass
 import os
 from pathlib import Path
-from typing import Generator
+from typing import Generator, List
 
 DEFAULT_CONFIG_FILE = 'taro.yaml'
 _HOSTINFO_FILE = 'hostinfo'
@@ -35,19 +35,6 @@ def config_file_path(filename) -> Path:
     return def_config
 
 
-"""
-https://stackoverflow.com/questions/7567642
-S.Lott's answer:
-There's usually a multi-step search for the configuration file.
-1. Local directory. ./myproject.conf.
-2. User's home directory (~user/myproject.conf)
-3. A standard system-wide directory (/etc/myproject/myproject.conf)
-4. A place named by an environment variable (MYPROJECT_CONF)
-
-Related discussion: https://stackoverflow.com/questions/1024114
-"""
-
-
 def lookup_config_file():
     return lookup_config_file_path(DEFAULT_CONFIG_FILE)
 
@@ -56,35 +43,37 @@ def lookup_hostinfo_file():
     return lookup_config_file_path(_HOSTINFO_FILE)
 
 
-def lookup_config_file_path(file) -> Path:
-    """
+def config_file_search_path(*, exclude_cwd=False) -> List[Path]:
+    """Specifies the folders in which the program should look for configuration files:
     1. Search in the current working directory first
     2. If non-root user search: ${XDG_CONFIG_HOME}/taro/{config-file}
     3. If not found or root user search: /etc/taro/{config-file}
 
+    Related discussion: https://stackoverflow.com/questions/1024114
+    :return: list of directories for configuration file lookup
+    """
+    search_path = []
+    if not exclude_cwd:
+        search_path.append(Path.cwd())
+    if not _is_root():  # TODO Use this also for root user?
+        search_path.append(Path.home() / '.config' / 'taro')
+    search_path.append(Path('/etc/taro'))  # TODO Should be /etc/xdg instead?
+
+    return search_path
+
+
+def lookup_config_file_path(file) -> Path:
+    """Returns config found in the search path
     :return: config file path
     :raise FileNotFoundError: when config lookup failed
     """
+    for config_dir in config_file_search_path():
+        config = config_dir / file
+        if config.exists():
+            return config
 
-    current_config = Path.cwd() / file
-    if current_config.exists():
-        return current_config
-
-    paths = []
-
-    if not _is_root():  # TODO Use this also for root user?
-        home_dir = Path.home()
-        user_config = home_dir / '.config' / 'taro' / file
-        paths.append(user_config)
-        if user_config.exists():
-            return user_config
-
-    system_config = Path('/etc/taro') / file  # TODO Should be /etc/xdg instead?
-    paths.append(system_config)
-    if system_config.exists():
-        return system_config
-
-    raise FileNotFoundError('Config file not found in paths: ' + str([str(config) for config in paths]))
+    raise FileNotFoundError(f'Config file {file} not found in the search path: '
+                            + ",".join([str(dir_) for dir_ in config_file_search_path()]))
 
 
 def log_file_path(create: bool) -> Path:
