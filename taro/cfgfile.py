@@ -1,5 +1,8 @@
 import logging
 from collections import Iterable
+from pathlib import Path
+from shutil import copy
+import os
 
 import yaml
 
@@ -53,3 +56,20 @@ def print_config(config=None):
     print('Showing config file: ' + str(config_path))
     with open(config_path, 'r') as file:
         print(file.read())
+
+
+def create(overwrite = False):
+    config_dir_path = paths.config_file_search_path(exclude_cwd=True)[0]
+    config_path = config_dir_path / paths.DEFAULT_CONFIG_FILE
+
+    if not Path(config_dir_path).is_dir():
+        os.makedirs(config_dir_path)
+
+    if not config_path.exists() or overwrite:
+        default_config_path = paths.default_config_file_path()
+        print("creating config file in " + str(config_path))
+        copy(default_config_path, config_path)
+        print("done!")
+        return
+
+    raise FileExistsError('File alredy exist in: ' + str(config_path))

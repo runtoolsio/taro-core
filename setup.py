@@ -1,4 +1,5 @@
 import setuptools
+from setuptools import find_packages, find_namespace_packages
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
@@ -22,7 +23,7 @@ setuptools.setup(
         "Operating System :: POSIX :: Linux",
     ],
     python_requires='>=3.6',
-    packages=setuptools.find_packages(exclude=("test",)),
+    packages=find_packages(include=("taro", "taroapp", "taros")) + find_namespace_packages(include=("taro.db",)),
     install_requires=[
         "PyYAML>=5.1.2",
         "pypager>=3.0.0",
