@@ -20,6 +20,7 @@ ACTION_ENABLE = 'enable'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
 ACTION_CONFIG_PATH = 'path'
+ACTION_CONFIG_CREATE = 'create'
 ACTION_HOSTINFO = 'hostinfo'
 
 _true_options = ['yes', 'true', 't', 'y', '1', 'on']
@@ -277,6 +278,11 @@ def _init_show_config_parser(common, subparsers):
 
     config_subparsers.add_parser(ACTION_CONFIG_PATH, parents=[common], description='Print path to config',
                                  add_help=False)
+
+    create__config_parser = config_subparsers.add_parser(ACTION_CONFIG_CREATE, parents=[common], description='create config file',
+                                 add_help=False)
+            
+    create__config_parser.add_argument("--overwrite", action="store_true", help="overwrite config file to default")
 
 
 def _init_hostinfo_parser(common, subparsers):

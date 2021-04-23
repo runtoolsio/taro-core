@@ -3,14 +3,17 @@ Commands related to configuration.
 Show: shows path and content of the config file
 """
 
-from taro import cfgfile
+from taro import cfgfile, paths
 from taroapp import argsconfig, cli
 
 
-def run(args):
-    config_path = argsconfig.get_config_file_path(args)
 
+def run(args):
     if args.config_action == cli.ACTION_CONFIG_SHOW:
+        config_path = argsconfig.get_config_file_path(args)
         cfgfile.print_config(config_path)
+    if args.config_action == cli.ACTION_CONFIG_CREATE:
+        cfgfile.create(args.overwrite)
     if args.config_action == cli.ACTION_CONFIG_PATH:
+        config_path = argsconfig.get_config_file_path(args)
         print(config_path)
