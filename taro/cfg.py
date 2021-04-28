@@ -4,8 +4,10 @@ Implementation of config pattern:
 https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-across-modules
 """
 
-# ------------ DEFAULT VALUES ------------ #
+import distutils.util
+import sys
 
+# ------------ DEFAULT VALUES ------------ #
 DEF_LOG_ENABLED = False
 DEF_LOG_STDOUT_LEVEL = 'off'
 DEF_LOG_FILE_LEVEL = 'off'
@@ -29,3 +31,19 @@ persistence_type = DEF_PERSISTENCE_TYPE
 persistence_database = DEF_PERSISTENCE_DATABASE
 
 plugins = DEF_PLUGINS
+
+
+def set_variables(**kwargs):
+    module = sys.modules[__name__]
+    for name, value in kwargs.items():
+        cur_value = getattr(module, name)
+        if type(value) == type(cur_value):
+            value_to_set = value
+        elif isinstance(cur_value, int):
+            value_to_set = int(value)
+        elif isinstance(cur_value, bool):
+            value_to_set = distutils.util.strtobool(value)
+        else:
+            raise ValueError(f'Cannot convert value {value} to {type(cur_value)}')
+
+        setattr(module, name, value_to_set)
