@@ -3,7 +3,7 @@ import re
 from argparse import RawTextHelpFormatter
 from datetime import datetime
 
-from taro import warning, ExecutionState, cfgfile
+from taro import warning, ExecutionState
 from taro.persistence import SortCriteria
 
 ACTION_EXEC = 'exec'
@@ -84,17 +84,7 @@ def _init_exec_parser(common, subparsers):
 
     exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=ExecutionState.COMPLETED,
                              help='executing without actual running of the command - optional termination state arg')
-
-    # Config override options
-    config_group = exec_parser.add_argument_group('config override', 'these options override entries from config file')
-    config_group.add_argument('--log-enabled', type=_str2bool, metavar="{{{}}}".format(','.join(_all_boolean_options)),
-                              help='overrides ' + cfgfile.LOG_ENABLED)
-    config_group.add_argument('--log-stdout', type=str, choices=_log_levels,
-                              help='overrides ' + cfgfile.LOG_STDOUT_LEVEL)
-    config_group.add_argument('--log-file', type=str, choices=_log_levels,
-                              help='overrides ' + cfgfile.LOG_FILE_LEVEL)
-    config_group.add_argument('--log-file-path', type=str, metavar='PATH',
-                              help='overrides ' + cfgfile.LOG_FILE_PATH)
+    exec_parser.add_argument('--set', type=str, action='append', help='override value of configuration field')
 
     # Terms command and arguments taken from python doc and docker run help,
     # for this app (or rather exec command) these are operands (alternatively arguments)
@@ -279,9 +269,9 @@ def _init_show_config_parser(common, subparsers):
     config_subparsers.add_parser(ACTION_CONFIG_PATH, parents=[common], description='Print path to config',
                                  add_help=False)
 
-    create__config_parser = config_subparsers.add_parser(ACTION_CONFIG_CREATE, parents=[common], description='create config file',
-                                 add_help=False)
-            
+    create__config_parser = config_subparsers.add_parser(ACTION_CONFIG_CREATE, parents=[common],
+                                                         description='create config file', add_help=False)
+
     create__config_parser.add_argument("--overwrite", action="store_true", help="overwrite config file to default")
 
 
@@ -295,18 +285,6 @@ def _init_hostinfo_parser(common, subparsers):
 
     hostinfo_parser = subparsers.add_parser(
         ACTION_HOSTINFO, parents=[common], description='Show host info', add_help=False)
-
-
-# Maxim's solution: https://stackoverflow.com/questions/15008758
-def _str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in _true_options:
-        return True
-    elif v.lower() in _false_options:
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 def _str2dt(v):

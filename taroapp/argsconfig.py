@@ -21,21 +21,15 @@ def get_config_file_path(args):
 
 def override_config(args):
     """
-    Overrides values in :mod:`cfg` module with cli option values for those specified on command line
+    Overrides variable values in :mod:`cfg` module with values specified by CLI `set` option
 
     :param args: command line arguments
     """
 
-    arg2config_attr = {
-        'log_enabled': 'log_enabled',
-        'log_stdout': 'log_stdout_level',
-        'log_file': 'log_file_level',
-        'log_file_path': 'log_file_path',
-    }
+    def split(s):
+        if len(s) < 3 or "=" not in s[1:-1]:
+            raise ValueError("Set option value must be in format: var=value")
+        return s.split("=")
 
-    for arg, cfg_attr in arg2config_attr.items():
-        arg_value = getattr(args, arg, None)
-        if not hasattr(cfg, cfg_attr):
-            raise AttributeError("Module `cfg` does not have attribute: " + cfg_attr)
-        if arg_value is not None:
-            setattr(cfg, cfg_attr, arg_value)
+    if args.set:
+        cfg.set_variables(**{k: v for k, v in (split(set_opt) for set_opt in args.set)})
