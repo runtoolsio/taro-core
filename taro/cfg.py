@@ -39,10 +39,10 @@ def set_variables(**kwargs):
         cur_value = getattr(module, name)
         if type(value) == type(cur_value):
             value_to_set = value
+        elif isinstance(cur_value, bool):  # First bool than int, as bool is int..
+            value_to_set = distutils.util.strtobool(value)
         elif isinstance(cur_value, int):
             value_to_set = int(value)
-        elif isinstance(cur_value, bool):
-            value_to_set = distutils.util.strtobool(value)
         else:
             raise ValueError(f'Cannot convert value {value} to {type(cur_value)}')
 
