@@ -34,6 +34,7 @@ def parse_args(args):
     # TODO destination required
     parser = argparse.ArgumentParser(description='Manage your jobs with Taro')
     common = argparse.ArgumentParser()  # parent parser for subparsers in case they need to share common options
+    common.add_argument('--set', type=str, action='append', help='override value of configuration field')
     subparsers = parser.add_subparsers(dest='action')  # command/action
 
     _init_exec_parser(common, subparsers)
@@ -84,7 +85,6 @@ def _init_exec_parser(common, subparsers):
 
     exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=ExecutionState.COMPLETED,
                              help='executing without actual running of the command - optional termination state arg')
-    exec_parser.add_argument('--set', type=str, action='append', help='override value of configuration field')
 
     # Terms command and arguments taken from python doc and docker run help,
     # for this app (or rather exec command) these are operands (alternatively arguments)

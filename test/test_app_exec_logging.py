@@ -38,12 +38,12 @@ def test_logging_disabled_in_config():
 
 def test_logging_enabled_cli_override():
     create_test_config({"log": {"enabled": False}})
-    run_app('exec --log-enabled true echo')
+    run_app('exec --set log_enabled=true echo')
     assert not log.is_disabled()
 
 
 def test_logging_disabled():
-    run_app('exec -mc --log-enabled false echo')
+    run_app('exec -mc --set log_enabled=false echo')
     assert log.is_disabled()
 
 
@@ -55,7 +55,7 @@ def test_logging_stdout_level_in_config():
 
 def test_logging_stdout_level_cli_override():
     create_test_config({"log": {"enabled": True, "stdout": {"level": "error"}}})
-    run_app('exec --log-stdout warn echo')
+    run_app('exec --set log_stdout_level=warn echo')
     assert logging.WARN == log.get_console_level()
 
 
@@ -67,7 +67,7 @@ def test_logging_file_level_in_config():
 
 def test_logging_file_level_cli_override():
     create_test_config({"log": {"enabled": True, "file": {"level": "error"}}})
-    run_app('exec --log-file warn echo')
+    run_app('exec --set log_file_level=warn echo')
     assert logging.WARN == log.get_file_level()
 
 
@@ -85,7 +85,7 @@ def test_logging_file_path_in_config():
 def test_logging_file_path_cli_override():
     create_test_config({"log": {"enabled": True, "file": {"level": "error", "path": "to_liberation.log"}}})
     try:
-        run_app('exec --log-file-path to_nowhere.log echo')
+        run_app('exec --set log_file_path=to_nowhere.log echo')
         assert log.get_file_path().endswith('to_nowhere.log')
     finally:
         log_file = Path('to_nowhere.log')
