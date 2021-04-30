@@ -1,8 +1,8 @@
 import logging
+import os
 from collections import Iterable
 from pathlib import Path
 from shutil import copy
-import os
 
 import yaml
 
@@ -58,7 +58,7 @@ def print_config(config=None):
         print(file.read())
 
 
-def create(overwrite = False):
+def create(overwrite=False):
     config_dir_path = paths.config_file_search_path(exclude_cwd=True)[0]
     config_path = config_dir_path / paths.DEFAULT_CONFIG_FILE
 
@@ -72,4 +72,4 @@ def create(overwrite = False):
         print("done!")
         return
 
-    raise FileExistsError('File alredy exist in: ' + str(config_path))
+    raise FileExistsError('File already exists in: ' + str(config_path))
