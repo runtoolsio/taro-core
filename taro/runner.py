@@ -11,7 +11,7 @@ from typing import List, Union, Optional, Callable
 from taro import util, persistence, client
 from taro.err import IllegalStateError
 from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver
-from taro.job import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, Warn,\
+from taro.job import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, Warn, \
     WarnEventCtx
 
 log = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
     @property
     def status(self):
-        return self._execution.status()
+        return self._execution.status
 
     @property
     def last_output(self) -> List[str]:
@@ -178,7 +178,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         except Exception as e:
             log.warning("event=[read_jobs_info_error] error=[%s]", e)
 
-        self._state_change(ExecutionState.TRIGGERED if self._execution.is_async() else ExecutionState.RUNNING)
+        self._state_change(ExecutionState.TRIGGERED if self._execution.is_async else ExecutionState.RUNNING)
         try:
             new_state = self._execution.execute()
             self._state_change(new_state)

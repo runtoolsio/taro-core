@@ -43,6 +43,7 @@ class TestExecution(OutputExecution):
         self._raise_exc = exc
         return self
 
+    @property
     def is_async(self) -> bool:
         return False
 
@@ -69,6 +70,7 @@ class TestExecution(OutputExecution):
     def last_execution_occurrence(self) -> datetime:
         return self._execution_occurrences[-1]
 
+    @property
     def status(self):
         return None
 

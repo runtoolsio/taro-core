@@ -24,6 +24,7 @@ class ProcessExecution(OutputExecution):
         self._interrupted: bool = False
         self._output_observers = []
 
+    @property
     def is_async(self) -> bool:
         return False
 
@@ -61,6 +62,7 @@ class ProcessExecution(OutputExecution):
         finally:
             sys.stdout = original_stdout
 
+    @property
     def status(self):
         return self._status
 

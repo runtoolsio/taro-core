@@ -1,10 +1,9 @@
 import io
 import logging
+import sys
 from subprocess import Popen, PIPE, STDOUT
 from threading import Thread
 from typing import Union
-
-import sys
 
 from taro.execution import ExecutionState, ExecutionError, OutputExecution, ExecutionOutputObserver
 
@@ -24,6 +23,7 @@ class ProgramExecution(OutputExecution):
         self._interrupted: bool = False
         self._output_observers = []
 
+    @property
     def is_async(self) -> bool:
         return False
 
@@ -61,6 +61,7 @@ class ProgramExecution(OutputExecution):
             raise ExecutionError("Process interrupted", ExecutionState.INTERRUPTED)
         raise ExecutionError("Process returned non-zero code " + str(ret_code), ExecutionState.FAILED)
 
+    @property
     def status(self):
         return self._status
 

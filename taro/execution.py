@@ -92,6 +92,7 @@ class ExecutionError(Exception):
 
 class Execution(abc.ABC):
 
+    @property
     @abc.abstractmethod
     def is_async(self) -> bool:
         """
@@ -116,6 +117,7 @@ class Execution(abc.ABC):
         :raises Exception: on unexpected failure
         """
 
+    @property
     @abc.abstractmethod
     def status(self):
         """
