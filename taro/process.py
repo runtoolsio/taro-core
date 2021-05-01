@@ -2,7 +2,8 @@ import logging
 from contextlib import contextmanager
 from multiprocessing import Queue
 from multiprocessing.context import Process
-from queue import Full, Empty
+from queue import Full
+from threading import Thread
 from typing import Union
 
 from taro import ExecutionState
@@ -30,7 +31,12 @@ class ProcessExecution(OutputExecution):
         if not self._stopped and not self._interrupted:
             self._process = Process(target=self._run)
             self._process.start()
+            output_reader = Thread(target=self._read_output, name='Output-Reader', daemon=True)
+            output_reader.start()
             self._process.join()
+            self.output_queue.put_nowait(_QueueStop())
+            output_reader.join(timeout=1)
+            self.output_queue.close()
             if self._process.exitcode == 0:
                 return ExecutionState.COMPLETED
         if self._stopped:
@@ -47,17 +53,16 @@ class ProcessExecution(OutputExecution):
     def _capture_stdout(self):
         import sys
         original_stdout = sys.stdout
-        writer = _CapturingWriter(original_stdout, self)
+        writer = _CapturingWriter(original_stdout, self.output_queue)
         sys.stdout = writer
 
         try:
             yield
         finally:
             sys.stdout = original_stdout
-            self.output_queue.close()
 
     def status(self):
-        pass
+        return self._status
 
     def stop(self):
         self._stopped = True
@@ -77,9 +82,8 @@ class ProcessExecution(OutputExecution):
 
     def _read_output(self):
         while True:
-            try:
-                line = self.output_queue.get()
-            except Empty:
+            line = self.output_queue.get()
+            if isinstance(line, _QueueStop):
                 break
             self._status = line
             self._notify_output_observers(line)
@@ -100,15 +104,21 @@ class ProcessExecution(OutputExecution):
 
 class _CapturingWriter:
 
-    def __init__(self, out, exec_obj):
+    def __init__(self, out, output_queue):
         self.out = out
-        self.exec_obj = exec_obj
+        self.output_queue = output_queue
 
     def write(self, text):
         text_s = text.rstrip()
         if text_s:
             try:
-                self.exec_obj.output_queue.put_nowait(text_s)
+                self.output_queue.put_nowait(text_s)
             except Full:
-                pass  # TODO what to do with this?
+                # TODO what to do here?
+                log.warning("event=[output_queue_full]")
         self.out.write(text)
+
+
+class _QueueStop:
+    """Poison object signalizing no more objects will be put in the queue"""
+    pass
