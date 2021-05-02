@@ -54,13 +54,17 @@ class ProcessExecution(OutputExecution):
     def _capture_stdout(self):
         import sys
         original_stdout = sys.stdout
-        writer = _CapturingWriter(original_stdout, self.output_queue)
-        sys.stdout = writer
+        original_stderr = sys.stderr
+        stdout_writer = _CapturingWriter(original_stdout, self.output_queue)
+        stderr_writer = _CapturingWriter(original_stderr, self.output_queue)
+        sys.stdout = stdout_writer
+        sys.stderr = stderr_writer
 
         try:
             yield
         finally:
             sys.stdout = original_stdout
+            sys.stderr = original_stderr
 
     @property
     def status(self):
@@ -84,11 +88,11 @@ class ProcessExecution(OutputExecution):
 
     def _read_output(self):
         while True:
-            line = self.output_queue.get()
-            if isinstance(line, _QueueStop):
+            output_text = self.output_queue.get()
+            if isinstance(output_text, _QueueStop):
                 break
-            self._status = line
-            self._notify_output_observers(line)
+            self._status = output_text
+            self._notify_output_observers(output_text)
 
     def _notify_output_observers(self, output):
         for observer in self._output_observers:
