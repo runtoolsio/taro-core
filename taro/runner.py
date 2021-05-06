@@ -204,7 +204,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
             prev_state = self._lifecycle.state()
             if self._lifecycle.set_state(new_state):
-                level = logging.WARN if new_state.is_failure() else logging.INFO
+                level = logging.WARN if new_state.is_failure() or new_state.is_unexecuted() else logging.INFO
                 log.log(level, self._log('job_state_changed', "new_state=[{}] prev_state=[{}]".format(
                     new_state.name, prev_state.name)))
                 job_info = self.create_info()  # Be sure both new_state and exec_error are already set
