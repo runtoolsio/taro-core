@@ -1,5 +1,8 @@
+import datetime
+import json
 import logging
 import sqlite3
+from datetime import timezone
 from typing import List
 
 from taro import util, cfg, paths
@@ -17,36 +20,6 @@ def create_persistence():
     return sqlite_
 
 
-def _to_job_info(t):
-    states = [ExecutionState[name] for name in t[5].split(",")]
-    exec_state = next((state for state in states if state.is_executing()), None)
-
-    def dt_for_state(state):
-        ts = None
-        if state == ExecutionState.CREATED:
-            ts = t[2]
-        elif state == exec_state:
-            ts = t[3]
-        elif state.is_terminal():
-            ts = t[4]
-        return util.dt_from_utc_str(ts, is_iso=False) if ts else None
-
-    lifecycle = ExecutionLifecycle(*((state, dt_for_state(state)) for state in states))
-    warnings = {s[1]: int(s[0]) for s in [w.split(':', 1) for w in t[7].split(', ') if w]}
-    exec_error = ExecutionError(t[7], states[-1]) if t[8] else None  # TODO more data
-    return JobInfo(t[0], t[1], lifecycle, t[6], warnings, exec_error)
-
-
-def _sort_exp(sort: SortCriteria):
-    if sort == SortCriteria.CREATED:
-        return 'created'
-    if sort == SortCriteria.FINISHED:
-        return 'finished'
-    if sort == SortCriteria.TIME:
-        return "julianday(finished) - julianday(created)"
-    raise ValueError(sort)
-
-
 # TODO indices
 class SQLite:
 
@@ -61,9 +34,8 @@ class SQLite:
                          (job_id text,
                          instance_id text,
                          created timestamp,
-                         executed timestamp,
                          finished timestamp,
-                         states text,
+                         state_changed text,
                          result text,
                          warnings text,
                          error text)
@@ -83,21 +55,39 @@ class SQLite:
             self._conn.commit()
 
     def read_jobs(self, *, sort, asc, limit) -> List[JobInfo]:
+        def sort_exp():
+            if sort == SortCriteria.CREATED:
+                return 'created'
+            if sort == SortCriteria.FINISHED:
+                return 'finished'
+            if sort == SortCriteria.TIME:
+                return "julianday(finished) - julianday(created)"
+            raise ValueError(sort)
+
         c = self._conn.execute("SELECT * FROM history "
-                               + "ORDER BY " + _sort_exp(sort) + (" ASC" if asc else " DESC")
+                               + "ORDER BY " + sort_exp() + (" ASC" if asc else " DESC")
                                + " LIMIT ?",
                                (limit,))
-        return [_to_job_info(row) for row in c.fetchall()]
+
+        def to_job_info(t):
+            state_changes = ((ExecutionState[state], datetime.datetime.fromtimestamp(changed, tz=timezone.utc))
+                             for state, changed in json.loads(t[4]))
+            lifecycle = ExecutionLifecycle(*state_changes)
+            warnings = {s[1]: int(s[0]) for s in [w.split(':', 1) for w in t[6].split(', ') if w]}
+            exec_error = ExecutionError(t[6], lifecycle.state()) if t[7] else None  # TODO more data
+            return JobInfo(t[0], t[1], lifecycle, t[5], warnings, exec_error)
+
+        return [to_job_info(row) for row in c.fetchall()]
 
     def store_job(self, job_info):
         self._conn.execute(
-            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (job_info.job_id,
              job_info.instance_id,
              job_info.lifecycle.changed(ExecutionState.CREATED),
-             job_info.lifecycle.execution_started(),
              job_info.lifecycle.last_changed(),
-             ",".join([state.name for state in job_info.lifecycle.states()]),
+             json.dumps(
+                 [(state.name, int(changed.timestamp())) for state, changed in job_info.lifecycle.state_changes()]),
              job_info.status,
              ", ".join((str(v) + ":" + k for k, v in job_info.warnings.items())),
              job_info.exec_error.message if job_info.exec_error else None,
