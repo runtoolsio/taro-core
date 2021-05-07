@@ -73,8 +73,8 @@ class SQLite:
             state_changes = ((ExecutionState[state], datetime.datetime.fromtimestamp(changed, tz=timezone.utc))
                              for state, changed in json.loads(t[4]))
             lifecycle = ExecutionLifecycle(*state_changes)
-            warnings = {s[1]: int(s[0]) for s in [w.split(':', 1) for w in t[6].split(', ') if w]}
-            exec_error = ExecutionError(t[6], lifecycle.state()) if t[7] else None  # TODO more data
+            warnings = json.loads(t[6])
+            exec_error = ExecutionError(t[7], lifecycle.state()) if t[7] else None  # TODO more data
             return JobInfo(t[0], t[1], lifecycle, t[5], warnings, exec_error)
 
         return [to_job_info(row) for row in c.fetchall()]
@@ -89,7 +89,7 @@ class SQLite:
              json.dumps(
                  [(state.name, int(changed.timestamp())) for state, changed in job_info.lifecycle.state_changes()]),
              job_info.status,
-             ", ".join((str(v) + ":" + k for k, v in job_info.warnings.items())),
+             json.dumps(job_info.warnings),
              job_info.exec_error.message if job_info.exec_error else None,
              )
         )
