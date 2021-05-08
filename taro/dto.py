@@ -6,9 +6,7 @@ from taro.job import JobInfo
 
 
 def to_info_dto(info) -> Dict[str, Any]:
-    # TODO remove `if change` condition when all state changes are stored in sqlite
-    # https://github.com/taro-suite/taro/issues/1
-    state_changes = [{"state": state.name, "changed": change.isoformat() if change else None} for state, change in
+    state_changes = [{"state": state.name, "changed": change.isoformat()} for state, change in
                      info.lifecycle.state_changes()]
     if info.exec_error:
         exec_error = {"message": info.exec_error.message, "state": info.exec_error.exec_state.name}
