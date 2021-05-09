@@ -3,8 +3,9 @@ import re
 from argparse import RawTextHelpFormatter
 from datetime import datetime
 
-from taro import warning, ExecutionState
+from taro import ExecutionState
 from taro.persistence import SortCriteria
+from taroapp import warnspec
 
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
@@ -308,9 +309,9 @@ def _str2state(v):
 
 def _warn_type(arg_value):
     p = _build_warn_validation_regex(
-        warning.EXEC_TIME_WARN_REGEX,
-        warning.FILE_CONTAINS_REGEX,
-        warning.OUTPUT_CONTAINS_REGEX,
+        warnspec.EXEC_TIME_WARN_REGEX,
+        warnspec.FILE_CONTAINS_REGEX,
+        warnspec.OUTPUT_MATCHES_REGEX,
         r"free_disk_space:.+<\d+[KMGT]B")
     pattern = re.compile(p)
     if not pattern.match(arg_value.replace(" ", "").rstrip()):

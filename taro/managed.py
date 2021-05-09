@@ -1,9 +1,9 @@
 import logging
 
-from taro.execution import ExecutionState
-from taro.plugins import PluginBase
 from taro.api import Server
+from taro.execution import ExecutionState
 from taro.listening import StateDispatcher, OutputDispatcher
+from taro.plugins import PluginBase
 from taro.runner import RunnerJobInstance
 
 log = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class ManagedJobInstance:
         if not api_started:
             log.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")
 
-        closeable = [api, output_dispatcher, state_dispatcher]
+        closeable = [api, output_dispatcher, state_dispatcher]  # TODO inline
         try:
             self.job_instance.run()
         finally:

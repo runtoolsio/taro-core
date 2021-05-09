@@ -2,9 +2,10 @@ import logging
 import signal
 
 from taro import log
-from taro import warning, managed, PluginBase, cfg
+from taro import managed, PluginBase, cfg
 from taro.program import ProgramExecution
 from taro.test.execution import TestExecution
+from taroapp import warnspec
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +13,7 @@ EXT_PLUGIN_MODULE_PREFIX = 'taro_'
 
 
 def run(args):
-    log.init()
+    log.init()  # TODO Layer up?
     PluginBase.load_plugins(EXT_PLUGIN_MODULE_PREFIX, cfg.plugins)
 
     job_id = args.id or " ".join([args.command] + args.arg)
@@ -28,7 +29,7 @@ def run(args):
     signal.signal(signal.SIGINT, term.interrupt)
 
     if args.warn:
-        warning.setup_checking(managed_job.job_instance, *args.warn)
+        warnspec.setup_warnings(managed_job.job_instance, *args.warn)
 
     managed_job()
 

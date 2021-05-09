@@ -1,7 +1,5 @@
 import time
-from collections import deque
 from threading import Thread
-from typing import Union
 
 import pytest
 
@@ -9,7 +7,6 @@ from taro import warning
 from taro.runner import RunnerJobInstance
 from taro.test.execution import TestExecution
 from taro.test.observer import TestWarnObserver
-from taro.warning import WarningCheck, ExecTimeWarning, Warn
 
 
 @pytest.fixture
@@ -29,67 +26,8 @@ def observer(job):
     return observer
 
 
-class TestWarning(WarningCheck):
-
-    def __init__(self, execution: Union[TestExecution, None], *warnings):
-        self.execution = execution
-        self.warnings = deque(warnings)
-
-    def next_check(self, job_info) -> float:
-        return 0.1 if self.warnings else -1
-
-    def check(self, job_instance, last_check: bool):
-        warn = self.warnings.popleft()
-        if not self.warnings and self.execution:
-            self.execution.release()
-        return warn
-
-
-def test_no_warning(execution, job, observer):
-    test_warn = TestWarning(execution, None, None)
-    checking = warning.init_checking(job, test_warn)
-    job.run()
-    checking.wait_for_finish()
-
-    assert not test_warn.warnings
-    assert len(job.warnings) == 0
-    assert observer.is_empty()
-
-
-def test_warning(execution, job, observer):
-    test_warn = TestWarning(execution, None, Warn('w1', None), None)
-    checking = warning.init_checking(job, test_warn)
-    job.run()
-    checking.wait_for_finish()
-
-    assert not test_warn.warnings
-    assert len(job.warnings) == 1
-    assert job.warnings['w1'] == 1
-    assert len(observer.events) == 1
-    assert observer.events[0][0].job_id == job.job_id
-    assert observer.events[0][1].name == 'w1'
-    assert observer.events[0][2].count == 1
-
-
-def test_more_warnings(execution, job, observer):
-    # This one releases execution:
-    test_warn1 = TestWarning(execution, None, Warn('w1', {'p': 1}), None, Warn('w1', {'p': 2}), None, None)
-    test_warn2 = TestWarning(None, Warn('w2', None))
-    checking = warning.init_checking(job, test_warn1, test_warn2)
-    job.run()
-    checking.wait_for_finish()
-
-    assert not test_warn1.warnings
-    assert not test_warn2.warnings
-    assert len(job.warnings) == 2
-    assert job.warnings['w1'] == 2
-    assert job.warnings['w2'] == 1
-    assert len(observer.events) == 3
-    assert observer.events[2][2].count == 2
-
-
 def test_exec_time_warning(execution, job, observer):
-    warning.init_checking(job, ExecTimeWarning('wid', 0.5))
+    warning.exec_time_exceeded(job, 'wid', 0.5)
     run_thread = Thread(target=job.run)
     run_thread.start()
 
