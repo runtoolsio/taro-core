@@ -73,7 +73,7 @@ class SQLite:
             state_changes = ((ExecutionState[state], datetime.datetime.fromtimestamp(changed, tz=timezone.utc))
                              for state, changed in json.loads(t[4]))
             lifecycle = ExecutionLifecycle(*state_changes)
-            warnings = json.loads(t[6])
+            warnings = json.loads(t[6]) if t[6] else dict()
             exec_error = ExecutionError(t[7], lifecycle.state()) if t[7] else None  # TODO more data
             return JobInfo(t[0], t[1], lifecycle, t[5], warnings, exec_error)
 
