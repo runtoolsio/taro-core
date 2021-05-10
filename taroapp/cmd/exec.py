@@ -22,7 +22,7 @@ def run(args):
     else:
         execution = ProgramExecution([args.command] + args.arg, read_output=not args.bypass_output)
 
-    managed_job = managed.create_job_instance(job_id, execution, no_overlap=args.no_overlap, pending_value=args.pending)
+    managed_job = managed.create_managed_job(job_id, execution, no_overlap=args.no_overlap, pending_value=args.pending)
 
     term = Term(managed_job.job_instance)
     signal.signal(signal.SIGTERM, term.terminate)

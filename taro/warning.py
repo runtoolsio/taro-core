@@ -2,8 +2,7 @@ import re
 from threading import Timer
 from typing import Optional
 
-from taro import JobInstance
-from taro.job import JobInfo, ExecutionStateObserver, Warn, JobOutputObserver
+from taro.job import JobInstance, JobInfo, ExecutionStateObserver, Warn, JobOutputObserver
 
 
 def exec_time_exceeded(job_instance: JobInstance, warning_name: str, time: float):
@@ -50,7 +49,7 @@ class _OutputMatchesWarning(JobOutputObserver):
     def output_update(self, _, output):
         m = self.regex.search(output)
         if m:
-            warn = Warn(self.id, {'match': m[0]})
+            warn = Warn(self.id, {'matches': output})
             self.job_instance.add_warning(warn)
 
 
