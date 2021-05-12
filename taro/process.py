@@ -1,4 +1,6 @@
 import logging
+import sys
+import traceback
 from contextlib import contextmanager
 from multiprocessing import Queue
 from multiprocessing.context import Process
@@ -48,7 +50,12 @@ class ProcessExecution(OutputExecution):
 
     def _run(self):
         with self._capture_stdout():
-            self.target(*self.args)
+            try:
+                self.target(*self.args)
+            except:
+                for line in traceback.format_exception(*sys.exc_info()):
+                    self.output_queue.put_nowait(line)
+                raise
 
     @contextmanager
     def _capture_stdout(self):

@@ -1,3 +1,8 @@
+"""
+TODO: Preserve stderr
+ - https://stackoverflow.com/questions/31833897/python-read-from-subprocess-stdout-and-stderr-separately-while-preserving-order
+ - https://stackoverflow.com/questions/12270645/can-you-make-a-python-subprocess-output-stdout-and-stderr-as-usual-but-also-cap
+"""
 import io
 import logging
 import sys
