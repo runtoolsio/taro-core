@@ -36,7 +36,7 @@ def load_config(config=None, **kwargs):
     log.init()
 
 
-def execute(job_id, job_execution, *, no_overlap=False, pending_value=None, ext=()):
+def execute(job_id, job_execution, *ext, no_overlap=False, pending_value=None):
     managed_job = create_managed_job(job_id, job_execution, no_overlap=no_overlap, pending_value=pending_value)
     for extension in ext:
         extension(managed_job.job_instance)
