@@ -1,8 +1,8 @@
 from typing import Dict, Any
 
 from taro import util
-from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycle
-from taro.job import JobInfo
+from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
+from taro.jobs.job import JobInfo
 
 
 def to_info_dto(info) -> Dict[str, Any]:

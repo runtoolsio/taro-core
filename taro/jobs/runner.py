@@ -8,10 +8,11 @@ from collections import deque, Counter
 from threading import Lock, Event, RLock
 from typing import List, Union, Optional, Callable
 
-from taro import util, persistence, client
+from taro import util, client
 from taro.err import IllegalStateError
-from taro.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver
-from taro.job import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, Warn, \
+from taro.jobs import persistence
+from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver
+from taro.jobs.job import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, Warn, \
     WarnEventCtx
 
 log = logging.getLogger(__name__)

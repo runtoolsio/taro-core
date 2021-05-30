@@ -4,10 +4,10 @@ Tests :mod:`runner` module
 import time
 from threading import Thread
 
-import taro.runner as runner
-from taro.execution import ExecutionState as ExSt, ExecutionError
-from taro.program import ProgramExecution
-from taro.runner import RunnerJobInstance
+import taro.jobs.runner as runner
+from taro.jobs.execution import ExecutionState as ExSt, ExecutionError
+from taro.jobs.program import ProgramExecution
+from taro.jobs.runner import RunnerJobInstance
 from taro.test.execution import TestExecution  # TODO package import
 
 

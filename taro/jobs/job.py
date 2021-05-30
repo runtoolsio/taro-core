@@ -15,7 +15,7 @@ import abc
 from collections import namedtuple
 from fnmatch import fnmatch
 
-from taro.execution import ExecutionError
+from taro.jobs.execution import ExecutionError
 
 
 class JobInstance(abc.ABC):

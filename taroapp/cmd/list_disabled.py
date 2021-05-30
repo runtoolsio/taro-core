@@ -1,4 +1,4 @@
-from taro import persistence
+from taro.jobs import persistence
 from taroapp import ps
 from taroapp.view import disabled as view_dis
 

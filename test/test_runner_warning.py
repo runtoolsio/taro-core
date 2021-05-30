@@ -4,10 +4,10 @@ Tests that :mod:`runner` sends correct notification to warning observers.
 
 import pytest
 
-import taro.runner as runner
+import taro.jobs.runner as runner
 from taro import Warn
-from taro.execution import ExecutionState
-from taro.runner import RunnerJobInstance
+from taro.jobs.execution import ExecutionState
+from taro.jobs.runner import RunnerJobInstance
 from taro.test.execution import TestExecution  # TODO package import
 from taro_test_util import TestWarningObserver
 

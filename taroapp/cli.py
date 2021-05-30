@@ -4,7 +4,7 @@ from argparse import RawTextHelpFormatter
 from datetime import datetime
 
 from taro import ExecutionState
-from taro.persistence import SortCriteria
+from taro.jobs.persistence import SortCriteria
 from taroapp import warnspec
 
 ACTION_EXEC = 'exec'

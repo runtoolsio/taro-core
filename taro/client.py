@@ -1,7 +1,7 @@
 from typing import List, Tuple
 
-from taro.job import JobInfo
-from taro.api import Client
+from taro.jobs.api import Client
+from taro.jobs.job import JobInfo
 
 
 def read_jobs_info(instance="") -> List[JobInfo]:

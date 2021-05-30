@@ -2,9 +2,9 @@ import importlib
 import pkgutil
 from enum import Enum
 
-import taro.db
+import taro.jobs.db
 from taro import cfg
-from taro.execution import ExecutionState
+from taro.jobs.execution import ExecutionState
 
 
 def is_enabled():
@@ -15,12 +15,12 @@ def _load_persistence(type_):
     if not cfg.persistence_enabled:
         return NoPersistence()
 
-    for finder, name, is_pkg in pkgutil.iter_modules(taro.db.__path__, taro.db.__name__ + "."):
-        if name == taro.db.__name__ + "." + type_:
+    for finder, name, is_pkg in pkgutil.iter_modules(taro.jobs.db.__path__, taro.jobs.db.__name__ + "."):
+        if name == taro.jobs.db.__name__ + "." + type_:
             db_module = importlib.import_module(name)
             return db_module.create_persistence()
 
-    raise PersistenceNotFoundError(taro.db.__name__ + "." + type_)
+    raise PersistenceNotFoundError(taro.jobs.db.__name__ + "." + type_)
 
 
 class PersistenceHolder(dict):

@@ -1,9 +1,9 @@
 import logging
 import signal
 
-from taro import log
-from taro import managed, PluginBase, cfg
-from taro.program import ProgramExecution
+from taro import PluginBase, cfg
+from taro.jobs import log, managed
+from taro.jobs.program import ProgramExecution
 from taro.test.execution import TestExecution
 from taroapp import warnspec
 

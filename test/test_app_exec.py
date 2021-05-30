@@ -6,8 +6,9 @@ import os
 
 import pytest
 
-from taro import runner, util, persistence, cfg
-from taro.execution import ExecutionState
+from taro import util, cfg
+from taro.jobs import persistence, runner
+from taro.jobs.execution import ExecutionState
 from taro.test.observer import TestStateObserver
 from taro_test_util import run_app, TestWarningObserver, run_wait, run_app_as_process, test_db_path
 from test.taro_test_util import remove_test_db

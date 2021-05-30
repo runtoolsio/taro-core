@@ -2,7 +2,7 @@ import signal
 from fnmatch import fnmatch
 
 from taro import client, JobInfo
-from taro.job import JobOutputObserver
+from taro.jobs.job import JobOutputObserver
 from taro.listening import OutputReceiver
 
 

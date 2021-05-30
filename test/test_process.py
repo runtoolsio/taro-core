@@ -3,12 +3,12 @@ Tests :mod:`process` module
 """
 from multiprocessing import Pipe
 from threading import Thread
-
-import pytest
 from time import sleep
 
+import pytest
+
 from taro import ExecutionState, ExecutionError
-from taro.process import ProcessExecution
+from taro.jobs.process import ProcessExecution
 
 
 def test_exec():

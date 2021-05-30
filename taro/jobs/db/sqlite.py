@@ -6,9 +6,9 @@ from datetime import timezone
 from typing import List
 
 from taro import util, cfg, paths
-from taro.execution import ExecutionState, ExecutionError, ExecutionLifecycle
-from taro.job import JobInfo, DisabledJob
-from taro.persistence import SortCriteria
+from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle
+from taro.jobs.job import JobInfo, DisabledJob
+from taro.jobs.persistence import SortCriteria
 
 log = logging.getLogger(__name__)
 

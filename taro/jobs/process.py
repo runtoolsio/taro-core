@@ -9,7 +9,7 @@ from threading import Thread
 from typing import Union
 
 from taro import ExecutionState
-from taro.execution import OutputExecution, ExecutionError, ExecutionOutputObserver
+from taro.jobs.execution import OutputExecution, ExecutionError, ExecutionOutputObserver
 
 log = logging.getLogger(__name__)
 

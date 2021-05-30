@@ -4,7 +4,7 @@ from threading import Thread
 import pytest
 
 from taro import warning
-from taro.runner import RunnerJobInstance
+from taro.jobs.runner import RunnerJobInstance
 from taro.test.execution import TestExecution
 from taro.test.observer import TestWarnObserver
 

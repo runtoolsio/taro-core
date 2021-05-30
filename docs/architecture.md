@@ -12,15 +12,15 @@ This is the main component of taro. This package provides functionality for exec
 
 #### Main parts
 
-##### Module [runner](../taro/runner.py)
+##### Module [runner](../taro/jobs/runner.py)
 
 This module runs jobs and controls their execution.
 
-##### Module [managed](../taro/managed.py)
+##### Module [managed](../taro/jobs/managed.py)
 
 Creates an infrastructure for managing and monitoring jobs from plugins and external applications.
 
-##### Database accessed by [db](../taro/db) module
+##### Database accessed by [db](../taro/jobs/db) module
 
 This is where data about finished jobs is stored.
 

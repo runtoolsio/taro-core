@@ -12,7 +12,7 @@ from threading import Event
 from typing import List
 
 from taro.err import IllegalStateError
-from taro.execution import ExecutionState, OutputExecution
+from taro.jobs.execution import ExecutionState, OutputExecution
 
 log = logging.getLogger(__name__)
 

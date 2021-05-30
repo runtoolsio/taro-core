@@ -1,6 +1,6 @@
 import signal
 
-from taro.job import ExecutionStateObserver, JobInfo
+from taro.jobs.job import ExecutionStateObserver, JobInfo
 from taro.listening import StateReceiver
 
 

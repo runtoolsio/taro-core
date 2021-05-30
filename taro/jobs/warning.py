@@ -2,7 +2,7 @@ import re
 from threading import Timer
 from typing import Optional
 
-from taro.job import JobInstance, JobInfo, ExecutionStateObserver, Warn, JobOutputObserver
+from taro.jobs.job import JobInstance, JobInfo, ExecutionStateObserver, Warn, JobOutputObserver
 
 
 def exec_time_exceeded(job_instance: JobInstance, warning_name: str, time: float):

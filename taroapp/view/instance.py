@@ -1,5 +1,5 @@
 from taro import util
-from taro.execution import ExecutionState
+from taro.jobs.execution import ExecutionState
 from taroapp.ps import Column, format_dt
 
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id)

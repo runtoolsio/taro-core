@@ -1,4 +1,4 @@
-from taro import persistence
+from taro.jobs import persistence
 
 
 def run(args):

@@ -6,9 +6,10 @@ import prompt_toolkit
 import yaml
 from prompt_toolkit.output import DummyOutput
 
-from taro import program, paths, JobInfo, Warn, WarningObserver, cfg
+from taro import paths, JobInfo, Warn, WarningObserver, cfg
+from taro.jobs import program
+from taro.jobs.job import WarnEventCtx
 from taroapp import __main__
-from taro.job import WarnEventCtx
 
 
 def reset_config():

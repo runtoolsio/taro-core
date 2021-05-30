@@ -2,7 +2,7 @@
 import logging
 
 from taro import util, dto
-from taro.job import ExecutionStateObserver, JobInfo, JobOutputObserver
+from taro.jobs.job import ExecutionStateObserver, JobInfo, JobOutputObserver
 from taro.socket import SocketServer, SocketClient
 
 STATE_LISTENER_FILE_EXTENSION = '.slistener'

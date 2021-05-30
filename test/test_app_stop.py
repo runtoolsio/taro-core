@@ -4,7 +4,7 @@ Command: stop
 """
 import pytest
 
-from taro.execution import ExecutionState
+from taro.jobs.execution import ExecutionState
 from taro_test_util import run_app, run_app_as_process, run_wait
 
 

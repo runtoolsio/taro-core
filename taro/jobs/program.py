@@ -10,7 +10,7 @@ from subprocess import Popen, PIPE, STDOUT
 from threading import Thread
 from typing import Union
 
-from taro.execution import ExecutionState, ExecutionError, OutputExecution, ExecutionOutputObserver
+from taro.jobs.execution import ExecutionState, ExecutionError, OutputExecution, ExecutionOutputObserver
 
 USE_SHELL = False  # For testing only
 

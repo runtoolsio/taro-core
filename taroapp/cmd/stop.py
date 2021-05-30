@@ -1,7 +1,7 @@
 import os
 
+from taro.jobs.api import Client
 from taroapp import ps
-from taro.api import Client
 from taroapp.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
 
 

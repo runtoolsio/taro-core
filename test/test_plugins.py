@@ -1,7 +1,8 @@
 from typing import Optional
 
 import test_plugin
-from taro import plugins, PluginBase, JobInstance
+from taro import PluginBase, JobInstance
+from taro.jobs import plugins
 
 
 def test_plugin_discovered():

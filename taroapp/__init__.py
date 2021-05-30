@@ -1,7 +1,7 @@
 import sys
 
-from taro import persistence
-from taro.persistence import PersistenceDisabledError
+from taro.jobs import persistence
+from taro.jobs.persistence import PersistenceDisabledError
 from taroapp import cmd, argsconfig, cli
 
 

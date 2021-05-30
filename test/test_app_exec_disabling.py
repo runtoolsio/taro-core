@@ -5,8 +5,8 @@ Command: exec
 
 import pytest
 
-from taro import runner
-from taro.execution import ExecutionState
+from taro.jobs import runner
+from taro.jobs.execution import ExecutionState
 from taro.test.observer import TestStateObserver
 from taro_test_util import run_app, create_test_config, remove_test_config, remove_test_db, test_db_path
 

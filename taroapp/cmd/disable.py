@@ -1,5 +1,5 @@
-from taro import persistence
-from taro.job import DisabledJob
+from taro.jobs import persistence
+from taro.jobs.job import DisabledJob
 from taro.util import utc_now
 
 

@@ -2,7 +2,7 @@ import logging
 from typing import List, Tuple
 
 from taro import dto
-from taro.job import JobInfo
+from taro.jobs.job import JobInfo
 from taro.socket import SocketServer, SocketClient, InstanceResponse
 from taro.util import iterates
 

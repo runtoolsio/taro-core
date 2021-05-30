@@ -5,7 +5,7 @@ Command: exec
 
 import pytest
 
-from taro import runner
+from taro.jobs import runner
 from taro.test.observer import TestJobOutputObserver
 from taro_test_util import run_app
 

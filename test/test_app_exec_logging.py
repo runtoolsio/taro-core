@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from taro import log
+from taro.jobs import log
 from taro_test_util import run_app, create_test_config, remove_test_config
 
 
