@@ -1,10 +1,10 @@
-from taro import client
+import taro.client
 from taroapp import ps
 from taroapp.view import instance as view_inst
 
 
 def run(args):
-    jobs = client.read_jobs_info(args.inst)
+    jobs = taro.client.read_jobs_info(args.inst)
     ps.print_table(jobs, view_inst.DEFAULT_COLUMNS, _colours, show_header=True, pager=False)
 
 

@@ -1,12 +1,12 @@
 import os
 
-from taro.jobs.api import Client
+from taro.client import JobsClient
 from taroapp import ps
 from taroapp.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
 
 
 def run(args):
-    with Client() as client:
+    with JobsClient() as client:
         all_jobs = client.read_jobs_info()
         jobs = [job for job in all_jobs if job.matches(args.instance)]
 

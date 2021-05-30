@@ -1,5 +1,5 @@
-from taro import client
+import taro.client
 
 
 def run(args):
-    client.release_jobs(args.pending)
+    taro.client.release_jobs(args.pending)

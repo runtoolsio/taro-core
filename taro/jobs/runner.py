@@ -8,7 +8,8 @@ from collections import deque, Counter
 from threading import Lock, Event, RLock
 from typing import List, Union, Optional, Callable
 
-from taro import util, client
+import taro.client
+from taro import util
 from taro.err import IllegalStateError
 from taro.jobs import persistence
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver
@@ -172,7 +173,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             return
 
         try:
-            if self._no_overlap and any(j for j in client.read_jobs_info()
+            if self._no_overlap and any(j for j in taro.client.read_jobs_info()
                                         if j.job_id == self.job_id and j.instance_id != self._instance_id):
                 self._state_change(ExecutionState.SKIPPED)
                 return
