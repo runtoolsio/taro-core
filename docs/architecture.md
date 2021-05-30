@@ -32,10 +32,10 @@ Executions of all jobs are logged into a single log file (if enabled).
 
 Job execution can be extended by self-discoverable plugins.
 
-### Package client
+### Package [client](../taro/client)
 
-Client connects to running job instances for obtaining data or sending commands.
+Client connects to running job instances for requesting data or sending commands.
 
-### Package listener
+### Package [listening](../taro/listening)
 
 Contains server components which receive events from running job instances. These components are used for monitoring.

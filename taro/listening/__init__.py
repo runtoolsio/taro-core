@@ -2,30 +2,15 @@
 import logging
 
 from taro import util, dto
-from taro.jobs.job import ExecutionStateObserver, JobInfo, JobOutputObserver
-from taro.socket import SocketServer, SocketClient
-
-STATE_LISTENER_FILE_EXTENSION = '.slistener'
-OUTPUT_LISTENER_FILE_EXTENSION = '.olistener'
+from taro.jobs.events import STATE_LISTENER_FILE_EXTENSION, OUTPUT_LISTENER_FILE_EXTENSION
+from taro.jobs.job import ExecutionStateObserver
+from taro.socket import SocketServer
 
 log = logging.getLogger(__name__)
 
 
 def _listener_socket_name(ext):
     return util.unique_timestamp_hex() + ext
-
-
-class StateDispatcher(ExecutionStateObserver):
-
-    def __init__(self):
-        self._client = SocketClient(STATE_LISTENER_FILE_EXTENSION, bidirectional=False)
-
-    def state_update(self, job_info: JobInfo):
-        event_body = {"event_type": "execution_state_change", "event": {"job_info": dto.to_info_dto(job_info)}}
-        self._client.communicate(event_body)
-
-    def close(self):
-        self._client.close()
 
 
 class StateReceiver(SocketServer):
@@ -49,19 +34,6 @@ class StateReceiver(SocketServer):
                 listener(job_info)
             else:
                 log.warning("event=[unsupported_state_observer] observer=[%s]", listener)
-
-
-class OutputDispatcher(JobOutputObserver):
-
-    def __init__(self):
-        self._client = SocketClient(OUTPUT_LISTENER_FILE_EXTENSION, bidirectional=False)
-
-    def output_update(self, job_info: JobInfo, output):
-        event_body = {"event_type": "new_output", "event": {"job_info": dto.to_info_dto(job_info), "output": output}}
-        self._client.communicate(event_body)
-
-    def close(self):
-        self._client.close()
 
 
 class OutputReceiver(SocketServer):

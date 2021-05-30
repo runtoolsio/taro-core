@@ -1,10 +1,10 @@
 import logging
 
 from taro.jobs.api import Server
+from taro.jobs.events import StateDispatcher, OutputDispatcher
 from taro.jobs.execution import ExecutionState
 from taro.jobs.plugins import PluginBase
 from taro.jobs.runner import RunnerJobInstance
-from taro.listening import StateDispatcher, OutputDispatcher
 
 log = logging.getLogger(__name__)
 
