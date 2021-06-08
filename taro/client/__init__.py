@@ -1,7 +1,8 @@
 from typing import List, Tuple
 
-from taro import JobInfo, dto
+from taro import dto
 from taro.jobs.api import API_FILE_EXTENSION
+from taro.jobs.job import JobInfo
 from taro.socket import SocketClient, InstanceResponse
 from taro.util import iterates
 
