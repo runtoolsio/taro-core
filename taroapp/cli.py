@@ -3,7 +3,7 @@ import re
 from argparse import RawTextHelpFormatter
 from datetime import datetime
 
-from taro import ExecutionState
+from taro.jobs.execution import ExecutionState
 from taro.jobs.persistence import SortCriteria
 from taroapp import warnspec
 
@@ -103,6 +103,7 @@ def _init_ps_parser(common, subparsers):
 
     ps_parser = subparsers.add_parser(ACTION_PS, parents=[common], description='Show running jobs', add_help=False)
     ps_parser.add_argument('-i', '--inst', '--instance', type=str, help='instance filter')
+    ps_parser.add_argument('-f', '--format', type=str, choices=['table', 'json'], default='table', help='output format')
 
 
 def _init_history_parser(common, subparsers):
