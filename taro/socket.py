@@ -41,7 +41,7 @@ class SocketServer(abc.ABC):
     def serve(self):
         log.debug('event=[server_started]')
         while not self._stopped:
-            datagram, client_address = self._server.recvfrom(2048)
+            datagram, client_address = self._server.recvfrom(16384)
             if not datagram:
                 break
             req_body = json.loads(datagram)
@@ -110,7 +110,7 @@ class SocketClient:
                 try:
                     self._client.sendto(json.dumps(req_body).encode(), str(api_file))
                     if self._bidirectional:
-                        datagram = self._client.recv(20000)
+                        datagram = self._client.recv(16384)
                         resp = InstanceResponse(instance_id, json.loads(datagram.decode()))
                 except ConnectionRefusedError:  # TODO what about other errors?
                     log.warning('event=[dead_socket] socket=[{}]'.format(api_file))
