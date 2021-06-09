@@ -90,6 +90,7 @@ class SocketClient:
         self._client = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if bidirectional:
             self._client.bind(self._client.getsockname())
+        self.dead_sockets = []
 
     @coroutine
     def servers(self, include=()):
@@ -98,7 +99,7 @@ class SocketClient:
         skip = False
         for api_file in paths.socket_files(self._file_extension):
             instance_id = api_file.stem
-            if include and instance_id not in include:
+            if (api_file in self.dead_sockets) or (include and instance_id not in include):
                 continue
             while True:
                 if not skip:
@@ -112,7 +113,8 @@ class SocketClient:
                         datagram = self._client.recv(20000)
                         resp = InstanceResponse(instance_id, json.loads(datagram.decode()))
                 except ConnectionRefusedError:  # TODO what about other errors?
-                    log.warning('event=[dead_socket] socket=[{}]'.format(api_file))  # TODO remove file
+                    log.warning('event=[dead_socket] socket=[{}]'.format(api_file))
+                    self.dead_sockets.append(api_file)
                     skip = True  # Ignore this one and continue with another one
                     break
 

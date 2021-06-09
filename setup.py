@@ -23,7 +23,7 @@ setuptools.setup(
         "Operating System :: POSIX :: Linux",
     ],
     python_requires='>=3.6',
-    packages=find_packages(exclude=("test*",)) + find_namespace_packages(include=("taro.db",)),
+    packages=find_packages(exclude=("test*",)) + find_namespace_packages(include=("taro.jobs.db",)),
     install_requires=[
         "PyYAML>=5.1.2",
         "pypager>=3.0.0",
