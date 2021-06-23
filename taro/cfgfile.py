@@ -51,13 +51,6 @@ def read_config(config_file_path) -> NestedNamespace:
             return NestedNamespace()
 
 
-def print_config(config=None):
-    config_path = util.expand_user(config) if config else paths.lookup_config_file()
-    print('Showing config file: ' + str(config_path))
-    with open(config_path, 'r') as file:
-        print(file.read())
-
-
 def create(overwrite=False):
     config_dir_path = paths.config_file_search_path(exclude_cwd=True)[0]
     config_path = config_dir_path / paths.DEFAULT_CONFIG_FILE

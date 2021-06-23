@@ -6,6 +6,8 @@ from types import SimpleNamespace
 
 import itertools
 
+from taro import paths
+
 
 class NestedNamespace(SimpleNamespace):
 
@@ -125,6 +127,13 @@ def expand_user(file):
         return file
 
     return os.path.expanduser(file)
+
+
+def print_file(path):
+    path = expand_user(path)
+    print('Showing file: ' + str(path))
+    with open(path, 'r') as file:
+        print(file.read())
 
 
 def sequence_view(seq, *, sort_key, asc, limit):
