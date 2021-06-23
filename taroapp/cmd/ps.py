@@ -33,7 +33,10 @@ def _colours(job_info):
     if state.is_failure():
         return 'red'
 
-    if state.is_unexecuted() or job_info.warnings:
+    if job_info.warnings:
         return 'orange'
+
+    if state.is_incomplete():
+        return 'grey'
 
     return ''

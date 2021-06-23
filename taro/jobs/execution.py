@@ -20,6 +20,7 @@ class ExecutionStateGroup(Enum):
     BEFORE_EXECUTION = auto()
     EXECUTING = auto()
     TERMINAL = auto()
+    NOT_COMPLETED = auto()
     NOT_EXECUTED = auto()
     FAILURE = auto()
 
@@ -29,7 +30,7 @@ class ExecutionState(Enum):
     CREATED = {ExecutionStateGroup.BEFORE_EXECUTION}
 
     PENDING = {ExecutionStateGroup.BEFORE_EXECUTION}  # Until released
-    WAITING = {ExecutionStateGroup.BEFORE_EXECUTION}  # For another job
+    WAITING = {ExecutionStateGroup.BEFORE_EXECUTION}  # Wait for another job
     # ON_HOLD or same as pending?
 
     TRIGGERED = {ExecutionStateGroup.EXECUTING}  # Start request sent, start confirmation not (yet) received
@@ -37,7 +38,9 @@ class ExecutionState(Enum):
     RUNNING = {ExecutionStateGroup.EXECUTING}
 
     COMPLETED = {ExecutionStateGroup.TERMINAL}
-    STOPPED = {ExecutionStateGroup.TERMINAL}
+
+    STOPPED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_COMPLETED}
+    INTERRUPTED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_COMPLETED}
 
     DISABLED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}
     CANCELLED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}
@@ -45,7 +48,6 @@ class ExecutionState(Enum):
     SUSPENDED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}  # Temporarily disabled
 
     START_FAILED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.FAILURE}
-    INTERRUPTED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.FAILURE}
     FAILED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.FAILURE}
     ERROR = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.FAILURE}
 
@@ -63,6 +65,9 @@ class ExecutionState(Enum):
 
     def is_executing(self):
         return ExecutionStateGroup.EXECUTING in self.groups
+
+    def is_incomplete(self):
+        return ExecutionStateGroup.NOT_COMPLETED in self.groups
 
     def is_unexecuted(self):
         return ExecutionStateGroup.NOT_EXECUTED in self.groups

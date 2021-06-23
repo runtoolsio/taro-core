@@ -38,4 +38,7 @@ def _colours(job_info):
     if state.is_unexecuted() or job_info.warnings:
         return 'orange'
 
+    if state.is_incomplete():
+        return 'grey'
+
     return ''  # white

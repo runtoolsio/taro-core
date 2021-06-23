@@ -63,7 +63,7 @@ class ProgramExecution(OutputExecution):
         if self._stopped:
             return ExecutionState.STOPPED
         if self._interrupted:
-            raise ExecutionError("Process interrupted", ExecutionState.INTERRUPTED)
+            return ExecutionState.INTERRUPTED
         raise ExecutionError("Process returned non-zero code " + str(ret_code), ExecutionState.FAILED)
 
     @property
