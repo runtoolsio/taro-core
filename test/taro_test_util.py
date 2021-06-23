@@ -95,7 +95,7 @@ def remove_test_db():
 
 
 def _test_config_path() -> Path:
-    return Path.cwd() / paths.DEFAULT_CONFIG_FILE
+    return Path.cwd() / paths.CONFIG_FILE
 
 
 def test_db_path() -> Path:

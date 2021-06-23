@@ -4,10 +4,7 @@ from collections import Iterable
 from pathlib import Path
 from shutil import copy
 
-import yaml
-
-from taro import cfg, util, paths
-from taro.util import NestedNamespace
+from taro import cfg, util, paths, read_yaml_file
 
 LOG_ENABLED = 'log.enabled'
 LOG_STDOUT_LEVEL = 'log.stdout.level'
@@ -23,7 +20,7 @@ log = logging.getLogger(__name__)
 
 def load(config=None):
     config_path = util.expand_user(config) if config else paths.lookup_config_file()
-    cns = read_config(config_path)
+    cns = read_yaml_file(config_path)
     log.debug("event=[config_file_loaded] path=[%s] content=[%s]", config_path, cns)
 
     cfg.log_enabled = cns.get(LOG_ENABLED, default=cfg.log_enabled, type_=bool)
@@ -42,18 +39,9 @@ def load(config=None):
         cfg.plugins = tuple(plugins)
 
 
-def read_config(config_file_path) -> NestedNamespace:
-    with open(config_file_path, 'r') as file:
-        config_ns = util.wrap_namespace(yaml.safe_load(file))
-        if config_ns:
-            return config_ns
-        else:  # File is empty
-            return NestedNamespace()
-
-
 def create(overwrite=False):
     config_dir_path = paths.config_file_search_path(exclude_cwd=True)[0]
-    config_path = config_dir_path / paths.DEFAULT_CONFIG_FILE
+    config_path = config_dir_path / paths.CONFIG_FILE
 
     if not Path(config_dir_path).is_dir():
         os.makedirs(config_dir_path)

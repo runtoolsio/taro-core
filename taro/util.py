@@ -1,12 +1,11 @@
 import functools
+import itertools
 import os
 import secrets
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-import itertools
-
-from taro import paths
+import yaml
 
 
 class NestedNamespace(SimpleNamespace):
@@ -122,6 +121,11 @@ def format_timedelta(td):
     return s
 
 
+def sequence_view(seq, *, sort_key, asc, limit):
+    sorted_seq = sorted(seq, key=sort_key, reverse=not asc)
+    return itertools.islice(sorted_seq, 0, limit if limit > 0 else None)
+
+
 def expand_user(file):
     if not isinstance(file, str) or not file.startswith('~'):
         return file
@@ -136,6 +140,10 @@ def print_file(path):
         print(file.read())
 
 
-def sequence_view(seq, *, sort_key, asc, limit):
-    sorted_seq = sorted(seq, key=sort_key, reverse=not asc)
-    return itertools.islice(sorted_seq, 0, limit if limit > 0 else None)
+def read_yaml_file(file_path) -> NestedNamespace:
+    with open(file_path, 'r') as file:
+        config_ns = wrap_namespace(yaml.safe_load(file))
+        if config_ns:
+            return config_ns
+        else:  # File is empty
+            return NestedNamespace()

@@ -7,7 +7,6 @@ IMPLEMENTATION NOTE:
     additional packages.
 """
 from . import cfg
-from .cfgfile import read_config
 from .hostinfo import read_hostinfo, HostinfoError
 from .jobs import log, warning
 from .jobs.execution import ExecutionStateGroup, ExecutionState, ExecutionError, ExecutionLifecycle
@@ -17,7 +16,7 @@ from .jobs.plugins import PluginBase, PluginDisabledError
 from .jobs.process import ProcessExecution
 from .jobs.program import ProgramExecution
 from .paths import lookup_config_file_path
-from .util import NestedNamespace, format_timedelta
+from .util import NestedNamespace, format_timedelta, read_yaml_file
 
 
 def setup(**kwargs):

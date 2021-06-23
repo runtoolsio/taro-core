@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 from typing import Generator, List
 
-DEFAULT_CONFIG_FILE = 'taro.yaml'
+CONFIG_FILE = 'taro.yaml'
 _HOSTINFO_FILE = 'hostinfo'
 _LOG_FILE = 'taro.log'
 
@@ -24,7 +24,7 @@ def _is_root():
 
 
 def default_config_file_path() -> Path:
-    return config_file_path(DEFAULT_CONFIG_FILE)
+    return config_file_path(CONFIG_FILE)
 
 
 def config_file_path(filename) -> Path:
@@ -36,7 +36,7 @@ def config_file_path(filename) -> Path:
 
 
 def lookup_config_file():
-    return lookup_config_file_path(DEFAULT_CONFIG_FILE)
+    return lookup_config_file_path(CONFIG_FILE)
 
 
 def lookup_hostinfo_file():
