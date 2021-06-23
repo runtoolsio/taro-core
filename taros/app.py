@@ -3,8 +3,9 @@ import json
 from bottle import route, run, request, response
 
 import taro.client
-from taro import dto, util, ExecutionState, cfgfile
+from taro import dto, util, cfgfile
 from taro.jobs import persistence
+from taro.jobs.execution import ExecutionState
 from taro.jobs.persistence import SortCriteria
 from taros.httputil import http_error, query_digit, query
 
@@ -62,6 +63,10 @@ def to_json(d):
     return json.dumps(d, indent=2)
 
 
-cfgfile.load()
+def start():
+    cfgfile.load()
+    run(host='localhost', port=8080, debug=True, reloader=True)
 
-run(host='localhost', port=8080, debug=True, reloader=True)
+
+if __name__ == '__main__':
+    start()
