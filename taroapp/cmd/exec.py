@@ -1,7 +1,7 @@
 import logging
 import signal
 
-from taro import PluginBase, cfg, log
+from taro import PluginBase, cfg
 from taro.jobs import managed
 from taro.jobs.program import ProgramExecution
 from taro.test.execution import TestExecution
@@ -13,7 +13,6 @@ EXT_PLUGIN_MODULE_PREFIX = 'taro_'
 
 
 def run(args):
-    log.init()  # TODO Layer up?
     PluginBase.load_plugins(EXT_PLUGIN_MODULE_PREFIX, cfg.plugins)
 
     job_id = args.id or " ".join([args.command] + args.arg)

@@ -1,5 +1,6 @@
 import sys
 
+from taro import log
 from taro.jobs import persistence
 from taro.jobs.persistence import PersistenceDisabledError
 from taroapp import cmd, argsconfig, cli
@@ -21,10 +22,11 @@ def main(args):
     args_ns = cli.parse_args(args)
 
     """
-    If config create command is chosen, config loading is skipped.
+    If config create command is chosen, config loading and log initialization is skipped.
     """
     if not(args_ns.action == 'config' and args_ns.config_action == 'create'):
         setup_config(args_ns)
+        log.init()
     
     try:
         cmd.run(args_ns)

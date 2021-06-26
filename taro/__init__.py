@@ -19,19 +19,17 @@ from .paths import lookup_file_in_config_path
 from .util import NestedNamespace, format_timedelta, read_yaml_file
 
 
-def setup(**kwargs):
-    cfg.set_variables(**kwargs)
-    log.init()
-
-
 def load_defaults(**kwargs):
     cfgfile.load(paths.default_config_file_path())
-    cfg.set_variables(**kwargs)
-    log.init()
+    setup(**kwargs)
 
 
 def load_config(config=None, **kwargs):
     cfgfile.load(config)
+    setup(**kwargs)
+
+
+def setup(**kwargs):
     cfg.set_variables(**kwargs)
     log.init()
 
