@@ -49,7 +49,7 @@ def parse_args(args):
     _init_disable_parser(common, subparsers)
     _init_list_disabled_parser(common, subparsers)
     _init_enable_parser(common, subparsers)
-    _init_show_config_parser(common, subparsers)
+    _init_config_parser(common, subparsers)
     _init_hostinfo_parser(common, subparsers)
 
     parsed = parser.parse_args(args)
@@ -251,7 +251,7 @@ def _init_enable_parser(common, subparsers):
     enable_parser.add_argument('jobs', type=str, metavar='JOB', nargs=argparse.REMAINDER, help="job IDs to enable")
 
 
-def _init_show_config_parser(common, subparsers):
+def _init_config_parser(common, subparsers):
     """
     Creates parsers for `config` command
 

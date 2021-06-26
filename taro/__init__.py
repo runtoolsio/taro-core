@@ -15,7 +15,7 @@ from .jobs.managed import create_managed_job
 from .jobs.plugins import PluginBase, PluginDisabledError
 from .jobs.process import ProcessExecution
 from .jobs.program import ProgramExecution
-from .paths import lookup_config_file_path
+from .paths import lookup_file_in_config_path
 from .util import NestedNamespace, format_timedelta, read_yaml_file
 
 

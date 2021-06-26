@@ -36,11 +36,11 @@ def config_file_path(filename) -> Path:
 
 
 def lookup_config_file():
-    return lookup_config_file_path(CONFIG_FILE)
+    return lookup_file_in_config_path(CONFIG_FILE)
 
 
 def lookup_hostinfo_file():
-    return lookup_config_file_path(_HOSTINFO_FILE)
+    return lookup_file_in_config_path(_HOSTINFO_FILE)
 
 
 def config_file_search_path(*, exclude_cwd=False) -> List[Path]:
@@ -62,7 +62,7 @@ def config_file_search_path(*, exclude_cwd=False) -> List[Path]:
     return search_path
 
 
-def lookup_config_file_path(file) -> Path:
+def lookup_file_in_config_path(file) -> Path:
     """Returns config found in the search path
     :return: config file path
     :raise FileNotFoundError: when config lookup failed
