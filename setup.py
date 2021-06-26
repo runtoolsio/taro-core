@@ -32,6 +32,7 @@ setuptools.setup(
     ],
     package_data={
         'taro': ['config/*.yaml'],
+        'taros': ['config/*.yaml'],
     },
     entry_points={
         "console_scripts": [

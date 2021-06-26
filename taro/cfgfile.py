@@ -1,7 +1,7 @@
 import logging
 from collections import Iterable
 
-from taro import cfg, util, paths, read_yaml_file
+from taro import cfg, util, paths
 
 LOG_ENABLED = 'log.enabled'
 LOG_STDOUT_LEVEL = 'log.stdout.level'
@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 def load(config=None):
     config_path = util.expand_user(config) if config else paths.lookup_config_file()
-    cns = read_yaml_file(config_path)
+    cns = util.read_yaml_file(config_path)
     log.debug("event=[config_file_loaded] path=[%s] content=[%s]", config_path, cns)
 
     cfg.log_enabled = cns.get(LOG_ENABLED, default=cfg.log_enabled, type_=bool)

@@ -6,9 +6,9 @@ IMPLEMENTATION NOTE:
     Avoid importing any module depending on any external package. This allows to use this module without installing
     additional packages.
 """
-from . import cfg
+from . import cfg, cfgfile, log
 from .hostinfo import read_hostinfo, HostinfoError
-from .jobs import log, warning
+from .jobs import warning
 from .jobs.execution import ExecutionStateGroup, ExecutionState, ExecutionError, ExecutionLifecycle
 from .jobs.job import JobInstance, JobInfo, ExecutionStateObserver, Warn, WarningObserver, WarnEventCtx
 from .jobs.managed import create_managed_job
