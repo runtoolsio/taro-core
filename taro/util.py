@@ -3,6 +3,8 @@ import itertools
 import os
 import secrets
 from datetime import datetime, timezone
+from pathlib import Path
+from shutil import copy
 from types import SimpleNamespace
 
 import yaml
@@ -147,3 +149,16 @@ def read_yaml_file(file_path) -> NestedNamespace:
             return config_ns
         else:  # File is empty
             return NestedNamespace()
+
+
+def copy_resource(src: Path, dst: Path, overwrite=False):
+    if not dst.parent.is_dir():
+        os.makedirs(dst.parent)
+
+    if not dst.exists() or overwrite:
+        print("copying file to " + str(dst))
+        copy(src, dst)
+        print("done!")
+        return
+
+    raise FileExistsError('File already exists: ' + str(dst))

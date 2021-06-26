@@ -1,8 +1,5 @@
 import logging
-import os
 from collections import Iterable
-from pathlib import Path
-from shutil import copy
 
 from taro import cfg, util, paths, read_yaml_file
 
@@ -37,20 +34,3 @@ def load(config=None):
         cfg.plugins = (plugins,)
     elif isinstance(plugins, Iterable):
         cfg.plugins = tuple(plugins)
-
-
-def create(overwrite=False):
-    config_dir_path = paths.config_file_search_path(exclude_cwd=True)[0]
-    config_path = config_dir_path / paths.CONFIG_FILE
-
-    if not Path(config_dir_path).is_dir():
-        os.makedirs(config_dir_path)
-
-    if not config_path.exists() or overwrite:
-        default_config_path = paths.default_config_file_path()
-        print("creating config file in " + str(config_path))
-        copy(default_config_path, config_path)
-        print("done!")
-        return
-
-    raise FileExistsError('File already exists in: ' + str(config_path))
