@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from shutil import copy
 from types import SimpleNamespace
+from typing import Dict
 
 import yaml
 
@@ -68,13 +69,17 @@ def set_attr(obj, fields, value):
         set_attr(getattr(obj, fields[0]), fields[1:], value)
 
 
-def prime(func):
-    def start(*args, **kwargs):
-        cr = func(*args, **kwargs)
-        next(cr)
-        return cr
+def split_params(params, kv_sep="=") -> Dict[str, str]:
+    f"""
+    Converts sequence of values in format "key{kv_sep}value" to dict[key, value]
+    """
 
-    return start
+    def split(s):
+        if len(s) < 3 or kv_sep not in s[1:-1]:
+            raise ValueError(f"Parameter must be in format: param{kv_sep}value")
+        return s.split(kv_sep)
+
+    return {k: v for k, v in (split(set_opt) for set_opt in params)}
 
 
 def iterates(func):

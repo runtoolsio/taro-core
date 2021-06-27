@@ -20,7 +20,6 @@ ACTION_LIST_DISABLED = 'list-disabled'
 ACTION_ENABLE = 'enable'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
-ACTION_CONFIG_PATH = 'path'
 ACTION_CONFIG_CREATE = 'create'
 ACTION_HOSTINFO = 'hostinfo'
 
@@ -267,9 +266,6 @@ def _init_config_parser(common, subparsers):
         ACTION_CONFIG_SHOW, parents=[common],
         description='Print config used by exec command or config specified by an option', add_help=False)
     show_config_parser.add_argument('-dc', '--def-config', action='store_true', help='show default config')
-
-    config_subparsers.add_parser(ACTION_CONFIG_PATH, parents=[common], description='Print path to config',
-                                 add_help=False)
 
     create__config_parser = config_subparsers.add_parser(ACTION_CONFIG_CREATE, parents=[common],
                                                          description='create config file', add_help=False)

@@ -1,9 +1,10 @@
 import sys
 
-from taro import log
+import taro
+from taro import util, paths
 from taro.jobs import persistence
 from taro.jobs.persistence import PersistenceDisabledError
-from taroapp import cmd, argsconfig, cli
+from taroapp import cmd, cli
 
 
 def main_cli():
@@ -21,13 +22,44 @@ def main(args):
     """
     args_ns = cli.parse_args(args)
 
+    if args_ns.action == 'config':
+        run_config(args_ns)
+    else:
+        init_taro(args_ns)
+        run_command(args_ns)
+
+
+def run_config(args):
+    if args.config_action == cli.ACTION_CONFIG_SHOW:
+        if getattr(args, 'def_config', False):
+            util.print_file(paths.default_config_file_path())
+        else:
+            util.print_file(paths.lookup_config_file())
+    elif args.config_action == cli.ACTION_CONFIG_CREATE:
+        cfg_to_copy = paths.default_config_file_path()
+        # Copy to first dir in search path
+        copy_to = paths.config_file_search_path(exclude_cwd=True)[0] / paths.CONFIG_FILE
+        util.copy_resource(cfg_to_copy, copy_to, args.overwrite)
+
+
+def init_taro(args):
+    """Initialize taro according to provided CLI arguments
+
+    :param args: CLI arguments
     """
-    If config create command is chosen, config loading and log initialization is skipped.
-    """
-    if not(args_ns.action == 'config' and args_ns.config_action == 'create'):
-        setup_config(args_ns)
-        log.init()
-    
+    config_vars = util.split_params(args.set) if args.set else {}  # Config variables and override values
+
+    if getattr(args, 'config', None):
+        taro.load_config(args.config, **config_vars)
+    elif getattr(args, 'def_config', False):
+        taro.load_defaults(**config_vars)
+    elif getattr(args, 'min_config', False):
+        taro.setup(**config_vars)
+    else:
+        taro.load_config(paths.lookup_config_file(), **config_vars)
+
+
+def run_command(args_ns):
     try:
         cmd.run(args_ns)
     except PersistenceDisabledError:
@@ -35,12 +67,3 @@ def main(args):
               file=sys.stderr)
     finally:
         persistence.close()
-
-
-def setup_config(args):
-    """Load and setup config according to provided CLI arguments
-
-    :param args: CLI arguments
-    """
-    argsconfig.load_config(args)
-    argsconfig.override_config(args)

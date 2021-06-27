@@ -2,12 +2,9 @@
 Reads CLI arguments to initialize and modify :mod:`cfg` module during initialization phase of the application.
 """
 
-from taro import paths, cfgfile, cfg
-
-
-def load_config(args):
-    if not getattr(args, 'min_config', False):
-        cfgfile.load(get_config_file_path(args))
+import taro.paths
+from . import cfgfile
+from taros import cfg, paths
 
 
 def get_config_file_path(args):
@@ -16,7 +13,7 @@ def get_config_file_path(args):
     if getattr(args, 'def_config', False):
         return paths.default_config_file_path()
 
-    return paths.lookup_config_file()
+    return taro.paths.lookup_file_in_config_path(paths.CONFIG_FILE)
 
 
 def override_config(args):
