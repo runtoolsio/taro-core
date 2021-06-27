@@ -66,4 +66,4 @@ def run_command(args_ns):
         print('This command cannot be executed with disabled persistence. Enable persistence in config file first.',
               file=sys.stderr)
     finally:
-        persistence.close()
+        taro.close()

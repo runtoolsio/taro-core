@@ -8,7 +8,7 @@ IMPLEMENTATION NOTE:
 """
 from . import cfg, cfgfile, log
 from .hostinfo import read_hostinfo, HostinfoError
-from .jobs import warning
+from .jobs import warning, persistence
 from .jobs.execution import ExecutionStateGroup, ExecutionState, ExecutionError, ExecutionLifecycle
 from .jobs.job import JobInstance, JobInfo, ExecutionStateObserver, Warn, WarningObserver, WarnEventCtx
 from .jobs.managed import create_managed_job
@@ -47,3 +47,7 @@ def exec_time_warning(time: float):
 
 def output_warning(regex: str):
     return lambda job_instance: warning.output_matches(job_instance, f"output=~{regex}", regex)
+
+
+def close():
+    persistence.close()
