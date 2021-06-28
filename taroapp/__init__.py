@@ -1,7 +1,7 @@
 import sys
 
 import taro
-from taro import util, paths
+from taro import util, paths, cfgfile
 from taro.jobs import persistence
 from taro.jobs.persistence import PersistenceDisabledError
 from taroapp import cmd, cli
@@ -36,10 +36,7 @@ def run_config(args):
         else:
             util.print_file(paths.lookup_config_file())
     elif args.config_action == cli.ACTION_CONFIG_CREATE:
-        cfg_to_copy = paths.default_config_file_path()
-        # Copy to first dir in search path
-        copy_to = paths.config_file_search_path(exclude_cwd=True)[0] / paths.CONFIG_FILE
-        util.copy_resource(cfg_to_copy, copy_to, args.overwrite)
+        cfgfile.copy_default_file_to_search_path(args.overwrite)
 
 
 def init_taro(args):
