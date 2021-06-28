@@ -2,7 +2,6 @@ import logging
 import sys
 from logging import handlers
 
-from taro import cfg
 from taro import paths
 from taro.util import expand_user
 
@@ -15,19 +14,23 @@ STDERR_HANDLER = 'stderr-handler'
 FILE_HANDLER = 'file-handler'
 
 
-def init():
+def init(enabled=True, log_stdout_level='warn', log_file_level='info', log_file_path=None):
     _root_logger.disabled = False  # Resetting required for tests
 
-    if not cfg.log_enabled:
+    if not enabled:
         disable()
         return
 
-    if cfg.log_stdout_level != 'off':
-        setup_console(cfg.log_stdout_level)
+    if log_stdout_level != 'off':
+        setup_console(log_stdout_level)
 
-    if cfg.log_file_level != 'off':
-        log_file_path = expand_user(cfg.log_file_path) or paths.log_file_path(create=True)
-        setup_file(cfg.log_file_level, log_file_path)
+    if log_file_level != 'off':
+        log_file_path = expand_user(log_file_path) or paths.log_file_path(create=True)
+        setup_file(log_file_level, log_file_path)
+
+
+def init_by_config(config):
+    init(config.log_enabled, config.log_stdout_level, config.log_file_level, config.log_file_path)
 
 
 def disable():
