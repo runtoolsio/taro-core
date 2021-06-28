@@ -44,6 +44,8 @@ def init_server(args):
     else:
         cfgfile.load()
 
+    taro.load_defaults()  # TODO support for custom taro config
+
 
 def start_server(args):
     if args.daemon:
@@ -51,4 +53,3 @@ def start_server(args):
             app.start()
     else:
         app.start()
-
