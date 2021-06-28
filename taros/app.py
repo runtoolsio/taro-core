@@ -65,7 +65,7 @@ def to_json(d):
 
 
 def start():
-    run(host='localhost', port=cfg.port, debug=True, reloader=True)
+    run(host='localhost', port=cfg.port, debug=True, reloader=False)
 
 
 if __name__ == '__main__':

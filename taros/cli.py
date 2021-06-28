@@ -50,3 +50,5 @@ def _init_parser_start(subparsers):
     start_parser.add_argument('--set', type=str, action='append', help='override value of configuration field')
     start_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
     start_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
+
+    start_parser.add_argument('--daemon', action='store_true', default=False, help='Run as a daemon')

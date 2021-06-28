@@ -1,3 +1,5 @@
+import daemon
+
 import taro.paths
 from taro import util
 
@@ -44,4 +46,9 @@ def init_server(args):
 
 
 def start_server(args):
-    app.start()
+    if args.daemon:
+        with daemon.DaemonContext():
+            app.start()
+    else:
+        app.start()
+

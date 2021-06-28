@@ -29,6 +29,7 @@ setuptools.setup(
         "pypager>=3.0.0",
         "bottle>=0.12.18",
         "urllib3>=1.26.2",
+        "python-daemon>=2.3.0",
     ],
     package_data={
         'taro': ['config/*.yaml'],
