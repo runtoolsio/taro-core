@@ -73,7 +73,7 @@ def lookup_file_in_config_path(file) -> Path:
             return config
 
     raise FileNotFoundError(f'Config file {file} not found in the search path: '
-                            + ",".join([str(dir_) for dir_ in config_file_search_path()]))
+                            + ", ".join([str(dir_) for dir_ in config_file_search_path()]))
 
 
 def log_file_path(create: bool) -> Path:
