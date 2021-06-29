@@ -1,4 +1,5 @@
 server:
+  bind: localhost
   port: 8000
 
 log:
@@ -7,6 +8,6 @@ log:
     level: warn
   file:
     level: info
-#    path: ~/.cache/taro/taro.log
+  #    path: ~/.cache/taro/taros.log
   syslog:
     level: off # Not yet implemented

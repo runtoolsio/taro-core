@@ -1,11 +1,11 @@
 import logging
 
-from taro import util
-
 import taro.paths
+from taro import util
 from taros import cfg, paths
 
-PORT = 'server.port'
+SERVER_BIND = 'server.bind'
+SERVER_PORT = 'server.port'
 
 LOG_ENABLED = 'log.enabled'
 LOG_STDOUT_LEVEL = 'log.stdout.level'
@@ -17,14 +17,15 @@ log = logging.getLogger(__name__)
 
 def load(config=None):
     config_path = util.expand_user(config) if config else taro.paths.lookup_file_in_config_path(paths.CONFIG_FILE)
-    cns = util.read_yaml_file(config_path)
-    log.debug("event=[config_file_loaded] path=[%s] content=[%s]", config_path, cns)
+    cnf = util.read_yaml_file(config_path)
+    log.debug("event=[config_file_loaded] path=[%s] content=[%s]", config_path, cnf)
 
-    cfg.port = cns.get(PORT, default=cfg.port, type_=int)
-    cfg.log_enabled = cns.get(LOG_ENABLED, default=cfg.log_enabled, type_=bool)
-    cfg.log_stdout_level = cns.get(LOG_STDOUT_LEVEL, default=cfg.log_stdout_level, type_=str).lower()
-    cfg.log_file_level = cns.get(LOG_FILE_LEVEL, default=cfg.log_file_level, type_=str).lower()
-    cfg.log_file_path = cns.get(LOG_FILE_PATH, default=cfg.log_file_path, type_=str)
+    cfg.server_bind = cnf.get(SERVER_BIND, default=cfg.server_bind, type_=str, allowed=('localhost', 'all')).lower()
+    cfg.server_port = cnf.get(SERVER_PORT, default=cfg.server_port, type_=int)
+    cfg.log_enabled = cnf.get(LOG_ENABLED, default=cfg.log_enabled, type_=bool)
+    cfg.log_stdout_level = cnf.get(LOG_STDOUT_LEVEL, default=cfg.log_stdout_level, type_=str).lower()
+    cfg.log_file_level = cnf.get(LOG_FILE_LEVEL, default=cfg.log_file_level, type_=str).lower()
+    cfg.log_file_path = cnf.get(LOG_FILE_PATH, default=cfg.log_file_path, type_=str)
 
 
 def copy_default_file_to_search_path(overwrite: bool):

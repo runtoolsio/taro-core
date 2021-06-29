@@ -7,7 +7,6 @@ from taro import dto, util
 from taro.jobs import persistence
 from taro.jobs.execution import ExecutionState
 from taro.jobs.persistence import SortCriteria
-from taros import cfg
 from taros.httputil import http_error, query_digit, query
 
 
@@ -64,9 +63,9 @@ def to_json(d):
     return json.dumps(d, indent=2)
 
 
-def start():
-    run(host='localhost', port=cfg.port, debug=True, reloader=False)
+def start(host, port):
+    run(host=host, port=port, debug=True, reloader=False)
 
 
 if __name__ == '__main__':
-    start()
+    start('localhost', 8000)

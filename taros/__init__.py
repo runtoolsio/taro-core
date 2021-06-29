@@ -2,8 +2,7 @@ import daemon
 
 import taro.paths
 from taro import util
-
-from taros import paths, cli, cfgfile, app
+from taros import paths, cli, cfgfile, app, cfg
 
 
 def main_cli():
@@ -48,8 +47,12 @@ def init_server(args):
 
 
 def start_server(args):
+    if cfg.server_bind == 'localhost':
+        host = 'localhost'
+    else:
+        host = '0.0.0.0'
     if args.daemon:
         with daemon.DaemonContext():
-            app.start()
+            app.start(host, cfg.server_port)
     else:
-        app.start()
+        app.start(host, cfg.server_port)

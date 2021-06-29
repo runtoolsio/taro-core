@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="taro",
-    version="0.1.4",
+    version="0.2.1",
     author="Stan Svec",
     author_email="dev@stansvec.com",
     description="Tool for managing your (cron) jobs",
@@ -38,7 +38,7 @@ setuptools.setup(
     entry_points={
         "console_scripts": [
             "taro = taroapp:main_cli",
-            "taros = taros.app:start",
+            "taros = taros:main_cli",
         ]
     },
 )

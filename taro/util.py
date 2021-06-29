@@ -13,15 +13,16 @@ import yaml
 
 class NestedNamespace(SimpleNamespace):
 
-    def get(self, fields: str, default=None, type_=None):
+    def get(self, fields: str, default=None, type_=None, allowed=()):
         """Similar to `getattr` but supports chained dot notation for safely accessing nested fields.
 
         :param fields: field names separated by dot
         :param default: value returned if (possible nested) attribute is not found or is `None`
         :param type_: expected type of the attribute value, an exception is raised if does not match
+        :param allowed: list of allowed values
         :returns: a value of the attribute
         """
-        return get_attr(self, fields, default, type_)
+        return get_attr(self, fields, default, type_, allowed)
 
 
 # Martijn Pieters' solution below: https://stackoverflow.com/questions/50490856
@@ -44,8 +45,11 @@ def _wrap_list(ob):
     return [wrap_namespace(v) for v in ob]
 
 
-def get_attr(obj, fields, default=None, type_=None):
-    return _getattr(obj, fields.split('.'), default, type_)
+def get_attr(obj, fields, default=None, type_=None, allowed=()):
+    val = _getattr(obj, fields.split('.'), default, type_)
+    if allowed and val not in allowed:
+        raise ValueError(f"Value `{val}` for `{fields}` is not in allowed values: {allowed}")
+    return val
 
 
 def _getattr(obj, fields, default, type_):
