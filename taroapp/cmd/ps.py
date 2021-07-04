@@ -15,6 +15,8 @@ def run(args):
     if args.format == 'table':
         ps.print_table(jobs, view_inst.DEFAULT_COLUMNS, _colours, show_header=True, pager=False)
     elif args.format == 'json':
+        print(json.dumps([dto.to_info_dto(job) for job in jobs]))
+    elif args.format == 'jsonp':
         json_str = json.dumps([dto.to_info_dto(job) for job in jobs], indent=2)
         print(highlight(json_str, JsonLexer(), TerminalFormatter()))
     else:
