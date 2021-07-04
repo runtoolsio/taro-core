@@ -23,7 +23,7 @@ def main(args):
 
     # check if any argument is given, if not then it defaults to ps
     if not args: 
-        args.append('ps')
+        args = ['ps']
 
     args_ns = cli.parse_args(args)
 
