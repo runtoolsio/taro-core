@@ -11,7 +11,7 @@ from taroapp.view import instance as view_inst
 
 
 def run(args):
-    jobs = taro.client.read_jobs_info(args.inst)
+    jobs = taro.client.read_jobs_info(args.instance)
     if args.format == 'table':
         ps.print_table(jobs, view_inst.DEFAULT_COLUMNS, _colours, show_header=True, pager=False)
     elif args.format == 'json':
