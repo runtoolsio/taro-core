@@ -89,7 +89,7 @@ def _init_exec_parser(common, subparsers):
     # Terms command and arguments taken from python doc and docker run help,
     # for this app (or rather exec command) these are operands (alternatively arguments)
     exec_parser.add_argument('command', type=str, metavar='COMMAND', help='program to execute')
-    exec_parser.add_argument('arg', type=str, metavar='ARG', nargs=argparse.REMAINDER, help="program arguments")
+    exec_parser.add_argument('arg', type=str, metavar='ARG', nargs="*", default=[],help="program arguments")
 
 
 def _init_ps_parser(common, subparsers):
@@ -305,6 +305,7 @@ def _str2state(v):
 
 
 def _warn_type(arg_value):
+    print("warrrrrr")
     p = _build_warn_validation_regex(
         warnspec.EXEC_TIME_WARN_REGEX,
         warnspec.FILE_CONTAINS_REGEX,
