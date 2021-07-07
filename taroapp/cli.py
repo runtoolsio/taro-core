@@ -81,7 +81,8 @@ def _init_exec_parser(common, subparsers):
     # exec_parser.add_argument('-t', '--timeout', type=int) TODO implement
     exec_parser.add_argument('-p', '--pending', type=str, help='specifies pending value for releasing of this job')
     # exec_parser.add_argument('-w', '--wait', type=str, help='execution will wait for other jobs') TODO implement
-    exec_parser.add_argument('-W', '--warn', type=_warn_type, action='append', help='Add warning check')
+    exec_parser.add_argument('--warn-output', type=_warn_type, default="", help='Add warning check')
+    exec_parser.add_argument('--warn-exec-time', type=_warn_type, default="", help='Add warning check')
 
     exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=ExecutionState.COMPLETED,
                              help='executing without actual running of the command - optional termination state arg')
@@ -305,7 +306,6 @@ def _str2state(v):
 
 
 def _warn_type(arg_value):
-    print("warrrrrr")
     p = _build_warn_validation_regex(
         warnspec.EXEC_TIME_WARN_REGEX,
         warnspec.FILE_CONTAINS_REGEX,

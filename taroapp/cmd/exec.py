@@ -27,8 +27,7 @@ def run(args):
     signal.signal(signal.SIGTERM, term.terminate)
     signal.signal(signal.SIGINT, term.interrupt)
 
-    if args.warn:
-        warnspec.setup_warnings(managed_job.job_instance, *args.warn)
+    warnspec._init_warning(managed_job.job_instance, args)
 
     managed_job()
 

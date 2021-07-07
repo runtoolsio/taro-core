@@ -2,8 +2,8 @@ import re
 
 from taro import warning
 
-EXEC_TIME_WARN_REGEX = r'exec_time>(\d+)([smh])'
-OUTPUT_MATCHES_REGEX = 'output=~(.+)'
+EXEC_TIME_WARN_REGEX = r'(\d+)([smh])'
+OUTPUT_MATCHES_REGEX = '(.+)'
 FILE_CONTAINS_REGEX = 'file:(.+)=~(.+)'
 
 
@@ -14,17 +14,15 @@ def setup_warnings(job_instance, *warn_specs: str):
 
 
 def _init_warning(job_instance, warn_spec):
-    m = re.compile(EXEC_TIME_WARN_REGEX).match(warn_spec)
+    m = re.compile(EXEC_TIME_WARN_REGEX).match(warn_spec.warn_exec_time)
     if m:
         _exec_time_exceeded(job_instance, m)
-        return
 
-    m = re.compile(OUTPUT_MATCHES_REGEX).match(warn_spec)
+    m = re.compile(OUTPUT_MATCHES_REGEX).match(warn_spec.warn_output)
     if m:
         _output_matches(job_instance, m)
-        return
 
-    raise ValueError("Invalid warning specification: " + warn_spec)
+    #raise ValueError("Invalid warning specification: " + warn_spec)
 
     # TODO
     # m = re.compile(FILE_CONTAINS_REGEX).match(warn_spec)
