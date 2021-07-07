@@ -9,7 +9,7 @@ from taro.listening import OutputReceiver
 
 def run(args):
     if args.follow:
-        receiver = OutputReceiver(args.inst)
+        receiver = OutputReceiver(args.instance)
         receiver.listeners.append(TailPrint())
         signal.signal(signal.SIGTERM, lambda _, __: receiver.close())
         signal.signal(signal.SIGINT, lambda _, __: receiver.close())

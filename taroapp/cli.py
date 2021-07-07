@@ -101,7 +101,7 @@ def _init_ps_parser(common, subparsers):
     """
 
     ps_parser = subparsers.add_parser(ACTION_PS, parents=[common], description='Show running jobs', add_help=False)
-    ps_parser.add_argument('-i', '--inst', '--instance', type=str, help='instance filter')
+    ps_parser.add_argument('instance', nargs='?', default=None , type=str, help='instance filter')
     ps_parser.add_argument('-f', '--format', type=str, choices=['table', 'json', 'jsonp'], default='table',
                            help='output format')
 
@@ -118,7 +118,7 @@ def _init_history_parser(common, subparsers):
         ACTION_HISTORY, aliases=['hist'], parents=[common], description='Show jobs history', add_help=False)
 
     filter_group = hist_parser.add_argument_group('filtering', 'These options allows to filter returned jobs')
-    filter_group.add_argument('--id', type=str, help='Job or instance ID matching pattern for result filtering')
+    filter_group.add_argument('id', nargs='?', type=str, help='Job or instance ID matching pattern for result filtering')
     filter_group.add_argument('-T', '--today', action='store_true', help='Return only jobs created today (local)')
     filter_group.add_argument('-S', '--since', type=_str2dt, help='Show entries not older than the specified date')
     filter_group.add_argument('-U', '--until', type=_str2dt, help='Show entries not newer than the specified date')
@@ -155,7 +155,7 @@ def _init_listen_parser(common, subparsers):
 
     release_parser = subparsers.add_parser(ACTION_LISTEN, parents=[common],
                                            description='Print job state changes', add_help=False)
-    release_parser.add_argument('-i', '--inst', '--instance', type=str, help='instance filter')
+    release_parser.add_argument('instance', nargs='?', default=None, type=str, help='instance filter')
 
 
 def _init_wait_parser(common, subparsers):
@@ -167,7 +167,7 @@ def _init_wait_parser(common, subparsers):
     """
 
     wait_parser = subparsers.add_parser(ACTION_WAIT, parents=[common], description='Wait for job state', add_help=False)
-    wait_parser.add_argument('-i', '--inst', '--instance', type=str, help='instance filter')
+    wait_parser.add_argument('instance', nargs='?', default=None, type=str, help='instance filter')
     wait_parser.add_argument('-c', '--count', type=int, default=1, help='Number of occurrences to finish the wait')
     wait_parser.add_argument('states', type=_str2state, metavar='STATES', nargs=argparse.REMAINDER,
                              help='States for which the command waits')
@@ -197,7 +197,7 @@ def _init_tail_parser(common, subparsers):
     """
 
     tail_parser = subparsers.add_parser(ACTION_TAIL, parents=[common], description='Print last output', add_help=False)
-    tail_parser.add_argument('-i', '--inst', '--instance', type=str, help='instance filter')
+    tail_parser.add_argument('instance', nargs='?', default=None, type=str, help='instance filter')
     tail_parser.add_argument('-f', '--follow', action='store_true', help='Keep printing')
 
 

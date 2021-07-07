@@ -6,7 +6,7 @@ from taro.listening import StateReceiver
 
 
 def run(args):
-    receiver = StateReceiver(args.inst, args.states)
+    receiver = StateReceiver(args.instance, args.states)
     receiver.listeners.append(lambda job_info: print_state_change(job_info))
     receiver.listeners.append(StoppingListener(receiver, args.count))
     signal.signal(signal.SIGTERM, lambda _, __: _close_server_and_exit(receiver, signal.SIGTERM))
