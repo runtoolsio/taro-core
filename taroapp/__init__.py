@@ -20,6 +20,11 @@ def main(args):
 
     :param args: CLI arguments
     """
+
+    # check if any argument is given, if not then it defaults to ps
+    if not args: 
+        args = [cli.ACTION_PS]
+
     args_ns = cli.parse_args(args)
 
     if args_ns.action == 'config':
