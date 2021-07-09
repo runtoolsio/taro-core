@@ -45,7 +45,7 @@ def test_job_status(capsys):
 def test_job_instance_filter_false(capsys):
     run_app_as_process_and_wait('exec -mc --id f_test_no_job1 sleep 1', wait_for=ExecutionState.RUNNING, daemon=True)
 
-    run_app('ps -i f_test_no_job')
+    run_app('ps f_test_no_job')
     output = capsys.readouterr().out
 
     jobs = ps.parse_table(output, view_inst.DEFAULT_COLUMNS)
@@ -55,7 +55,7 @@ def test_job_instance_filter_false(capsys):
 def test_job_instance_filter_true(capsys):
     run_app_as_process_and_wait('exec -mc --id f_test_job1 sleep 1', wait_for=ExecutionState.RUNNING, daemon=True)
 
-    run_app('ps -i f_test_job*')
+    run_app('ps f_test_job*')
     output = capsys.readouterr().out
 
     jobs = ps.parse_table(output, view_inst.DEFAULT_COLUMNS)
