@@ -56,7 +56,7 @@ def run_wait(state, count=1) -> Process:
     :param count: number of waits
     :return: the app as a process
     """
-    return run_app_as_process("wait -c {} {}".format(count, state.name))
+    return run_app_as_process("wait -c {} -s {}".format(count, state.name))
 
 
 def run_app_as_process_and_wait(command, *, wait_for, timeout=2, daemon=False, shell=False) -> Process:
