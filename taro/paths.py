@@ -11,6 +11,7 @@ Discussion:
 
 import getpass
 import os
+import re 
 from pathlib import Path
 from typing import Generator, List
 
@@ -46,8 +47,9 @@ def lookup_hostinfo_file():
 def config_file_search_path(*, exclude_cwd=False) -> List[Path]:
     """Specifies the folders in which the program should look for configuration files:
     1. Search in the current working directory first
-    2. If non-root user search: ${XDG_CONFIG_HOME}/taro/{config-file}
-    3. If not found or root user search: /etc/taro/{config-file}
+    2. If non-root user search: ${XDG_CONFIG_HOME}/taro/{config-file} or default to ${HOME}/.config/taro
+    3. if not in ${XDG_CONFIG_HOME} search: ${XDG_CONFIG_DIRS}/taro/{config-file}
+    4. If not found or root user search: /etc/taro/{config-file}
 
     Related discussion: https://stackoverflow.com/questions/1024114
     :return: list of directories for configuration file lookup
@@ -56,7 +58,13 @@ def config_file_search_path(*, exclude_cwd=False) -> List[Path]:
     if not exclude_cwd:
         search_path.append(Path.cwd())
     if not _is_root():  # TODO Use this also for root user?
-        search_path.append(Path.home() / '.config' / 'taro')
+        if os.environ.get('XDG_CONFIG_HOME'):
+            search_path.append(Path(os.environ['XDG_CONFIG_HOME']))
+        else:
+            search_path.append(Path.home() / '.config' / 'taro')
+        if os.environ.get('XDG_CONFIG_DIRS'):
+            [search_path.append(Path(path)) for path in re.split(r":", os.environ['XDG_CONFIG_DIRS'])]
+    
     search_path.append(Path('/etc/taro'))  # TODO Should be /etc/xdg instead?
 
     return search_path
@@ -79,7 +87,7 @@ def lookup_file_in_config_path(file) -> Path:
 def log_file_path(create: bool) -> Path:
     """
     1. Root user: /var/log/taro/{log-file}
-    2. Non-root user: ${XDG_CACHE_HOME}/taro/{log-file}
+    2. Non-root user: ${XDG_CACHE_HOME}/taro/{log-file} or default to ${HOME}/.cache/taro
 
     :param create: create path directories if not exist
     :return: log file path
@@ -88,8 +96,11 @@ def log_file_path(create: bool) -> Path:
     if _is_root():
         path = Path('/var/log/taro')
     else:
-        home = Path.home()
-        path = home / '.cache' / 'taro'
+        if os.environ.get('XDG_CACHE_HOME'):
+            path = Path(os.environ['XDG_CACHE_HOME']) / 'taro'
+        else:
+            home = Path.home()
+            path = home / '.cache' / 'taro'
 
     if create:
         path.mkdir(parents=True, exist_ok=True)
@@ -157,7 +168,7 @@ def socket_files(file_extension: str) -> Generator[Path, None, None]:
 def sqlite_db_path(create: bool) -> Path:
     """
     1. Root user: /var/lib/taro/{db-file}
-    2. Non-root user: ${XDG_DATA_HOME}/taro/{db-file}
+    2. Non-root user: ${XDG_DATA_HOME}/taro/{db-file} or default to ${HOME}/.local/share/taro
 
     :param create: create path directories if not exist
     :return: db file path
@@ -165,10 +176,13 @@ def sqlite_db_path(create: bool) -> Path:
 
     if _is_root():
         path = Path('/var/lib/taro')
+
+    elif os.environ.get('XDG_DATA_HOME'):
+        path = Path(os.environ['XDG_DATA_HOME'])
     else:
         home = Path.home()
         path = home / '.local' / 'share' / 'taro'
-
+    
     if create:
         path.mkdir(parents=True, exist_ok=True)
 
