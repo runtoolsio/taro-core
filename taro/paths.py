@@ -169,36 +169,21 @@ def sqlite_db_path(create: bool) -> Path:
     """
     1. Root user: /var/lib/taro/{db-file}
     2. Non-root user: ${XDG_DATA_HOME}/taro/{db-file} or default to ${HOME}/.local/share/taro
-    3. ${XDG_DATA_DIRS}/taro/
-    
+
     :param create: create path directories if not exist
-    :return: searches all possible directories. if found, path to db file is returned. 
-     if not, then db file is created in first directory.
+    :return: db file path
     """
 
-    search_path = []
     if _is_root():
-        search_path.append(Path('/var/lib/taro'))
+        path = Path('/var/lib/taro')
 
-    if os.environ.get('XDG_DATA_HOME'):
-        search_path.append(Path(os.environ['XDG_DATA_HOME']))
+    elif os.environ.get('XDG_DATA_HOME'):
+        path = Path(os.environ['XDG_DATA_HOME']) / 'taro'
     else:
         home = Path.home()
-        search_path.append(Path(home / '.local' / 'share' / 'taro'))
-
-    if os.environ.get('XDG_DATA_DIRS'):
-        [search_path.append(Path(path)) for path in re.split(r":", os.environ['XDG_DATA_DIRS'])]
-    else:
-        search_path.append(Path( 'usr' / 'local' / 'share'))
-        search_path.append(Path( 'usr' / 'share'))
-
-
-    for db_dir in search_path:
-        db = db_dir / 'taro.db'
-        if db.exists():
-            return db
+        path = home / '.local' / 'share' / 'taro'
 
     if create:
-        search_path[0].mkdir(parents=True, exist_ok=True)
+        path.mkdir(parents=True, exist_ok=True)
 
-    return search_path[0] / 'taro.db'
+    return path / 'taro.db'
