@@ -59,11 +59,11 @@ def config_file_search_path(*, exclude_cwd=False) -> List[Path]:
         search_path.append(Path.cwd())
     if not _is_root():  # TODO Use this also for root user?
         if os.environ.get('XDG_CONFIG_HOME'):
-            search_path.append(Path(os.environ['XDG_CONFIG_HOME']))
+            search_path.append(Path(os.environ['XDG_CONFIG_HOME']) / 'taro')
         else:
             search_path.append(Path.home() / '.config' / 'taro')
         if os.environ.get('XDG_CONFIG_DIRS'):
-            [search_path.append(Path(path)) for path in re.split(r":", os.environ['XDG_CONFIG_DIRS'])]
+            [search_path.append(Path(path + '/taro')) for path in re.split(r":", os.environ['XDG_CONFIG_DIRS'])]
     
     search_path.append(Path('/etc/taro'))  # TODO Should be /etc/xdg instead?
 
@@ -94,18 +94,18 @@ def log_file_path(create: bool) -> Path:
     """
 
     if _is_root():
-        path = Path('/var/log/taro')
+        path = Path('/var/log')
     else:
         if os.environ.get('XDG_CACHE_HOME'):
-            path = Path(os.environ['XDG_CACHE_HOME']) / 'taro'
+            path = Path(os.environ['XDG_CACHE_HOME'])
         else:
             home = Path.home()
-            path = home / '.cache' / 'taro'
+            path = home / '.cache'
 
     if create:
-        path.mkdir(parents=True, exist_ok=True)
+        os.makedirs(path / 'taro', exist_ok=True)
 
-    return path / 'taro.log'
+    return path / 'taro' / 'taro.log'
 
 
 """
@@ -169,21 +169,36 @@ def sqlite_db_path(create: bool) -> Path:
     """
     1. Root user: /var/lib/taro/{db-file}
     2. Non-root user: ${XDG_DATA_HOME}/taro/{db-file} or default to ${HOME}/.local/share/taro
-
+    3. ${XDG_DATA_DIRS}/taro/
+    
     :param create: create path directories if not exist
-    :return: db file path
+    :return: searches all possible directories. if found, path to db file is returned. 
+     if not, then db file is created in first directory.
     """
 
+    search_path = []
     if _is_root():
-        path = Path('/var/lib/taro')
+        search_path.append(Path('/var/lib/taro'))
 
-    elif os.environ.get('XDG_DATA_HOME'):
-        path = Path(os.environ['XDG_DATA_HOME'])
+    if os.environ.get('XDG_DATA_HOME'):
+        search_path.append(Path(os.environ['XDG_DATA_HOME']))
     else:
         home = Path.home()
-        path = home / '.local' / 'share' / 'taro'
-    
-    if create:
-        path.mkdir(parents=True, exist_ok=True)
+        search_path.append(Path(home / '.local' / 'share' / 'taro'))
 
-    return path / 'taro.db'
+    if os.environ.get('XDG_DATA_DIRS'):
+        [search_path.append(Path(path)) for path in re.split(r":", os.environ['XDG_DATA_DIRS'])]
+    else:
+        search_path.append(Path( 'usr' / 'local' / 'share'))
+        search_path.append(Path( 'usr' / 'share'))
+
+
+    for db_dir in search_path:
+        db = db_dir / 'taro.db'
+        if db.exists():
+            return db
+
+    if create:
+        search_path[0].mkdir(parents=True, exist_ok=True)
+
+    return search_path[0] / 'taro.db'
