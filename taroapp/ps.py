@@ -16,7 +16,7 @@ Column = namedtuple('Column', 'name max_width value_fnc')
 
 @iterates
 def print_table(items, columns: List[Column], colours=None, *, show_header: bool, pager: bool):
-    gen = output_gen(items, columns, colours, show_header, stretch_last_column=pager)
+    gen = output_gen(items, columns, colours, show_header, stretch_last_column=True)
 
     if pager:
         p = Pager()
