@@ -61,17 +61,28 @@ def _calc_widths(items, columns: List[Column], stretch_last_column: bool):
         for c in columns:
             column_width[c] = max(column_width[c], min(len(c.value_fnc(i)) + 2, c.max_width))  # +2 for padding
 
-    if stretch_last_column:
-        # vv Add spare terminal length to the last column vv
-        try:
-            terminal_length = os.get_terminal_size().columns
-        except OSError:
-            return column_width  # Failing in tests
+    
+    # vv Add spare terminal length to the last column vv
+    try:
+        terminal_length = os.get_terminal_size().columns
+    except OSError:
+        return column_width  # Failing in tests
 
-        actual_length = sum(column_width.values()) + len(column_width)
-        spare_length = terminal_length - actual_length
-        if spare_length > 0:
+    actual_length = sum(column_width.values()) + len(column_width)
+    spare_length = terminal_length - actual_length
+    if spare_length > 0:
+        if stretch_last_column:
             column_width[columns[-1]] += spare_length
+        else:
+            max_length_in_last_column = 0
+            for i in items:
+                if len(columns[-1].value_fnc(i)) > max_length_in_last_column:
+                    max_length_in_last_column = len(columns[-1].value_fnc(i))
+
+            if not (columns[-1].max_width+spare_length) > max_length_in_last_column:
+                column_width[columns[-1]] += spare_length
+            elif max_length_in_last_column >= columns[-1].max_width:
+                column_width[columns[-1]] += max_length_in_last_column - columns[-1].max_width + 2
 
     return column_width
 
