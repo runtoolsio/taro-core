@@ -40,48 +40,47 @@ def output_gen(items, columns: List[Column], colours, show_header: bool, stretch
     """
     job_iter = iter(items)
     first_fifty = list(itertools.islice(job_iter, 50))
-    column_width = _calc_widths(first_fifty, columns, stretch_last_column)
-    f = " ".join(" {:" + str(column_width[c] - 1) + "}" for c in columns)
+    column_widths = _calc_widths(first_fifty, columns, stretch_last_column)
+    f = " ".join(" {:" + str(w - 1) + "}" for w in column_widths)
 
     if show_header:
         header_line = f.format(*(c.name for c in columns))
         yield FTxt([('bold', header_line)])
-        separator_line = " ".join("-" * (column_width[c]) for c in columns)
+        separator_line = " ".join("-" * w for w in column_widths)
         yield FTxt([('bold', separator_line)])
 
     for item in itertools.chain(first_fifty, job_iter):
-        line = f.format(*(_limit_text(c.value_fnc(item), column_width[c] - 2) for c in columns))
+        line = f.format(*(_limit_text(c.value_fnc(item), column_widths[i] - 2) for i, c in enumerate(columns)))
         colour = colours(item) if colours else ''
         yield FTxt([(colour, line)])
 
 
 def _calc_widths(items, columns: List[Column], stretch_last_column: bool):
-    column_width = {c: len(c.name) + 2 for c in columns}  # +2 for left and right padding
-    for i in items:
-        for c in columns:
-            column_width[c] = max(column_width[c], min(len(c.value_fnc(i)) + 2, c.max_width))  # +2 for padding
+    widths = [len(c.name) + 2 for c in columns]  # +2 for left and right padding
+    for item in items:
+        for i, column in enumerate(columns):
+            widths[i] = max(widths[i], min(len(column.value_fnc(item)) + 2, column.max_width))
 
     # vv Add spare terminal length to the last column vv
     try:
         terminal_length = os.get_terminal_size().columns
     except OSError:
-        return column_width  # Failing in tests
+        return widths  # Failing in tests
 
-    actual_length = sum(column_width.values()) + len(column_width)
+    actual_length = sum(widths) + len(widths)
     spare_length = terminal_length - actual_length
     if spare_length > 0:
         if stretch_last_column:
-            column_width[columns[-1]] += spare_length
+            widths[-1] += spare_length
         else:
-            max_length_in_last_column = \
-                max((len(columns[-1].value_fnc(i)) + 2 for i in items), default=(column_width[columns[-1]]))
+            max_length_in_last_column = max((len(columns[-1].value_fnc(i)) + 2 for i in items), default=(widths[-1]))
 
-            if max_length_in_last_column < column_width[columns[-1]] + spare_length:
-                column_width[columns[-1]] = max_length_in_last_column
+            if max_length_in_last_column < widths[-1] + spare_length:
+                widths[-1] = max_length_in_last_column
             else:
-                column_width[columns[-1]] += spare_length
+                widths[-1] += spare_length
 
-    return column_width
+    return widths
 
 
 def format_dt(dt):
