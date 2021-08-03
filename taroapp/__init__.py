@@ -2,7 +2,6 @@ import sys
 
 import taro
 from taro import util, paths, cfgfile
-from taro.jobs import persistence
 from taro.jobs.persistence import PersistenceDisabledError
 from taroapp import cmd, cli
 
@@ -22,7 +21,7 @@ def main(args):
     """
 
     # check if any argument is given, if not then it defaults to ps
-    if not args: 
+    if not args and not len(sys.argv) > 1:
         args = [cli.ACTION_PS]
 
     args_ns = cli.parse_args(args)

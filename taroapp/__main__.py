@@ -1,6 +1,4 @@
-import sys
-
-from . import main
+from . import main_cli
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    main_cli()

@@ -6,10 +6,10 @@ import prompt_toolkit
 import yaml
 from prompt_toolkit.output import DummyOutput
 
+from taroapp import main
 from taro import paths, JobInfo, Warn, WarningObserver, cfg
 from taro.jobs import program
 from taro.jobs.job import WarnEventCtx
-from taroapp import __main__
 
 
 def reset_config():
@@ -42,7 +42,7 @@ def run_app(command, shell=False):
     # Prevent UnsupportedOperation error: https://github.com/prompt-toolkit/python-prompt-toolkit/issues/1107
     prompt_toolkit.output.defaults.create_output = NoFormattingOutput
     try:
-        __main__.main(command.split())
+        main(command.split())
     finally:
         prompt_toolkit.output.defaults.create_output = None
         program.USE_SHELL = False
