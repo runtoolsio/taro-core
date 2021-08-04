@@ -22,6 +22,7 @@ ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
 ACTION_CONFIG_CREATE = 'create'
 ACTION_HOSTINFO = 'hostinfo'
+ACTION_VERSION = 'version'
 
 _true_options = ['yes', 'true', 't', 'y', '1', 'on']
 _false_options = ['no', 'false', 'f', 'n', '0', 'off']
@@ -50,6 +51,7 @@ def parse_args(args):
     _init_enable_parser(common, subparsers)
     _init_config_parser(common, subparsers)
     _init_hostinfo_parser(common, subparsers)
+    _init_version_parser(common, subparsers)
 
     parsed = parser.parse_args(args)
     _check_collisions(parser, parsed)
@@ -284,6 +286,18 @@ def _init_hostinfo_parser(common, subparsers):
 
     hostinfo_parser = subparsers.add_parser(
         ACTION_HOSTINFO, parents=[common], description='Show host info', add_help=False)
+
+
+def _init_version_parser(common, subparsers):
+    """
+    Creates parsers for `version` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for version parser to be added to
+    """
+    
+    version_parser = subparsers.add_parser(
+        ACTION_VERSION, parents=[common], description='show version number', add_help=False)
 
 
 def _str2dt(v):
