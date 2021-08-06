@@ -5,7 +5,7 @@ from datetime import datetime
 
 from taro.jobs.execution import ExecutionState
 from taro.jobs.persistence import SortCriteria
-from taroapp import warnspec
+from taroapp import warnspec, version
 
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
@@ -33,6 +33,7 @@ _log_levels = ['critical', 'fatal', 'error', 'warn', 'warning', 'info', 'debug',
 def parse_args(args):
     # TODO destination required
     parser = argparse.ArgumentParser(description='Manage your jobs with Taro')
+    parser.add_argument("-V", "--version", action='version', help="Show version and exit.", version=version.get())   
     common = argparse.ArgumentParser()  # parent parser for subparsers in case they need to share common options
     common.add_argument('--set', type=str, action='append', help='override value of configuration field')
     subparsers = parser.add_subparsers(dest='action')  # command/action
