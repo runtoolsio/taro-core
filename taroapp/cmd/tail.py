@@ -16,7 +16,7 @@ def run(args):
         receiver.start()
     else:
         for job_id, instance_id, tail in taro.client.read_tail(None):
-            if args.inst and not (fnmatch(job_id, args.inst) or fnmatch(instance_id, args.inst)):
+            if args.instance and not (fnmatch(job_id, args.instance) or fnmatch(instance_id, args.instance)):
                 continue
             print(job_id + "@" + instance_id + ':')
             for line in tail:
