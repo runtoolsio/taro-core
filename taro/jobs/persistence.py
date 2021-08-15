@@ -51,8 +51,8 @@ class SortCriteria(Enum):
     TIME = 3
 
 
-def read_jobs(*, sort=SortCriteria.CREATED, asc=False, limit=-1):
-    return _instance().read_jobs(sort=sort, asc=asc, limit=limit)
+def read_jobs(*, sort=SortCriteria.CREATED, asc=False, limit=-1, last=False):
+    return _instance().read_jobs(sort=sort, asc=asc, limit=limit, last=last)
 
 
 def store_job(job_info):

@@ -6,7 +6,7 @@ from taroapp.view import instance as view_inst
 
 
 def run(args):
-    jobs = persistence.read_jobs(sort=SortCriteria[args.sort.upper()], asc=args.asc, limit=args.lines or -1)
+    jobs = persistence.read_jobs(sort=SortCriteria[args.sort.upper()], asc=args.asc, limit=args.lines or -1, last=args.last)
 
     columns = [view_inst.JOB_ID, view_inst.INSTANCE_ID, view_inst.CREATED, view_inst.ENDED, view_inst.EXEC_TIME,
                view_inst.STATE, view_inst.WARNINGS, view_inst.RESULT]
