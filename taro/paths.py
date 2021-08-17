@@ -186,4 +186,4 @@ def sqlite_db_path(create: bool) -> Path:
     if create:
         path.mkdir(parents=True, exist_ok=True)
 
-    return path / 'taro.db'
+    return path / 'jobs.db'
