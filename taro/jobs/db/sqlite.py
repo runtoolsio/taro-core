@@ -40,6 +40,9 @@ class SQLite:
                          warnings text,
                          error text)
                          ''')
+            c.execute('''CREATE INDEX job_id_index ON history (job_id)''')
+            c.execute('''CREATE INDEX instance_id_index ON history (instance_id)''')
+            c.execute('''CREATE INDEX finished_index ON history (finished)''')
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
@@ -54,7 +57,7 @@ class SQLite:
             log.debug('event=[table_created] table=[disabled_jobs]')
             self._conn.commit()
 
-    def read_jobs(self, *, sort, asc, limit) -> List[JobInfo]:
+    def read_jobs(self, *, id, sort, asc, limit, last) -> List[JobInfo]:
         def sort_exp():
             if sort == SortCriteria.CREATED:
                 return 'created'
@@ -64,8 +67,15 @@ class SQLite:
                 return "julianday(finished) - julianday(created)"
             raise ValueError(sort)
 
-        c = self._conn.execute("SELECT * FROM history "
-                               + "ORDER BY " + sort_exp() + (" ASC" if asc else " DESC")
+        statment = "SELECT * FROM history"
+
+        if id:
+            statment += " WHERE job_id = \"{id}\" OR instance_id = \"{id}\"".format(id=id)
+        if last:
+            statment += " GROUP BY job_id HAVING ROWID = max(ROWID) "
+
+        c = self._conn.execute(statment                             
+                               + " ORDER BY " + sort_exp() + (" ASC" if asc else " DESC")
                                + " LIMIT ?",
                                (limit,))
 
