@@ -19,18 +19,19 @@ from taro.jobs.job import ExecutionStateObserver, JobInstance, JobInfo, WarningO
 log = logging.getLogger(__name__)
 
 
-def run(job_id, execution, no_overlap: bool = False):
-    instance = RunnerJobInstance(job_id, execution, no_overlap=no_overlap)
+def run(job_id, execution, no_history = False,  no_overlap: bool = False):
+    instance = RunnerJobInstance(job_id, execution, no_history = no_history, no_overlap=no_overlap)
     instance.run()
     return instance
 
 
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, *, no_overlap: bool = False):
+    def __init__(self, job_id, execution, *, no_history: bool = False, no_overlap: bool = False):
         self._job_id = job_id
         self._execution = execution
         self._no_overlap = no_overlap
+        self._no_history = no_history
         self._instance_id: str = util.unique_timestamp_hex()
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
         self._last_output = deque(maxlen=10)
@@ -211,10 +212,11 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                     prev_state.name, new_state.name)))
                 job_info = self.create_info()  # Be sure both new_state and exec_error are already set
 
-        if job_info:
-            if new_state.is_terminal() and persistence.is_enabled():
-                persistence.store_job(job_info)
-            self._notify_state_observers(job_info)
+        if not self._no_history:
+            if job_info:
+                if new_state.is_terminal() and persistence.is_enabled():
+                    persistence.store_job(job_info)
+                self._notify_state_observers(job_info)
 
     def _notify_state_observers(self, job_info: JobInfo):
         for observer in (self._state_observers + _state_observers):

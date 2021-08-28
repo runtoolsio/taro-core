@@ -78,6 +78,7 @@ def _init_exec_parser(common, subparsers):
     exec_parser.add_argument('-b', '--bypass-output', action='store_true', help='output is not piped')
     exec_parser.add_argument('-o', '--no-overlap', action='store_true', default=False,
                              help='skip if job with the same ID is already running')
+    exec_parser.add_argument('--no-history', action='store_true', default = False, help='disable history')
     # TODO delay
     # exec_parser.add_argument('-t', '--timeout', type=int) TODO implement
     exec_parser.add_argument('-p', '--pending', type=str, help='specifies pending value for releasing of this job')
