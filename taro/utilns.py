@@ -38,23 +38,27 @@ def _getattr(obj, fields, default, type_):
 
 
 # Martijn Pieters' solution below: https://stackoverflow.com/questions/50490856
-@functools.singledispatch
 def wrap_namespace(ob) -> NestedNamespace:
+    return _wrap_namespace(ob) or NestedNamespace()
+
+
+@functools.singledispatch
+def _wrap_namespace(ob) -> NestedNamespace:
     """Converts provided dictionary and all dictionaries in its value trees to nested namespace.
 
     This allows to access nested fields using chained dot notation: value = ns.top.nested
     """
-    return ob or NestedNamespace()
+    return ob
 
 
-@wrap_namespace.register(dict)
+@_wrap_namespace.register(dict)
 def _wrap_dict(ob):
-    return NestedNamespace(**{k: wrap_namespace(v) for k, v in ob.items()})
+    return NestedNamespace(**{k: _wrap_namespace(v) for k, v in ob.items()})
 
 
-@wrap_namespace.register(list)
+@_wrap_namespace.register(list)
 def _wrap_list(ob):
-    return [wrap_namespace(v) for v in ob]
+    return [_wrap_namespace(v) for v in ob]
 
 
 def set_attr(obj, fields, value):
