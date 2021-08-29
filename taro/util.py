@@ -32,7 +32,7 @@ def wrap_namespace(ob) -> NestedNamespace:
 
     This allows to access nested fields using chained dot notation: value = ns.top.nested
     """
-    return ob
+    return ob or NestedNamespace()
 
 
 @wrap_namespace.register(dict)
@@ -153,11 +153,7 @@ def print_file(path):
 
 def read_yaml_file(file_path) -> NestedNamespace:
     with open(file_path, 'r') as file:
-        config_ns = wrap_namespace(yaml.safe_load(file))
-        if config_ns:
-            return config_ns
-        else:  # File is empty
-            return NestedNamespace()
+        return wrap_namespace(yaml.safe_load(file))
 
 
 def copy_resource(src: Path, dst: Path, overwrite=False):
