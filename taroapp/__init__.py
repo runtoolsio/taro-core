@@ -57,7 +57,7 @@ def init_taro(args):
     elif getattr(args, 'min_config', False):
         taro.setup(**config_vars)
     else:
-        taro.load_config(paths.lookup_config_file(), **config_vars)
+        taro.load_config(**config_vars)
 
 
 def run_command(args_ns):
