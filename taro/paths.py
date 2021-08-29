@@ -120,6 +120,9 @@ Note that /run, and all of the other directories mentioned here except /tmp, are
 For a system process, this is fine, but if the application may be run by a non-privileged user,
 you either want to use /tmp or create a permanent directory somewhere and set permissions on that,
 or use a location in the user's $HOME.
+
+More discussion:
+https://unix.stackexchange.com/questions/313036/is-a-subdirectory-of-tmp-a-suitable-place-for-unix-sockets
 """
 
 
@@ -127,6 +130,8 @@ def socket_dir(create: bool) -> Path:
     """
     1. Root user: /run/taro
     2. Non-root user: /tmp/taro_${USER} (An alternative may be: ${HOME}/.cache/taro)
+
+    TODO taro_${USER} should be unique to prevent denial of service attempts:
 
     :param create: create path directories if not exist
     :return: directory path for unix domain sockets
