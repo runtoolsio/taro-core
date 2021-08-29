@@ -49,7 +49,7 @@ def parse_args(args):
     _init_disable_parser(common, subparsers)
     _init_list_disabled_parser(common, subparsers)
     _init_enable_parser(common, subparsers)
-    _init_config_parser(common, subparsers)
+    _init_config_parser(subparsers)
     _init_hostinfo_parser(common, subparsers)
 
     parsed = parser.parse_args(args)
@@ -102,7 +102,7 @@ def _init_ps_parser(common, subparsers):
     """
 
     ps_parser = subparsers.add_parser(ACTION_PS, parents=[common], description='Show running jobs', add_help=False)
-    ps_parser.add_argument('instance', nargs='?', default=None , type=str, help='instance filter')
+    ps_parser.add_argument('instance', nargs='?', default=None, type=str, help='instance filter')
     ps_parser.add_argument('-f', '--format', type=str, choices=['table', 'json', 'jsonp'], default='table',
                            help='output format')
 
@@ -253,26 +253,26 @@ def _init_enable_parser(common, subparsers):
     enable_parser.add_argument('jobs', type=str, metavar='JOB', nargs=argparse.REMAINDER, help="job IDs to enable")
 
 
-def _init_config_parser(common, subparsers):
+def _init_config_parser(subparsers):
     """
     Creates parsers for `config` command
 
-    :param common: parent parser
     :param subparsers: sub-parser for config parser to be added to
     """
 
     config_parser = subparsers.add_parser(
-        ACTION_CONFIG, parents=[common], description='Config related actions', add_help=False)
-    config_subparsers = config_parser.add_subparsers(dest='config_action')  # Add required=True if migrated to >=3.7
+        ACTION_CONFIG, description='Config related actions', add_help=False)
+
+    # TODO Add required=True if migrated to >=3.7
+    config_subparsers = config_parser.add_subparsers(dest='config_action')
 
     show_config_parser = config_subparsers.add_parser(
-        ACTION_CONFIG_SHOW, parents=[common],
-        description='Print config used by exec command or config specified by an option', add_help=False)
+        ACTION_CONFIG_SHOW, description='Print config used by exec command or config specified by an option',
+        add_help=False)
     show_config_parser.add_argument('-dc', '--def-config', action='store_true', help='show default config')
 
-    create__config_parser = config_subparsers.add_parser(ACTION_CONFIG_CREATE, parents=[common],
-                                                         description='create config file', add_help=False)
-
+    create__config_parser = config_subparsers.add_parser(ACTION_CONFIG_CREATE, description='create config file',
+                                                         add_help=False)
     create__config_parser.add_argument("--overwrite", action="store_true", help="overwrite config file to default")
 
 
