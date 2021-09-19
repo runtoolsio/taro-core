@@ -197,7 +197,7 @@ class ExecutionLifecycle:
     def last_changed(self):
         return next(reversed(self._state_changes.values()), None)
 
-    def first_executing_state(self) -> ExecutionState:
+    def first_executing_state(self) -> Optional[ExecutionState]:
         return next((state for state in self._state_changes if state.is_executing()), None)
 
     def executed(self) -> bool:
