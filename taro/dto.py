@@ -29,7 +29,7 @@ def to_info_dto(info) -> Dict[str, Any]:
             "last_changed": _format_td(lc.last_changed()),
             "execution_started": _format_td(lc.execution_started()),
             "execution_finished": _format_td(lc.execution_finished()),
-            "execution_time": str(lc.execution_time()) if lc.execution_started() else None,
+            "execution_time": lc.execution_time().total_seconds() if lc.execution_started() else None,
         },
         "status": info.status,
         "warnings": info.warnings,
