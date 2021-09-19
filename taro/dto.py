@@ -33,7 +33,8 @@ def to_info_dto(info) -> Dict[str, Any]:
         },
         "status": info.status,
         "warnings": info.warnings,
-        "exec_error": exec_error}
+        "exec_error": exec_error
+    }
 
 
 def to_job_info(as_dict) -> JobInfo:
