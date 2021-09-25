@@ -10,6 +10,7 @@ from taroapp import warnspec, version
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
 ACTION_HISTORY = 'history'
+ACTION_HISTORYREMOVE = 'history-remove'
 ACTION_RELEASE = 'release'
 ACTION_LISTEN = 'listen'
 ACTION_WAIT = 'wait'
@@ -51,6 +52,7 @@ def parse_args(args):
     _init_enable_parser(common, subparsers)
     _init_config_parser(subparsers)
     _init_hostinfo_parser(common, subparsers)
+    _init_history_remove_parser(common, subparsers)
 
     parsed = parser.parse_args(args)
     _check_collisions(parser, parsed)
@@ -132,7 +134,20 @@ def _init_history_parser(common, subparsers):
     hist_parser.add_argument('-s', '--sort', type=str, choices=[s.name.lower() for s in SortCriteria],
                              default=SortCriteria.CREATED.name.lower(), help='Sorting criteria')
     hist_parser.add_argument('-P', '--no-pager', action='store_true', help='Do not use pager for output')
-    hist_parser.add_argument('-r', '--remove', action='store_true', help='Remove job from history. Be aware of duplicate job ID\'s')
+
+
+def _init_history_remove_parser(common, subparsers):
+    """
+    Creates parsers for `history-remove` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for history-remove parser to be added to
+    """
+
+    hist_rm_parser = subparsers.add_parser(
+        ACTION_HISTORYREMOVE, parents=[common], description="Remove job from history", add_help=False)
+    
+    hist_rm_parser.add_argument('id', nargs=argparse.REMAINDER, type=str, help='Job or instance ID')
 
 
 def _init_release_parser(common, subparsers):
