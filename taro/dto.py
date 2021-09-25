@@ -37,6 +37,10 @@ def to_info_dto(info) -> Dict[str, Any]:
     }
 
 
+def to_jobs_dto(jobs):
+    return {"jobs": [to_info_dto(job) for job in jobs.jobs]}
+
+
 def to_job_info(as_dict) -> JobInfo:
     state_changes = ((ExecutionState[state_change['state']], util.dt_from_utc_str(state_change['changed']))
                      for state_change in as_dict['lifecycle']['state_changes'])

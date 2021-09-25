@@ -189,6 +189,16 @@ class JobInfo:
             self._exec_error)
 
 
+class JobInfoCollection:
+
+    def __init__(self, *jobs):
+        self._jobs = jobs
+
+    @property
+    def jobs(self):
+        return list(self._jobs)
+
+
 class ExecutionStateObserver(abc.ABC):
 
     @abc.abstractmethod
