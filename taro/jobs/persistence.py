@@ -55,6 +55,10 @@ def read_jobs(*, id_=None, sort=SortCriteria.CREATED, asc=False, limit=-1, last=
     return _instance().read_jobs(id_=id_, sort=sort, asc=asc, limit=limit, last=last)
 
 
+def num_of_job(id_):
+    return len(_instance().read_jobs(id_=id_, sort=SortCriteria.CREATED, asc=False, limit=-1, last=False))
+
+
 def store_job(job_info):
     _instance().store_job(job_info)
 
