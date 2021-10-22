@@ -11,6 +11,7 @@ PERSISTENCE_ENABLED = 'persistence.enabled'
 PERSISTENCE_TYPE = 'persistence.type'
 PERSISTENCE_DATABASE = 'persistence.database'
 PLUGINS = 'plugins'
+DEFAULT_ACTION = 'default_action'
 
 log = logging.getLogger(__name__)
 
@@ -41,3 +42,9 @@ def copy_default_file_to_search_path(overwrite: bool):
     # Copy to first dir in search path
     copy_to = paths.config_file_search_path(exclude_cwd=True)[0] / paths.CONFIG_FILE
     util.copy_resource(cfg_to_copy, copy_to, overwrite)
+
+
+def get_default_action():
+    config_path = paths.lookup_config_file()
+    cns = util.read_yaml_file(config_path)
+    return cns.get(DEFAULT_ACTION, type_=str) 
