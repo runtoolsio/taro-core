@@ -19,10 +19,10 @@ def main(args):
 
     :param args: CLI arguments
     """
-
-    # check if any argument is given, if not then it defaults to ps
+    taro.load_config()
+    
     if not args and not len(sys.argv) > 1:
-        args = [cli.ACTION_PS]
+        args = [taro.cfg.default_action]
 
     args_ns = cli.parse_args(args)
 
