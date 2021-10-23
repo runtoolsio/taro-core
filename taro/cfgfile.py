@@ -30,7 +30,7 @@ def load(config=None):
     cfg.persistence_type = cns.get(PERSISTENCE_TYPE, default=cfg.persistence_type, type_=str)
     cfg.persistence_database = cns.get(PERSISTENCE_DATABASE, default=cfg.persistence_database, type_=str)
 
-    cfg.default_action = cns.get(DEFAULT_ACTION, type_=str) 
+    cfg.default_action = cns.get(DEFAULT_ACTION, default=cfg.default_action, type_=str)
 
     plugins = cns.get(PLUGINS)
     if isinstance(plugins, str):

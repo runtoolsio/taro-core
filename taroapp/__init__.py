@@ -22,7 +22,7 @@ def main(args):
     taro.load_config()
     
     if not args and not len(sys.argv) > 1:
-        args = [taro.cfg.default_action]
+        args = taro.cfg.default_action.split(" ")
 
     args_ns = cli.parse_args(args)
 
