@@ -18,6 +18,7 @@ DEF_PERSISTENCE_TYPE = 'sqlite'
 DEF_PERSISTENCE_DATABASE = ''
 
 DEF_PLUGINS = ()
+DEF_ACTION = ''
 
 # ------------ CONFIG VALUES ------------ #
 
@@ -31,6 +32,7 @@ persistence_type = DEF_PERSISTENCE_TYPE
 persistence_database = DEF_PERSISTENCE_DATABASE
 
 plugins = DEF_PLUGINS
+default_action = DEF_ACTION
 
 
 def set_variables(**kwargs):
