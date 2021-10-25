@@ -2,7 +2,7 @@ import logging
 import sys
 from logging import handlers
 
-from taro import paths
+from taro import paths, cfg
 from taro.util import expand_user
 
 _root_logger = logging.getLogger('taro')
@@ -29,8 +29,8 @@ def init(enabled=True, log_stdout_level='warn', log_file_level='info', log_file_
         setup_file(log_file_level, log_file_path)
 
 
-def init_by_config(config):
-    init(config.log_enabled, config.log_stdout_level, config.log_file_level, config.log_file_path)
+def init_by_config():
+    init(cfg.log_enabled, cfg.log_stdout_level, cfg.log_file_level, cfg.log_file_path)
 
 
 def disable():

@@ -31,7 +31,7 @@ def load_config(config=None, **kwargs):
 
 def setup(**kwargs):
     cfg.set_variables(**kwargs)
-    log.init_by_config(cfg)
+    log.init_by_config()
 
 
 def execute(job_id, job_execution, *ext, no_overlap=False, pending_value=None):
