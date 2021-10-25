@@ -34,7 +34,6 @@ def init_by_config():
 
 
 def disable():
-    logging.disable(logging.CRITICAL)
     _root_logger.disabled = True
 
 
