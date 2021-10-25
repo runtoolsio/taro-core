@@ -5,7 +5,7 @@ from logging import handlers
 from taro import paths
 from taro.util import expand_user
 
-_root_logger = logging.getLogger()
+_root_logger = logging.getLogger('taro')
 _root_logger.setLevel(logging.DEBUG)
 _formatter = logging.Formatter('%(asctime)s - %(levelname)-5s - %(name)s - %(message)s')
 
