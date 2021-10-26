@@ -340,11 +340,6 @@ def _check_collisions(parser, parsed):
     :param parser: parser
     :param parsed: parsed arguments
     """
-    if hasattr(parsed, 'log_enabled') and parsed.log_enabled is not None and not parsed.log_enabled:
-        for arg, val in vars(parsed).items():
-            if arg != 'log_enabled' and arg.startswith('log_') and val is not None:
-                parser.error("Conflicting options: log-enabled is set to false but {} is specified".format(arg))
-
     config_options = []
     if hasattr(parsed, 'def_config') and parsed.def_config:
         config_options.append('def_config')
