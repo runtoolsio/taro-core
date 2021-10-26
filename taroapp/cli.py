@@ -24,12 +24,6 @@ ACTION_CONFIG_SHOW = 'show'
 ACTION_CONFIG_CREATE = 'create'
 ACTION_HOSTINFO = 'hostinfo'
 
-_true_options = ['yes', 'true', 't', 'y', '1', 'on']
-_false_options = ['no', 'false', 'f', 'n', '0', 'off']
-_all_boolean_options = _true_options + _false_options
-
-_log_levels = ['critical', 'fatal', 'error', 'warn', 'warning', 'info', 'debug', 'off']
-
 
 def parse_args(args):
     # TODO destination required

@@ -13,6 +13,12 @@ from taro import utilns
 from taro.utilns import NestedNamespace
 
 
+TRUE_OPTIONS = ['yes', 'true', 'y', '1', 'on']
+FALSE_OPTIONS = ['no', 'false', 'n', '0', 'off']
+BOOLEAN_OPTIONS = TRUE_OPTIONS + FALSE_OPTIONS
+LOG_LEVELS = ['critical', 'fatal', 'error', 'warn', 'warning', 'info', 'debug', 'off']
+
+
 def split_params(params, kv_sep="=") -> Dict[str, str]:
     f"""
     Converts sequence of values in format "key{kv_sep}value" to dict[key, value]
