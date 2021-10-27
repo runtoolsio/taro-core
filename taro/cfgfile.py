@@ -2,9 +2,9 @@ import logging
 from collections import Iterable
 
 from taro import cfg, util, paths
-from taro.cfg import Logging
+from taro.cfg import LogMode
 
-LOG_ENABLED = 'log.enabled'
+LOG_MODE = 'log.mode'
 LOG_STDOUT_LEVEL = 'log.stdout.level'
 LOG_FILE_LEVEL = 'log.file.level'
 LOG_FILE_PATH = 'log.file.path'
@@ -22,7 +22,7 @@ def load(config=None):
     cns = util.read_yaml_file(config_path)
     log.debug("event=[config_file_loaded] path=[%s] content=[%s]", config_path, cns)
 
-    cfg.log = Logging.from_value(cns.get(LOG_ENABLED, default=cfg.log))
+    cfg.log_mode = LogMode.from_value(cns.get(LOG_MODE, default=cfg.log_mode))
     cfg.log_stdout_level = cns.get(LOG_STDOUT_LEVEL, default=cfg.log_stdout_level, type_=str).lower()
     cfg.log_file_level = cns.get(LOG_FILE_LEVEL, default=cfg.log_file_level, type_=str).lower()
     cfg.log_file_path = cns.get(LOG_FILE_PATH, default=cfg.log_file_path, type_=str)

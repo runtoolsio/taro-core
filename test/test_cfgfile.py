@@ -7,7 +7,7 @@ import importlib
 import pytest
 
 from taro import paths, cfgfile, cfg
-from taro.cfg import Logging
+from taro.cfg import LogMode
 from taro_test_util import create_test_config, remove_test_config
 
 
@@ -20,7 +20,7 @@ def remove_config_if_created():
 def test_defaults():
     create_test_config(dict())
     cfgfile.load()
-    assert cfg.log == Logging.DISABLED
+    assert cfg.log_mode == LogMode.DISABLED
     assert cfg.log_stdout_level == 'off'
     assert cfg.log_file_level == 'off'
     assert cfg.log_file_path is None
@@ -30,7 +30,7 @@ def test_defaults():
 
 def test_default_config():
     cfgfile.load(paths.default_config_file_path())
-    assert cfg.log == Logging.ENABLED
+    assert cfg.log_mode == LogMode.ENABLED
     assert cfg.log_stdout_level == 'warn'
     assert cfg.log_file_level == 'info'
     assert cfg.log_file_path is None

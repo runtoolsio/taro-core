@@ -12,7 +12,8 @@ import sys
 from taro import util
 
 
-class Logging(Enum):
+class LogMode(Enum):
+
     ENABLED = auto()
     PROPAGATE = auto()
     DISABLED = auto()
@@ -20,22 +21,22 @@ class Logging(Enum):
     @staticmethod
     def from_value(val):
         if val is None:
-            raise ValueError('Empty configuration value for logging')
-        if isinstance(val, Logging):
+            raise ValueError('Empty configuration value for log mode')
+        if isinstance(val, LogMode):
             return val
         if isinstance(val, bool):
-            return Logging.ENABLED if val else Logging.DISABLED
+            return LogMode.ENABLED if val else LogMode.DISABLED
         if val.lower() == 'enabled' or val.lower() in util.TRUE_OPTIONS:
-            return Logging.ENABLED
+            return LogMode.ENABLED
         if val.lower() == 'disabled' or val.lower() in util.FALSE_OPTIONS:
-            return Logging.DISABLED
+            return LogMode.DISABLED
         if val.lower() == 'propagate':
-            return Logging.PROPAGATE
+            return LogMode.PROPAGATE
         raise ValueError('Unknown configuration value for logging: ' + val)
 
 
 # ------------ DEFAULT VALUES ------------ #
-DEF_LOG = Logging.DISABLED
+DEF_LOG = LogMode.DISABLED
 DEF_LOG_STDOUT_LEVEL = 'off'
 DEF_LOG_FILE_LEVEL = 'off'
 DEF_LOG_FILE_PATH = None
@@ -49,7 +50,7 @@ DEF_ACTION = '--help'
 
 # ------------ CONFIG VALUES ------------ #
 
-log = DEF_LOG
+log_mode = DEF_LOG
 log_stdout_level = DEF_LOG_STDOUT_LEVEL
 log_file_level = DEF_LOG_FILE_LEVEL
 log_file_path = DEF_LOG_FILE_PATH
@@ -65,17 +66,15 @@ default_action = DEF_ACTION
 def set_variables(**kwargs):
     module = sys.modules[__name__]
     for name, value in kwargs.items():
-        if name == 'log_enabled':
-            name = 'log'  # `log_enabled` is alias for `log` as this name is used in config file
         cur_value = getattr(module, name)
         if type(value) == type(cur_value):
             value_to_set = value
+        elif isinstance(cur_value, LogMode):  # Must be before bool or str as these types are supported by LogMode parse
+            value_to_set = LogMode.from_value(value)
         elif isinstance(cur_value, bool):  # First bool than int, as bool is int..
             value_to_set = distutils.util.strtobool(value)
         elif isinstance(cur_value, int):
             value_to_set = int(value)
-        elif isinstance(cur_value, Logging):
-            value_to_set = Logging.from_value(value)
         else:
             raise ValueError(f'Cannot convert value {value} to {type(cur_value)}')
 

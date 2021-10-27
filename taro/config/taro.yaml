@@ -1,5 +1,5 @@
 log:
-  enabled: true
+  mode: on
   stdout:
     level: warn
   file:

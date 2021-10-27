@@ -13,7 +13,7 @@ from taro.jobs.job import WarnEventCtx
 
 
 def reset_config():
-    cfg.log = cfg.DEF_LOG
+    cfg.log_mode = cfg.DEF_LOG
     cfg.log_stdout_level = cfg.DEF_LOG_STDOUT_LEVEL
     cfg.log_file_level = cfg.DEF_LOG_FILE_LEVEL
     cfg.log_file_path = cfg.DEF_LOG_FILE_PATH

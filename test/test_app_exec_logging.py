@@ -38,12 +38,12 @@ def test_logging_disabled_in_config():
 
 def test_logging_enabled_cli_override():
     create_test_config({"log": {"enabled": False}})
-    run_app('exec --set log_enabled=true echo')
+    run_app('exec --set log_mode=true echo')
     assert not log.is_disabled()
 
 
 def test_logging_disabled():
-    run_app('exec -mc --set log_enabled=false echo')
+    run_app('exec -mc --set log_mode=false echo')
     assert log.is_disabled()
 
 
