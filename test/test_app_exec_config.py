@@ -17,7 +17,7 @@ def test_config_file_empty():
 
 
 def test_config_file_loaded():
-    create_test_config({"log": {"enabled": True}})
+    create_test_config({"log": {"mode": True}})
     try:
         run_app('exec echo alles gute')
         assert cfg.log_mode == LogMode.ENABLED

@@ -16,10 +16,15 @@ FILE_HANDLER = 'file-handler'
 
 
 def init(log_mode=LogMode.ENABLED, log_stdout_level='warn', log_file_level='info', log_file_path=None):
-    _root_logger.disabled = False  # Resetting required for tests
+    # Resetting (required for tests)
+    config_logger(enable=True, propagate=False)
 
-    if log_mode != LogMode.ENABLED:
-        disable()
+    if log_mode == LogMode.PROPAGATE:
+        config_logger(enable=True, propagate=True)
+        return
+
+    if log_mode == LogMode.DISABLED:
+        config_logger(enable=False, propagate=False)
         return
 
     if log_stdout_level != 'off':
@@ -34,8 +39,9 @@ def init_by_config():
     init(cfg.log_mode, cfg.log_stdout_level, cfg.log_file_level, cfg.log_file_path)
 
 
-def disable():
-    _root_logger.disabled = True
+def config_logger(*, enable, propagate):
+    _root_logger.disabled = not enable
+    _root_logger.propagate = propagate
 
 
 def is_disabled():
