@@ -1,6 +1,5 @@
 import re
 from threading import Timer
-from typing import Optional
 
 from taro.jobs.job import JobInstance, JobInfo, ExecutionStateObserver, Warn, JobOutputObserver
 
@@ -51,44 +50,3 @@ class _OutputMatchesWarning(JobOutputObserver):
         if m:
             warn = Warn(self.id, {'matches': output})
             self.job_instance.add_warning(warn)
-
-
-# TODO complete redesign
-class _FileLineMatchesWarning:
-
-    def __init__(self, w_id, file_path, regex):
-        self.id = w_id
-        self.file_path = file_path
-        self.regex = re.compile(regex)
-        self.file = None
-        self.warn = False
-
-    def check(self, job_info, last_check: bool) -> Optional[Warn]:
-        if not self.file:
-            try:
-                self.file = open(self.file_path, 'r')
-            except FileNotFoundError:
-                return None
-
-        while True:
-            new = self.file.readline()
-            # Once all lines are read this just returns '' until the file changes and a new line appears
-
-            if not new:
-                break
-
-            m = self.regex.search(new)
-            if m:
-                self.warn = Warn(self.id, {'match': m[0]})
-                break
-
-        if last_check or self.warn:
-            self.file.close()
-
-        return self.warn
-
-    def next_check(self, job_info) -> float:
-        if self.warn:
-            return -1
-
-        return 3.0  # Check at least every 3 seconds
