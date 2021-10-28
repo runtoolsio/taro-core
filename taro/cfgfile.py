@@ -1,5 +1,5 @@
 import logging
-from collections import Iterable
+from collections.abc import Iterable
 
 from taro import cfg, util, paths
 from taro.cfg import LogMode
