@@ -34,11 +34,15 @@ def setup(**kwargs):
     log.init_by_config()
 
 
-def execute(job_id, job_execution, *ext, no_overlap=False, pending_value=None):
-    managed_job = create_managed_job(job_id, job_execution, no_overlap=no_overlap, pending_value=pending_value)
+def managed_job(job_id, job_execution, *ext, no_overlap=False, pending_value=None):
+    mng_job = create_managed_job(job_id, job_execution, no_overlap=no_overlap, pending_value=pending_value)
     for extension in ext:
-        extension(managed_job.job_instance)
-    managed_job()
+        extension(mng_job.job_instance)
+    return mng_job
+
+
+def execute(job_id, job_execution, *ext, no_overlap=False, pending_value=None):
+    managed_job(job_id, job_execution, *ext, no_overlap=no_overlap, pending_value=pending_value)()
 
 
 def exec_time_warning(time: float):
