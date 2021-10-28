@@ -73,3 +73,6 @@ class _PendingValueLatch:
             return True
         else:
             return False
+
+
+EXT_PLUGIN_MODULE_PREFIX = 'taro_'

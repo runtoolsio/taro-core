@@ -3,13 +3,12 @@ import signal
 
 from taro import PluginBase, cfg
 from taro.jobs import managed
+from taro.jobs.managed import EXT_PLUGIN_MODULE_PREFIX
 from taro.jobs.program import ProgramExecution
 from taro.test.execution import TestExecution
 from taroapp import warnspec
 
 logger = logging.getLogger(__name__)
-
-EXT_PLUGIN_MODULE_PREFIX = 'taro_'
 
 
 def run(args):

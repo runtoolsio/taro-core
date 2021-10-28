@@ -5,6 +5,7 @@ Command: exec
 
 import pytest
 
+import taro.jobs.managed
 import taroapp.cmd.exec
 import test_plugin
 from taro.jobs import runner
@@ -15,10 +16,10 @@ from taro_test_util import run_app, remove_test_config, create_test_config
 
 @pytest.fixture(autouse=True)
 def setup():
-    ext_module_prefix = taroapp.cmd.exec.EXT_PLUGIN_MODULE_PREFIX
-    taroapp.cmd.exec.EXT_PLUGIN_MODULE_PREFIX = 'test_'
+    ext_module_prefix = taro.jobs.managed.EXT_PLUGIN_MODULE_PREFIX
+    taro.jobs.managed.EXT_PLUGIN_MODULE_PREFIX = 'test_'
     yield
-    taroapp.cmd.exec.EXT_PLUGIN_MODULE_PREFIX = ext_module_prefix
+    taro.jobs.managed.EXT_PLUGIN_MODULE_PREFIX = ext_module_prefix
     remove_test_config()
 
 
