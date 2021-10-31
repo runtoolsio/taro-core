@@ -1,3 +1,4 @@
+from multiprocessing import Queue
 from multiprocessing.context import Process
 from pathlib import Path
 from typing import Dict, Tuple
@@ -6,10 +7,10 @@ import prompt_toolkit
 import yaml
 from prompt_toolkit.output import DummyOutput
 
-from taroapp import main
-from taro import paths, JobInfo, Warn, WarningObserver, cfg
-from taro.jobs import program
+from taro import paths, JobInfo, Warn, WarningObserver, cfg, ExecutionStateObserver
+from taro.jobs import program, runner
 from taro.jobs.job import WarnEventCtx
+from taroapp import main
 
 
 def reset_config():
@@ -25,27 +26,35 @@ def reset_config():
     cfg.plugins = cfg.DEF_PLUGINS
 
 
-def run_app_as_process(command, daemon=False, shell=False) -> Process:
-    p = Process(target=run_app, args=(command, shell), daemon=daemon)
+def run_app_as_process(command, daemon=False, shell=False, state_queue=None) -> Process:
+    p = Process(target=run_app, args=(command, shell, state_queue), daemon=daemon)
     p.start()
     return p
 
 
-def run_app(command, shell=False):
+def run_app(command, shell=False, state_queue=None):
     """
     Run command
     :param command: command to run
     :param shell: use shell for executing command
+    :param state_queue: queue for putting new execution states of running jobs
     :return: output of the executed command
     """
     program.USE_SHELL = shell
     # Prevent UnsupportedOperation error: https://github.com/prompt-toolkit/python-prompt-toolkit/issues/1107
     prompt_toolkit.output.defaults.create_output = NoFormattingOutput
+    observer = None
+    if state_queue:
+        observer = PutStateToQueueObserver(state_queue)
+        runner.register_state_observer(observer)
+
     try:
         main(command.split())
     finally:
         prompt_toolkit.output.defaults.create_output = None
         program.USE_SHELL = False
+        if observer:
+            runner.deregister_state_observer(observer)
 
 
 def run_wait(state, count=1) -> Process:
@@ -71,9 +80,9 @@ def run_app_as_process_and_wait(command, *, wait_for, timeout=2, daemon=False, s
     :return: the app as a process
     """
 
-    pw = run_wait(wait_for)
-    p = run_app_as_process(command, daemon, shell)
-    pw.join(timeout)
+    waiter = StateWaiter()
+    p = run_app_as_process(command, daemon, shell, waiter.state_queue)
+    waiter.wait_for_state(wait_for, timeout)
     return p
 
 
@@ -111,6 +120,26 @@ class NoFormattingOutput(DummyOutput):
 
     def fileno(self) -> int:
         raise NotImplementedError()
+
+
+class StateWaiter:
+
+    def __init__(self):
+        self.state_queue = Queue()
+
+    def wait_for_state(self, state, timeout=1):
+        while True:
+            if state == self.state_queue.get(timeout=timeout):
+                return
+
+
+class PutStateToQueueObserver(ExecutionStateObserver):
+
+    def __init__(self, queue):
+        self.queue = queue
+
+    def state_update(self, job_info: JobInfo):
+        self.queue.put_nowait(job_info.state)
 
 
 class TestWarningObserver(WarningObserver):
