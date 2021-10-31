@@ -6,6 +6,7 @@ import pytest
 
 from taro.jobs.execution import ExecutionState
 from taro_test_util import run_app, run_app_as_process, run_wait
+from test.taro_test_util import run_app_as_process_and_wait
 
 
 def test_stop_must_specify_job(capsys):
@@ -28,10 +29,8 @@ def test_stop(capsys):
 
 
 def test_more_jobs_require_all_flag(capsys):
-    pw = run_wait(ExecutionState.RUNNING, 2)
-    p1 = run_app_as_process('exec -mc --id j1 sleep 5', daemon=True)
-    p2 = run_app_as_process('exec -mc --id j1 sleep 5', daemon=True)
-    pw.join()  # Wait for both exec to run
+    p1 = run_app_as_process_and_wait('exec -mc --id j1 sleep 5', wait_for=ExecutionState.RUNNING, daemon=True)
+    p2 = run_app_as_process_and_wait('exec -mc --id j1 sleep 5', wait_for=ExecutionState.RUNNING, daemon=True)
 
     run_app('stop j1')
 
