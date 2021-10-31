@@ -5,7 +5,7 @@ Command: stop
 import pytest
 
 from taro.jobs.execution import ExecutionState
-from taro_test_util import run_app, run_app_as_process, run_wait
+from taro_test_util import run_app
 from test.taro_test_util import run_app_as_process_and_wait
 
 
@@ -15,15 +15,12 @@ def test_stop_must_specify_job(capsys):
 
 
 def test_stop(capsys):
-    run_w = run_wait(ExecutionState.RUNNING, 2)
-    stop_w = run_wait(ExecutionState.STOPPED)
-    p1 = run_app_as_process('exec -mc --id to_stop sleep 5', daemon=True)
-    p2 = run_app_as_process('exec -mc --id to_keep sleep 5', daemon=True)
-    run_w.join()  # Wait for both exec to run
+    p1 = run_app_as_process_and_wait('exec -mc --id to_stop sleep 5', wait_for=ExecutionState.RUNNING, daemon=True)
+    p2 = run_app_as_process_and_wait('exec -mc --id to_keep sleep 5', wait_for=ExecutionState.RUNNING, daemon=True)
 
     run_app('stop to_stop')
 
-    stop_w.join(1)
+    p1.join(timeout=1)  # Timeout (1 sec) must be x times smaller than sleeping interval (5 sec)
     assert not p1.is_alive()
     assert p2.is_alive()
 

@@ -57,17 +57,6 @@ def run_app(command, shell=False, state_queue=None):
             runner.deregister_state_observer(observer)
 
 
-def run_wait(state, count=1) -> Process:
-    """
-    Run `wait` app. This app blocks until any job reaches the state defined in the `state` parameter.
-
-    :param state: state for which the app waits
-    :param count: number of waits
-    :return: the app as a process
-    """
-    return run_app_as_process("wait -c {} -s {}".format(count, state.name))
-
-
 def run_app_as_process_and_wait(command, *, wait_for, timeout=2, daemon=False, shell=False) -> Process:
     """
     Execute the command and wait for the job to reach the specified state.
@@ -123,6 +112,14 @@ class NoFormattingOutput(DummyOutput):
 
 
 class StateWaiter:
+    """
+    This class is used for waiting for execution states of job executed in different process.
+
+    See :class:`PutStateToQueueObserver`
+
+    Attributes:
+        state_queue The process must put execution states into this queue
+    """
 
     def __init__(self):
         self.state_queue = Queue()
@@ -134,6 +131,12 @@ class StateWaiter:
 
 
 class PutStateToQueueObserver(ExecutionStateObserver):
+    """
+    This observer puts execution states into the provided queue. With multiprocessing queue this can be used for sending
+    execution states into the parent process.
+
+    See :class:`StateWaiter`
+    """
 
     def __init__(self, queue):
         self.queue = queue
