@@ -1,9 +1,7 @@
 import logging
 import signal
 
-from taro import PluginBase, cfg
 from taro.jobs import managed
-from taro.jobs.managed import EXT_PLUGIN_MODULE_PREFIX
 from taro.jobs.program import ProgramExecution
 from taro.test.execution import TestExecution
 from taroapp import warnspec
@@ -12,8 +10,6 @@ logger = logging.getLogger(__name__)
 
 
 def run(args):
-    PluginBase.load_plugins(EXT_PLUGIN_MODULE_PREFIX, cfg.plugins)
-
     job_id = args.id or " ".join([args.command] + args.arg)
     if args.dry_run:
         execution = TestExecution(args.dry_run)

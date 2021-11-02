@@ -27,11 +27,24 @@ class PluginBase(abc.ABC):
         log.debug("event=[plugin_registered] name=[%s] class=[%s]", res_name, cls)
 
     @classmethod
-    def load_plugins(cls, ext_prefix, names) -> Dict[str, 'PluginBase']:
-        discover_ext_plugins(ext_prefix, names)
+    def load_plugins(cls, ext_prefix, names, *, reload=True) -> Dict[str, 'PluginBase']:
+        if not names:
+            raise ValueError("Plugins not specified")
+
+        new_plugins = [name for name in names if name not in cls.name2plugin]
+        if not new_plugins and not reload:
+            return  # All plugins already loaded
+
+        not_discovered = [name for name in new_plugins if name not in cls.name2subclass]
+        if not_discovered:
+            discover_ext_plugins(ext_prefix, not_discovered)
 
         name2plugin = {}
         for name in names:
+            if not reload and name in cls.name2plugin:
+                name2plugin[name] = cls.name2plugin[name]
+                continue
+
             try:
                 plugin_cls = PluginBase.name2subclass[name]
             except KeyError:
@@ -67,6 +80,8 @@ class PluginDisabledError(Exception):
 
 
 def discover_ext_plugins(ext_prefix, names, skip_imported=True) -> Dict[str, ModuleType]:
+    if not names:
+        raise ValueError("Plugins for discovery not specified")
     discovered_names = [name for finder, name, is_pkg in pkgutil.iter_modules() if name.startswith(ext_prefix)]
     log.debug("event=[ext_plugin_modules_discovered] names=[%s]", ",".join(discovered_names))
 

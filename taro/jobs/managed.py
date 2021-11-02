@@ -1,5 +1,7 @@
 import logging
 
+from taro import cfg
+
 from taro.jobs.api import Server
 from taro.jobs.events import StateDispatcher, OutputDispatcher
 from taro.jobs.execution import ExecutionState
@@ -15,7 +17,9 @@ def create_managed_job(job_id, execution, *, no_overlap=False, pending_value=Non
     # Forward output from execution to the job instance for the instance's output listeners
     execution.add_output_observer(job_instance)
 
-    for plugin in PluginBase.name2plugin.values():
+    if cfg.plugins:
+        PluginBase.load_plugins(EXT_PLUGIN_MODULE_PREFIX, cfg.plugins, reload=False)  # Load plugins if not yet loaded
+    for plugin in PluginBase.name2plugin.values():  # May contain other plugins loaded before
         try:
             plugin.new_job_instance(job_instance)
         except BaseException as e:
