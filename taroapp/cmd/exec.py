@@ -1,7 +1,8 @@
 import logging
 import signal
 
-from taro.jobs import managed
+import taro
+from taro import util
 from taro.jobs.program import ProgramExecution
 from taro.test.execution import TestExecution
 from taroapp import warnspec
@@ -15,8 +16,12 @@ def run(args):
         execution = TestExecution(args.dry_run)
     else:
         execution = ProgramExecution([args.command] + args.arg, read_output=not args.bypass_output)
+    extensions = []
+    if args.warn_time:
+        extensions.append(taro.exec_time_warning(util.str_to_seconds(args.warn_time)))
 
-    managed_job = managed.create_managed_job(job_id, execution, no_overlap=args.no_overlap, pending_value=args.pending)
+    managed_job = taro.managed_job(job_id, execution, *extensions, no_overlap=args.no_overlap,
+                                   pending_value=args.pending)
 
     term = Term(managed_job.job_instance)
     signal.signal(signal.SIGTERM, term.terminate)

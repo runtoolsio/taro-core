@@ -78,6 +78,22 @@ def format_timedelta(td):
     return s
 
 
+def str_to_seconds(val):
+    value = float(val[:-1])
+    unit = val[-1].lower()
+
+    if unit == 's':
+        return value
+    if unit == 'm':
+        return value * 60
+    if unit == 'h':
+        return value * 60 * 60
+    if unit == 'd':
+        return value * 60 * 60 * 24
+
+    raise ValueError("Unknown unit: " + unit)
+
+
 def sequence_view(seq, *, sort_key, asc, limit):
     sorted_seq = sorted(seq, key=sort_key, reverse=not asc)
     return itertools.islice(sorted_seq, 0, limit if limit > 0 else None)

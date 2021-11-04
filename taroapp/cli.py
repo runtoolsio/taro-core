@@ -28,7 +28,7 @@ ACTION_HOSTINFO = 'hostinfo'
 def parse_args(args):
     # TODO destination required
     parser = argparse.ArgumentParser(description='Manage your jobs with Taro')
-    parser.add_argument("-V", "--version", action='version', help="Show version and exit.", version=version.get())   
+    parser.add_argument("-V", "--version", action='version', help="Show version and exit.", version=version.get())
     common = argparse.ArgumentParser()  # parent parser for subparsers in case they need to share common options
     common.add_argument('--set', type=str, action='append', help='override value of configuration field')
     subparsers = parser.add_subparsers(dest='action')  # command/action
@@ -79,6 +79,7 @@ def _init_exec_parser(common, subparsers):
     exec_parser.add_argument('-p', '--pending', type=str, help='specifies pending value for releasing of this job')
     # exec_parser.add_argument('-w', '--wait', type=str, help='execution will wait for other jobs') TODO implement
     exec_parser.add_argument('-W', '--warn', type=_warn_type, action='append', help='Add warning check')
+    exec_parser.add_argument('--warn-time', type=_warn_time_type, help='Time value for execution time exceeded warning')
 
     exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=ExecutionState.COMPLETED,
                              help='executing without actual running of the command - optional termination state arg')
@@ -115,7 +116,8 @@ def _init_history_parser(common, subparsers):
         ACTION_HISTORY, aliases=['hist'], parents=[common], description='Show jobs history', add_help=False)
 
     filter_group = hist_parser.add_argument_group('filtering', 'These options allows to filter returned jobs')
-    filter_group.add_argument('id', nargs='?', type=str, help='Job or instance ID matching pattern for result filtering')
+    filter_group.add_argument('id', nargs='?', type=str,
+                              help='Job or instance ID matching pattern for result filtering')
     filter_group.add_argument('-T', '--today', action='store_true', help='Return only jobs created today (local)')
     filter_group.add_argument('-S', '--since', type=_str2dt, help='Show entries not older than the specified date')
     filter_group.add_argument('-U', '--until', type=_str2dt, help='Show entries not newer than the specified date')
@@ -140,7 +142,7 @@ def _init_history_remove_parser(common, subparsers):
 
     hist_rm_parser = subparsers.add_parser(
         ACTION_HISTORYREMOVE, parents=[common], description="Remove job from history", add_help=False)
-    
+
     hist_rm_parser.add_argument('id', nargs=argparse.REMAINDER, type=str, help='Job or instance ID')
 
 
@@ -326,6 +328,14 @@ def _warn_type(arg_value):
     pattern = re.compile(p)
     if not pattern.match(arg_value.replace(" ", "").rstrip()):
         raise argparse.ArgumentTypeError(f"Warning value {arg_value} does not match pattern {p}")
+    return arg_value
+
+
+def _warn_time_type(arg_value):
+    regex = r'^\d+[smhd]$'
+    pattern = re.compile(regex)
+    if not pattern.match(arg_value):
+        raise argparse.ArgumentTypeError(f"Execution time warning value {arg_value} does not match pattern {regex}")
     return arg_value
 
 
