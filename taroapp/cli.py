@@ -5,7 +5,7 @@ from datetime import datetime
 
 from taro.jobs.execution import ExecutionState
 from taro.jobs.persistence import SortCriteria
-from taroapp import warnspec, version
+from taroapp import version
 
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
@@ -78,8 +78,10 @@ def _init_exec_parser(common, subparsers):
     # exec_parser.add_argument('-t', '--timeout', type=int) TODO implement
     exec_parser.add_argument('-p', '--pending', type=str, help='specifies pending value for releasing of this job')
     # exec_parser.add_argument('-w', '--wait', type=str, help='execution will wait for other jobs') TODO implement
-    exec_parser.add_argument('-W', '--warn', type=_warn_type, action='append', help='Add warning check')
-    exec_parser.add_argument('--warn-time', type=_warn_time_type, help='Time value for execution time exceeded warning')
+    exec_parser.add_argument('--warn-time', type=_warn_time_type, action='append', default=[],
+                             help='Time value for execution time exceeded warning')
+    exec_parser.add_argument('--warn-output', type=str, action='append', default=[],
+                             help='Regex value for stdout warning')
 
     exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=ExecutionState.COMPLETED,
                              help='executing without actual running of the command - optional termination state arg')
@@ -317,18 +319,6 @@ def _str2state(v):
     except KeyError:
         raise argparse.ArgumentTypeError('Arguments can be only valid execution states: '
                                          + ", ".join([e.name.lower() for e in ExecutionState]))
-
-
-def _warn_type(arg_value):
-    p = _build_warn_validation_regex(
-        warnspec.EXEC_TIME_WARN_REGEX,
-        warnspec.FILE_CONTAINS_REGEX,
-        warnspec.OUTPUT_MATCHES_REGEX,
-        r"free_disk_space:.+<\d+[KMGT]B")
-    pattern = re.compile(p)
-    if not pattern.match(arg_value.replace(" ", "").rstrip()):
-        raise argparse.ArgumentTypeError(f"Warning value {arg_value} does not match pattern {p}")
-    return arg_value
 
 
 def _warn_time_type(arg_value):

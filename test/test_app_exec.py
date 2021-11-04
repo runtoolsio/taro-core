@@ -78,8 +78,8 @@ def test_exec_time_warning():
     observer = TestWarningObserver()
     runner.register_warning_observer(observer)
     try:
-        run_app("exec -mc -W exec_time>1s sleep 1.2")
+        run_app("exec -mc --warn-time=1s sleep 1.2")
     finally:
         runner.deregister_warning_observer(observer)
 
-    assert observer.warnings['exec_time>1s']
+    assert observer.warnings['exec_time>1.0s']

@@ -5,7 +5,6 @@ import taro
 from taro import util
 from taro.jobs.program import ProgramExecution
 from taro.test.execution import TestExecution
-from taroapp import warnspec
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +16,10 @@ def run(args):
     else:
         execution = ProgramExecution([args.command] + args.arg, read_output=not args.bypass_output)
     extensions = []
-    if args.warn_time:
-        extensions.append(taro.exec_time_warning(util.str_to_seconds(args.warn_time)))
+    for warn_time in args.warn_time:
+        extensions.append(taro.exec_time_warning(util.str_to_seconds(warn_time)))
+    for warn_output in args.warn_output:
+        extensions.append(taro.output_warning(warn_output))
 
     managed_job = taro.managed_job(job_id, execution, *extensions, no_overlap=args.no_overlap,
                                    pending_value=args.pending)
@@ -26,9 +27,6 @@ def run(args):
     term = Term(managed_job.job_instance)
     signal.signal(signal.SIGTERM, term.terminate)
     signal.signal(signal.SIGINT, term.interrupt)
-
-    if args.warn:
-        warnspec.setup_warnings(managed_job.job_instance, *args.warn)
 
     managed_job()
 
