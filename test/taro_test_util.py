@@ -102,7 +102,7 @@ def test_db_path() -> Path:
 
 class NoFormattingOutput(DummyOutput):
     def write(self, data: str) -> None:
-        print(data)
+        print(data, end='')
 
     def write_raw(self, data: str) -> None:
         print(data)
