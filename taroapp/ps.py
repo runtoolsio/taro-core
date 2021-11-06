@@ -11,12 +11,12 @@ from pypager.source import GeneratorSource
 
 from taro.util import iterates
 
-Column = namedtuple('Column', 'name max_width value_fnc')
+Column = namedtuple('Column', 'name max_width value_fnc colour_fnc')
 
 
 @iterates
-def print_table(items, columns: List[Column], colours=None, *, show_header: bool, pager: bool):
-    gen = output_gen(items, columns, colours, show_header, stretch_last_column=pager)
+def print_table(items, columns: List[Column], *, show_header: bool, pager: bool):
+    gen = output_gen(items, columns, show_header, stretch_last_column=pager)
 
     if pager:
         p = Pager()
@@ -27,12 +27,11 @@ def print_table(items, columns: List[Column], colours=None, *, show_header: bool
             print_formatted_text(next(gen))
 
 
-def output_gen(items, columns: List[Column], colours, show_header: bool, stretch_last_column: bool):
+def output_gen(items, columns: List[Column], show_header: bool, stretch_last_column: bool):
     """
     Table Representation:
         Each column has padding of size 1 from each side applied in both header and values
-        Left padding is hardcoded in the format token " {:x}"
-        Right padding is implemented by text limiting
+        Left and right padding is hardcoded in the format token " {:x} "
         Columns are separated by one space
         Header/Values separator line is of the same length as the column
     Column Widths:
@@ -41,18 +40,16 @@ def output_gen(items, columns: List[Column], colours, show_header: bool, stretch
     job_iter = iter(items)
     first_fifty = list(itertools.islice(job_iter, 50))
     column_widths = _calc_widths(first_fifty, columns, stretch_last_column)
-    f = " ".join(" {:" + str(w - 1) + "}" for w in column_widths)
+    column_formats = [" {:" + str(w - 1) + "} " for w in column_widths]
 
     if show_header:
-        header_line = f.format(*(c.name for c in columns))
-        yield FTxt([('bold', header_line)])
+        yield FTxt([('bold', f.format(c.name)) for c, f in zip(columns, column_formats)])
         separator_line = " ".join("-" * w for w in column_widths)
         yield FTxt([('bold', separator_line)])
 
     for item in itertools.chain(first_fifty, job_iter):
-        line = f.format(*(_limit_text(c.value_fnc(item), column_widths[i] - 2) for i, c in enumerate(columns)))
-        colour = colours(item) if colours else ''
-        yield FTxt([(colour, line)])
+        yield FTxt([(c.colour_fnc(item), f.format(_limit_text(c.value_fnc(item), w - 2)))
+                    for c, w, f in zip(columns, column_widths, column_formats)])
 
 
 def _calc_widths(items, columns: List[Column], stretch_last_column: bool):
