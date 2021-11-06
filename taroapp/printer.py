@@ -1,6 +1,7 @@
 import itertools
 import os
 import re
+import sys
 from collections import namedtuple
 from typing import List, Dict
 
@@ -14,6 +15,10 @@ from taro.util import iterates
 Column = namedtuple('Column', 'name max_width value_fnc colour_fnc')
 
 
+def _print_not_formatted(style_text):
+    print("".join(text for _, text in style_text))
+
+
 @iterates
 def print_table(items, columns: List[Column], *, show_header: bool, pager: bool):
     gen = output_gen(items, columns, show_header, stretch_last_column=pager)
@@ -24,7 +29,10 @@ def print_table(items, columns: List[Column], *, show_header: bool, pager: bool)
         p.run()
     else:
         while True:
-            print_formatted_text(next(gen))
+            if sys.stdout.isatty():
+                print_formatted_text(next(gen))
+            else:
+                _print_not_formatted(next(gen))
 
 
 def output_gen(items, columns: List[Column], show_header: bool, stretch_last_column: bool):
