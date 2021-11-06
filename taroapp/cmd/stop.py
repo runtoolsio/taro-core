@@ -1,7 +1,7 @@
 import os
 
 from taro.client import JobsClient
-from taroapp import ps
+from taroapp import printer
 from taroapp.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
 
 
@@ -17,7 +17,7 @@ def run(args):
         if len(jobs) > 1 and not args.all:
             print('No action performed, because the criteria matches more than one instance. '
                   'Use --all flag if you wish to stop them all:' + os.linesep)
-            ps.print_table(jobs, [JOB_ID, INSTANCE_ID, CREATED, STATE], show_header=True, pager=False)
+            printer.print_table(jobs, [JOB_ID, INSTANCE_ID, CREATED, STATE], show_header=True, pager=False)
             return  # Exit code non-zero?
 
         inst_results = client.stop_jobs([job.instance_id for job in jobs], args.interrupt)

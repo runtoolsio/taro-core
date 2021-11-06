@@ -6,8 +6,8 @@ import pytest
 
 import taroapp.view.disabled as view_dis
 from taro import cfg
-from taroapp import ps
 from taro_test_util import run_app, test_db_path, remove_test_db
+from taroapp import printer
 
 
 @pytest.fixture(autouse=True)
@@ -29,7 +29,7 @@ def test_disable_jobs(capsys):
 
     run_app('list-disabled')
     output = capsys.readouterr().out
-    disabled = ps.parse_table(output, view_dis.DEFAULT_COLUMNS)
+    disabled = printer.parse_table(output, view_dis.DEFAULT_COLUMNS)
 
     assert 'j1' in disabled[0][view_dis.JOB_ID]
     assert 'no' in disabled[0][view_dis.REGEX]
