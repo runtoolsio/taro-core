@@ -53,5 +53,10 @@ def output_warning(regex: str):
     return lambda job_instance: warning.output_matches(job_instance, f"output=~{regex}", regex)
 
 
+def auto_init():
+    if not paths.lookup_config_file():
+        cfgfile.copy_default_file_to_search_path(overwrite=False)
+
+
 def close():
     persistence.close()

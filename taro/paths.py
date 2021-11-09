@@ -73,15 +73,14 @@ def config_file_search_path(*, exclude_cwd=False) -> List[Path]:
 def lookup_file_in_config_path(file) -> Path:
     """Returns config found in the search path
     :return: config file path
-    :raise FileNotFoundError: when config lookup failed
+    :return False: when config lookup failed
     """
     for config_dir in config_file_search_path():
         config = config_dir / file
         if config.exists():
             return config
 
-    raise FileNotFoundError(f'Config file {file} not found in the search path: '
-                            + ", ".join([str(dir_) for dir_ in config_file_search_path()]))
+    return False
 
 
 def log_file_path(create: bool) -> Path:

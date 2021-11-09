@@ -24,6 +24,7 @@ def main(args):
 
     args_ns = cli.parse_args(args)
 
+    taro.auto_init()
     if args_ns.action == 'config':
         run_config(args_ns)
     else:
@@ -46,6 +47,7 @@ def init_taro(args):
 
     :param args: CLI arguments
     """
+    
     config_vars = util.split_params(args.set) if args.set else {}  # Config variables and override values
 
     if getattr(args, 'config', None):
