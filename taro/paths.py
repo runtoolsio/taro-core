@@ -73,14 +73,14 @@ def config_file_search_path(*, exclude_cwd=False) -> List[Path]:
 def lookup_file_in_config_path(file) -> Path:
     """Returns config found in the search path
     :return: config file path
-    :return False: when config lookup failed
+    :return None: when config lookup failed
     """
     for config_dir in config_file_search_path():
         config = config_dir / file
         if config.exists():
             return config
 
-    return False
+    return None
 
 
 def log_file_path(create: bool) -> Path:
