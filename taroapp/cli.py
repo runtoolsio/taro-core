@@ -21,7 +21,7 @@ ACTION_LIST_DISABLED = 'list-disabled'
 ACTION_ENABLE = 'enable'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
-ACTION_CONFIG_CREATE = 'create'
+ACTION_CONFIG_RESET = 'reset'
 ACTION_HOSTINFO = 'hostinfo'
 
 
@@ -275,7 +275,7 @@ def _init_config_parser(subparsers):
     """
 
     config_parser = subparsers.add_parser(
-        ACTION_CONFIG, description='Config related actions', add_help=False)
+        ACTION_CONFIG, description='Config related actions', add_help=True)
 
     # TODO Add required=True if migrated to >=3.7
     config_subparsers = config_parser.add_subparsers(dest='config_action')
@@ -285,9 +285,8 @@ def _init_config_parser(subparsers):
         add_help=False)
     show_config_parser.add_argument('-dc', '--def-config', action='store_true', help='show default config')
 
-    create__config_parser = config_subparsers.add_parser(ACTION_CONFIG_CREATE, description='create config file',
+    reset_config_parser = config_subparsers.add_parser(ACTION_CONFIG_RESET, description='reset config file',
                                                          add_help=False)
-    create__config_parser.add_argument("--overwrite", action="store_true", help="overwrite config file to default")
 
 
 def _init_hostinfo_parser(common, subparsers):
