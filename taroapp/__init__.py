@@ -1,3 +1,5 @@
+import os
+
 import sys
 
 import taro
@@ -22,13 +24,16 @@ def main(args):
     if not args and not len(sys.argv) > 1:
         args = taro.cfg.default_action.split(" ")
 
-    args_ns = cli.parse_args(args)
+    args_parsed = cli.parse_args(args)
 
-    if args_ns.action == 'config':
-        run_config(args_ns)
+    if args_parsed.no_color or 'NO_COLOR' in os.environ or 'TARO_NO_COLOR' in os.environ:
+        os.environ['PROMPT_TOOLKIT_COLOR_DEPTH'] = 'DEPTH_1_BIT'
+
+    if args_parsed.action == 'config':
+        run_config(args_parsed)
     else:
-        init_taro(args_ns)
-        run_command(args_ns)
+        init_taro(args_parsed)
+        run_command(args_parsed)
 
 
 def run_config(args):

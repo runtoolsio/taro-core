@@ -31,6 +31,7 @@ def parse_args(args):
     parser.add_argument("-V", "--version", action='version', help="Show version and exit.", version=version.get())
     common = argparse.ArgumentParser()  # parent parser for subparsers in case they need to share common options
     common.add_argument('--set', type=str, action='append', help='override value of configuration field')
+    common.add_argument('--no-color', action='store_true', help='do not print colours in output')
     subparsers = parser.add_subparsers(dest='action')  # command/action
 
     _init_exec_parser(common, subparsers)
@@ -276,6 +277,7 @@ def _init_config_parser(subparsers):
 
     config_parser = subparsers.add_parser(
         ACTION_CONFIG, description='Config related actions', add_help=False)
+    config_parser.add_argument('--no-color', action='store_true', help='do not print colours in output')
 
     # TODO Add required=True if migrated to >=3.7
     config_subparsers = config_parser.add_subparsers(dest='config_action')
