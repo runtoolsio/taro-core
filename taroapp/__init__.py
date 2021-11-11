@@ -23,7 +23,7 @@ def main(args):
     """
     if not args and not len(sys.argv) > 1:
         args = taro.cfg.default_action.split(" ")
-
+    taro.auto_init()
     args_parsed = cli.parse_args(args)
 
     if args_parsed.no_color or 'NO_COLOR' in os.environ or 'TARO_NO_COLOR' in os.environ:

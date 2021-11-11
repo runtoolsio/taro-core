@@ -6,6 +6,7 @@ IMPLEMENTATION NOTE:
     Avoid importing any module depending on any external package. This allows to use this module without installing
     additional packages.
 """
+import os
 from . import cfg, cfgfile, log
 from .hostinfo import read_hostinfo, HostinfoError
 from .jobs import warning, persistence
@@ -51,6 +52,14 @@ def exec_time_warning(time: float):
 
 def output_warning(regex: str):
     return lambda job_instance: warning.output_matches(job_instance, f"output=~{regex}", regex)
+
+
+def auto_init():
+    path = paths.config_file_search_path(exclude_cwd=True)[0]
+    if not os.path.exists(path / '.init'):
+        open(path / '.init', 'a').close()
+        cfgfile.copy_default_file_to_search_path(overwrite=False)
+        print("Taro initialized")
 
 
 def close():
