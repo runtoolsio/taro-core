@@ -22,6 +22,7 @@ ACTION_ENABLE = 'enable'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
 ACTION_CONFIG_CREATE = 'create'
+ACTION_CONFIG_RESET = 'reset'
 ACTION_HOSTINFO = 'hostinfo'
 
 
@@ -290,6 +291,9 @@ def _init_config_parser(subparsers):
     create__config_parser = config_subparsers.add_parser(ACTION_CONFIG_CREATE, description='create config file',
                                                          add_help=False)
     create__config_parser.add_argument("--overwrite", action="store_true", help="overwrite config file to default")
+
+    config_subparsers.add_parser(ACTION_CONFIG_RESET, description='reset config file',
+                                 add_help=False)
 
 
 def _init_hostinfo_parser(common, subparsers):

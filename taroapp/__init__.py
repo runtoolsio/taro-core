@@ -23,7 +23,7 @@ def main(args):
     """
     if not args and not len(sys.argv) > 1:
         args = taro.cfg.default_action.split(" ")
-
+    taro.auto_init()
     args_parsed = cli.parse_args(args)
 
     if args_parsed.no_color or 'NO_COLOR' in os.environ or 'TARO_NO_COLOR' in os.environ:
@@ -44,7 +44,8 @@ def run_config(args):
             util.print_file(paths.lookup_config_file())
     elif args.config_action == cli.ACTION_CONFIG_CREATE:
         cfgfile.copy_default_file_to_search_path(args.overwrite)
-
+    elif args.config_action == cli.ACTION_CONFIG_RESET:
+        cfgfile.copy_default_file_to_search_path(True)
 
 def init_taro(args):
     """Initialize taro according to provided CLI arguments
