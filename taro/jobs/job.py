@@ -191,15 +191,12 @@ class JobInfo:
 
 class JobInfoCollection:
 
-    def __init__(self, jobs=list()):
+    def __init__(self, *jobs):
         self._jobs = jobs
 
     @property
     def jobs(self):
-        return self._jobs
-
-    def append(self, item):
-        self._jobs.append(item)
+        return list(self._jobs)
 
 
 class ExecutionStateObserver(abc.ABC):

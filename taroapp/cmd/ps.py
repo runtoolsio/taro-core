@@ -12,13 +12,10 @@ from taroapp.view import instance as view_inst
 
 
 def run(args):
-    if args.instance:
-        jobs = JobInfoCollection()
-        for j in taro.client.read_jobs_info():
-            if j.matches(args.instance, job_matching_strategy=util.substring_match):
-                jobs.append(j)
-    else:
-        jobs = JobInfoCollection(taro.client.read_jobs_info())
+
+    jobs = [job for job in taro.client.read_jobs_info() if not args.instance or 
+                job.matches(args.instance, job_matching_strategy=util.substring_match)]
+    jobs = JobInfoCollection(*jobs)
 
     if args.format == 'table':
         printer.print_table(jobs.jobs, view_inst.DEFAULT_COLUMNS, show_header=True, pager=False)
