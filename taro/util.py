@@ -1,6 +1,7 @@
 import functools
 import os
 import secrets
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from shutil import copy
@@ -129,3 +130,7 @@ def copy_resource(src: Path, dst: Path, overwrite=False):
         return
 
     raise FileExistsError('File already exists: ' + str(dst))
+
+
+def substring_match(job_id, instance):
+    return bool(re.search(instance, job_id)) 

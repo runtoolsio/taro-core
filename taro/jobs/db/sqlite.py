@@ -70,7 +70,7 @@ class SQLite:
         statment = "SELECT * FROM history"
 
         if id_:
-            statment += " WHERE job_id LIKE \"%{id}%\" OR instance_id LIKE \"%{id}%\"".format(id=id_)
+            statment += " WHERE job_id LIKE \"%{id}%\" OR instance_id = \"{id}\"".format(id=id_)
         if last:
             statment += " GROUP BY job_id HAVING ROWID = max(ROWID) "
 
