@@ -180,8 +180,8 @@ class JobInfo:
     def exec_error(self) -> ExecutionError:
         return self._exec_error
 
-    def matches(self, instance):
-        return fnmatch(self.job_id, instance) or fnmatch(self.instance_id, instance)
+    def matches(self, instance, job_matching_strategy=fnmatch):
+        return job_matching_strategy(self.job_id, instance) or fnmatch(self.instance_id, instance)
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(

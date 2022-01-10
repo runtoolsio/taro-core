@@ -23,7 +23,7 @@ class StateReceiver(SocketServer):
 
     def handle(self, req_body):
         job_info = dto.to_job_info(req_body['event']['job_info'])
-        if self.instance and not job_info.matches(self.instance):
+        if self.instance and not job_info.matches(self.instance, job_matching_strategy=util.substring_match):
             return
         if self.states and job_info.state not in self.states:
             return
@@ -45,7 +45,7 @@ class OutputReceiver(SocketServer):
 
     def handle(self, req_body):
         job_info = dto.to_job_info(req_body['event']['job_info'])
-        if self.instance and not job_info.matches(self.instance):
+        if self.instance and not job_info.matches(self.instance, job_matching_strategy=util.substring_match):
             return
         output = req_body['event']['output']
         for listener in self.listeners:
