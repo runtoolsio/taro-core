@@ -1,3 +1,8 @@
+"""
+TODO: Create option where the command will terminates if the specified state is found in the previous or current state
+      of an existing instance.
+"""
+
 import signal
 import sys
 
