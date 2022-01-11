@@ -37,7 +37,7 @@ def instances():
 
 @route('/instances/<inst>')
 def instance(inst):
-    jobs_info = taro.client.read_jobs_info(instance=inst)
+    jobs_info = taro.client.read_jobs_info(job_instance=inst)
     if not jobs_info:
         raise http_error(404, "Instance not found")
 

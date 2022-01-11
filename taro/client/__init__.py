@@ -7,9 +7,9 @@ from taro.socket import SocketClient, InstanceResponse
 from taro.util import iterates
 
 
-def read_jobs_info(instance="") -> List[JobInfo]:
+def read_jobs_info(job_instance="") -> List[JobInfo]:
     with JobsClient() as client:
-        return client.read_jobs_info(instance)
+        return client.read_jobs_info(job_instance)
 
 
 def release_jobs(pending):
@@ -38,21 +38,21 @@ class JobsClient(SocketClient):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def _send_request(self, api: str, *, data=None, instance: str = '', include=()) -> List[InstanceResponse]:
+    def _send_request(self, api: str, *, data=None, job_instance: str = '', include=()) -> List[InstanceResponse]:
         req = {'req': {'api': api}}
-        if instance:
-            req['instance'] = instance
+        if job_instance:
+            req['job_instance'] = job_instance
         if data:
             req['data'] = data
         return [inst_resp for inst_resp in self.communicate(req, include=include)
                 if inst_resp.response['resp']['code'] != 412]  # Ignore precondition failed
 
-    def read_jobs_info(self, instance="") -> List[JobInfo]:
-        responses = self._send_request('/job', instance=instance)
+    def read_jobs_info(self, job_instance="") -> List[JobInfo]:
+        responses = self._send_request('/job', job_instance=job_instance)
         return [_create_job_info(inst_resp) for inst_resp in responses]
 
-    def read_tail(self, instance) -> List[Tuple[str, str, List[str]]]:
-        inst_responses = self._send_request('/tail', instance=instance)
+    def read_tail(self, job_instance) -> List[Tuple[str, str, List[str]]]:
+        inst_responses = self._send_request('/tail', job_instance=job_instance)
         return [(resp['job_id'], resp['instance_id'], resp['data']['tail'])
                 for resp in [inst_resp.response for inst_resp in inst_responses]]
 

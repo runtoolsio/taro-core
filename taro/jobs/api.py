@@ -38,9 +38,9 @@ class Server(SocketServer):
         if 'api' not in req_body['req']:
             return _resp_err(422, job_inst, "missing_req_api")
 
-        inst_filter = req_body.get('instance')
-        if inst_filter and not self._job_instance.create_info().matches(inst_filter):
-            return _resp(412, job_inst, {"reason": "instance_not_matching"})
+        job_instance_filter = req_body.get('job_instance')
+        if job_instance_filter and not self._job_instance.create_info().matches(job_instance_filter):
+            return _resp(412, job_inst, {"reason": "job_instance_not_matching"})
 
         if req_body['req']['api'] == '/job':
             info_dto = dto.to_info_dto(self._job_instance.create_info())
