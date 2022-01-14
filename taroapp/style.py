@@ -39,9 +39,9 @@ def state_style(job):
     return ""
 
 
-def job_status_line(job):
-    job_id = (job_style(job), job.job_id)
-    instance_id = (instance_style(job), job.instance_id)
-    state = ((state_style(job)), job.state.name)
+def job_instance(job):
+    return FormattedText([(job_style(job), job.job_id), ("", "@"), (instance_style(job), job.instance_id)])
 
-    return FormattedText([job_id, ("", "@"), instance_id, ("", " -> "), state])
+
+def job_status_line(job):
+    return FormattedText(job_instance(job) + FormattedText([("", " -> "), ((state_style(job)), job.state.name)]))
