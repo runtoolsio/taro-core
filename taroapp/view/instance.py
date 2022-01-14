@@ -1,32 +1,7 @@
 from taro import util
 from taro.jobs.execution import ExecutionState
-from taro.theme import Theme
 from taroapp.printer import Column, format_dt
-
-
-def general_style(job):
-    if job.state.is_failure():
-        return Theme.state_failure
-    return ""
-
-
-def warn_style(_):
-    return Theme.warning
-
-
-def state_style(job):
-    if job.state.is_before_execution():
-        return Theme.state_before_execution
-    if job.state.is_executing():
-        return Theme.state_executing
-    if job.state.is_incomplete():
-        return Theme.state_incomplete
-    if job.state.is_unexecuted():
-        return Theme.state_not_executed
-    if job.state.is_failure():
-        return Theme.state_failure
-    return ""
-
+from taroapp.style import general_style, warn_style, state_style
 
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, general_style)
 INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.instance_id, general_style)
