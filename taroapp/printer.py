@@ -19,6 +19,13 @@ def _print_not_formatted(style_text):
     print("".join(text for _, text in style_text))
 
 
+def print_styled(style_text_seq):
+    if sys.stdout.isatty():
+        print_formatted_text(style_text_seq)
+    else:
+        _print_not_formatted(style_text_seq)
+
+
 @iterates
 def print_table(items, columns: List[Column], *, show_header: bool, pager: bool):
     gen = output_gen(items, columns, show_header, stretch_last_column=pager)
@@ -29,10 +36,7 @@ def print_table(items, columns: List[Column], *, show_header: bool, pager: bool)
         p.run()
     else:
         while True:
-            if sys.stdout.isatty():
-                print_formatted_text(next(gen))
-            else:
-                _print_not_formatted(next(gen))
+            print_styled(next(gen))
 
 
 def output_gen(items, columns: List[Column], show_header: bool, stretch_last_column: bool):
