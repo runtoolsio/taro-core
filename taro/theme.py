@@ -1,4 +1,6 @@
 class Theme:
+    job = 'bold'
+    instance = 'ansibrightblack'
     warning = 'ansired'
     state_before_execution = 'ansigreen'
     state_executing = 'ansiblue'

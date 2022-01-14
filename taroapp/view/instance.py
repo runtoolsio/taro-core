@@ -1,10 +1,10 @@
 from taro import util
 from taro.jobs.execution import ExecutionState
 from taroapp.printer import Column, format_dt
-from taroapp.style import general_style, warn_style, state_style
+from taroapp.style import general_style, job_style, instance_style, warn_style, state_style
 
-JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, general_style)
-INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.instance_id, general_style)
+JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_style)
+INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.instance_id, instance_style)
 CREATED = Column('CREATED', 25, lambda j: format_dt(j.lifecycle.changed(ExecutionState.CREATED)), general_style)
 EXECUTED = Column('EXECUTED', 25, lambda j: format_dt(j.lifecycle.execution_started()), general_style)
 ENDED = Column('ENDED', 25, lambda j: format_dt(j.lifecycle.execution_finished()), general_style)

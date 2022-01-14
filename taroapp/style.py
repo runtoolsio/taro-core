@@ -1,4 +1,18 @@
+from prompt_toolkit.formatted_text import FormattedText
+
 from taro.theme import Theme
+
+
+def job_style(job):
+    if job.state.is_failure():
+        return Theme.state_failure
+    return Theme.job
+
+
+def instance_style(job):
+    if job.state.is_failure():
+        return Theme.state_failure
+    return Theme.instance
 
 
 def general_style(job):
@@ -23,3 +37,11 @@ def state_style(job):
     if job.state.is_failure():
         return Theme.state_failure
     return ""
+
+
+def job_status_line(job):
+    job_id = (job_style(job), job.job_id)
+    instance_id = (instance_style(job), job.instance_id)
+    state = ((state_style(job)), job.state.name)
+
+    return FormattedText([job_id, ("", "@"), instance_id, ("", " -> "), state])

@@ -1,7 +1,5 @@
 import signal
 
-from prompt_toolkit.formatted_text import FormattedText
-
 from taro.jobs.job import ExecutionStateObserver, JobInfo
 from taro.listening import StateReceiver
 from taroapp import printer, style
@@ -26,8 +24,4 @@ class EventPrint(ExecutionStateObserver):
 
 
 def print_state_change(job_info):
-    job_id = ("bold", job_info.job_id)
-    instance_id = ("ansibrightblack", job_info.instance_id)
-    state = ((style.state_style(job_info)), job_info.state.name)
-
-    printer.print_styled(FormattedText([job_id, ("", "@"), instance_id, ("", " -> "), state]))
+    printer.print_styled(style.job_status_line(job_info))
