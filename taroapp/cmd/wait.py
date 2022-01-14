@@ -8,6 +8,7 @@ import sys
 
 from taro.jobs.job import ExecutionStateObserver, JobInfo
 from taro.listening import StateReceiver
+from taroapp import printer, style
 
 
 def run(args):
@@ -25,7 +26,7 @@ def _close_server_and_exit(server, signal_number: int):
 
 
 def print_state_change(job_info):
-    print(f"{job_info.job_id}@{job_info.instance_id} -> {job_info.state.name}")
+    printer.print_styled(style.job_status_line(job_info))
 
 
 class StoppingListener(ExecutionStateObserver):
