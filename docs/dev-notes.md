@@ -35,19 +35,11 @@ the exception is propagated back in the main thread stack. An observed traceback
 SystemExit
 ```
 
-### Color Print
-termcolor module
-https://github.com/tartley/colorama
-https://github.com/erikrose/blessings
-https://github.com/timofurrer/colorful
-
-### Table Print
-https://stackoverflow.com/questions/9535954/printing-lists-as-tabular-data
-https://github.com/foutaise/texttable/
-https://github.com/astanin/python-tabulate
+### Colour Print
+#### VT100 Colours
+https://github.com/prompt-toolkit/python-prompt-toolkit/blob/master/prompt_toolkit/output/vt100.py
 
 ### Misc
-
 Logging config: https://stackoverflow.com/questions/14058453/making-python-loggers-output-all-messages-to-stdout-in-addition-to-log-file
 
 STDOUT to file: https://stackoverflow.com/questions/4965159/how-to-redirect-output-with-subprocess-in-python
