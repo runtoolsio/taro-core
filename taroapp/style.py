@@ -5,7 +5,7 @@ from taro.theme import Theme
 
 def job_style(job):
     if job.state.is_failure():
-        return Theme.state_failure
+        return Theme.job + " " + Theme.state_failure
     return Theme.job
 
 
