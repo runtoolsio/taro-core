@@ -82,7 +82,8 @@ def _calc_widths(items, columns: List[Column], stretch_last_column: bool):
         if stretch_last_column:
             widths[-1] += spare_length
         else:
-            max_length_in_last_column = max((len(columns[-1].value_fnc(i)) + 2 for i in items), default=(widths[-1]))
+            max_length_in_last_column =\
+                max(itertools.chain((len(columns[-1].value_fnc(i)) + 2 for i in items), (widths[-1], )))
 
             if max_length_in_last_column < widths[-1] + spare_length:
                 widths[-1] = max_length_in_last_column
