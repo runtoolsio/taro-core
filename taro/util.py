@@ -134,3 +134,9 @@ def copy_resource(src: Path, dst: Path, overwrite=False):
 
 def substring_match(job_id, instance):
     return bool(re.search(instance, job_id)) 
+
+
+def cli_confirmation():
+    print("Do you want to continue? [Y/n] ", end="")  
+    i = input()
+    return (i.lower() in TRUE_OPTIONS)
