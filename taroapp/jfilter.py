@@ -35,6 +35,11 @@ def today_filter(job_info):
            datetime.datetime.today().date()
 
 
+def yesterday_filter(job_info):
+    return job_info.lifecycle.changed(ExecutionState.CREATED).astimezone().date() == \
+           (datetime.datetime.today().date() - datetime.timedelta(days=1))
+
+
 def create_since_filter(since):
     def do_filter(job_info):
         return job_info.lifecycle.changed(ExecutionState.CREATED).astimezone().replace(tzinfo=None) >= since
