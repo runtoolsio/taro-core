@@ -1,6 +1,6 @@
 from typing import Dict, Any
 
-from taro import util
+from taro import util, JobInstanceID
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
 from taro.jobs.job import JobInfo
 
@@ -20,8 +20,10 @@ def to_info_dto(info) -> Dict[str, Any]:
         exec_error = None
 
     return {
-        "job_id": info.job_id,
-        "instance_id": info.instance_id,
+        "id": {
+            "job_id": info.job_id,
+            "instance_id": info.instance_id,
+        },
         "lifecycle": {
             "state_changes": state_changes,
             "state": lc.state().name,
@@ -51,5 +53,5 @@ def to_job_info(as_dict) -> JobInfo:
     else:
         exec_error = None
 
-    return JobInfo(as_dict['job_id'], as_dict['instance_id'], lifecycle, as_dict['status'], as_dict['warnings'],
-                   exec_error)
+    return JobInfo(JobInstanceID(as_dict['id']['job_id'], as_dict['id']['instance_id']), lifecycle, as_dict['status'],
+                   as_dict['warnings'], exec_error)

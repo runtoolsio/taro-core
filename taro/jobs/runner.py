@@ -14,7 +14,7 @@ from taro.err import IllegalStateError
 from taro.jobs import persistence
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver
 from taro.jobs.job import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, Warn, \
-    WarnEventCtx
+    WarnEventCtx, JobInstanceID
 
 log = logging.getLogger(__name__)
 
@@ -28,10 +28,9 @@ def run(job_id, execution, no_overlap: bool = False):
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
     def __init__(self, job_id, execution, *, no_overlap: bool = False):
-        self._job_id = job_id
+        self._id = JobInstanceID(job_id, util.unique_timestamp_hex())
         self._execution = execution
         self._no_overlap = no_overlap
-        self._instance_id: str = util.unique_timestamp_hex()
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
         self._last_output = deque(maxlen=10)
         self._exec_error = None
@@ -47,10 +46,6 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._output_observers = []
 
         self._state_change(ExecutionState.CREATED)
-
-    def __repr__(self):
-        return "{}({!r}, {!r})".format(
-            self.__class__.__name__, self._job_id, self._execution)
 
     def create_latch(self, wait_state: ExecutionState):
         if not wait_state.is_before_execution():
@@ -68,12 +63,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         return self._latch.set
 
     @property
-    def instance_id(self) -> str:
-        return self._instance_id
-
-    @property
-    def job_id(self) -> str:
-        return self._job_id
+    def id(self):
+        return self._id
 
     @property
     def lifecycle(self):
@@ -97,9 +88,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
     def create_info(self):
         with self._state_lock:
-            return JobInfo(
-                self.job_id, self.instance_id, copy.deepcopy(self._lifecycle), self.status, self.warnings,
-                self.exec_error)
+            return JobInfo(self._id, copy.deepcopy(self._lifecycle), self.status, self.warnings, self.exec_error)
 
     def add_state_observer(self, observer):
         self._state_observers.append(observer)
@@ -155,7 +144,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def run(self):
         if persistence.is_enabled():
             for disabled in persistence.read_disabled_jobs():
-                if (disabled.regex and re.compile(disabled.job_id).match(self.job_id)) or disabled.job_id == self.job_id:
+                if (disabled.regex and re.compile(disabled.job_id).match(
+                        self.job_id)) or disabled.job_id == self.job_id:
                     self._state_change(ExecutionState.DISABLED)
                     return
 
@@ -174,7 +164,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
         try:
             if self._no_overlap and any(j for j in taro.client.read_jobs_info()
-                                        if j.job_id == self.job_id and j.instance_id != self._instance_id):
+                                        if j.job_id == self.job_id and j.instance_id != self.instance_id):
                 self._state_change(ExecutionState.SKIPPED)
                 return
         except Exception as e:
@@ -190,7 +180,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
     # Inline?
     def _log(self, event: str, msg: str):
-        return "event=[{}] job_id=[{}] instance_id=[{}] {}".format(event, self._job_id, self._instance_id, msg)
+        return "event=[{}] instance=[{}] {}".format(event, self._id, msg)
 
     def _state_change(self, new_state, exec_error: ExecutionError = None):
         # It is not necessary to lock all this code, but it would be if this method is not confined to one thread

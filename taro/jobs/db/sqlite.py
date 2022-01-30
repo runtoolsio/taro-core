@@ -5,7 +5,7 @@ import sqlite3
 from datetime import timezone
 from typing import List
 
-from taro import util, cfg, paths
+from taro import util, cfg, paths, JobInstanceID
 from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle
 from taro.jobs.job import JobInfo, DisabledJob
 from taro.jobs.persistence import SortCriteria
@@ -85,7 +85,7 @@ class SQLite:
             lifecycle = ExecutionLifecycle(*state_changes)
             warnings = json.loads(t[6]) if t[6] else dict()
             exec_error = ExecutionError(t[7], lifecycle.state()) if t[7] else None  # TODO more data
-            return JobInfo(t[0], t[1], lifecycle, t[5], warnings, exec_error)
+            return JobInfo(JobInstanceID(t[0], t[1]), lifecycle, t[5], warnings, exec_error)
 
         return [to_job_info(row) for row in c.fetchall()]
 
@@ -105,10 +105,9 @@ class SQLite:
         )
         self._conn.commit()
 
-    def remove_job(self,  id_):
-        self._conn.execute("DELETE FROM history WHERE job_id = (?) or instance_id = (?)", (id_,id_,))
+    def remove_job(self, id_):
+        self._conn.execute("DELETE FROM history WHERE job_id = (?) or instance_id = (?)", (id_, id_,))
         self._conn.commit()
-
 
     def add_disabled_jobs(self, disabled_jobs):
         added = []

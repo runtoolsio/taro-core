@@ -14,20 +14,34 @@ There are two type of clients of the framework:
 import abc
 from collections import namedtuple
 from fnmatch import fnmatch
+from typing import NamedTuple
 
 from taro.jobs.execution import ExecutionError
+
+
+class JobInstanceID(NamedTuple):
+    job_id: str
+    instance_id: str
+
+    def __repr__(self):
+        return "{}@{}".format(self.job_id, self.instance_id)
 
 
 class JobInstance(abc.ABC):
 
     @property
-    @abc.abstractmethod
     def job_id(self) -> str:
         """Identifier of the job of this instance"""
+        return self.id.job_id
+
+    @property
+    def instance_id(self) -> str:
+        """Instance identifier"""
+        return self.id.instance_id
 
     @property
     @abc.abstractmethod
-    def instance_id(self) -> str:
+    def id(self):
         """Identifier of this instance"""
 
     @property
@@ -144,9 +158,8 @@ class JobInfo:
     Immutable snapshot of job instance state
     """
 
-    def __init__(self, job_id: str, instance_id: str, lifecycle, status, warnings, exec_error: ExecutionError):
-        self._job_id = job_id
-        self._instance_id = instance_id
+    def __init__(self, job_instance_id, lifecycle, status, warnings, exec_error: ExecutionError):
+        self._job_instance_id = job_instance_id
         self._lifecycle = lifecycle
         self._status = status
         self._warnings = warnings
@@ -154,11 +167,15 @@ class JobInfo:
 
     @property
     def job_id(self) -> str:
-        return self._job_id
+        return self._job_instance_id.job_id
 
     @property
     def instance_id(self) -> str:
-        return self._instance_id
+        return self._job_instance_id.instance_id
+
+    @property
+    def id(self):
+        return self._job_instance_id
 
     @property
     def lifecycle(self):
@@ -184,8 +201,8 @@ class JobInfo:
         return job_matching_strategy(self.job_id, instance) or fnmatch(self.instance_id, instance)
 
     def __repr__(self) -> str:
-        return "{}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
-            self.__class__.__name__, self._job_id, self.instance_id, self._lifecycle, self._status, self._warnings,
+        return "{}({!r}, {!r}, {!r}, {!r}, {!r})".format(
+            self.__class__.__name__, self._job_instance_id, self._lifecycle, self._status, self._warnings,
             self._exec_error)
 
 

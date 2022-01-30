@@ -11,7 +11,7 @@ from . import cfg, cfgfile, log
 from .hostinfo import read_hostinfo, HostinfoError
 from .jobs import warning, persistence
 from .jobs.execution import ExecutionStateGroup, ExecutionState, ExecutionError, ExecutionLifecycle
-from .jobs.job import JobInstance, JobInfo, ExecutionStateObserver, Warn, WarningObserver, WarnEventCtx
+from .jobs.job import JobInstanceID, JobInstance, JobInfo, ExecutionStateObserver, Warn, WarningObserver, WarnEventCtx
 from .jobs.managed import create_managed_job
 from .jobs.plugins import PluginBase, PluginDisabledError
 from .jobs.process import ProcessExecution
