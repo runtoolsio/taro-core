@@ -22,7 +22,7 @@ def stop_jobs(instances, interrupt: bool) -> List[Tuple[JobInstanceID, str]]:
         return client.stop_jobs(instances, interrupt)
 
 
-def read_tail(instance) -> List[Tuple[str, str, List[str]]]:
+def read_tail(instance) -> List[Tuple[JobInstanceID, List[str]]]:
     with JobsClient() as client:
         return client.read_tail(instance)
 
@@ -49,11 +49,11 @@ class JobsClient(SocketClient):
 
     def read_jobs_info(self, job_instance="") -> List[JobInfo]:
         responses = self._send_request('/job', job_instance=job_instance)
-        return [_create_job_info(inst_resp) for inst_resp in responses]
+        return [dto.to_job_info(inst_resp.response['data']['job_info']) for inst_resp in responses]
 
-    def read_tail(self, job_instance) -> List[Tuple[str, str, List[str]]]:
+    def read_tail(self, job_instance) -> List[Tuple[JobInstanceID, List[str]]]:
         inst_responses = self._send_request('/tail', job_instance=job_instance)
-        return [(resp['job_id'], resp['instance_id'], resp['data']['tail'])
+        return [(_job_instance_id(resp), resp['data']['tail'])
                 for resp in [inst_resp.response for inst_resp in inst_responses]]
 
     @iterates
@@ -76,9 +76,9 @@ class JobsClient(SocketClient):
             raise ValueError('Instances to be stopped cannot be empty')
 
         inst_responses = self._send_request('/interrupt' if interrupt else '/stop', include=instances)
-        return [(JobInstanceID(resp['job_id'], resp['instance_id']), resp['data']['result'])
+        return [(_job_instance_id(resp), resp['data']['result'])
                 for resp in [inst_resp.response for inst_resp in inst_responses]]
 
 
-def _create_job_info(info_resp):
-    return dto.to_job_info(info_resp.response['data']['job_info'])
+def _job_instance_id(resp):
+    return JobInstanceID(resp['job_id'], resp['instance_id'])

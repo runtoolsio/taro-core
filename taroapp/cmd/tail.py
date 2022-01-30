@@ -17,10 +17,10 @@ def run(args):
         signal.signal(signal.SIGINT, lambda _, __: receiver.close())
         receiver.start()
     else:
-        for job_id, instance_id, tail in taro.client.read_tail(None):
+        for (job_id, instance_id), tail in taro.client.read_tail(None):
             if args.instance and not (fnmatch(job_id, args.instance) or fnmatch(instance_id, args.instance)):
                 continue
-            printer.print_styled((Theme.job, job_id), ("", "@"), (Theme.instance, instance_id))
+            printer.print_styled(*style.job_instance_id_styled(job_id, instance_id))
             for line in tail:
                 print(line)
 

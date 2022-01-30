@@ -21,4 +21,4 @@ def run(args):
 
         id_results = client.stop_jobs([job.instance_id for job in jobs], args.interrupt)
         for id_, result in id_results:
-            print_styled(*style.job_instance_id_styled(id_) + [('', ' -> '), ('', result)])
+            print_styled(*style.job_instance_id_styled(*id_) + [('', ' -> '), ('', result)])
