@@ -31,7 +31,7 @@ class Server(SocketServer):
 
         if req_body['req']['api'] == '/job':
             info_dto = dto.to_info_dto(self._job_instance.create_info())
-            return self._resp(200, {"job_info": info_dto})
+            return self._resp_ok({"job_info": info_dto})
 
         if req_body['req']['api'] == '/release':
             if 'data' not in req_body:
@@ -43,20 +43,23 @@ class Server(SocketServer):
                 released = self._latch_release.release(req_body.get('data').get('pending'))
             else:
                 released = False
-            return self._resp(200, {"released": released})
+            return self._resp_ok({"released": released})
 
         if req_body['req']['api'] == '/stop':
             self._job_instance.stop()
-            return self._resp(200, {"result": "stop_performed"})
+            return self._resp_ok({"result": "stop_performed"})
 
         if req_body['req']['api'] == '/interrupt':
             self._job_instance.interrupt()
-            return self._resp(200, {"result": "interrupt_performed"})
+            return self._resp_ok({"result": "interrupt_performed"})
 
         if req_body['req']['api'] == '/tail':
-            return self._resp(200, {"tail": self._job_instance.last_output})
+            return self._resp_ok({"tail": self._job_instance.last_output})
 
         return self._resp_err(404, "req_api_not_found")
+
+    def _resp_ok(self, data):
+        return self._resp(200, data)
 
     def _resp(self, code: int, data):
         return {
