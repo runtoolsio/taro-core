@@ -1,8 +1,7 @@
-import os
-
 import taro.util
 from taro.client import JobsClient
-from taroapp import printer
+from taroapp import printer, style
+from taroapp.printer import print_styled
 from taroapp.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
 
 
@@ -20,6 +19,6 @@ def run(args):
             if not taro.util.cli_confirmation():
                 exit(0)
 
-        inst_results = client.stop_jobs([job.instance_id for job in jobs], args.interrupt)
-        for inst_res in inst_results:
-            print(f"{inst_res[0]} -> {inst_res[1]}")
+        id_results = client.stop_jobs([job.instance_id for job in jobs], args.interrupt)
+        for id_, result in id_results:
+            print_styled(*style.job_instance_id_styled(id_) + [('', ' -> '), ('', result)])

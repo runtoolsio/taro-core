@@ -1,6 +1,6 @@
 from typing import List, Tuple
 
-from taro import dto
+from taro import dto, JobInstanceID
 from taro.jobs.api import API_FILE_EXTENSION
 from taro.jobs.job import JobInfo
 from taro.socket import SocketClient, InstanceResponse
@@ -17,7 +17,7 @@ def release_jobs(pending):
         client.release_jobs(pending)
 
 
-def stop_jobs(instances, interrupt: bool) -> List[Tuple[str, str]]:
+def stop_jobs(instances, interrupt: bool) -> List[Tuple[JobInstanceID, str]]:
     with JobsClient() as client:
         return client.stop_jobs(instances, interrupt)
 
@@ -65,7 +65,7 @@ class JobsClient(SocketClient):
             if resp['data']['released']:
                 print(resp)  # TODO Do not print, but returned released (use communicate)
 
-    def stop_jobs(self, instances, interrupt: bool) -> List[Tuple[str, str]]:
+    def stop_jobs(self, instances, interrupt: bool) -> List[Tuple[JobInstanceID, str]]:
         """
 
         :param instances:
@@ -76,7 +76,7 @@ class JobsClient(SocketClient):
             raise ValueError('Instances to be stopped cannot be empty')
 
         inst_responses = self._send_request('/interrupt' if interrupt else '/stop', include=instances)
-        return [(resp['job_id'] + "@" + resp['instance_id'], resp['data']['result'])
+        return [(JobInstanceID(resp['job_id'], resp['instance_id']), resp['data']['result'])
                 for resp in [inst_resp.response for inst_resp in inst_responses]]
 
 
