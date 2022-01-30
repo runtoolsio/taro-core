@@ -35,7 +35,7 @@ def print_styled(*style_and_text: Tuple[str, str]):
 def print_table(items, columns: List[Column], *, show_header: bool, pager: bool):
     gen = output_gen(items, columns, show_header, stretch_last_column=pager)
 
-    if pager:
+    if pager and sys.stdout.isatty():
         p = Pager()
         p.add_source(GeneratorSource(line + [('', '\n')] for line in gen))
         p.run()
