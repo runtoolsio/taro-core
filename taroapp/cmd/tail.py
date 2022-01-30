@@ -1,8 +1,6 @@
 import signal
 from fnmatch import fnmatch
 
-from prompt_toolkit.formatted_text import FormattedText
-
 import taro.client
 from taro import JobInfo
 from taro.jobs.job import JobOutputObserver
@@ -22,7 +20,7 @@ def run(args):
         for job_id, instance_id, tail in taro.client.read_tail(None):
             if args.instance and not (fnmatch(job_id, args.instance) or fnmatch(instance_id, args.instance)):
                 continue
-            printer.print_styled(FormattedText([(Theme.job, job_id), ("", "@"), (Theme.instance, instance_id)]))
+            printer.print_styled((Theme.job, job_id), ("", "@"), (Theme.instance, instance_id))
             for line in tail:
                 print(line)
 
@@ -34,6 +32,6 @@ class TailPrint(JobOutputObserver):
 
     def output_update(self, job_info: JobInfo, output):
         if self.last_printed_job_instance != job_info.instance_id:
-            printer.print_styled(style.job_instance(job_info))
+            printer.print_styled(*style.job_instance_styled(job_info))
         self.last_printed_job_instance = job_info.instance_id
         print(output)

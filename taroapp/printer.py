@@ -1,12 +1,12 @@
-import itertools
 import os
 import re
-import sys
 from collections import namedtuple
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
+import itertools
+import sys
 from prompt_toolkit import print_formatted_text
-from prompt_toolkit.formatted_text import FormattedText as FTxt
+from prompt_toolkit.formatted_text import FormattedText
 from pypager.pager import Pager
 from pypager.source import GeneratorSource
 
@@ -19,11 +19,16 @@ def _print_not_formatted(style_text):
     print("".join(text for _, text in style_text))
 
 
-def print_styled(style_text_seq):
+def print_styled(*style_and_text: Tuple[str, str]):
+    """
+    Print styled if printed to terminal.
+
+    :param: style_and_text tuples of style and text to print
+    """
     if sys.stdout.isatty():
-        print_formatted_text(style_text_seq)
+        print_formatted_text(FormattedText(list(style_and_text)))
     else:
-        _print_not_formatted(style_text_seq)
+        _print_not_formatted(style_and_text)
 
 
 @iterates
@@ -36,7 +41,7 @@ def print_table(items, columns: List[Column], *, show_header: bool, pager: bool)
         p.run()
     else:
         while True:
-            print_styled(next(gen))
+            print_styled(*next(gen))
 
 
 def output_gen(items, columns: List[Column], show_header: bool, stretch_last_column: bool):
@@ -55,13 +60,13 @@ def output_gen(items, columns: List[Column], show_header: bool, stretch_last_col
     column_formats = [" {:" + str(w - 1) + "} " for w in column_widths]
 
     if show_header:
-        yield FTxt([('bold', f.format(c.name)) for c, f in zip(columns, column_formats)])
+        yield [('bold', f.format(c.name)) for c, f in zip(columns, column_formats)]
         separator_line = " ".join("-" * w for w in column_widths)
-        yield FTxt([('bold', separator_line)])
+        yield [('bold', separator_line)]
 
     for item in itertools.chain(first_fifty, job_iter):
-        yield FTxt([(c.colour_fnc(item), f.format(_limit_text(c.value_fnc(item), w - 2)))
-                    for c, w, f in zip(columns, column_widths, column_formats)])
+        yield [(c.colour_fnc(item), f.format(_limit_text(c.value_fnc(item), w - 2)))
+               for c, w, f in zip(columns, column_widths, column_formats)]
 
 
 def _calc_widths(items, columns: List[Column], stretch_last_column: bool):
@@ -82,7 +87,7 @@ def _calc_widths(items, columns: List[Column], stretch_last_column: bool):
         if stretch_last_column:
             widths[-1] += spare_length
         else:
-            max_length_in_last_column =\
+            max_length_in_last_column = \
                 max(itertools.chain((len(columns[-1].value_fnc(i)) + 2 for i in items), (widths[-1], )))
 
             if max_length_in_last_column < widths[-1] + spare_length:

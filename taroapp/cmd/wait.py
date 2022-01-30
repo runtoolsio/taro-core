@@ -26,7 +26,7 @@ def _close_server_and_exit(server, signal_number: int):
 
 
 def print_state_change(job_info):
-    printer.print_styled(style.job_status_line(job_info))
+    printer.print_styled(*style.job_status_line_styled(job_info))
 
 
 class StoppingListener(ExecutionStateObserver):

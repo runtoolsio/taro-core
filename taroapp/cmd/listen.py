@@ -24,4 +24,4 @@ class EventPrint(ExecutionStateObserver):
 
 
 def print_state_change(job_info):
-    printer.print_styled(style.job_status_line(job_info))
+    printer.print_styled(*style.job_status_line_styled(job_info))
