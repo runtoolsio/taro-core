@@ -1,3 +1,4 @@
+from ast import arg
 from taro.jobs import persistence
 from taro.jobs.persistence import SortCriteria
 from taroapp import printer, jfilter
@@ -11,6 +12,8 @@ def run(args):
 
     columns = [view_inst.JOB_ID, view_inst.INSTANCE_ID, view_inst.CREATED, view_inst.ENDED, view_inst.EXEC_TIME,
                view_inst.STATE, view_inst.WARNINGS, view_inst.RESULT]
+    if args.show_params:
+        columns.insert(2, view_inst.PARAMETERS)
     job_filter = _build_job_filter(args)
     filtered_jobs = filter(job_filter, jobs)
     printer.print_table(filtered_jobs, columns, show_header=True, pager=not args.no_pager)

@@ -87,7 +87,8 @@ def _init_exec_parser(common, subparsers):
 
     exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=ExecutionState.COMPLETED,
                              help='executing without actual running of the command - optional termination state arg')
-
+    
+    exec_parser.add_argument('--param', type=lambda p: p.split('='), action='append')
     # Terms command and arguments taken from python doc and docker run help,
     # for this app (or rather exec command) these are operands (alternatively arguments)
     exec_parser.add_argument('command', type=str, metavar='COMMAND', help='program to execute')
@@ -106,6 +107,7 @@ def _init_ps_parser(common, subparsers):
     ps_parser.add_argument('instance', nargs='?', default=None, type=str, help='instance filter')
     ps_parser.add_argument('-f', '--format', type=str, choices=['table', 'json', 'jsonp'], default='table',
                            help='output format')
+    ps_parser.add_argument('--show-params', action='store_true', help='')
 
 
 def _init_history_parser(common, subparsers):
@@ -135,6 +137,7 @@ def _init_history_parser(common, subparsers):
     hist_parser.add_argument('-s', '--sort', type=str, choices=[s.name.lower() for s in SortCriteria],
                              default=SortCriteria.CREATED.name.lower(), help='Sorting criteria')
     hist_parser.add_argument('-P', '--no-pager', action='store_true', help='Do not use pager for output')
+    hist_parser.add_argument('--show-params', action='store_true', help='')
 
 
 def _init_history_remove_parser(common, subparsers):

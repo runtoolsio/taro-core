@@ -38,7 +38,8 @@ class SQLite:
                          state_changed text,
                          result text,
                          warnings text,
-                         error text)
+                         error text,
+                         parameters text)
                          ''')
             c.execute('''CREATE INDEX job_id_index ON history (job_id)''')
             c.execute('''CREATE INDEX instance_id_index ON history (instance_id)''')
@@ -84,14 +85,15 @@ class SQLite:
                              for state, changed in json.loads(t[4]))
             lifecycle = ExecutionLifecycle(*state_changes)
             warnings = json.loads(t[6]) if t[6] else dict()
+            parameters = json.loads(t[8]) if t[8] else dict()
             exec_error = ExecutionError(t[7], lifecycle.state()) if t[7] else None  # TODO more data
-            return JobInfo(JobInstanceID(t[0], t[1]), lifecycle, t[5], warnings, exec_error)
+            return JobInfo(JobInstanceID(t[0], t[1]), lifecycle, t[5], warnings, exec_error, parameters)
 
         return [to_job_info(row) for row in c.fetchall()]
 
     def store_job(self, job_info):
         self._conn.execute(
-            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (job_info.job_id,
              job_info.instance_id,
              job_info.lifecycle.changed(ExecutionState.CREATED),
@@ -101,6 +103,7 @@ class SQLite:
              job_info.status,
              json.dumps(job_info.warnings),
              job_info.exec_error.message if job_info.exec_error else None,
+             json.dumps(job_info.params)
              )
         )
         self._conn.commit()

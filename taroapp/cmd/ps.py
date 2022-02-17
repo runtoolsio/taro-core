@@ -1,4 +1,5 @@
 import json
+from numpy import insert
 
 from pygments import highlight
 from pygments.formatters.terminal import TerminalFormatter
@@ -16,8 +17,11 @@ def run(args):
             if not args.instance or job.matches(args.instance, job_matching_strategy=util.substring_match)]
     jobs = JobInfoCollection(*jobs)
 
-    if args.format == 'table':
-        printer.print_table(jobs.jobs, view_inst.DEFAULT_COLUMNS, show_header=True, pager=False)
+    if args.format == 'table': 
+        columns = view_inst.DEFAULT_COLUMNS
+        if args.show_params:
+            columns.insert(2, view_inst.PARAMETERS)
+        printer.print_table(jobs.jobs, columns, show_header=True, pager=False)
     elif args.format == 'json':
         print(json.dumps(dto.to_jobs_dto(jobs)))
     elif args.format == 'jsonp':
