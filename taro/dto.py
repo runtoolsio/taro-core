@@ -24,6 +24,7 @@ def to_info_dto(info) -> Dict[str, Any]:
             "job_id": info.job_id,
             "instance_id": info.instance_id,
         },
+        "params": info.params,
         "lifecycle": {
             "state_changes": state_changes,
             "state": lc.state().name,
@@ -54,4 +55,4 @@ def to_job_info(as_dict) -> JobInfo:
         exec_error = None
 
     return JobInfo(JobInstanceID(as_dict['id']['job_id'], as_dict['id']['instance_id']), lifecycle, as_dict['status'],
-                   as_dict['warnings'], exec_error)
+                   as_dict['warnings'], exec_error, **as_dict['params'])
