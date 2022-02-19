@@ -11,8 +11,8 @@ from taro.jobs.runner import RunnerJobInstance
 log = logging.getLogger(__name__)
 
 
-def create_managed_job(job_id, execution, *, no_overlap=False, pending_value=None):
-    job_instance = RunnerJobInstance(job_id, execution, no_overlap=no_overlap)
+def create_managed_job(job_id, execution, params, *, no_overlap=False, pending_value=None):
+    job_instance = RunnerJobInstance(job_id, execution, params, no_overlap=no_overlap)
 
     # Forward output from execution to the job instance for the instance's output listeners
     execution.add_output_observer(job_instance)

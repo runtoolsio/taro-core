@@ -158,8 +158,9 @@ class JobInfo:
     Immutable snapshot of job instance state
     """
 
-    def __init__(self, job_instance_id, lifecycle, status, warnings, exec_error: ExecutionError):
+    def __init__(self, job_instance_id, lifecycle, status, warnings, exec_error: ExecutionError, params):
         self._job_instance_id = job_instance_id
+        self._params = params
         self._lifecycle = lifecycle
         self._status = status
         self._warnings = warnings
@@ -176,6 +177,10 @@ class JobInfo:
     @property
     def id(self):
         return self._job_instance_id
+
+    @property
+    def params(self):
+        return self._params
 
     @property
     def lifecycle(self):
