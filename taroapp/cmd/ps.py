@@ -1,5 +1,4 @@
 import json
-from numpy import insert
 
 from pygments import highlight
 from pygments.formatters.terminal import TerminalFormatter
@@ -7,7 +6,7 @@ from pygments.lexers.data import JsonLexer
 
 import taro.client
 from taro import dto, util
-from taro.jobs.job import JobInfoCollection, JobInfo
+from taro.jobs.job import JobInfoCollection
 from taroapp import printer
 from taroapp.view import instance as view_inst
 

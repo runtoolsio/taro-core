@@ -27,7 +27,7 @@ def run(job_id, execution, no_overlap: bool = False):
 
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, params, *, no_overlap: bool = False):
+    def __init__(self, job_id, execution, *, no_overlap: bool = False, **params):
         self._id = JobInstanceID(job_id, util.unique_timestamp_hex())
         self._params = params
         self._execution = execution
@@ -89,7 +89,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
     def create_info(self):
         with self._state_lock:
-            return JobInfo(self._id, copy.deepcopy(self._lifecycle), self.status, self.warnings, self.exec_error, self._params)
+            return JobInfo(self._id, copy.deepcopy(self._lifecycle), self.status, self.warnings, self.exec_error,
+                           **self._params)
 
     def add_state_observer(self, observer):
         self._state_observers.append(observer)

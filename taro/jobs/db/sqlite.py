@@ -87,7 +87,7 @@ class SQLite:
             warnings = json.loads(t[6]) if t[6] else dict()
             parameters = json.loads(t[8]) if t[8] else dict()
             exec_error = ExecutionError(t[7], lifecycle.state()) if t[7] else None  # TODO more data
-            return JobInfo(JobInstanceID(t[0], t[1]), lifecycle, t[5], warnings, exec_error, parameters)
+            return JobInfo(JobInstanceID(t[0], t[1]), lifecycle, t[5], warnings, exec_error, **parameters)
 
         return [to_job_info(row) for row in c.fetchall()]
 
