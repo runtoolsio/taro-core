@@ -10,15 +10,12 @@ from taroapp import version
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
 ACTION_HISTORY = 'history'
-ACTION_HISTORYREMOVE = 'history-remove'
+ACTION_HISTORY_REMOVE = 'history-remove'
 ACTION_RELEASE = 'release'
 ACTION_LISTEN = 'listen'
 ACTION_WAIT = 'wait'
 ACTION_STOP = 'stop'
 ACTION_TAIL = 'tail'
-ACTION_DISABLE = 'disable'
-ACTION_LIST_DISABLED = 'list-disabled'
-ACTION_ENABLE = 'enable'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
 ACTION_CONFIG_CREATE = 'create'
@@ -43,9 +40,6 @@ def parse_args(args):
     _init_wait_parser(common, subparsers)
     _init_stop_parser(common, subparsers)
     _init_tail_parser(common, subparsers)
-    _init_disable_parser(common, subparsers)
-    _init_list_disabled_parser(common, subparsers)
-    _init_enable_parser(common, subparsers)
     _init_config_parser(subparsers)
     _init_hostinfo_parser(common, subparsers)
     _init_history_remove_parser(common, subparsers)
@@ -124,8 +118,8 @@ def _init_history_parser(common, subparsers):
     filter_group = hist_parser.add_argument_group('filtering', 'These options allows to filter returned jobs')
     filter_group.add_argument('id', nargs='?', type=str,
                               help='Job or instance ID matching pattern for result filtering')
-    filter_group.add_argument('-T', '--today', action='store_true', help='Return only jobs created today (local)')
-    filter_group.add_argument('-Y', '--yesterday', action='store_true', help='Return only jobs created yesterday (local)')
+    filter_group.add_argument('-T', '--today', action='store_true', help='Show only jobs created today (local)')
+    filter_group.add_argument('-Y', '--yesterday', action='store_true', help='Show only jobs created yesterday (local)')
     filter_group.add_argument('-S', '--since', type=_str2dt, help='Show entries not older than the specified date')
     filter_group.add_argument('-U', '--until', type=_str2dt, help='Show entries not newer than the specified date')
     filter_group.add_argument('-n', '--lines', type=int, help='Number of history entries to show')
@@ -149,7 +143,7 @@ def _init_history_remove_parser(common, subparsers):
     """
 
     hist_rm_parser = subparsers.add_parser(
-        ACTION_HISTORYREMOVE, parents=[common], description="Remove job from history", add_help=False)
+        ACTION_HISTORY_REMOVE, parents=[common], description="Remove job from history", add_help=False)
 
     hist_rm_parser.add_argument('id', nargs=argparse.REMAINDER, type=str, help='Job or instance ID')
 
@@ -221,56 +215,6 @@ def _init_tail_parser(common, subparsers):
     tail_parser = subparsers.add_parser(ACTION_TAIL, parents=[common], description='Print last output', add_help=False)
     tail_parser.add_argument('instance', nargs='?', default=None, type=str, help='instance filter')
     tail_parser.add_argument('-f', '--follow', action='store_true', help='Keep printing')
-
-
-def _init_disable_parser(common, subparsers):
-    """
-    Creates parsers for `disable` command
-
-    :param common: parent parser
-    :param subparsers: sub-parser for disable parser to be added to
-    """
-
-    disable_parser = subparsers.add_parser(
-        ACTION_DISABLE, parents=[common], description='Disable jobs (persistence required)', add_help=False)
-
-    disable_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
-    disable_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
-    disable_parser.add_argument('-regex', action='store_true', help='job ID is regular expression')
-
-    disable_parser.add_argument('jobs', type=str, metavar='JOB', nargs=argparse.REMAINDER, help="job IDs to disable")
-
-
-def _init_list_disabled_parser(common, subparsers):
-    """
-    Creates parsers for `list-disabled` command
-
-    :param common: parent parser
-    :param subparsers: sub-parser for list-disabled parser to be added to
-    """
-
-    ld_parser = subparsers.add_parser(
-        ACTION_LIST_DISABLED, parents=[common], description='List disabled jobs (persistence required)', add_help=False)
-
-    ld_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
-    ld_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
-
-
-def _init_enable_parser(common, subparsers):
-    """
-    Creates parsers for `enable` command
-
-    :param common: parent parser
-    :param subparsers: sub-parser for enable parser to be added to
-    """
-
-    enable_parser = subparsers.add_parser(
-        ACTION_ENABLE, parents=[common], description='Enable jobs (persistence required)', add_help=False)
-
-    enable_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
-    enable_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
-
-    enable_parser.add_argument('jobs', type=str, metavar='JOB', nargs=argparse.REMAINDER, help="job IDs to enable")
 
 
 def _init_config_parser(subparsers):

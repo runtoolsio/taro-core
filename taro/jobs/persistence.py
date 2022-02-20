@@ -67,18 +67,6 @@ def remove_job(id_):
     _instance().remove_job(id_= id_)
 
 
-def add_disabled_jobs(disabled_jobs):
-    return _instance().add_disabled_jobs(disabled_jobs)
-
-
-def remove_disabled_jobs(job_ids):
-    return _instance().remove_disabled_jobs(job_ids)
-
-
-def read_disabled_jobs():
-    return _instance().read_disabled_jobs()
-
-
 def close():
     _persistence.close()
 
@@ -102,15 +90,6 @@ class NoPersistence:
         raise PersistenceDisabledError()
 
     def store_job(self, job_info):
-        raise PersistenceDisabledError()
-
-    def add_disabled_jobs(self, disabled_jobs):
-        raise PersistenceDisabledError()
-
-    def remove_disabled_jobs(self, job_ids):
-        raise PersistenceDisabledError()
-
-    def read_disabled_jobs(self):
         raise PersistenceDisabledError()
 
     def close(self):

@@ -3,7 +3,6 @@ Implementation of job management framework based on :mod:`job` module.
 """
 import copy
 import logging
-import re
 from collections import deque, Counter
 from threading import Lock, Event, RLock
 from typing import List, Union, Optional, Callable
@@ -144,13 +143,6 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._notify_warning_observers(self.create_info(), warning, WarnEventCtx(self._warnings[warning.name]))  # Lock?
 
     def run(self):
-        if persistence.is_enabled():
-            for disabled in persistence.read_disabled_jobs():
-                if (disabled.regex and re.compile(disabled.job_id).match(
-                        self.job_id)) or disabled.job_id == self.job_id:
-                    self._state_change(ExecutionState.DISABLED)
-                    return
-
         if self._latch and not self._stopped_or_interrupted:
             self._state_change(self._latch_wait_state)  # TODO Race condition?
             self._latch.wait()

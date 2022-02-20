@@ -136,30 +136,22 @@ Shows path to the config file. This is handy in cases where path to the config i
 vim `taro config path`
 ```
 
+TODO:
+
 ### Disable
-Jobs can be disabled. When disabled job is executed it goes through these states: `None` -> `Created` -> `Disabled`.
-It means that disabled job is not started and it terminates in `disabled` state instead.
 
-This feature is mainly useful for temporary disabling of scheduled jobs as an alternative for simply commenting out of crontab entries.
-Doing it this way has advantage of jobs stored in the history, processed by plugins, etc.
-This in general helps to make disabling more visible and harder to forget re-enabling.
+Jobs can be disabled. When disabled job is executed it goes through these states: `None` -> `Created` -> `Disabled`. It
+means that disabled job is not started, and it terminates in `disabled` state instead.
 
-*Note: To use this feature persistence must be enabled in the config file.*
-```commandline
-taro disable job-to-disable1 job-to-disable2
-```
-A group of jobs can be disabled using regular expression with `-regex` option.
+This feature is mainly useful for temporary disabling of scheduled jobs as an alternative for simply commenting out of
+crontab entries. Doing it this way has advantage of jobs are stored in the history, processed by plugins, etc.
 
 ### List Disabled
-Disabled jobs can be showed by this command.
-```commandline
-taro list-disabled
-```
 
-### Enable
-Disabled jobs can be re-enabled by this command.
+Disabled jobs can be showed by this command. TODO:
+
 ```commandline
-taro enable disabled-job1 disabled-job2
+taro config list-disabled 
 ```
 
 ### Hostinfo
