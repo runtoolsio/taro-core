@@ -221,6 +221,21 @@ class JobInfoCollection:
         return list(self._jobs)
 
 
+class Job:
+
+    def __init__(self, properties : dict, job_id):
+        self._job_id = job_id
+        self._properties = properties
+
+    @property
+    def properties(self):
+        return self._properties
+
+    @property
+    def job_id(self):
+        return self._job_id
+
+
 class ExecutionStateObserver(abc.ABC):
 
     @abc.abstractmethod

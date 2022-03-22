@@ -5,6 +5,7 @@ from bottle import route, run, request, response
 import taro.client
 from taro import dto, util
 from taro.jobs import persistence
+import taro.jobs.jobs as Jobs
 from taro.jobs.execution import ExecutionState
 from taro.jobs.persistence import SortCriteria
 from taros.httputil import http_error, query_digit, query
@@ -31,8 +32,8 @@ def instances():
             limit=limit)
 
     response.content_type = 'application/hal+json'
-    embedded = {"instances": [resource_job_info(i) for i in jobs_info]}
-    return to_json(resource({}, links={"self": "/instances"}, embedded=embedded))
+    embedded = {"instances": [resource_job_info(i) for i in jobs_info], "jobs": [job_to_rescource(i) for i in Jobs.get_all_jobs()]}
+    return to_json(resource({}, links={"self": "/instances", "jobs": "/jobs"}, embedded=embedded))
 
 
 @route('/instances/<inst>')
@@ -42,7 +43,29 @@ def instance(inst):
         raise http_error(404, "Instance not found")
 
     response.content_type = 'application/hal+json'
-    return resource_job_info(jobs_info[0])
+    return to_json(resource_job_info(jobs_info[0]))
+
+
+@route('/jobs')
+def jobs():
+    embedded = {"jobs": [job_to_rescource(i) for i in Jobs.get_all_jobs()]}
+    response.content_type = 'application/hal+json'
+    return to_json(resource({}, links={"self": "/jobs", "instances": "/instances"}, embedded=embedded)) 
+
+
+@route('/jobs/<job_id>')
+def jobs(job_id):
+    job = Jobs.get_job(job_id)
+    if not job:
+        raise http_error(404, "Instance not found")
+
+    embedded = job_to_rescource(job)
+    response.content_type = 'application/hal+json'
+    return to_json(embedded)
+
+
+def job_to_rescource(job):
+    return resource({"properties": job.properties},links={"self": "/jobs/" + job.job_id}) 
 
 
 def resource(props, *, links=None, embedded=None):
@@ -56,7 +79,7 @@ def resource(props, *, links=None, embedded=None):
 
 
 def resource_job_info(job_info):
-    return resource(dto.to_info_dto(job_info), links={"self": "/instances/" + job_info.instance_id})
+    return resource(dto.to_info_dto(job_info), links={"self": "/instances/" + job_info.instance_id, "jobs": "/jobs/" + job_info.job_id})
 
 
 def to_json(d):
