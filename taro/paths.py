@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Generator, List
 
 CONFIG_FILE = 'taro.yaml'
-JOBS_FIEL = 'jobs.yaml'
+JOBS_FILE = 'jobs.yaml'
 _HOSTINFO_FILE = 'hostinfo'
 _LOG_FILE = 'taro.log'
 
@@ -42,7 +42,7 @@ def lookup_config_file():
 
 
 def lookup_jobs_file():
-    return lookup_file_in_config_path(JOBS_FIEL)
+    return lookup_file_in_config_path(JOBS_FILE)
 
 
 def lookup_hostinfo_file():

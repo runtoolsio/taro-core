@@ -12,6 +12,7 @@ from .hostinfo import read_hostinfo, HostinfoError
 from .jobs import warning, persistence
 from .jobs.execution import ExecutionStateGroup, ExecutionState, ExecutionError, ExecutionLifecycle
 from .jobs.job import JobInstanceID, JobInstance, JobInfo, ExecutionStateObserver, Warn, WarningObserver, WarnEventCtx
+from .jobs.jobs import create_jobs_file
 from .jobs.managed import create_managed_job
 from .jobs.plugins import PluginBase, PluginDisabledError
 from .jobs.process import ProcessExecution
@@ -57,8 +58,9 @@ def output_warning(regex: str):
 def auto_init():
     path = paths.config_file_search_path(exclude_cwd=True)[0]
     if not os.path.exists(path / '.init'):
-        open(path / '.init', 'a').close()
+        create_jobs_file(overwrite=False)
         cfgfile.copy_default_file_to_search_path(overwrite=False)
+        open(path / '.init', 'w').close()
         print("Taro initialized")
 
 
