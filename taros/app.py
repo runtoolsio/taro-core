@@ -25,14 +25,15 @@ def instances():
     else:
         if query('sort'):
             raise http_error(412, "Query parameter 'sort' can be used only with query parameter 'finished'")
-        jobs_info = util.sequence_view(
+        jobs_info = list(util.sequence_view(
             taro.client.read_jobs_info(),
             sort_key=lambda j: j.lifecycle.changed(ExecutionState.CREATED),
             asc=asc,
-            limit=limit)
+            limit=limit))
 
     response.content_type = 'application/hal+json'
-    embedded = {"instances": [resource_job_info(i) for i in jobs_info], "jobs": [job_to_rescource(i) for i in Jobs.get_all_jobs()]}
+    embedded = {"instances": [resource_job_info(i) for i in jobs_info], 
+                "jobs": [job_to_rescource(i) for i in jobs_filter(Jobs.get_all_jobs(), jobs_info)]}
     return to_json(resource({}, links={"self": "/instances", "jobs": "/jobs"}, embedded=embedded))
 
 
@@ -66,6 +67,10 @@ def jobs(job_id):
 
 def job_to_rescource(job):
     return resource({"properties": job.properties},links={"self": "/jobs/" + job.job_id}) 
+
+
+def jobs_filter(jobs, instances):   
+    return [j for j in jobs if j.job_id in [i.job_id for i in instances]]
 
 
 def resource(props, *, links=None, embedded=None):
