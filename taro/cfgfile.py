@@ -10,6 +10,8 @@ LOG_FILE_LEVEL = 'log.file.level'
 LOG_FILE_PATH = 'log.file.path'
 PERSISTENCE_ENABLED = 'persistence.enabled'
 PERSISTENCE_TYPE = 'persistence.type'
+PERSISTENCE_MAX_AGE = 'persistence.max_age'
+PERSISTENCE_MAX_RECORDS = 'persistence.max_records'
 PERSISTENCE_DATABASE = 'persistence.database'
 PLUGINS = 'plugins'
 DEFAULT_ACTION = 'default_action'
@@ -29,6 +31,8 @@ def load(config=None):
 
     cfg.persistence_enabled = cns.get(PERSISTENCE_ENABLED, default=cfg.persistence_enabled, type_=bool)
     cfg.persistence_type = cns.get(PERSISTENCE_TYPE, default=cfg.persistence_type, type_=str)
+    cfg.persistence_max_age = cns.get(PERSISTENCE_MAX_AGE, default=cfg.persistence_max_age, type_=str).upper()
+    cfg.persistence_max_records = cns.get(PERSISTENCE_MAX_RECORDS, default=cfg.persistence_max_records, type_=int)
     cfg.persistence_database = cns.get(PERSISTENCE_DATABASE, default=cfg.persistence_database, type_=str)
 
     cfg.default_action = cns.get(DEFAULT_ACTION, default=cfg.default_action, type_=str)

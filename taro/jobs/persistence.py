@@ -4,6 +4,7 @@ from enum import Enum
 
 import taro.jobs.db
 from taro import cfg
+from taro import util
 from taro.jobs.execution import ExecutionState
 
 
@@ -61,10 +62,16 @@ def num_of_job(id_):
 
 def store_job(job_info):
     _instance().store_job(job_info)
+    _clean_up()
 
 
 def remove_job(id_):
     _instance().remove_job(id_= id_)
+
+
+def _clean_up():
+    _instance().max_rows(cfg.persistence_max_records)
+    if cfg.persistence_max_age: _instance().delete_old_jobs(util.parse_iso8601_duration(cfg.persistence_max_age)) 
 
 
 def close():

@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from shutil import copy
 from typing import Dict
+from dateutil import relativedelta
 
 import itertools
 import yaml
@@ -93,6 +94,20 @@ def str_to_seconds(val):
         return value * 60 * 60 * 24
 
     raise ValueError("Unknown unit: " + unit)
+
+
+def parse_iso8601_duration(duration):
+    match = re.match(r'P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?', duration)
+    if not match:
+        raise ValueError('Invalid duration: ' + duration)
+    years = int(match.group(1)) if match.group(1) else 0
+    months = int(match.group(2)) if match.group(2) else 0
+    weeks = int(match.group(3)) if match.group(3) else 0
+    days = int(match.group(4)) if match.group(4) else 0
+    hours = int(match.group(5)) if match.group(5) else 0
+    minutes = int(match.group(6)) if match.group(6) else 0
+    seconds = int(match.group(7)) if match.group(7) else 0
+    return relativedelta.relativedelta(years=years, months=months, weeks=weeks,days=days, hours=hours, minutes=minutes, seconds=seconds).normalized()
 
 
 def sequence_view(seq, *, sort_key, asc, limit):

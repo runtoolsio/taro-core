@@ -79,6 +79,20 @@ class SQLite:
 
         return [to_job_info(row) for row in c.fetchall()]
 
+
+    def max_rows(self, limit):
+        c = self._conn.execute("SELECT COUNT(*) FROM history")
+        count = c.fetchone()[0]
+        if count > limit:
+            self._conn.execute("DELETE FROM history WHERE rowid not in (SELECT rowid FROM history ORDER BY finished DESC LIMIT (?))", (limit,))
+            self._conn.commit()
+
+
+    def delete_old_jobs(self, max_age):
+        self._conn.execute("DELETE FROM history WHERE finished < (?)", ((datetime.datetime.now(tz=timezone.utc) - max_age),))
+        self._conn.commit()
+
+
     def store_job(self, job_info):
         self._conn.execute(
             "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
