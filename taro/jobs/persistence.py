@@ -62,16 +62,16 @@ def num_of_job(id_):
 
 def store_job(job_info):
     _instance().store_job(job_info)
-    _clean_up()
+    clean_up()
 
 
 def remove_job(id_):
-    _instance().remove_job(id_= id_)
+    _instance().remove_job(id_=id_)
 
 
-def _clean_up():
-    _instance().max_rows(cfg.persistence_max_records)
-    if cfg.persistence_max_age: _instance().delete_old_jobs(util.parse_iso8601_duration(cfg.persistence_max_age)) 
+def clean_up():
+    max_age = util.parse_iso8601_duration(cfg.persistence_max_age) if cfg.persistence_max_age else None
+    _instance().clean_up(cfg.persistence_max_records, max_age)
 
 
 def close():
@@ -97,6 +97,12 @@ class NoPersistence:
         raise PersistenceDisabledError()
 
     def store_job(self, job_info):
+        raise PersistenceDisabledError()
+
+    def remove_job(self, id_):
+        raise PersistenceDisabledError()
+
+    def clean_up(self):
         raise PersistenceDisabledError()
 
     def close(self):
