@@ -1,9 +1,11 @@
 import importlib
 import pkgutil
+import sys
 from enum import Enum
 
 import taro.jobs.db
 from taro import cfg
+from taro import paths
 from taro import util
 from taro.jobs.execution import ExecutionState
 
@@ -70,7 +72,11 @@ def remove_job(id_):
 
 
 def clean_up():
-    max_age = util.parse_iso8601_duration(cfg.persistence_max_age) if cfg.persistence_max_age else None
+    try:
+        max_age = util.parse_iso8601_duration(cfg.persistence_max_age) if cfg.persistence_max_age else None
+    except ValueError:
+        sys.stderr.write("Invalid max_age in " + str(paths.lookup_config_file()) + "\n")
+        return
     _instance().clean_up(cfg.persistence_max_records, max_age)
 
 
