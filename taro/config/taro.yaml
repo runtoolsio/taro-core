@@ -13,7 +13,7 @@ persistence:
   type: sqlite
   max_records: -1
 #  max_age: #ISO 8601 duration format
-#  database: ~/.local/share/taro/taro.db
+#  database: ~/.local/share/taro/jobs.db
 
 plugins: []
 #plugins: ['taro_sns']
