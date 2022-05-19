@@ -12,9 +12,8 @@ with `taro` installation.
 
 ### Client Application
 
-CLI client called [taroc](https://github.com/taro-suite/taroc) (taro client) communicates, via SSH tunnel, with hosts
-running `taros` server. This model allows monitor and manage jobs deployed on multiple servers from a single
-application.
+CLI client [taroc](https://github.com/taro-suite/taroc) (taro client) communicates with multiple hosts in parallel using
+SSH.
 
 ### Unified logging
 
@@ -54,7 +53,7 @@ A concrete execution of a job.
 ### Execute command managed by taro
 
 ```commandline
-taro exec {command} [args..]
+taro exec command [args..]
 ```
 
 ### Job (process) status

@@ -10,11 +10,12 @@ setuptools.setup(
     author="Stan Svec",
     author_email="dev@stansvec.com",
     description="Tool for managing your (cron) jobs",
+    license='MIT',
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/taro-suite/taro",
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Intended Audience :: Developers, Ops, Admins",
         "Topic :: System :: Monitoring",
         "Topic :: System :: Systems Administration",
