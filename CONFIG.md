@@ -1,6 +1,6 @@
 # Configuration
 
-The configuration consists of lower case attributes of [cfg module](taro/cfg.py).
+The configuration consists of lower case attributes of the [cfg module](taro/cfg.py).
 This is a recommended pattern for sharing configuration across modules described in [official python documentation](https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-across-modules).
 The upper case constants of the module contain initial values for the configuration attributes and represents minimal configuration.
 Normally when taro is initialized a configuration file is loaded and its content overrides attributes of the [cfg module](taro/cfg.py).

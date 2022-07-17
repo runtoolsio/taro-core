@@ -28,8 +28,8 @@ def parse_args(args):
     parser = argparse.ArgumentParser(description='Manage your jobs with Taro')
     parser.add_argument("-V", "--version", action='version', help="Show version and exit.", version=version.get())
     common = argparse.ArgumentParser()  # parent parser for subparsers in case they need to share common options
-    common.add_argument('--set', type=str, action='append', help='override value of configuration field')
     common.add_argument('--no-color', action='store_true', help='do not print colours in output')
+    init_cfg_group(common)
     subparsers = parser.add_subparsers(dest='action')  # command/action
 
     _init_exec_parser(common, subparsers)
@@ -49,6 +49,22 @@ def parse_args(args):
     return parsed
 
 
+def init_cfg_group(common):
+    cfgGroup = common.add_argument_group("Configuration options")
+    cfgGroup.description = """
+        These options affects the way how the configuration is loaded and set.
+        By default the configuration file is located in one of the XDG directories is loaded and its content
+        overrides values of the cfg module. Changing this default behaviour is not needed under normal usage.
+        Therefore these options are usually used only during testing, experimenting and debugging.
+        More details in the config doc: https://github.com/taro-suite/taro/blob/master/CONFIG.md
+    """
+    cfgGroup.add_argument('--set', type=str, action='append', help='override value of configuration field')
+    cfgGroup.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
+    cfgGroup.add_argument('-mc', '--min-config', action='store_true',
+                          help='ignore config files and use minimum configuration')
+    cfgGroup.add_argument('-C', '--config', type=str, help='path to custom config file')
+
+
 def _init_exec_parser(common, subparsers):
     """
     Creates parser for `exec` command
@@ -62,10 +78,6 @@ def _init_exec_parser(common, subparsers):
         add_help=False)
 
     # General options
-    exec_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
-    exec_parser.add_argument('-mc', '--min-config', action='store_true',
-                             help='ignore config files and use minimum configuration')
-    exec_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
     exec_parser.add_argument('--id', type=str, help='defines job ID')
     exec_parser.add_argument('-b', '--bypass-output', action='store_true', help='output is not piped')
     exec_parser.add_argument('-o', '--no-overlap', action='store_true', default=False,
@@ -125,8 +137,6 @@ def _init_history_parser(common, subparsers):
     filter_group.add_argument('-n', '--lines', type=int, help='Number of history entries to show')
     filter_group.add_argument('-L', '--last', action='store_true', help='Show last execution of each job')
 
-    hist_parser.add_argument('-C', '--config', type=str, help='path to custom config file')
-    hist_parser.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
     hist_parser.add_argument('-a', '--asc', '--ascending', action='store_true', help='Ascending sort')
     hist_parser.add_argument('-s', '--sort', type=str, choices=[s.name.lower() for s in SortCriteria],
                              default=SortCriteria.CREATED.name.lower(), help='Sorting criteria')
