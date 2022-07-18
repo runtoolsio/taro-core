@@ -80,7 +80,7 @@ class SQLite:
         return [to_job_info(row) for row in c.fetchall()]
 
     def clean_up(self, max_records, max_age):
-        if max_records > 0:
+        if max_records >= 0:
             self._max_rows(max_records)
         if max_age:
             self._delete_old_jobs(max_age)
