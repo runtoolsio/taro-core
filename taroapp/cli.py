@@ -58,11 +58,11 @@ def init_cfg_group(common):
         Therefore these options are usually used only during testing, experimenting and debugging.
         More details in the config doc: https://github.com/taro-suite/taro/blob/master/CONFIG.md
     """
-    cfgGroup.add_argument('--set', type=str, action='append', help='override value of configuration field')
     cfgGroup.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
     cfgGroup.add_argument('-mc', '--min-config', action='store_true',
                           help='ignore config files and use minimum configuration')
     cfgGroup.add_argument('-C', '--config', type=str, help='path to custom config file')
+    cfgGroup.add_argument('--set', type=str, action='append', help='override value of configuration field')
 
 
 def _init_exec_parser(common, subparsers):
