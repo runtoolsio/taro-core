@@ -51,6 +51,7 @@ DEF_PLUGINS = ()
 DEF_ACTION = '--help'
 
 # ------------ CONFIG VALUES ------------ #
+# !! UPDATE CONFIG.md when changes are made !! #
 
 log_mode = DEF_LOG
 log_stdout_level = DEF_LOG_STDOUT_LEVEL

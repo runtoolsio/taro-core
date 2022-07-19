@@ -53,7 +53,7 @@ def init_cfg_group(common):
     cfgGroup = common.add_argument_group("Configuration options")
     cfgGroup.description = """
         These options affects the way how the configuration is loaded and set.
-        By default the configuration file is located in one of the XDG directories is loaded and its content
+        By default the configuration file located in one of the XDG directories is loaded and its content
         overrides values of the cfg module. Changing this default behaviour is not needed under normal usage.
         Therefore these options are usually used only during testing, experimenting and debugging.
         More details in the config doc: https://github.com/taro-suite/taro/blob/master/CONFIG.md

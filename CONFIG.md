@@ -37,14 +37,16 @@ Each configuration attribute can be set manually using `--set` command line opti
 `taro exec --set log_mode=disabled echo There is no logging now`
 
 ## Configuration Attributes
-| Attribute               | Config File             | Default Value | Minimal Value | Values                                  | Note                                                                                                   |
-|-------------------------|-------------------------|---------------|---------------|-----------------------------------------|--------------------------------------------------------------------------------------------------------|
+| Attribute               | Config File             | Default Value | Minimal Value | Values                                  | Note                                                                                             |
+|-------------------------|-------------------------|---------------|---------------|-----------------------------------------|--------------------------------------------------------------------------------------------------|
  | log_mode                | log.mode                | enabled       | disabled      | enabled, disabled, propagate            ||
  | log_stdout_level        | log.stdout.level        | warn          | off           | off, debug, info, warn, error, critical ||
- | log_file_level          | log.file.level          | warn          | off           | off, debug, info, warn, error, critical ||
- | log_file_path           | log.file.path           | {none}        | {none}        | Full path for the log file              | When none is set the directory is resolved accordingtaro.d to XDG spec and the file name is `taro.log` |
+ | log_file_level          | log.file.level          | info          | off           | off, debug, info, warn, error, critical ||
+ | log_file_path           | log.file.path           | {none}        | {none}        | Full path for the log file              | When none is set the directory is resolved according to XDG spec and the file name is `taro.log` |
  | persistence_enabled     | persistence.enabled     | true          | false         | Boolean values (1, 0, on, off, etc.)    ||
- | persistence_type        | persistence.type        | sqlite        | sqlite        | sqlite                                  | Only SQLite is supported for now                                                                       |
- | persistence_max_age     | persistence.max_age     | {none}        | {none}        | ISO 8601 duration format                |                                                                                                        |
- | persistence_max_records | persistence.max_records | -1            | -1            | -1, 0, positive integer                 | -1 value disables max records feature                                                                  |
- | persistence_database    | persistence.database    | {none}        | {none}        | Full path for the sqlite db file        | When none is set the directory is resolved according to XDG spec and the file name is `jobs.db`        |
+ | persistence_type        | persistence.type        | sqlite        | sqlite        | sqlite                                  | Only SQLite is supported for now                                                                 |
+ | persistence_max_age     | persistence.max_age     | {none}        | {none}        | ISO 8601 duration format                |                                                                                                  |
+ | persistence_max_records | persistence.max_records | -1            | -1            | -1, 0, positive integer                 | -1 value disables max records feature                                                            |
+ | persistence_database    | persistence.database    | {none}        | {none}        | Full path for the sqlite db file        | When none is set the directory is resolved according to XDG spec and the file name is `jobs.db`  |
+ | plugins                 | plugins                 | []            | []            | List of plugin names                    |                                                                                                  |
+ | default_action          | default_action          | --help        | --help        | Command and optionally arguments        |                                                                                                  |
