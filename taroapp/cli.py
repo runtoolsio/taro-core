@@ -58,11 +58,18 @@ def init_cfg_group(common):
         Therefore these options are usually used only during testing, experimenting and debugging.
         More details in the config doc: https://github.com/taro-suite/taro/blob/master/CONFIG.md
     """
-    cfgGroup.add_argument('-dc', '--def-config', action='store_true', help='ignore config files and use defaults')
+    cfgGroup.add_argument('-dc', '--def-config', action='store_true',
+                          help='Use configuration stored in default config file. Run `taro config show -dc` to see '
+                               'the content of the file.')
     cfgGroup.add_argument('-mc', '--min-config', action='store_true',
-                          help='ignore config files and use minimum configuration')
-    cfgGroup.add_argument('-C', '--config', type=str, help='path to custom config file')
-    cfgGroup.add_argument('--set', type=str, action='append', help='override value of configuration field')
+                          help='Do not load any config file and use minimal configuration instead. Check CONFIG.md '
+                               'for minimal configuration values.')
+    cfgGroup.add_argument('-C', '--config', type=str,
+                          help='Load a config file stored in a custom location. The value of this option is the path '
+                               'to the custom config file.')
+    cfgGroup.add_argument('--set', type=str, action='append',
+                          help='Override value of a configuration attribute. The value format is: attribute=value. '
+                               'See CONFIG.md for attributes details. This option can be used multiple times.')
 
 
 def _init_exec_parser(common, subparsers):
@@ -93,7 +100,7 @@ def _init_exec_parser(common, subparsers):
 
     exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=ExecutionState.COMPLETED,
                              help='executing without actual running of the command - optional termination state arg')
-    
+
     exec_parser.add_argument('--param', type=lambda p: p.split('='), action='append')
     # Terms command and arguments taken from python doc and docker run help,
     # for this app (or rather exec command) these are operands (alternatively arguments)
