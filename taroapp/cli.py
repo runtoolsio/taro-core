@@ -1,5 +1,6 @@
 import argparse
 import re
+import textwrap
 from argparse import RawTextHelpFormatter
 from datetime import datetime
 
@@ -84,6 +85,17 @@ def _init_exec_parser(common, subparsers):
         ACTION_EXEC, formatter_class=RawTextHelpFormatter, parents=[common], description='Execute command',
         add_help=False)
 
+    exec_parser.description = textwrap.dedent("""
+        Example of the execution: taro exec --id my_job ./my_job.sh arg1 arg2
+        
+        This is a main command of taro. It is used for managed execution of custom commands and applications.
+        Taro provides number of features for commands executed this way. The main use case is a controlled execution of
+        cron tasks. That is why a command executed with taro is called a "job". Cronjob environment might not have
+        taro binary executable on the path though. What usually works is to execute job explicitly using the python
+        interpreter: `python3 -m taroapp exec CMD ARGS`. 
+            
+        It is recommended to use the `--id` option to specify the ID of the job otherwise the ID is constructed from the 
+        command and its arguments. """)
     # General options
     exec_parser.add_argument('--id', type=str, help='defines job ID')
     exec_parser.add_argument('-b', '--bypass-output', action='store_true', help='output is not piped')
