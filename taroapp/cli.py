@@ -90,15 +90,19 @@ def _init_exec_parser(common, subparsers):
         
         This is a main command of taro. It is used for managed execution of custom commands and applications.
         Taro provides number of features for commands executed this way. The main use case is a controlled execution of
-        cron tasks. That is why a command executed with taro is called a "job". Cronjob environment might not have
+        cron tasks. That is why command executed with taro is called a "job". Cronjob environment might not have
         taro binary executable on the path though. What usually works is to execute job explicitly using the python
         interpreter: `python3 -m taroapp exec CMD ARGS`. 
             
         It is recommended to use the `--id` option to specify the ID of the job otherwise the ID is constructed from the 
         command and its arguments. """)
     # General options
-    exec_parser.add_argument('--id', type=str, help='defines job ID')
-    exec_parser.add_argument('-b', '--bypass-output', action='store_true', help='output is not piped')
+    exec_parser.add_argument('--id', type=str, help='Set job ID. This is optional but recommended.')
+    exec_parser.add_argument('-b', '--bypass-output', action='store_true',
+                             help='Normally the output of the executed job is captured by taro where is processed '
+                                  'and resend to standard streams. When this option is used taro does not capture '
+                                  'the output from the job streams. This disables output based features, but it '
+                                  'can help if there is any problem with output processing.')
     exec_parser.add_argument('-o', '--no-overlap', action='store_true', default=False,
                              help='skip if job with the same ID is already running')
     # TODO delay
@@ -106,18 +110,30 @@ def _init_exec_parser(common, subparsers):
     exec_parser.add_argument('-p', '--pending', type=str, help='specifies pending value for releasing of this job')
     # exec_parser.add_argument('-w', '--wait', type=str, help='execution will wait for other jobs') TODO implement
     exec_parser.add_argument('--warn-time', type=_warn_time_type, action='append', default=[],
-                             help='Time value for execution time exceeded warning')
+                             help='This enables time warning which is trigger when the execution of the job exceeds '
+                                  'the period specified by the value of this option. The value must be an integer '
+                                  'followed by a single time unit character (one of [smhd]). For example `--warn-time '
+                                  '1h` will trigger time warning when the job is executing over one hour.')
     exec_parser.add_argument('--warn-output', type=str, action='append', default=[],
-                             help='Regex value for stdout warning')
+                             help='This enables output warning which is triggered each time an output line of the job '
+                                  'matches regex specified by the value of this option. For example `--warn-output '
+                                  '"ERR*"` triggers output warning each time an output line contains a word starting '
+                                  'with ERR.')
 
     exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=ExecutionState.COMPLETED,
-                             help='executing without actual running of the command - optional termination state arg')
+                             help='The job will be started without actual execution of its command. The final state '
+                                  'of the job is specified by the value of this option. Default state is COMPLETED. '
+                                  'This option can be used for testing some of the functionality like custom plugins.')
 
-    exec_parser.add_argument('--param', type=lambda p: p.split('='), action='append')
+    exec_parser.add_argument('--param', type=lambda p: p.split('='), action='append',
+                             help="Parameters are specified in `name=value` format. They represent metadata of the "
+                                  "job instance and have no effect on the job execution. They are stored for the each "
+                                  "execution and can be retrieved later. For example the `history` command has "
+                                  "`--show-params` option to display `Parameters` column.")
     # Terms command and arguments taken from python doc and docker run help,
     # for this app (or rather exec command) these are operands (alternatively arguments)
-    exec_parser.add_argument('command', type=str, metavar='COMMAND', help='program to execute')
-    exec_parser.add_argument('arg', type=str, metavar='ARG', nargs=argparse.REMAINDER, help="program arguments")
+    exec_parser.add_argument('command', type=str, metavar='COMMAND', help='Program to execute')
+    exec_parser.add_argument('arg', type=str, metavar='ARG', nargs=argparse.REMAINDER, help="Program arguments")
 
 
 def _init_ps_parser(common, subparsers):
@@ -141,6 +157,8 @@ def _init_history_parser(common, subparsers):
 
     :param common: parent parser
     :param subparsers: sub-parser for history parser to be added to
+
+    TODO: Example print all jobs -> `taro hist --last | awk '{ print $1 }'`
     """
 
     hist_parser = subparsers.add_parser(
