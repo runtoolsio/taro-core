@@ -34,7 +34,7 @@ def config_file_path(filename) -> Path:
     base_path = Path(__file__).parent
     def_config = base_path / 'config' / filename
     if not def_config.exists():
-        raise FileNotFoundError(filename + ' config file not found, corrupted installation?')
+        raise FileNotFoundError(filename + ' config file not found')
     return def_config
 
 
@@ -89,20 +89,25 @@ def config_file_search_path(*, exclude_cwd=False) -> List[Path]:
     if not exclude_cwd:
         search_path.append(Path.cwd())
 
-    if os.environ.get('XDG_CONFIG_HOME'):
-        search_path.append(Path(os.environ['XDG_CONFIG_HOME']))
-    else:
-        search_path.append(Path.home() / '.config')
-
-    if os.environ.get('XDG_CONFIG_DIRS'):
-        for path in re.split(r":", os.environ['XDG_CONFIG_DIRS']):
-            search_path.append(path)
-    else:
-        search_path.append(Path('/etc/xdg'))
-
+    search_path.append(xdg_config_home())
+    search_path += xdg_config_dirs()
     search_path.append(Path('/etc'))
 
     return search_path
+
+
+def xdg_config_home() -> Path:
+    if os.environ.get('XDG_CONFIG_HOME'):
+        return Path(os.environ['XDG_CONFIG_HOME'])
+    else:
+        return Path.home() / '.config'
+
+
+def xdg_config_dirs() -> List[Path]:
+    if os.environ.get('XDG_CONFIG_DIRS'):
+        return [Path(path) for path in re.split(r":", os.environ['XDG_CONFIG_DIRS'])]
+    else:
+        return [Path('/etc/xdg')]
 
 
 def log_file_path(create: bool) -> Path:
