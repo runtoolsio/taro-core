@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 def create_persistence():
     db_con = sqlite3.connect(cfg.persistence_database or str(paths.sqlite_db_path(True)))
     sqlite_ = SQLite(db_con)
-    sqlite_.check_tables_exist()
+    sqlite_.check_tables_exist()  # TODO execute only in taro.auto_init()
     return sqlite_
 
 

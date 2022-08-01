@@ -9,10 +9,9 @@ IMPLEMENTATION NOTE:
 import os
 from . import cfg, cfgfile, log
 from .hostinfo import read_hostinfo, HostinfoError
-from .jobs import warning, persistence
+from .jobs import warning, persistence, repo
 from .jobs.execution import ExecutionStateGroup, ExecutionState, ExecutionError, ExecutionLifecycle
 from .jobs.job import JobInstanceID, JobInstance, JobInfo, ExecutionStateObserver, Warn, WarningObserver, WarnEventCtx
-from .jobs.jobs import create_jobs_file
 from .jobs.managed import create_managed_job
 from .jobs.plugins import PluginBase, PluginDisabledError
 from .jobs.process import ProcessExecution
@@ -57,11 +56,16 @@ def output_warning(regex: str):
 
 def auto_init():
     path = paths.config_file_search_path(exclude_cwd=True)[0]
-    if not os.path.exists(path / '.init'):
-        create_jobs_file(overwrite=False)
+    if os.path.exists(path / '.init'):
+        return  # Already initialized
+
+    repo.reset(overwrite=False)
+    try:
         cfgfile.copy_default_file_to_search_path(overwrite=False)
-        open(path / '.init', 'w').close()
-        print("Taro initialized")
+    except FileExistsError:
+        pass
+    open(path / '.init', 'w').close()
+    print("Taro initialized")
 
 
 def close():

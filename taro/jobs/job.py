@@ -223,17 +223,17 @@ class JobInfoCollection:
 
 class Job:
 
-    def __init__(self, properties : dict, job_id):
+    def __init__(self, job_id, properties: dict):
         self._job_id = job_id
         self._properties = properties
 
     @property
-    def properties(self):
-        return self._properties
-
-    @property
     def job_id(self):
         return self._job_id
+
+    @property
+    def properties(self):
+        return self._properties
 
 
 class ExecutionStateObserver(abc.ABC):

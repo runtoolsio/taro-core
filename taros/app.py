@@ -5,7 +5,7 @@ from bottle import route, run, request, response
 import taro.client
 from taro import dto, util
 from taro.jobs import persistence
-import taro.jobs.jobs as Jobs
+import taro.jobs.repo as Jobs
 from taro.jobs.execution import ExecutionState
 from taro.jobs.persistence import SortCriteria
 from taros.httputil import http_error, query_digit, query

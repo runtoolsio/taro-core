@@ -76,12 +76,20 @@ def run_app_as_process_and_wait(command, *, wait_for, timeout=2, daemon=False, s
 
 
 def create_test_config(config):
-    with open(_test_config_path(), 'w') as outfile:
+    create_custom_test_config(paths.CONFIG_FILE, config)
+
+
+def create_custom_test_config(filename, config):
+    with open(_custom_test_config_path(filename), 'w') as outfile:
         yaml.dump(config, outfile, default_flow_style=False)
 
 
 def remove_test_config():
-    config = _test_config_path()
+    remove_custom_test_config(paths.CONFIG_FILE)
+
+
+def remove_custom_test_config(filename):
+    config = _custom_test_config_path(filename)
     if config.exists():
         config.unlink()
 
@@ -93,7 +101,11 @@ def remove_test_db():
 
 
 def _test_config_path() -> Path:
-    return Path.cwd() / paths.CONFIG_FILE
+    return _custom_test_config_path(paths.CONFIG_FILE)
+
+
+def _custom_test_config_path(filename) -> Path:
+    return Path.cwd() / filename
 
 
 def test_db_path() -> Path:

@@ -134,6 +134,11 @@ def read_yaml_file(file_path) -> NestedNamespace:
         return utilns.wrap_namespace(yaml.safe_load(file))
 
 
+def write_yaml_file(content, file_path):
+    with open(file_path, 'w') as file:
+        return yaml.dump(content, file)
+
+
 def copy_resource(src: Path, dst: Path, overwrite=False):
     if not dst.parent.is_dir():
         os.makedirs(dst.parent)

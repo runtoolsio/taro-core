@@ -105,7 +105,6 @@ def _init_exec_parser(common, subparsers):
                                   'can help if there is any problem with output processing.')
     exec_parser.add_argument('-o', '--no-overlap', action='store_true', default=False,
                              help='skip if job with the same ID is already running')
-    # TODO delay
     # exec_parser.add_argument('-t', '--timeout', type=int) TODO implement
     exec_parser.add_argument('-p', '--pending', type=str, help='specifies pending value for releasing of this job')
     # exec_parser.add_argument('-w', '--wait', type=str, help='execution will wait for other jobs') TODO implement
