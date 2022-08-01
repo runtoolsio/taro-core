@@ -30,6 +30,7 @@ def get_all_jobs() -> List[Job]:
 
 
 def reset(overwrite: bool):
-    path = paths.config_file_search_path(exclude_cwd=True)[0] / paths.JOBS_FILE
+    # TODO Create `taro config create --jobs` command for this
+    path = paths.taro_config_file_search_path(exclude_cwd=True)[0] / paths.JOBS_FILE
     if not os.path.exists(path) or overwrite:
         util.write_yaml_file(JOBS_FILE_CONTENT, path)

@@ -11,10 +11,11 @@ Discussion:
 
 import getpass
 import os
-import re 
+import re
 from pathlib import Path
 from typing import Generator, List
 
+CONFIG_DIR = 'taro'
 CONFIG_FILE = 'taro.yaml'
 JOBS_FILE = 'jobs.yaml'
 _HOSTINFO_FILE = 'hostinfo'
@@ -49,12 +50,37 @@ def lookup_hostinfo_file():
     return lookup_file_in_config_path(_HOSTINFO_FILE)
 
 
+def lookup_file_in_config_path(file) -> Path:
+    """Returns config found in the search path
+    :return: config file path
+    :raise FileNotFoundError: when config lookup failed
+    """
+    search_path = taro_config_file_search_path()
+    for config_dir in search_path:
+        config = config_dir / file
+        if config.exists():
+            return config
+
+    raise FileNotFoundError(f'Config file {file} not found in the search path: '
+                            + ", ".join([str(dir_) for dir_ in search_path]))
+
+
+def taro_config_file_search_path(*, exclude_cwd=False) -> List[Path]:
+    search_path = config_file_search_path(exclude_cwd=exclude_cwd)
+
+    if exclude_cwd:
+        return [path / CONFIG_DIR for path in search_path]
+    else:
+        return [search_path[0]] + [path / CONFIG_DIR for path in search_path[1:]]
+
+
 def config_file_search_path(*, exclude_cwd=False) -> List[Path]:
-    """Specifies the folders in which the program should look for configuration files:
-    1. Search in the current working directory first
-    2. If non-root user search: ${XDG_CONFIG_HOME}/taro/{config-file} or default to ${HOME}/.config/taro
-    3. if not in ${XDG_CONFIG_HOME} search: ${XDG_CONFIG_DIRS}/taro/{config-file}
-    4. If not found or root user search: /etc/taro/{config-file}
+    """Sorted list of directories in which the program should look for configuration files:
+
+    1. Current working directory unless `exclude_cwd` is True
+    2. ${XDG_CONFIG_HOME} or defaults to ${HOME}/.config
+    3. ${XDG_CONFIG_DIRS} or defaults to /etc/xdg
+    4. /etc
 
     Related discussion: https://stackoverflow.com/questions/1024114
     :return: list of directories for configuration file lookup
@@ -62,31 +88,21 @@ def config_file_search_path(*, exclude_cwd=False) -> List[Path]:
     search_path = []
     if not exclude_cwd:
         search_path.append(Path.cwd())
-    if not _is_root():  # TODO Use this also for root user?
-        if os.environ.get('XDG_CONFIG_HOME'):
-            search_path.append(Path(os.environ['XDG_CONFIG_HOME']) / 'taro')
-        else:
-            search_path.append(Path.home() / '.config' / 'taro')
-        if os.environ.get('XDG_CONFIG_DIRS'):
-            [search_path.append(Path(path + '/taro')) for path in re.split(r":", os.environ['XDG_CONFIG_DIRS'])]
-    
-    search_path.append(Path('/etc/taro'))  # TODO Should be /etc/xdg instead?
+
+    if os.environ.get('XDG_CONFIG_HOME'):
+        search_path.append(Path(os.environ['XDG_CONFIG_HOME']))
+    else:
+        search_path.append(Path.home() / '.config')
+
+    if os.environ.get('XDG_CONFIG_DIRS'):
+        for path in re.split(r":", os.environ['XDG_CONFIG_DIRS']):
+            search_path.append(path)
+    else:
+        search_path.append(Path('/etc/xdg'))
+
+    search_path.append(Path('/etc'))
 
     return search_path
-
-
-def lookup_file_in_config_path(file) -> Path:
-    """Returns config found in the search path
-    :return: config file path
-    :raise FileNotFoundError: when config lookup failed
-    """
-    for config_dir in config_file_search_path():
-        config = config_dir / file
-        if config.exists():
-            return config
-
-    raise FileNotFoundError(f'Config file {file} not found in the search path: '
-                            + ", ".join([str(dir_) for dir_ in config_file_search_path()]))
 
 
 def log_file_path(create: bool) -> Path:

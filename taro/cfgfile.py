@@ -47,5 +47,6 @@ def load(config=None):
 def copy_default_file_to_search_path(overwrite: bool):
     cfg_to_copy = paths.default_config_file_path()
     # Copy to first dir in search path
-    copy_to = paths.config_file_search_path(exclude_cwd=True)[0] / paths.CONFIG_FILE
+    # TODO Specify where to copy the file - do not use XDG search path
+    copy_to = paths.taro_config_file_search_path(exclude_cwd=True)[0] / paths.CONFIG_FILE
     util.copy_resource(cfg_to_copy, copy_to, overwrite)
