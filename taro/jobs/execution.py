@@ -137,7 +137,7 @@ class Execution(abc.ABC):
     def stop(self):
         """
         If not yet executed: Do not execute
-        If already executing: Stop running execution GRACEFULLY
+        If already executing: Stop running execution
         If execution finished: Ignore
         """
 
@@ -145,7 +145,7 @@ class Execution(abc.ABC):
     def interrupt(self):
         """
         If not yet executed: Do not execute
-        If already executing: Stop running execution IMMEDIATELY
+        If already executing: Interrupt running execution
         If execution finished: Ignore
         """
 
