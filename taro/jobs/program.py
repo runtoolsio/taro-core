@@ -8,7 +8,7 @@ import logging
 import sys
 from subprocess import Popen, PIPE, STDOUT
 from threading import Thread
-from typing import Union
+from typing import Union, Optional
 
 from taro.jobs.execution import ExecutionState, ExecutionError, OutputExecution, ExecutionOutputObserver
 
@@ -23,17 +23,21 @@ class ProgramExecution(OutputExecution):
         self.args = args
         self.read_output: bool = read_output
         self._popen: Union[Popen, None] = None
+        self._ret_code = None
         self._status = None
         self._stopped: bool = False
         self._interrupted: bool = False
         self._output_observers = []
 
     @property
+    def ret_code(self) -> Optional[int]:
+        return self._ret_code
+
+    @property
     def is_async(self) -> bool:
         return False
 
     def execute(self) -> ExecutionState:
-        ret_code = -1
         if not self._stopped and not self._interrupted:
             stdout = PIPE if self.read_output else None
             stderr = STDOUT if self.read_output else None
@@ -47,10 +51,10 @@ class ProgramExecution(OutputExecution):
 
                 # print(psutil.Process(self.popen.pid).memory_info().rss)
 
-                ret_code = self._popen.wait()
+                self._ret_code = self._popen.wait()
                 if output_reader:
                     output_reader.join(timeout=1)
-                if ret_code == 0:
+                if self._ret_code == 0:
                     return ExecutionState.COMPLETED
             except KeyboardInterrupt:
                 return ExecutionState.STOPPED
@@ -64,7 +68,7 @@ class ProgramExecution(OutputExecution):
             return ExecutionState.STOPPED
         if self._interrupted:
             return ExecutionState.INTERRUPTED
-        raise ExecutionError("Process returned non-zero code " + str(ret_code), ExecutionState.FAILED)
+        raise ExecutionError("Process returned non-zero code " + str(self._ret_code), ExecutionState.FAILED)
 
     @property
     def status(self):
