@@ -65,17 +65,16 @@ class JobsClient(SocketClient):
             if resp['data']['released']:
                 print(resp)  # TODO Do not print, but returned released (use communicate)
 
-    def stop_jobs(self, instances, interrupt: bool) -> List[Tuple[JobInstanceID, str]]:
+    def stop_jobs(self, instances) -> List[Tuple[JobInstanceID, str]]:
         """
 
         :param instances:
-        :param interrupt:
         :return: list of tuple[instance-id, stop-result]
         """
         if not instances:
             raise ValueError('Instances to be stopped cannot be empty')
 
-        inst_responses = self._send_request('/interrupt' if interrupt else '/stop', include=instances)
+        inst_responses = self._send_request('/stop', include=instances)
         return [(_job_instance_id(resp), resp['data']['result'])
                 for resp in [inst_resp.response for inst_resp in inst_responses]]
 

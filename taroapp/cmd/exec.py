@@ -42,4 +42,4 @@ class Term:
 
     def interrupt(self, _, __):
         logger.warning('event=[interrupted_by_keyboard]')
-        self.job_instance.interrupt()  # TODO handle repeated signal
+        self.job_instance.interrupt()

@@ -19,6 +19,6 @@ def run(args):
             if not taro.util.cli_confirmation():
                 exit(0)
 
-        id_results = client.stop_jobs([job.instance_id for job in jobs], args.interrupt)
+        id_results = client.stop_jobs([job.instance_id for job in jobs])
         for id_, result in id_results:
             print_styled(*style.job_instance_id_styled(*id_) + [('', ' -> '), ('', result)])

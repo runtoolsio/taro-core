@@ -49,10 +49,6 @@ class Server(SocketServer):
             self._job_instance.stop()
             return self._resp_ok({"result": "stop_performed"})
 
-        if req_body['req']['api'] == '/interrupt':
-            self._job_instance.interrupt()
-            return self._resp_ok({"result": "interrupt_performed"})
-
         if req_body['req']['api'] == '/tail':
             return self._resp_ok({"tail": self._job_instance.last_output})
 

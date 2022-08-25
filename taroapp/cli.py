@@ -244,8 +244,6 @@ def _init_stop_parser(common, subparsers):
     """
 
     stop_parser = subparsers.add_parser(ACTION_STOP, parents=[common], description='Stop job', add_help=False)
-    stop_parser.add_argument('-I', '--interrupt', action='store_true',
-                             help='Set final state to INTERRUPTED which is an error state')
     stop_parser.add_argument('--force', action='store_true', help='Force stop all')
     stop_parser.add_argument('instance', type=str, metavar='INSTANCE', help='Instance to stop')
 
