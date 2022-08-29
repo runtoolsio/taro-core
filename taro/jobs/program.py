@@ -6,7 +6,6 @@ TODO: Preserve stderr
 import io
 import logging
 import signal
-
 import sys
 from subprocess import Popen, PIPE, STDOUT
 from threading import Thread
@@ -25,7 +24,6 @@ class ProgramExecution(OutputExecution):
         self.args = args
         self.read_output: bool = read_output
         self._popen: Union[Popen, None] = None
-        self._ret_code = None
         self._status = None
         self._stopped: bool = False
         self._interrupted: bool = False
@@ -33,7 +31,10 @@ class ProgramExecution(OutputExecution):
 
     @property
     def ret_code(self) -> Optional[int]:
-        return self._ret_code
+        if self._popen is None:
+            return None
+
+        return self._popen.returncode
 
     @property
     def is_async(self) -> bool:
@@ -51,26 +52,20 @@ class ProgramExecution(OutputExecution):
                     output_reader = Thread(target=self._read_output, name='Output-Reader', daemon=True)
                     output_reader.start()
 
-                # print(psutil.Process(self.popen.pid).memory_info().rss)
-
-                self._ret_code = self._popen.wait()
+                self._popen.wait()
                 if output_reader:
                     output_reader.join(timeout=1)
-                if self._ret_code == 0:
+                if self.ret_code == 0:
                     return ExecutionState.COMPLETED
-            except KeyboardInterrupt:
-                return ExecutionState.STOPPED
             except FileNotFoundError as e:
                 sys.stderr.write(str(e) + "\n")
                 raise ExecutionError(str(e), ExecutionState.FAILED) from e
-            except SystemExit as e:
-                raise ExecutionError('System exit', ExecutionState.INTERRUPTED) from e
 
-        if self._stopped:
-            return ExecutionState.STOPPED
-        if self._interrupted:
+        if self._interrupted or self.ret_code == -signal.SIGINT:
             return ExecutionState.INTERRUPTED
-        raise ExecutionError("Process returned non-zero code " + str(self._ret_code), ExecutionState.FAILED)
+        if self._stopped or self.ret_code < 0:  # Negative exit code means terminated by a signal
+            return ExecutionState.STOPPED
+        raise ExecutionError("Process returned non-zero code " + str(self.ret_code), ExecutionState.FAILED)
 
     @property
     def status(self):
