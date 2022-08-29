@@ -171,6 +171,10 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         except Exception as e:
             exec_error = e if isinstance(e, ExecutionError) else ExecutionError.from_unexpected_error(e)
             self._state_change(exec_error.exec_state, exec_error)
+        except SystemExit as e:
+            state = ExecutionState.COMPLETED if e.code == 0 else ExecutionState.FAILED  # TODO Different states?
+            self._state_change(state)
+            raise
 
     # Inline?
     def _log(self, event: str, msg: str):
