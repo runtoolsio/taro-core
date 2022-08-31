@@ -30,6 +30,16 @@ def run(args):
 
     managed_job()
 
+    if isinstance(execution, ProgramExecution) and execution.ret_code:
+        if execution.ret_code > 0:
+            raise ProgramExecutionError(execution.ret_code)
+        if execution.ret_code < 0:
+            raise ProgramExecutionError(abs(execution.ret_code) + 128)
+
+    term_state = managed_job.job_instance.lifecycle.state()
+    if term_state.is_failure():
+        raise ProgramExecutionError(1)
+
 
 class Term:
 
@@ -43,3 +53,7 @@ class Term:
     def interrupt(self, _, __):
         logger.warning('event=[interrupted_by_keyboard]')
         self.job_instance.interrupt()
+
+
+class ProgramExecutionError(SystemExit):
+    pass

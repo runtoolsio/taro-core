@@ -38,7 +38,6 @@ def run_app(command, shell=False, state_queue=None):
     :param command: command to run
     :param shell: use shell for executing command
     :param state_queue: queue for putting new execution states of running jobs
-    :return: output of the executed command
     """
     program.USE_SHELL = shell
     # Prevent UnsupportedOperation error: https://github.com/prompt-toolkit/python-prompt-toolkit/issues/1107

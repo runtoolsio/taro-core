@@ -11,6 +11,7 @@ from taro.jobs import persistence, runner
 from taro.jobs.execution import ExecutionState
 from taro.test.observer import TestStateObserver
 from taro_test_util import run_app, TestWarningObserver, test_db_path
+from taroapp.cmd.exec import ProgramExecutionError
 from test.taro_test_util import remove_test_db, run_app_as_process_and_wait
 
 
@@ -31,17 +32,25 @@ def test_successful(observer: TestStateObserver):
 
 
 def test_invalid_command(observer: TestStateObserver):
-    run_app('exec -mc non_existing_command')
+    with pytest.raises(ProgramExecutionError) as e:
+        run_app('exec -mc non_existing_command')
+
+    assert e.value.code == 1
     assert observer.exec_state(-1) == ExecutionState.FAILED
 
 
 def test_failed_command(observer: TestStateObserver):
-    run_app('exec -mc ls --no-such-option')
+    with pytest.raises(ProgramExecutionError) as e:
+        run_app('exec -mc ls --no-such-option')
+
+    assert e.value.code > 0
     assert observer.exec_state(-1) == ExecutionState.FAILED
 
 
 def test_invalid_command_print_to_stderr(capsys):
-    run_app('exec -mc non_existing_command')
+    with pytest.raises(ProgramExecutionError):
+        run_app('exec -mc non_existing_command')
+
     assert 'No such file' in capsys.readouterr().err
 
 

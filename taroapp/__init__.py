@@ -15,7 +15,7 @@ def main_cli():
 def main(args):
     """Taro CLI app main function.
 
-    Note: Configuration is setup before execution of all commands although not all commands require it.
+    Note: Configuration is set up before execution of all commands although not all commands require it.
           This practice increases safety (in regards with future extensions) and consistency.
           Performance impact is expected to be negligible.
 
