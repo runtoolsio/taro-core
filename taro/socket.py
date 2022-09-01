@@ -10,6 +10,8 @@ from typing import List
 
 from taro import paths
 
+RECV_BUFFER_LENGTH = 16384
+
 log = logging.getLogger(__name__)
 
 
@@ -41,7 +43,7 @@ class SocketServer(abc.ABC):
     def serve(self):
         log.debug('event=[server_started]')
         while not self._stopped:
-            datagram, client_address = self._server.recvfrom(16384)
+            datagram, client_address = self._server.recvfrom(RECV_BUFFER_LENGTH)
             if not datagram:
                 break
             req_body = json.loads(datagram)
@@ -110,7 +112,7 @@ class SocketClient:
                 try:
                     self._client.sendto(json.dumps(req_body).encode(), str(api_file))
                     if self._bidirectional:
-                        datagram = self._client.recv(16384)
+                        datagram = self._client.recv(RECV_BUFFER_LENGTH)
                         resp = InstanceResponse(instance_id, json.loads(datagram.decode()))
                 except ConnectionRefusedError:  # TODO what about other errors?
                     log.warning('event=[dead_socket] socket=[{}]'.format(api_file))
