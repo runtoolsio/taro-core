@@ -4,13 +4,14 @@ import logging
 import os
 import socket
 from collections import namedtuple
+from json import JSONDecodeError
 from threading import Thread
 from types import coroutine
 from typing import List
 
 from taro import paths
 
-RECV_BUFFER_LENGTH = 16384
+RECV_BUFFER_LENGTH = 65536
 
 log = logging.getLogger(__name__)
 
@@ -46,7 +47,12 @@ class SocketServer(abc.ABC):
             datagram, client_address = self._server.recvfrom(RECV_BUFFER_LENGTH)
             if not datagram:
                 break
-            req_body = json.loads(datagram)
+            try:
+                req_body = json.loads(datagram)
+            except JSONDecodeError:
+                log.warning(f"event=[received_invalid_json] length[{len(datagram)}]")  # Payload too large?
+                continue
+
             resp_body = self.handle(req_body)
 
             if resp_body:
