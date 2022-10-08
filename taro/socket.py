@@ -2,7 +2,6 @@ import abc
 import json
 import logging
 import os
-import re
 import socket
 from collections import namedtuple
 from threading import Thread
@@ -12,7 +11,6 @@ from typing import List
 from taro import paths
 
 RECV_BUFFER_LENGTH = 16384
-prefixed_payload_regex = re.compile(b'^(\\d+)(.*)')
 
 log = logging.getLogger(__name__)
 
@@ -45,11 +43,10 @@ class SocketServer(abc.ABC):
     def serve(self):
         log.debug('event=[server_started]')
         while not self._stopped:
-            payload, client_address = self._receive_full_datagram()
-            if not payload:
+            datagram, client_address = self._server.recvfrom(RECV_BUFFER_LENGTH)
+            if not datagram:
                 break
-
-            req_body = json.loads(payload)
+            req_body = json.loads(datagram)
             resp_body = self.handle(req_body)
 
             if resp_body:
@@ -57,29 +54,7 @@ class SocketServer(abc.ABC):
                     self._server.sendto(json.dumps(resp_body).encode(), client_address)
                 else:
                     log.warning('event=[missing_client_address]')
-
         log.debug('event=[server_stopped]')
-
-    def _receive_full_datagram(self):
-        payload_length = 0
-        payload = b''
-        client_address = None
-        while not payload or len(payload) < payload_length:
-            datagram, client_address = self._server.recvfrom(RECV_BUFFER_LENGTH)  # Client address guaranteed be same?
-
-            if not datagram:
-                return None, None
-
-            match = prefixed_payload_regex.match(datagram)
-            if match:
-                if payload:  # Unsure if this can ever happen
-                    log.warning(f"event=[incomplete_datagram] client=[{client_address}]")
-                payload_length = match.group(1)
-                payload = match.group(2)
-            else:
-                payload += datagram
-
-        return payload, client_address
 
     @abc.abstractmethod
     def handle(self, req_body):
