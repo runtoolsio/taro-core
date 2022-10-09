@@ -102,6 +102,12 @@ class SocketClient:
 
     @coroutine
     def servers(self, include=()):
+        """
+
+        :param include: TODO
+        :return: response if bidirectional
+        :raises PayloadTooLarge: when request payload is too large
+        """
         req_body = '_'  # Dummy initialization to remove warnings
         resp = None
         skip = False
@@ -115,11 +121,17 @@ class SocketClient:
                 skip = False  # reset
                 if not req_body:
                     break  # next(this) called -> proceed to the next server
+
+                encoded = json.dumps(req_body).encode()
                 try:
-                    self._client.sendto(json.dumps(req_body).encode(), str(api_file))
+                    self._client.sendto(encoded, str(api_file))
                     if self._bidirectional:
                         datagram = self._client.recv(RECV_BUFFER_LENGTH)
                         resp = InstanceResponse(instance_id, json.loads(datagram.decode()))
+                except OSError as e:
+                    if e.errno == 90:
+                        raise PayloadTooLarge(len(encoded))
+                    raise e
                 except ConnectionRefusedError:  # TODO what about other errors?
                     log.warning('event=[dead_socket] socket=[{}]'.format(api_file))
                     self.dead_sockets.append(api_file)
@@ -140,3 +152,11 @@ class SocketClient:
     def close(self):
         self._client.shutdown(socket.SHUT_RDWR)
         self._client.close()
+
+class PayloadTooLarge(Exception):
+    """
+    This exception is thrown when the operating system rejects sent datagram due to its size.
+    """
+
+    def __init__(self, payload_size):
+        super().__init__("Datagram payload is too large: " + str(payload_size))
