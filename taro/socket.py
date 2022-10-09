@@ -124,19 +124,20 @@ class SocketClient:
 
                 encoded = json.dumps(req_body).encode()
                 try:
+                    print(api_file)
                     self._client.sendto(encoded, str(api_file))
                     if self._bidirectional:
                         datagram = self._client.recv(RECV_BUFFER_LENGTH)
                         resp = InstanceResponse(instance_id, json.loads(datagram.decode()))
-                except OSError as e:
-                    if e.errno == 90:
-                        raise PayloadTooLarge(len(encoded))
-                    raise e
                 except ConnectionRefusedError:  # TODO what about other errors?
                     log.warning('event=[dead_socket] socket=[{}]'.format(api_file))
                     self.dead_sockets.append(api_file)
                     skip = True  # Ignore this one and continue with another one
                     break
+                except OSError as e:
+                    if e.errno == 90:
+                        raise PayloadTooLarge(len(encoded))
+                    raise e
 
     def communicate(self, req, include=()) -> List[InstanceResponse]:
         server = self.servers(include=include)
@@ -152,6 +153,7 @@ class SocketClient:
     def close(self):
         self._client.shutdown(socket.SHUT_RDWR)
         self._client.close()
+
 
 class PayloadTooLarge(Exception):
     """
