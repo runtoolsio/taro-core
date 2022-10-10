@@ -31,7 +31,7 @@ def default_config_file_path() -> Path:
 
 
 def config_file_path(filename) -> Path:
-    base_path = Path(__file__).parent
+    base_path = Path(__file__).parent  # Will not work when installed into zip file - use importlib.resources from v3.7?
     def_config = base_path / 'config' / filename
     if not def_config.exists():
         raise FileNotFoundError(filename + ' config file not found')
