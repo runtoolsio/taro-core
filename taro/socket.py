@@ -124,7 +124,6 @@ class SocketClient:
 
                 encoded = json.dumps(req_body).encode()
                 try:
-                    print(api_file)
                     self._client.sendto(encoded, str(api_file))
                     if self._bidirectional:
                         datagram = self._client.recv(RECV_BUFFER_LENGTH)
