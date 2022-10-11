@@ -12,6 +12,7 @@ There are two type of clients of the framework:
 """
 
 import abc
+import textwrap
 from collections import namedtuple
 from fnmatch import fnmatch
 from typing import NamedTuple
@@ -162,7 +163,10 @@ class JobInfo:
         self._job_instance_id = job_instance_id
         self._params = params
         self._lifecycle = lifecycle
-        self._status = status
+        if status:
+            self._status = textwrap.shorten(status, 1000, placeholder=".. (truncated)", break_long_words=False)
+        else:
+            self._status = status
         self._warnings = warnings
         self._exec_error = exec_error
 
