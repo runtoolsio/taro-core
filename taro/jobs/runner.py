@@ -157,12 +157,12 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             return
 
         try:
-            if self._no_overlap and any(j for j in taro.client.read_jobs_info()
+            if self._no_overlap and any(j for j in taro.client.read_jobs_info(self.job_id)
                                         if j.job_id == self.job_id and j.instance_id != self.instance_id):
                 self._state_change(ExecutionState.SKIPPED)
                 return
         except Exception as e:
-            log.warning("event=[read_jobs_info_error] error=[%s]", e)
+            log.warning("event=[overlap_check_failed] error=[%s]", e)
 
         self._state_change(ExecutionState.TRIGGERED if self._execution.is_async else ExecutionState.RUNNING)
         try:

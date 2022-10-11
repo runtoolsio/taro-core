@@ -39,7 +39,7 @@ def test_job_status(capsys):
     output = capsys.readouterr().out
 
     jobs = printer.parse_table(output, view_inst.DEFAULT_COLUMNS)
-    assert 'progress1' == jobs[0][view_inst.STATUS]
+    assert jobs[0][view_inst.STATUS] == 'progress1'
 
 
 def test_job_instance_filter_false(capsys):
