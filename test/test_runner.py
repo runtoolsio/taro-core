@@ -104,6 +104,5 @@ def test_last_output():
     execution = ProgramExecution(['echo', "3\n2\n1\neveryone\nin\nthe\nworld\nis\ndoing\nsomething\nwithout\nme"],
                                  read_output=True)
     instance = RunnerJobInstance('j', execution)
-    execution.add_output_observer(instance)
     instance.run()
     assert instance.last_output == "1 everyone in the world is doing something without me".split()

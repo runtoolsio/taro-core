@@ -14,9 +14,6 @@ log = logging.getLogger(__name__)
 def create_managed_job(job_id, execution, *, no_overlap=False, pending_value=None, **params):
     job_instance = RunnerJobInstance(job_id, execution, no_overlap=no_overlap, **params)
 
-    # Forward output from execution to the job instance for the instance's output listeners
-    execution.add_output_observer(job_instance)
-
     if cfg.plugins:
         PluginBase.load_plugins(EXT_PLUGIN_MODULE_PREFIX, cfg.plugins, reload=False)  # Load plugins if not yet loaded
     for plugin in PluginBase.name2plugin.values():  # May contain other plugins loaded before

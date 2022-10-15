@@ -143,6 +143,11 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._notify_warning_observers(self.create_info(), warning, WarnEventCtx(self._warnings[warning.name]))  # Lock?
 
     def run(self):
+        # TODO Check executed only once
+
+        # Forward output from execution to the job instance for the instance's output listeners
+        self._execution.add_output_observer(self)
+
         if self._latch and not self._stopped_or_interrupted:
             self._state_change(self._latch_wait_state)  # TODO Race condition?
             self._latch.wait()
