@@ -26,12 +26,18 @@ class StateDispatcher(ExecutionStateObserver):
         self._client.close()
 
 
+TRUNCATED_SUFFIX = ".. (truncated)"
+
+
 class OutputDispatcher(JobOutputObserver):
 
     def __init__(self):
         self._client = SocketClient(OUTPUT_LISTENER_FILE_EXTENSION, bidirectional=False)
 
     def output_update(self, job_info: JobInfo, output):
+        if len(output) > 10000 + len(TRUNCATED_SUFFIX):
+            output = output[:10000] + TRUNCATED_SUFFIX
+
         event_body = {"event_type": "new_output", "event": {"job_info": dto.to_info_dto(job_info), "output": output}}
         try:
             self._client.communicate(event_body)
