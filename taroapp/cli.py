@@ -104,10 +104,8 @@ def _init_exec_parser(common, subparsers):
                                   'the output from the job streams. This disables output based features, but it '
                                   'can help if there is any problem with output processing.')
     exec_parser.add_argument('-o', '--no-overlap', action='store_true', default=False,
-                             help='skip if job with the same ID is already running')
-    # exec_parser.add_argument('-t', '--timeout', type=int) TODO implement
+                             help='Skip if job with the same job ID is already running')
     exec_parser.add_argument('-p', '--pending', type=str, help='specifies pending value for releasing of this job')
-    # exec_parser.add_argument('-w', '--wait', type=str, help='execution will wait for other jobs') TODO implement
     exec_parser.add_argument('--warn-time', type=_warn_time_type, action='append', default=[],
                              help='This enables time warning which is trigger when the execution of the job exceeds '
                                   'the period specified by the value of this option. The value must be an integer '
@@ -118,7 +116,8 @@ def _init_exec_parser(common, subparsers):
                                   'matches regex specified by the value of this option. For example `--warn-output '
                                   '"ERR*"` triggers output warning each time an output line contains a word starting '
                                   'with ERR.')
-
+    exec_parser.add_argument('-d', '--depends-on', type=str, action='append', default=[],
+                             help='The execution will be skipped if specified dependency job is not executing')
     exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=ExecutionState.COMPLETED,
                              help='The job will be started without actual execution of its command. The final state '
                                   'of the job is specified by the value of this option. Default state is COMPLETED. '
