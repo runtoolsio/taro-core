@@ -23,7 +23,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: POSIX :: Linux",
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.8',
     packages=find_packages(exclude=("test*",)) + find_namespace_packages(include=("taro.jobs.db",)),
     install_requires=[
         "PyYAML>=5.1.2",
