@@ -14,7 +14,6 @@ import yaml
 from taro import utilns
 from taro.utilns import NestedNamespace
 
-
 TRUE_OPTIONS = ['yes', 'true', 'y', '1', 'on']
 FALSE_OPTIONS = ['no', 'false', 'n', '0', 'off']
 BOOLEAN_OPTIONS = TRUE_OPTIONS + FALSE_OPTIONS
@@ -107,7 +106,8 @@ def parse_iso8601_duration(duration):
     hours = int(match.group(5)) if match.group(5) else 0
     minutes = int(match.group(6)) if match.group(6) else 0
     seconds = int(match.group(7)) if match.group(7) else 0
-    return relativedelta.relativedelta(years=years, months=months, weeks=weeks,days=days, hours=hours, minutes=minutes, seconds=seconds).normalized()
+    return relativedelta.relativedelta(years=years, months=months, weeks=weeks, days=days, hours=hours, minutes=minutes,
+                                       seconds=seconds).normalized()
 
 
 def sequence_view(seq, *, sort_key, asc, limit):
@@ -153,10 +153,23 @@ def copy_resource(src: Path, dst: Path, overwrite=False):
 
 
 def substring_match(job_id, instance):
-    return bool(re.search(instance, job_id)) 
+    return bool(re.search(instance, job_id))
+
+
+def truncate(text, max_len, truncated_suffix=''):
+    text_length = len(text)
+    suffix_length = len(truncated_suffix)
+
+    if suffix_length > max_len:
+        raise ValueError(f"Truncated suffix length {suffix_length} is larger than max length {max_len}")
+
+    if text_length > max_len:
+        return text[:(max_len - suffix_length)] + truncated_suffix
+
+    return text
 
 
 def cli_confirmation():
-    print("Do you want to continue? [Y/n] ", end="")  
+    print("Do you want to continue? [Y/n] ", end="")
     i = input()
-    return (i.lower() in TRUE_OPTIONS)
+    return i.lower() in TRUE_OPTIONS
