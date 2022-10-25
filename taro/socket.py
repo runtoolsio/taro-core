@@ -57,7 +57,13 @@ class SocketServer(abc.ABC):
 
             if resp_body:
                 if client_address:
-                    self._server.sendto(json.dumps(resp_body).encode(), client_address)
+                    encoded = json.dumps(resp_body).encode()
+                    try:
+                        self._server.sendto(encoded, client_address)
+                    except OSError as e:
+                        if e.errno == 90:
+                            log.error(f"event=[server_response_payload_too_large] length=[{len(encoded)}]")
+                        raise e
                 else:
                     log.warning('event=[missing_client_address]')
         log.debug('event=[server_stopped]')
