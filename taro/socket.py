@@ -128,12 +128,12 @@ class SocketClient:
                 if not req_body:
                     break  # next(this) called -> proceed to the next server
 
-                encoded = json.dumps(req_body).encode()
+                encoded = req_body.encode()
                 try:
                     self._client.sendto(encoded, str(api_file))
                     if self._bidirectional:
                         datagram = self._client.recv(RECV_BUFFER_LENGTH)
-                        resp = InstanceResponse(instance_id, json.loads(datagram.decode()))
+                        resp = InstanceResponse(instance_id, datagram.decode())
                 except ConnectionRefusedError:  # TODO what about other errors?
                     log.warning('event=[dead_socket] socket=[{}]'.format(api_file))
                     self.dead_sockets.append(api_file)

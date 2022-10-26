@@ -1,3 +1,5 @@
+import abc
+import json
 import logging
 
 from taro import ExecutionStateObserver, JobInfo, dto, util
@@ -10,39 +12,40 @@ OUTPUT_LISTENER_FILE_EXTENSION = '.olistener'
 log = logging.getLogger(__name__)
 
 
-class StateDispatcher(ExecutionStateObserver):
+class EventDispatcher(abc.ABC):
+
+    @abc.abstractmethod
+    def __init__(self, client):
+        self._client = client
+
+    def _send_event(self, type_, event):
+        event_body = {"event_type": type_, "event": event}
+        try:
+            self._client.communicate(json.dumps(event_body))
+        except PayloadTooLarge:
+            log.warning("event=[event_dispatch_failed] reason=[payload_too_large] note=[Please report this issue!]")
+
+    def close(self):
+        self._client.close()
+
+
+class StateDispatcher(EventDispatcher, ExecutionStateObserver):
 
     def __init__(self):
-        self._client = SocketClient(STATE_LISTENER_FILE_EXTENSION, bidirectional=False)
+        super(StateDispatcher, self).__init__(SocketClient(STATE_LISTENER_FILE_EXTENSION, bidirectional=False))
 
     def state_update(self, job_info: JobInfo):
-        event_body = {"event_type": "execution_state_change", "event": {"job_info": dto.to_info_dto(job_info)}}
-        try:
-            self._client.communicate(event_body)
-        except PayloadTooLarge:
-            log.warning("event=[state_dispatch_failed] reason=[payload_too_large] note=[Please report this issue!]")
-
-    def close(self):
-        self._client.close()
+        self._send_event("execution_state_change", {"job_info": dto.to_info_dto(job_info)})
 
 
-class OutputDispatcher(JobOutputObserver):
+class OutputDispatcher(EventDispatcher, JobOutputObserver):
 
     def __init__(self):
-        self._client = SocketClient(OUTPUT_LISTENER_FILE_EXTENSION, bidirectional=False)
+        super(OutputDispatcher, self).__init__(SocketClient(OUTPUT_LISTENER_FILE_EXTENSION, bidirectional=False))
 
     def output_update(self, job_info: JobInfo, output):
-        event_body = {
-            "event_type": "new_output",
-            "event": {
-                "job_info": dto.to_info_dto(job_info),
-                "output": util.truncate(output, 10000, truncated_suffix=".. (truncated)")
-            }
+        event = {
+            "job_info": dto.to_info_dto(job_info),
+            "output": util.truncate(output, 10000, truncated_suffix=".. (truncated)")
         }
-        try:
-            self._client.communicate(event_body)
-        except PayloadTooLarge:
-            log.warning("event=[output_dispatch_failed] reason=[payload_too_large] note=[Please report this issue!]")
-
-    def close(self):
-        self._client.close()
+        self._send_event("new_output", event)

@@ -1,10 +1,10 @@
-from typing import List, Tuple
+import json
+from typing import List, Tuple, Any
 
 from taro import dto, JobInstanceID
 from taro.jobs.api import API_FILE_EXTENSION
 from taro.jobs.job import JobInfo
-from taro.socket import SocketClient, InstanceResponse
-from taro.util import iterates
+from taro.socket import SocketClient
 
 
 def read_jobs_info(job_instance="") -> List[JobInfo]:
@@ -12,14 +12,14 @@ def read_jobs_info(job_instance="") -> List[JobInfo]:
         return client.read_jobs_info(job_instance)
 
 
-def release_jobs(pending):
+def release_jobs(pending) -> List[JobInstanceID]:
     with JobsClient() as client:
-        client.release_jobs(pending)
+        return client.release_jobs(pending)
 
 
 def stop_jobs(instances, interrupt: bool) -> List[Tuple[JobInstanceID, str]]:
     with JobsClient() as client:
-        return client.stop_jobs(instances, interrupt)
+        return client.stop_jobs(instances, interrupt)  # TODO ??
 
 
 def read_tail(instance) -> List[Tuple[JobInstanceID, List[str]]]:
@@ -38,32 +38,30 @@ class JobsClient(SocketClient):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def _send_request(self, api: str, *, data=None, job_instance: str = '', include=()) -> List[InstanceResponse]:
+    def _send_request(self, api: str, *, data=None, job_instance: str = '', include=()) -> List[dict[str, Any]]:
         req = {'req': {'api': api}}
         if job_instance:
             req['job_instance'] = job_instance
         if data:
             req['data'] = data
-        return [inst_resp for inst_resp in self.communicate(req, include=include)
-                if inst_resp.response['resp']['code'] != 412]  # Ignore precondition failed
+
+        return [
+            resp
+            for _, resp_body in self.communicate(json.dumps(req), include=include)
+            if (resp := json.loads(resp_body))['resp']['code'] != 412  # Ignore precondition failed
+        ]
 
     def read_jobs_info(self, job_instance="") -> List[JobInfo]:
         responses = self._send_request('/job', job_instance=job_instance)
-        return [dto.to_job_info(inst_resp.response['data']['job_info']) for inst_resp in responses]
+        return [dto.to_job_info(resp['data']['job_info']) for resp in responses]
 
     def read_tail(self, job_instance) -> List[Tuple[JobInstanceID, List[str]]]:
-        inst_responses = self._send_request('/tail', job_instance=job_instance)
-        return [(_job_instance_id(resp), resp['data']['tail'])
-                for resp in [inst_resp.response for inst_resp in inst_responses]]
+        responses = self._send_request('/tail', job_instance=job_instance)
+        return [(_job_instance_id(resp), resp['data']['tail']) for resp in responses]
 
-    @iterates
-    def release_jobs(self, pending):
-        server = self.servers()
-        while True:
-            next(server)
-            resp = server.send({'req': {'api': '/release'}, "data": {"pending": pending}}).response
-            if resp['data']['released']:
-                print(resp)  # TODO Do not print, but returned released (use communicate)
+    def release_jobs(self, pending) -> List[JobInstanceID]:
+        responses = self._send_request('/release', data={"pending": pending})
+        return [_job_instance_id(resp) for resp in responses if resp['data']['released']]
 
     def stop_jobs(self, instances) -> List[Tuple[JobInstanceID, str]]:
         """
@@ -74,9 +72,8 @@ class JobsClient(SocketClient):
         if not instances:
             raise ValueError('Instances to be stopped cannot be empty')
 
-        inst_responses = self._send_request('/stop', include=instances)
-        return [(_job_instance_id(resp), resp['data']['result'])
-                for resp in [inst_resp.response for inst_resp in inst_responses]]
+        responses = self._send_request('/stop', include=instances)
+        return [(_job_instance_id(resp), resp['data']['result']) for resp in responses]
 
 
 def _job_instance_id(resp):

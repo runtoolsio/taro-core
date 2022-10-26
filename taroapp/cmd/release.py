@@ -2,4 +2,8 @@ import taro.client
 
 
 def run(args):
-    taro.client.release_jobs(args.pending)
+    released = taro.client.release_jobs(args.pending)
+    if released:
+        print('Released:')
+        for released_job in released:
+            print(released_job)
