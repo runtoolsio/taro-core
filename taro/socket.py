@@ -1,10 +1,8 @@
 import abc
-import json
 import logging
 import os
 import socket
 from collections import namedtuple
-from json import JSONDecodeError
 from threading import Thread
 from types import coroutine
 from typing import List
@@ -47,17 +45,12 @@ class SocketServer(abc.ABC):
             datagram, client_address = self._server.recvfrom(RECV_BUFFER_LENGTH)
             if not datagram:
                 break
-            try:
-                req_body = json.loads(datagram)
-            except JSONDecodeError:
-                log.warning(f"event=[received_invalid_json] length[{len(datagram)}]")  # Payload too large?
-                continue
 
-            resp_body = self.handle(req_body)
+            resp_body = self.handle(datagram.decode())
 
             if resp_body:
                 if client_address:
-                    encoded = json.dumps(resp_body).encode()
+                    encoded = resp_body.encode()
                     try:
                         self._server.sendto(encoded, client_address)
                     except OSError as e:

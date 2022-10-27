@@ -1,4 +1,6 @@
+import json
 import logging
+from json import JSONDecodeError
 
 from taro import dto
 from taro.socket import SocketServer
@@ -19,7 +21,13 @@ class Server(SocketServer):
         self._job_instance = job_instance
         self._latch_release = latch_release
 
-    def handle(self, req_body):
+    def handle(self, req):
+        try:
+            req_body = json.loads(req)
+        except JSONDecodeError as e:
+            log.warning(f"event=[invalid_json_request_body] length=[{e}]")
+            return self._resp_err(400, "invalid_req_body")
+
         if 'req' not in req_body:
             return self._resp_err(422, "missing_req")
         if 'api' not in req_body['req']:
@@ -58,19 +66,23 @@ class Server(SocketServer):
         return self._resp(200, data)
 
     def _resp(self, code: int, data):
-        return {
+        resp = {
             "resp": {"code": code},
             "job_id": self._job_instance.job_id,
             "instance_id": self._job_instance.instance_id,
             "data": data
         }
+        return json.dumps(resp)
 
     def _resp_err(self, code: int, error: str):
         if 400 > code >= 600:
             raise ValueError("Error code must be 4xx or 5xx")
-        return {
+
+        err_resp = {
             "resp": {"code": code},
             "job_id": self._job_instance.job_id,
             "instance_id": self._job_instance.instance_id,
             "error": error
         }
+
+        return json.dumps(err_resp)
