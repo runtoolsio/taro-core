@@ -47,8 +47,8 @@ class JobsClient(SocketClient):
 
         return [
             resp
-            for _, resp_body in self.communicate(json.dumps(req), include=include)
-            if (resp := json.loads(resp_body))['resp']['code'] != 412  # Ignore precondition failed
+            for _, resp_body, error in self.communicate(json.dumps(req), include=include)
+            if not error and (resp := json.loads(resp_body))['resp']['code'] != 412  # Ignore precondition failed
         ]
 
     def read_jobs_info(self, job_instance="") -> List[JobInfo]:

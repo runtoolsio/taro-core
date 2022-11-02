@@ -2,10 +2,10 @@ import abc
 import logging
 import os
 import socket
-from collections import namedtuple
+from enum import Enum, auto
 from threading import Thread
 from types import coroutine
-from typing import List
+from typing import List, NamedTuple, Optional
 
 from taro import paths
 
@@ -86,17 +86,25 @@ class SocketServer(abc.ABC):
                 os.remove(socket_name)
 
 
-InstanceResponse = namedtuple('InstanceResponse', 'instance response')
+class Error(Enum):
+    TIMEOUT = auto()
+
+
+class InstanceResponse(NamedTuple):
+    instance_id: str
+    response: Optional[str]
+    error: Error = None
 
 
 class SocketClient:
 
-    def __init__(self, file_extension: str, bidirectional: bool):
+    def __init__(self, file_extension: str, bidirectional: bool, *, timeout=2):
         self._file_extension = file_extension
         self._bidirectional = bidirectional
         self._client = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if bidirectional:
             self._client.bind(self._client.getsockname())
+            self._client.settimeout(timeout)
         self.dead_sockets = []
 
     @coroutine
@@ -127,6 +135,9 @@ class SocketClient:
                     if self._bidirectional:
                         datagram = self._client.recv(RECV_BUFFER_LENGTH)
                         resp = InstanceResponse(instance_id, datagram.decode())
+                except TimeoutError:
+                    log.warning('event=[socket_timeout] socket=[{}]'.format(api_file))
+                    resp = InstanceResponse(instance_id, None, Error.TIMEOUT)
                 except ConnectionRefusedError:  # TODO what about other errors?
                     log.warning('event=[dead_socket] socket=[{}]'.format(api_file))
                     self.dead_sockets.append(api_file)
