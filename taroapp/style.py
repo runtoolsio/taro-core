@@ -1,4 +1,5 @@
 from taro.theme import Theme
+from taroapp import printer
 
 
 def job_style(job):
@@ -45,8 +46,13 @@ def job_instance_styled(job_instance):
     ]
 
 
-def job_status_line_styled(job_instance):
-    return job_instance_styled(job_instance) + [("", " -> "), (state_style(job_instance), job_instance.state.name)]
+def job_status_line_styled(job_instance, *, prefix_ts=True):
+    style_text_tuples =\
+        job_instance_styled(job_instance) + [("", " -> "), (state_style(job_instance), job_instance.state.name)]
+    if prefix_ts:
+        return [("", printer.format_dt(job_instance.lifecycle.last_changed()) + " ")] + style_text_tuples
+    else:
+        return style_text_tuples
 
 
 def job_instance_id_styled(job_id, instance_id):

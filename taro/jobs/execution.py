@@ -194,7 +194,7 @@ class ExecutionLifecycle:
     def changed(self, state: ExecutionState) -> datetime.datetime:
         return self._state_changes[state]
 
-    def last_changed(self):
+    def last_changed(self) -> Optional[datetime.datetime]:
         return next(reversed(self._state_changes.values()), None)
 
     def first_executing_state(self) -> Optional[ExecutionState]:
