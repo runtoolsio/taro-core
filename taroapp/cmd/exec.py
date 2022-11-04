@@ -21,8 +21,9 @@ def run(args):
     for warn_output in args.warn_output:
         extensions.append(taro.output_warning(warn_output))
 
-    managed_job = taro.managed_job(job_id, execution, *extensions, no_overlap=args.no_overlap,
-                                   pending_value=args.pending, **(dict(args.param) if args.param else dict()))
+    managed_job = taro.managed_job(
+        job_id, execution, *extensions, no_overlap=args.no_overlap, depends_on=args.depends_on,
+        pending_value=args.pending, **(dict(args.param) if args.param else dict()))
 
     term = Term(managed_job.job_instance)
     signal.signal(signal.SIGTERM, term.terminate)

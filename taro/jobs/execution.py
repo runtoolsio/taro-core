@@ -45,6 +45,7 @@ class ExecutionState(Enum):
     DISABLED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}
     CANCELLED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}
     SKIPPED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}
+    DEPENDENCY_NOT_RUNNING = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}
     SUSPENDED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}  # Temporarily disabled
 
     START_FAILED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.FAILURE}

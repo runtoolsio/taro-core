@@ -117,7 +117,7 @@ def _init_exec_parser(common, subparsers):
                                   '"ERR*"` triggers output warning each time an output line contains a word starting '
                                   'with ERR.')
     exec_parser.add_argument('-d', '--depends-on', type=str, action='append', default=[],
-                             help='The execution will be skipped if specified dependency job is not executing')
+                             help='The execution will be skipped if specified dependency job is not running.')
     exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=ExecutionState.COMPLETED,
                              help='The job will be started without actual execution of its command. The final state '
                                   'of the job is specified by the value of this option. Default state is COMPLETED. '

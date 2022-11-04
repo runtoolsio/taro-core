@@ -26,11 +26,12 @@ def run(job_id, execution, no_overlap: bool = False):
 
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, *, no_overlap: bool = False, **params):
+    def __init__(self, job_id, execution, *, no_overlap: bool = False, depends_on=None, **params):
         self._id = JobInstanceID(job_id, util.unique_timestamp_hex())
         self._params = params
         self._execution = execution
         self._no_overlap = no_overlap
+        self._depends_on = depends_on
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
         self._last_output = deque(maxlen=10)
         self._exec_error = None
@@ -161,13 +162,21 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             self._state_change(ExecutionState.CANCELLED)
             return
 
-        try:
-            if self._no_overlap and any(j for j in taro.client.read_jobs_info(self.job_id)
-                                        if j.job_id == self.job_id and j.instance_id != self.instance_id):
-                self._state_change(ExecutionState.SKIPPED)
-                return
-        except Exception as e:
-            log.warning("event=[overlap_check_failed] error=[%s]", e)
+        if self._no_overlap or self._depends_on:
+            try:
+                jobs = taro.client.read_jobs_info()
+
+                if self._no_overlap and any(j for j in jobs
+                                            if j.job_id == self.job_id and j.instance_id != self.instance_id):
+                    self._state_change(ExecutionState.SKIPPED)
+                    return
+
+                if self._depends_on and not any(j for j in jobs
+                                                if any(j.matches(dependency) for dependency in self._depends_on)):
+                    self._state_change(ExecutionState.DEPENDENCY_NOT_RUNNING)
+                    return
+            except Exception as e:
+                log.warning("event=[overlap_check_failed] error=[%s]", e)
 
         self._state_change(ExecutionState.TRIGGERED if self._execution.is_async else ExecutionState.RUNNING)
         try:

@@ -71,6 +71,18 @@ def test_no_overlap(observer: TestStateObserver):
     assert observer.last_state('j1') == ExecutionState.SKIPPED
 
 
+def test_skipped_when_dependency_not_running(observer: TestStateObserver):
+    run_app('exec -mc --depends-on another_job --id j1 echo Something is missing..')
+    assert observer.last_state('j1') == ExecutionState.DEPENDENCY_NOT_RUNNING
+
+
+def test_executed_when_dependency_is_running(observer: TestStateObserver):
+    run_app_as_process_and_wait('exec -mc --id dependency sleep 2', wait_for=ExecutionState.RUNNING, daemon=True)
+
+    run_app('exec -mc --depends-on dependency --id j1 echo Free to go!')
+    assert observer.last_state('j1') == ExecutionState.COMPLETED
+
+
 def test_job_persisted():
     cfg.persistence_enabled = True
     cfg.persistence_type = 'sqlite'
