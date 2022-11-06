@@ -9,7 +9,7 @@ It consists of:
 import abc
 import datetime
 from collections import OrderedDict
-from enum import Enum, auto
+from enum import Enum, auto, EnumMeta
 from typing import Tuple, List, Iterable, Set, Optional
 
 from taro import util
@@ -25,8 +25,17 @@ class ExecutionStateGroup(Enum):
     FAILURE = auto()
 
 
-class ExecutionState(Enum):
+class ExecutionStateMeta(EnumMeta):
+    def __getitem__(self, name):
+        try:
+            return super().__getitem__(name)
+        except KeyError:
+            return ExecutionState.UNKNOWN
+
+
+class ExecutionState(Enum, metaclass=ExecutionStateMeta):
     NONE = {}
+    UNKNOWN = {}
     CREATED = {ExecutionStateGroup.BEFORE_EXECUTION}
 
     PENDING = {ExecutionStateGroup.BEFORE_EXECUTION}  # Until released
