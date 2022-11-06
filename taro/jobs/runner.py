@@ -4,7 +4,7 @@ Implementation of job management framework based on :mod:`job` module.
 import copy
 import logging
 from collections import deque, Counter
-from threading import Lock, Event, RLock
+from threading import Event, RLock
 from typing import List, Union, Optional, Callable
 
 import taro.client
@@ -37,7 +37,6 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._exec_error = None
         self._executing = False
         self._stopped_or_interrupted: bool = False
-        self._executing_flag_lock: Lock = Lock()
         self._state_lock: RLock = RLock()
         self._latch: Optional[Event] = None
         self._latch_wait_state: Optional[ExecutionState] = None
@@ -51,15 +50,15 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def create_latch(self, wait_state: ExecutionState):
         if not wait_state.is_before_execution():
             raise ValueError(str(wait_state) + "is not before execution state!")
-        with self._executing_flag_lock:
-            if self._executing:
-                raise IllegalStateError("The latch cannot be created because the job has been already started")
-            if self._stopped_or_interrupted:
-                raise IllegalStateError("The latch cannot be created because the job execution has already ended")
-            if self._latch:
-                raise IllegalStateError("The latch has been already created")
-            self._latch_wait_state = wait_state
-            self._latch = Event()
+        if self._executing:
+            raise IllegalStateError("The latch cannot be created because the job has been already started")
+        if self._stopped_or_interrupted:
+            raise IllegalStateError("The latch cannot be created because the job execution has already ended")
+        if self._latch:
+            raise IllegalStateError("The latch has been already created")
+
+        self._latch_wait_state = wait_state
+        self._latch = Event()
 
         return self._latch.set
 
@@ -116,8 +115,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         Due to synchronous design there is a small window when an execution can be stopped before it is started.
         All execution implementations must cope with such scenario.
         """
-        with self._executing_flag_lock:
-            self._stopped_or_interrupted = True
+        self._stopped_or_interrupted = True
 
         if self._latch:
             self._latch.set()
@@ -130,8 +128,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         Due to synchronous design there is a small window when an execution can be interrupted before it is started.
         All execution implementations must cope with such scenario.
         """
-        with self._executing_flag_lock:
-            self._stopped_or_interrupted = True
+        self._stopped_or_interrupted = True
 
         if self._latch:
             self._latch.set()
@@ -153,10 +150,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             self._state_change(self._latch_wait_state)  # TODO Race condition?
             self._latch.wait()
 
-        # Is variable assignment atomic? Better be sure with lock:
-        # https://stackoverflow.com/questions/2291069/is-python-variable-assignment-atomic
-        with self._executing_flag_lock:
-            self._executing = not self._stopped_or_interrupted
+        self._executing = not self._stopped_or_interrupted
 
         if not self._executing:
             self._state_change(ExecutionState.CANCELLED)
