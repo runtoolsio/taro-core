@@ -1,5 +1,5 @@
 import json
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Dict
 
 from taro import dto, JobInstanceID
 from taro.jobs.api import API_FILE_EXTENSION
@@ -38,7 +38,7 @@ class JobsClient(SocketClient):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def _send_request(self, api: str, *, data=None, job_instance: str = '', include=()) -> List[dict[str, Any]]:
+    def _send_request(self, api: str, *, data=None, job_instance: str = '', include=()) -> List[Dict[str, Any]]:
         req = {'req': {'api': api}}
         if job_instance:
             req['job_instance'] = job_instance
