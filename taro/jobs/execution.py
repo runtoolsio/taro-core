@@ -18,6 +18,7 @@ from taro.util import utc_now
 
 class ExecutionStateGroup(Enum):
     BEFORE_EXECUTION = auto()
+    WAITING = auto()
     EXECUTING = auto()
     TERMINAL = auto()
     NOT_COMPLETED = auto()
@@ -38,8 +39,8 @@ class ExecutionState(Enum, metaclass=ExecutionStateMeta):
     UNKNOWN = {}
     CREATED = {ExecutionStateGroup.BEFORE_EXECUTION}
 
-    PENDING = {ExecutionStateGroup.BEFORE_EXECUTION}  # Until released
-    WAITING = {ExecutionStateGroup.BEFORE_EXECUTION}  # Wait for another job
+    PENDING = {ExecutionStateGroup.WAITING, ExecutionStateGroup.BEFORE_EXECUTION}  # Until released
+    WAITING = {ExecutionStateGroup.WAITING, ExecutionStateGroup.BEFORE_EXECUTION}  # Wait for another job
     # ON_HOLD or same as pending?
 
     TRIGGERED = {ExecutionStateGroup.EXECUTING}  # Start request sent, start confirmation not (yet) received
