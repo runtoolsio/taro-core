@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 
 import portalocker
 
+from taro import paths
+
 
 class StateLocker(ABC):
 
@@ -26,7 +28,7 @@ class StateLock(ABC):
 
 class PortalockerStateLocker(StateLocker):
 
-    def __init__(self, lock_file, timeout = None):
+    def __init__(self, lock_file, timeout=None):
         self.lock_file = lock_file
         self.timeout = timeout
 
@@ -43,3 +45,16 @@ class PortalockerStateLock(StateLock):
 
     def unlock(self):
         portalocker.unlock(self.locked_file)
+
+
+class NullStateLocker(StateLocker, StateLock):
+    @contextlib.contextmanager
+    def __call__(self, *args, **kwargs):
+        yield self
+
+    def unlock(self):
+        pass
+
+
+def default_state_locker():
+    return PortalockerStateLocker(paths.lock_path('state0.lock', True))

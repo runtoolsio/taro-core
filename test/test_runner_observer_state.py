@@ -6,6 +6,7 @@ Tests that :mod:`runner` sends correct notification to state observers.
 import pytest
 
 import taro.jobs.runner as runner
+from taro.jobs import lock
 from taro.jobs.execution import ExecutionState
 from taro.jobs.job import ExecutionStateObserver, JobInfo
 from taro.jobs.runner import RunnerJobInstance
@@ -22,13 +23,13 @@ def observer():
 
 
 def test_job_passed(observer: TestStateObserver):
-    runner.run('j1', TestExecution(ExecutionState.COMPLETED))
+    runner.run('j1', TestExecution(ExecutionState.COMPLETED), lock.NullStateLocker())
 
     assert observer.last_job().job_id == 'j1'
 
 
 def test_execution_completed(observer: TestStateObserver):
-    runner.run('j1', TestExecution(ExecutionState.COMPLETED))
+    runner.run('j1', TestExecution(ExecutionState.COMPLETED), lock.NullStateLocker())
 
     assert observer.exec_state(0) == ExecutionState.CREATED
     assert observer.exec_state(1) == ExecutionState.RUNNING
@@ -36,7 +37,7 @@ def test_execution_completed(observer: TestStateObserver):
 
 
 def test_execution_started(observer: TestStateObserver):
-    runner.run('j1', TestExecution(ExecutionState.STARTED))
+    runner.run('j1', TestExecution(ExecutionState.STARTED), lock.NullStateLocker())
 
     assert observer.exec_state(0) == ExecutionState.CREATED
     assert observer.exec_state(1) == ExecutionState.RUNNING
@@ -45,7 +46,7 @@ def test_execution_started(observer: TestStateObserver):
 
 def test_execution_raises_exc(observer: TestStateObserver):
     exc_to_raise = Exception()
-    runner.run('j1', TestExecution(raise_exc=exc_to_raise))
+    runner.run('j1', TestExecution(raise_exc=exc_to_raise), lock.NullStateLocker())
 
     assert observer.exec_state(0) == ExecutionState.CREATED
     assert observer.exec_state(1) == ExecutionState.RUNNING
@@ -60,7 +61,7 @@ def test_observer_raises_exception():
     """
     observer = ExceptionRaisingObserver(BaseException('Should be captured by runner'))
     execution = TestExecution(ExecutionState.COMPLETED)
-    job_instance = RunnerJobInstance('j1', execution)
+    job_instance = RunnerJobInstance('j1', execution, lock.NullStateLocker())
     job_instance.add_state_observer(observer)
     job_instance.run()
     assert execution.executed_count() == 1  # No exception thrown before

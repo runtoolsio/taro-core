@@ -1,7 +1,7 @@
 import logging
 
 from taro import cfg
-
+from taro.jobs import lock
 from taro.jobs.api import Server
 from taro.jobs.events import StateDispatcher, OutputDispatcher
 from taro.jobs.execution import ExecutionState
@@ -11,8 +11,10 @@ from taro.jobs.runner import RunnerJobInstance
 log = logging.getLogger(__name__)
 
 
-def create_managed_job(job_id, execution, *, no_overlap=False, depends_on=None, pending_value=None, **params):
-    job_instance = RunnerJobInstance(job_id, execution, no_overlap=no_overlap, depends_on=depends_on, **params)
+def create_managed_job(job_id, execution, state_locker=lock.default_state_locker(), *,
+                       no_overlap=False, depends_on=None, pending_value=None, **params):
+    job_instance =\
+        RunnerJobInstance(job_id, execution, state_locker, no_overlap=no_overlap, depends_on=depends_on, **params)
 
     if cfg.plugins:
         PluginBase.load_plugins(EXT_PLUGIN_MODULE_PREFIX, cfg.plugins, reload=False)  # Load plugins if not yet loaded

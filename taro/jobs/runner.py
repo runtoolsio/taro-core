@@ -1,6 +1,7 @@
 """
 Implementation of job management framework based on :mod:`job` module.
 """
+import contextlib
 import copy
 import logging
 from collections import deque, Counter
@@ -18,18 +19,19 @@ from taro.jobs.job import ExecutionStateObserver, JobInstance, JobInfo, WarningO
 log = logging.getLogger(__name__)
 
 
-def run(job_id, execution, no_overlap: bool = False):
-    instance = RunnerJobInstance(job_id, execution, no_overlap=no_overlap)
+def run(job_id, execution, state_locker, no_overlap: bool = False):
+    instance = RunnerJobInstance(job_id, execution, state_locker, no_overlap=no_overlap)
     instance.run()
     return instance
 
 
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, *, no_overlap: bool = False, depends_on=None, **params):
+    def __init__(self, job_id, execution, state_locker, *, no_overlap: bool = False, depends_on=None, **params):
         self._id = JobInstanceID(job_id, util.unique_timestamp_hex())
         self._params = params
         self._execution = execution
+        self._global_state_locker = state_locker
         self._no_overlap = no_overlap
         self._depends_on = depends_on
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
@@ -188,24 +190,26 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def _log(self, event: str, msg: str):
         return "event=[{}] instance=[{}] {}".format(event, self._id, msg)
 
-    def _state_change(self, new_state, exec_error: ExecutionError = None):
+    def _state_change(self, new_state, exec_error: ExecutionError = None, *, use_global_lock=True):
+        if exec_error:
+            self._exec_error = exec_error
+            if exec_error.exec_state == ExecutionState.ERROR or exec_error.unexpected_error:
+                log.exception(self._log('job_error', "reason=[{}]".format(exec_error)), exc_info=True)
+            else:
+                log.warning(self._log('job_not_completed', "reason=[{}]".format(exec_error)))
+
+        global_state_lock = self._global_state_locker() if use_global_lock else contextlib.nullcontext()
+        job_info = None
         # It is not necessary to lock all this code, but it would be if this method is not confined to one thread
         # However locking is still needed for correct creation of job info when job_info method is called (anywhere)
-        job_info = None
         with self._state_lock:
-            if exec_error:
-                self._exec_error = exec_error
-                if exec_error.exec_state == ExecutionState.ERROR or exec_error.unexpected_error:
-                    log.exception(self._log('job_error', "reason=[{}]".format(exec_error)), exc_info=True)
-                else:
-                    log.warning(self._log('job_not_completed', "reason=[{}]".format(exec_error)))
-
-            prev_state = self._lifecycle.state()
-            if self._lifecycle.set_state(new_state):
-                level = logging.WARN if new_state.is_failure() or new_state.is_unexecuted() else logging.INFO
-                log.log(level, self._log('job_state_changed', "prev_state=[{}] new_state=[{}]".format(
-                    prev_state.name, new_state.name)))
-                job_info = self.create_info()  # Be sure both new_state and exec_error are already set
+            with global_state_lock:
+                prev_state = self._lifecycle.state()
+                if self._lifecycle.set_state(new_state):
+                    level = logging.WARN if new_state.is_failure() or new_state.is_unexecuted() else logging.INFO
+                    log.log(level, self._log('job_state_changed', "prev_state=[{}] new_state=[{}]".format(
+                        prev_state.name, new_state.name)))
+                    job_info = self.create_info()  # Be sure both new_state and exec_error are already set
 
         if job_info:
             if new_state.is_terminal() and persistence.is_enabled():
