@@ -12,9 +12,11 @@ import taro.client
 from taro import util
 from taro.err import IllegalStateError
 from taro.jobs import persistence
-from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver
+from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver, \
+    UnexpectedStateError
 from taro.jobs.job import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, Warn, \
     WarnEventCtx, JobInstanceID
+from taro.jobs.sync import NoSync
 
 log = logging.getLogger(__name__)
 
@@ -27,11 +29,13 @@ def run(job_id, execution, state_locker, no_overlap: bool = False):
 
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, state_locker, *, no_overlap: bool = False, depends_on=None, **params):
+    def __init__(self, job_id, execution, state_locker, sync=NoSync(), *, no_overlap: bool = False, depends_on=None,
+                 **params):
         self._id = JobInstanceID(job_id, util.unique_timestamp_hex())
         self._params = params
         self._execution = execution
         self._global_state_locker = state_locker
+        self._sync = sync
         self._no_overlap = no_overlap
         self._depends_on = depends_on
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
@@ -158,6 +162,24 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             self._state_change(ExecutionState.CANCELLED)
             return
 
+        while True:
+            with self._global_state_locker() as state_lock:
+                state = self._sync.new_state()
+                if state == ExecutionState.NONE:
+                    state = ExecutionState.TRIGGERED if self._execution.is_async else ExecutionState.RUNNING
+
+                self._state_change(state, use_global_lock=False)
+
+                if state.is_waiting():
+                    self._sync.wait_and_release(state_lock)
+                    continue  # Repeat as waiting can be still needed or another waiting condition must be evaluated
+                if state.is_executing():
+                    break
+                if state.is_terminal():
+                    return
+
+                raise UnexpectedStateError(f"Unsupported state returned from sync: {state}")
+
         if self._no_overlap or self._depends_on:
             try:
                 jobs = taro.client.read_jobs_info()
@@ -174,7 +196,6 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             except Exception as e:
                 log.warning("event=[overlap_check_failed] error=[%s]", e)
 
-        self._state_change(ExecutionState.TRIGGERED if self._execution.is_async else ExecutionState.RUNNING)
         try:
             new_state = self._execution.execute()
             self._state_change(new_state)

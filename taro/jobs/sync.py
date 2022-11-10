@@ -6,7 +6,7 @@ from taro import ExecutionState
 class Sync(ABC):
 
     @abstractmethod
-    def current_state(self) -> ExecutionState:
+    def new_state(self) -> ExecutionState:
         """
         If 'NONE' state is returned then the job can proceed with the execution.
         If returned state belongs to the 'TERMINAL' group then the job must be terminated.
@@ -22,3 +22,12 @@ class Sync(ABC):
         :param state_lock:
         :return:
         """
+
+
+class NoSync(Sync):
+
+    def new_state(self) -> ExecutionState:
+        return ExecutionState.NONE
+
+    def wait_and_release(self, state_lock):
+        pass

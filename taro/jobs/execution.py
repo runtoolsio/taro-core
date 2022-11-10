@@ -74,6 +74,9 @@ class ExecutionState(Enum, metaclass=ExecutionStateMeta):
     def is_before_execution(self):
         return ExecutionStateGroup.BEFORE_EXECUTION in self.groups
 
+    def is_waiting(self):
+        return ExecutionStateGroup.WAITING in self.groups
+
     def is_executing(self):
         return ExecutionStateGroup.EXECUTING in self.groups
 
@@ -88,6 +91,13 @@ class ExecutionState(Enum, metaclass=ExecutionStateMeta):
 
     def is_failure(self) -> bool:
         return ExecutionStateGroup.FAILURE in self.groups
+
+
+class UnexpectedStateError(Exception):
+    """
+    Raised when a processing logic cannot recognize an execution state or
+    when the state is not valid in a given context.
+    """
 
 
 class ExecutionError(Exception):
