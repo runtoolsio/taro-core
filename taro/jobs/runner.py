@@ -56,8 +56,6 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def create_latch(self, wait_state: ExecutionState):
         if not wait_state.is_before_execution():
             raise ValueError(str(wait_state) + "is not before execution state!")
-        if self._executing:
-            raise IllegalStateError("The latch cannot be created because the job has been already started")
         if self._stopped_or_interrupted:
             raise IllegalStateError("The latch cannot be created because the job execution has already ended")
         if self._latch:
@@ -171,7 +169,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 self._state_change(state, use_global_lock=False)
 
                 if state.is_waiting():
-                    self._sync.wait_and_release(state_lock)
+                    self._sync.wait_and_unlock(state_lock)
                     continue  # Repeat as waiting can be still needed or another waiting condition must be evaluated
                 if state.is_executing():
                     break

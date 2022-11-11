@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 def create_managed_job(job_id, execution, state_locker=lock.default_state_locker(), *,
                        no_overlap=False, depends_on=None, pending_value=None, **params):
-    job_instance =\
+    job_instance = \
         RunnerJobInstance(job_id, execution, state_locker, no_overlap=no_overlap, depends_on=depends_on, **params)
 
     if cfg.plugins:
