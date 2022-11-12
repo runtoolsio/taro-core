@@ -23,13 +23,21 @@ class Sync(ABC):
         :param unlock: function unlocking global execution state lock
         """
 
+    @abstractmethod
+    def release(self):
+        """
+        Interrupt waiting
+        """
+
 
 class NoSync(Sync):
-
     def new_state(self) -> ExecutionState:
         return ExecutionState.NONE
 
     def wait_and_unlock(self, state_lock):
+        pass
+
+    def release(self):
         pass
 
 
@@ -47,12 +55,12 @@ class Latch(Sync):
 
         return self.waiting_state
 
-    def release(self):
-        self._event.set()
-
     def wait_and_unlock(self, lock):
         if self._event.is_set():
             return
 
         lock.unlock()
         self._event.wait()
+
+    def release(self):
+        self._event.set()

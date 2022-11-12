@@ -9,6 +9,7 @@ from taro.jobs import lock
 from taro.jobs.execution import ExecutionState as ExSt, ExecutionError
 from taro.jobs.program import ProgramExecution
 from taro.jobs.runner import RunnerJobInstance
+from taro.jobs.sync import Latch
 from taro.test.execution import TestExecution  # TODO package import
 
 
@@ -32,8 +33,8 @@ def test_state_created():
 
 
 def test_pending():
-    instance = RunnerJobInstance('j', TestExecution(), lock.NullStateLocker())
-    latch = instance.create_latch(ExSt.PENDING)
+    latch = Latch(ExSt.PENDING)
+    instance = RunnerJobInstance('j', TestExecution(), lock.NullStateLocker(), latch)
     t = Thread(target=instance.run)
     t.start()
 
@@ -41,23 +42,22 @@ def test_pending():
 
     assert instance.lifecycle.state() == ExSt.PENDING
 
-    latch()
+    latch.release()
     t.join(timeout=1)
 
     assert instance.lifecycle.state() == ExSt.COMPLETED
     assert instance.lifecycle.states() == [ExSt.CREATED, ExSt.PENDING, ExSt.RUNNING, ExSt.COMPLETED]
 
 
-def test_cancellation_after_start():  # TODO unreliable test relying on timing (stopped before latch fully released)?
-    instance = RunnerJobInstance('j', TestExecution(), lock.NullStateLocker())
-    latch = instance.create_latch(ExSt.PENDING)
+def test_latch_cancellation():
+    latch = Latch(ExSt.PENDING)
+    instance = RunnerJobInstance('j', TestExecution(), lock.NullStateLocker(), latch)
     t = Thread(target=instance.run)
     t.start()
 
     wait_for_pending_state(instance)
-    latch()
-
     instance.stop()
+
     t.join(timeout=1)
 
     assert instance.lifecycle.state() == ExSt.CANCELLED
@@ -65,8 +65,8 @@ def test_cancellation_after_start():  # TODO unreliable test relying on timing (
 
 
 def test_cancellation_before_start():
-    instance = RunnerJobInstance('j', TestExecution(), lock.NullStateLocker())
-    instance.create_latch(ExSt.PENDING)
+    latch = Latch(ExSt.PENDING)
+    instance = RunnerJobInstance('j', TestExecution(), lock.NullStateLocker(), latch)
     t = Thread(target=instance.run)
 
     instance.stop()

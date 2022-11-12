@@ -7,14 +7,19 @@ from taro.jobs.events import StateDispatcher, OutputDispatcher
 from taro.jobs.execution import ExecutionState
 from taro.jobs.plugins import PluginBase
 from taro.jobs.runner import RunnerJobInstance
+from taro.jobs.sync import Latch, NoSync
 
 log = logging.getLogger(__name__)
 
 
 def create_managed_job(job_id, execution, state_locker=lock.default_state_locker(), *,
                        no_overlap=False, depends_on=None, pending_value=None, **params):
+    if pending_value:
+        sync = Latch(ExecutionState.PENDING)
+    else:
+        sync = NoSync()
     job_instance = \
-        RunnerJobInstance(job_id, execution, state_locker, no_overlap=no_overlap, depends_on=depends_on, **params)
+        RunnerJobInstance(job_id, execution, state_locker, sync, no_overlap=no_overlap, depends_on=depends_on, **params)
 
     if cfg.plugins:
         PluginBase.load_plugins(EXT_PLUGIN_MODULE_PREFIX, cfg.plugins, reload=False)  # Load plugins if not yet loaded
@@ -25,7 +30,8 @@ def create_managed_job(job_id, execution, state_locker=lock.default_state_locker
             log.warning("event=[plugin_failed] reason=[exception_on_new_job_instance] detail=[%s]", e)
 
     job = ManagedJobInstance(job_instance)
-    job.pending_value = pending_value
+    if sync:
+        job.pending_value = _PendingValueLatch(pending_value, sync)
     return job
 
 
@@ -44,11 +50,7 @@ class ManagedJobInstance:
         output_dispatcher = OutputDispatcher()
         self.job_instance.add_output_observer(output_dispatcher)
 
-        if self.pending_value:
-            latch = _PendingValueLatch(self.pending_value, self.job_instance.create_latch(ExecutionState.PENDING))
-        else:
-            latch = None
-        api = Server(self.job_instance, latch)
+        api = Server(self.job_instance, self.pending_value)
         api_started = api.start()  # Starts a new thread
         if not api_started:
             log.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")
@@ -72,7 +74,7 @@ class _PendingValueLatch:
 
     def release(self, value):
         if self.value == value:
-            self.latch()
+            self.latch.release()
             return True
         else:
             return False

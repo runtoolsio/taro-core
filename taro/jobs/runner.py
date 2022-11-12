@@ -5,12 +5,11 @@ import contextlib
 import copy
 import logging
 from collections import deque, Counter
-from threading import Event, RLock
-from typing import List, Union, Optional, Callable
+from threading import RLock
+from typing import List, Union, Callable
 
 import taro.client
 from taro import util
-from taro.err import IllegalStateError
 from taro.jobs import persistence
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver, \
     UnexpectedStateError
@@ -44,27 +43,12 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._executing = False
         self._stopped_or_interrupted: bool = False
         self._state_lock: RLock = RLock()
-        self._latch: Optional[Event] = None
-        self._latch_wait_state: Optional[ExecutionState] = None
         self._warnings = Counter()
         self._state_observers = []
         self._warning_observers = []
         self._output_observers = []
 
         self._state_change(ExecutionState.CREATED)
-
-    def create_latch(self, wait_state: ExecutionState):
-        if not wait_state.is_before_execution():
-            raise ValueError(str(wait_state) + "is not before execution state!")
-        if self._stopped_or_interrupted:
-            raise IllegalStateError("The latch cannot be created because the job execution has already ended")
-        if self._latch:
-            raise IllegalStateError("The latch has been already created")
-
-        self._latch_wait_state = wait_state
-        self._latch = Event()
-
-        return self._latch.set
 
     @property
     def id(self):
@@ -121,8 +105,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         """
         self._stopped_or_interrupted = True
 
-        if self._latch:
-            self._latch.set()
+        self._sync.release()
         if self._executing:
             self._execution.stop()
 
@@ -134,8 +117,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         """
         self._stopped_or_interrupted = True
 
-        if self._latch:
-            self._latch.set()
+        self._sync.release()
         if self._executing:
             self._execution.interrupt()
 
@@ -147,24 +129,14 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def run(self):
         # TODO Check executed only once
 
-        # Forward output from execution to the job instance for the instance's output listeners
-        self._execution.add_output_observer(self)
-
-        if self._latch and not self._stopped_or_interrupted:
-            self._state_change(self._latch_wait_state)  # TODO Race condition?
-            self._latch.wait()
-
-        self._executing = not self._stopped_or_interrupted
-
-        if not self._executing:
-            self._state_change(ExecutionState.CANCELLED)
-            return
-
         while True:
             with self._global_state_locker() as state_lock:
-                state = self._sync.new_state()
-                if state == ExecutionState.NONE:
-                    state = ExecutionState.TRIGGERED if self._execution.is_async else ExecutionState.RUNNING
+                if self._stopped_or_interrupted:
+                    state = ExecutionState.CANCELLED
+                else:
+                    state = self._sync.new_state()
+                    if state == ExecutionState.NONE:
+                        state = ExecutionState.TRIGGERED if self._execution.is_async else ExecutionState.RUNNING
 
                 self._state_change(state, use_global_lock=False)
 
@@ -172,6 +144,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                     self._sync.wait_and_unlock(state_lock)
                     continue  # Repeat as waiting can be still needed or another waiting condition must be evaluated
                 if state.is_executing():
+                    self._executing = True
                     break
                 if state.is_terminal():
                     return
@@ -193,6 +166,9 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                     return
             except Exception as e:
                 log.warning("event=[overlap_check_failed] error=[%s]", e)
+
+        # Forward output from execution to the job instance for the instance's output listeners
+        self._execution.add_output_observer(self)
 
         try:
             new_state = self._execution.execute()
