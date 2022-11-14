@@ -45,6 +45,10 @@ class JobInstance(abc.ABC):
     def id(self):
         """Identifier of this instance"""
 
+    @abc.abstractmethod
+    def run(self):
+        """Run the job"""
+
     @property
     @abc.abstractmethod
     def lifecycle(self):
@@ -152,6 +156,69 @@ class JobInstance(abc.ABC):
 
         :param observer observer to de-register
         """
+
+
+class DelegatingJobInstance(JobInstance):
+
+    def __init__(self, delegated):
+        self.delegated = delegated
+
+    @property
+    def id(self):
+        return self.delegated.id
+
+    @abc.abstractmethod
+    def run(self):
+        """Run the job"""
+    @property
+    def lifecycle(self):
+        return self.delegated.lifecycle
+
+    @property
+    def status(self):
+        return self.delegated.status
+
+    @property
+    def last_output(self):
+        return self.delegated.last_output
+
+    @property
+    def warnings(self):
+        return self.delegated.warnings
+
+    def add_warning(self, warning):
+        self.delegated.add_warning(warning)
+
+    @property
+    def exec_error(self) -> ExecutionError:
+        return self.delegated.exec_error
+
+    def create_info(self):
+        return self.delegated.create_info()
+
+    def stop(self):
+        self.delegated.stop()
+
+    def interrupt(self):
+        self.delegated.interrupt()
+
+    def add_state_observer(self, observer):
+        self.delegated.add_state_observer(observer)
+
+    def remove_state_observer(self, observer):
+        self.delegated.remove_state_observer(observer)
+
+    def add_warning_observer(self, observer):
+        self.delegated.add_warning_observer(observer)
+
+    def remove_warning_observer(self, observer):
+        self.delegated.remove_warning_observer(observer)
+
+    def add_output_observer(self, observer):
+        self.delegated.add_output_observer(observer)
+
+    def remove_output_observer(self, observer):
+        self.delegated.remove_output_observer(observer)
 
 
 class JobInfo:
