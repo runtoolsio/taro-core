@@ -1,15 +1,16 @@
 import logging
 
 from taro import cfg
-from taro.jobs import lock
+from taro.jobs import lock, plugins
 from taro.jobs.api import Server
 from taro.jobs.events import StateDispatcher, OutputDispatcher
 from taro.jobs.execution import ExecutionState
-from taro.jobs.plugins import PluginBase
 from taro.jobs.runner import RunnerJobInstance
 from taro.jobs.sync import Latch, NoSync
 
 log = logging.getLogger(__name__)
+
+EXT_PLUGIN_MODULE_PREFIX = plugins.DEF_PLUGIN_MODULE_PREFIX
 
 
 def create_managed_job(job_id, execution, state_locker=lock.default_state_locker(), *,
@@ -22,12 +23,7 @@ def create_managed_job(job_id, execution, state_locker=lock.default_state_locker
         RunnerJobInstance(job_id, execution, state_locker, sync, no_overlap=no_overlap, depends_on=depends_on, **params)
 
     if cfg.plugins:
-        PluginBase.load_plugins(EXT_PLUGIN_MODULE_PREFIX, cfg.plugins, reload=False)  # Load plugins if not yet loaded
-    for plugin in PluginBase.name2plugin.values():  # May contain other plugins loaded before
-        try:
-            plugin.new_job_instance(job_instance)
-        except BaseException as e:
-            log.warning("event=[plugin_failed] reason=[exception_on_new_job_instance] detail=[%s]", e)
+        plugins.register_new_job_instance(job_instance, cfg.plugins, plugin_module_prefix=EXT_PLUGIN_MODULE_PREFIX)
 
     job = ManagedJobInstance(job_instance)
     if sync:
@@ -78,6 +74,3 @@ class _PendingValueLatch:
             return True
         else:
             return False
-
-
-EXT_PLUGIN_MODULE_PREFIX = 'taro_'

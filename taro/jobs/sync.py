@@ -17,10 +17,10 @@ class Sync(ABC):
         """
 
     @abstractmethod
-    def wait_and_unlock(self, unlock):
+    def wait_and_unlock(self, global_state_lock):
         """
 
-        :param unlock: function unlocking global execution state lock
+        :param global_state_lock: global execution state lock for unlocking
         """
 
     @abstractmethod
@@ -34,7 +34,7 @@ class NoSync(Sync):
     def new_state(self) -> ExecutionState:
         return ExecutionState.NONE
 
-    def wait_and_unlock(self, state_lock):
+    def wait_and_unlock(self, global_state_lock):
         pass
 
     def release(self):
