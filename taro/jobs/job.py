@@ -247,8 +247,6 @@ class ExecutionStateObserver(abc.ABC):
         """This method is called when job instance execution state is changed."""
 
 
-DisabledJob = namedtuple('DisabledJob', 'job_id regex created expires')
-
 Warn = namedtuple('Warn', 'name params')
 WarnEventCtx = namedtuple('WarnEventCtx', 'count')
 
