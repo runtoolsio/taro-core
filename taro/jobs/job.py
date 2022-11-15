@@ -49,6 +49,10 @@ class JobInstance(abc.ABC):
     def run(self):
         """Run the job"""
 
+    @abc.abstractmethod
+    def release(self, pending_value) -> bool:
+        """Release the job if it is waiting with the pending value otherwise ignore"""
+
     @property
     @abc.abstractmethod
     def lifecycle(self):

@@ -16,10 +16,9 @@ def _create_socket_name(job_info):
 
 class Server(SocketServer):
 
-    def __init__(self, job_instance, latch_release):
+    def __init__(self, job_instance):
         super().__init__(_create_socket_name(job_instance))
         self._job_instance = job_instance
-        self._latch_release = latch_release
 
     def handle(self, req):
         try:
@@ -47,10 +46,7 @@ class Server(SocketServer):
             if 'pending' not in req_body['data']:
                 return self._resp_err(422, "missing_data_field:pending")
 
-            if self._latch_release:
-                released = self._latch_release.release(req_body.get('data').get('pending'))
-            else:
-                released = False
+            released = self._job_instance.release(req_body.get('data').get('pending'))
             return self._resp_ok({"released": released})
 
         if req_body['req']['api'] == '/stop':

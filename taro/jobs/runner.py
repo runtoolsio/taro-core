@@ -15,7 +15,7 @@ from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecyc
     UnexpectedStateError
 from taro.jobs.job import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, Warn, \
     WarnEventCtx, JobInstanceID
-from taro.jobs.sync import NoSync
+from taro.jobs.sync import NoSync, CompositeSync, Latch
 
 log = logging.getLogger(__name__)
 
@@ -28,13 +28,18 @@ def run(job_id, execution, state_locker, no_overlap: bool = False):
 
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, state_locker, sync=NoSync(), *, no_overlap: bool = False, depends_on=None,
-                 **params):
+    def __init__(self, job_id, execution, state_locker, sync=NoSync(), *,
+                 pending_value = None, no_overlap: bool = False, depends_on=None, **params):
         self._id = JobInstanceID(job_id, util.unique_timestamp_hex())
         self._params = params
         self._execution = execution
         self._global_state_locker = state_locker
-        self._sync = sync
+        self._pending_value = pending_value
+        if pending_value:
+            self._latch = Latch(ExecutionState.PENDING)
+            self._sync = CompositeSync((self._latch, sync))
+        else:
+            self._sync = sync
         self._no_overlap = no_overlap
         self._depends_on = depends_on
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
@@ -97,6 +102,13 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def remove_output_observer(self, observer):
         self._output_observers.remove(observer)
 
+    def release(self, pending_value=None):
+        if not self._pending_value or (pending_value and pending_value != self._pending_value):
+            return False
+
+        self._latch.release()
+        return True
+
     def stop(self):
         """
         Cancel not yet started execution or stop started execution.
@@ -134,7 +146,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 if self._stopped_or_interrupted:
                     state = ExecutionState.CANCELLED
                 else:
-                    state = self._sync.new_state()
+                    state = self._sync.set_state()
                     if state == ExecutionState.NONE:
                         state = ExecutionState.TRIGGERED if self._execution.is_async else ExecutionState.RUNNING
 

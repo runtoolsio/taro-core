@@ -6,8 +6,13 @@ from taro import ExecutionState
 
 class Sync(ABC):
 
+    @property
     @abstractmethod
-    def new_state(self) -> ExecutionState:
+    def state(self) -> ExecutionState:
+        """Return current state"""
+
+    @abstractmethod
+    def set_state(self) -> ExecutionState:
         """
         If 'NONE' state is returned then the job can proceed with the execution.
         If returned state belongs to the 'TERMINAL' group then the job must be terminated.
@@ -31,7 +36,11 @@ class Sync(ABC):
 
 
 class NoSync(Sync):
-    def new_state(self) -> ExecutionState:
+    @property
+    def state(self) -> ExecutionState:
+        return ExecutionState.NONE
+
+    def set_state(self) -> ExecutionState:
         return ExecutionState.NONE
 
     def wait_and_unlock(self, global_state_lock):
@@ -41,19 +50,54 @@ class NoSync(Sync):
         pass
 
 
+class CompositeSync(Sync):
+
+    def __init__(self, syncs):
+        self._state = ExecutionState.NONE
+        self._syncs = list(syncs)
+        self._current = NoSync()
+
+    @property
+    def state(self) -> ExecutionState:
+        return self._current.state
+
+    def set_state(self) -> ExecutionState:
+        self._current = NoSync()
+
+        for sync in self._syncs:
+            state = sync.set_state()
+            if state is not ExecutionState.NONE:
+                self._current = sync
+
+        return self.state
+
+    def wait_and_unlock(self, global_state_lock):
+        self._current.wait_and_unlock(global_state_lock)
+
+    def release(self):
+        self._current.release()
+
+
 class Latch(Sync):
 
     def __init__(self, waiting_state: ExecutionState):
         if not waiting_state.is_waiting():
             raise ValueError(f"Invalid execution state for latch: {waiting_state}. Latch requires waiting state.")
+        self._state = ExecutionState.NONE
         self._event = Event()
         self.waiting_state = waiting_state
 
-    def new_state(self) -> ExecutionState:
-        if self._event.is_set():
-            return ExecutionState.NONE
+    @property
+    def state(self) -> ExecutionState:
+        return self._state
 
-        return self.waiting_state
+    def set_state(self) -> ExecutionState:
+        if self._event.is_set():
+            self._state = ExecutionState.NONE
+        else:
+            self._state = self.waiting_state
+
+        return self._state
 
     def wait_and_unlock(self, lock):
         if self._event.is_set():

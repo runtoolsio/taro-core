@@ -4,9 +4,7 @@ from taro import cfg
 from taro.jobs import lock, plugins
 from taro.jobs.api import Server
 from taro.jobs.events import StateDispatcher, OutputDispatcher
-from taro.jobs.execution import ExecutionState
 from taro.jobs.runner import RunnerJobInstance
-from taro.jobs.sync import Latch, NoSync
 
 log = logging.getLogger(__name__)
 
@@ -15,27 +13,20 @@ EXT_PLUGIN_MODULE_PREFIX = plugins.DEF_PLUGIN_MODULE_PREFIX
 
 def create_managed_job(job_id, execution, state_locker=lock.default_state_locker(), *,
                        no_overlap=False, depends_on=None, pending_value=None, **params):
-    if pending_value:
-        sync = Latch(ExecutionState.PENDING)
-    else:
-        sync = NoSync()
     job_instance = \
-        RunnerJobInstance(job_id, execution, state_locker, sync, no_overlap=no_overlap, depends_on=depends_on, **params)
+        RunnerJobInstance(job_id, execution, state_locker,
+                          pending_value=pending_value, no_overlap=no_overlap, depends_on=depends_on, **params)
 
     if cfg.plugins:
         plugins.register_new_job_instance(job_instance, cfg.plugins, plugin_module_prefix=EXT_PLUGIN_MODULE_PREFIX)
 
-    job = ManagedJobInstance(job_instance)
-    if sync:
-        job.pending_value = _PendingValueLatch(pending_value, sync)
-    return job
+    return ManagedJobInstance(job_instance)
 
 
 class ManagedJobInstance:
 
     def __init__(self, job_instance):
         self.job_instance = job_instance
-        self.pending_value = None
 
     def __call__(self, *args, **kwargs):
         # Send state events to external state listeners
@@ -46,7 +37,7 @@ class ManagedJobInstance:
         output_dispatcher = OutputDispatcher()
         self.job_instance.add_output_observer(output_dispatcher)
 
-        api = Server(self.job_instance, self.pending_value)
+        api = Server(self.job_instance)
         api_started = api.start()  # Starts a new thread
         if not api_started:
             log.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")
@@ -60,17 +51,3 @@ class ManagedJobInstance:
                     c.close()
                 except BaseException:
                     log.exception("event=[failed_to_close_resource] resource=[%s]", c)
-
-
-class _PendingValueLatch:
-
-    def __init__(self, value, latch):
-        self.value = value
-        self.latch = latch
-
-    def release(self, value):
-        if self.value == value:
-            self.latch.release()
-            return True
-        else:
-            return False
