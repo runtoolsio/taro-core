@@ -145,7 +145,7 @@ class Latch(Sync):
 
         lock.unlock()
         self._event.wait()
-        self._signal = Signal.CONTINUE
 
     def release(self):
+        self._signal = Signal.CONTINUE
         self._event.set()
