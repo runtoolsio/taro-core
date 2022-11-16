@@ -57,16 +57,21 @@ class Sync(ABC):
 
 
 class NoSync(Sync):
+
+    def __init__(self):
+        self._current_signal = Signal.NONE
+
     @property
     def current_signal(self) -> Signal:
-        return Signal.CONTINUE
+        return self._current_signal
 
     @property
     def exec_state(self) -> ExecutionState:
         return ExecutionState.NONE
 
     def set_signal(self) -> Signal:
-        return Signal.CONTINUE
+        self._current_signal = Signal.CONTINUE
+        return self.current_signal
 
     def wait_and_unlock(self, global_state_lock):
         pass
@@ -91,12 +96,10 @@ class CompositeSync(Sync):
         return self._current.exec_state
 
     def set_signal(self) -> Signal:
-        self._current = NoSync()
-
         for sync in self._syncs:
+            self._current = sync
             signal = sync.set_signal()
             if signal is not Signal.CONTINUE:
-                self._current = sync
                 break
 
         return self.current_signal
@@ -142,6 +145,7 @@ class Latch(Sync):
 
         lock.unlock()
         self._event.wait()
+        self._signal = Signal.CONTINUE
 
     def release(self):
         self._event.set()
