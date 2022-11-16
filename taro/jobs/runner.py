@@ -15,7 +15,7 @@ from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecyc
     UnexpectedStateError
 from taro.jobs.job import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, Warn, \
     WarnEventCtx, JobInstanceID
-from taro.jobs.sync import NoSync, CompositeSync, Latch
+from taro.jobs.sync import NoSync, CompositeSync, Latch, Signal
 
 log = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def run(job_id, execution, state_locker, no_overlap: bool = False):
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
     def __init__(self, job_id, execution, state_locker, sync=NoSync(), *,
-                 pending_value = None, no_overlap: bool = False, depends_on=None, **params):
+                 pending_value=None, no_overlap: bool = False, depends_on=None, **params):
         self._id = JobInstanceID(job_id, util.unique_timestamp_hex())
         self._params = params
         self._execution = execution
@@ -141,27 +141,9 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def run(self):
         # TODO Check executed only once
 
-        while True:
-            with self._global_state_locker() as state_lock:
-                if self._stopped_or_interrupted:
-                    state = ExecutionState.CANCELLED
-                else:
-                    state = self._sync.set_state()
-                    if state == ExecutionState.NONE:
-                        state = ExecutionState.TRIGGERED if self._execution.is_async else ExecutionState.RUNNING
-
-                self._state_change(state, use_global_lock=False)
-
-                if state.is_waiting():
-                    self._sync.wait_and_unlock(state_lock)
-                    continue  # Repeat as waiting can be still needed or another waiting condition must be evaluated
-                if state.is_executing():
-                    self._executing = True
-                    break
-                if state.is_terminal():
-                    return
-
-                raise UnexpectedStateError(f"Unsupported state returned from sync: {state}")
+        synchronized = self._synchronize()
+        if not synchronized:
+            return
 
         if self._no_overlap or self._depends_on:
             try:
@@ -192,6 +174,36 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             state = ExecutionState.COMPLETED if e.code == 0 else ExecutionState.FAILED  # TODO Different states?
             self._state_change(state)
             raise
+
+    def _synchronize(self) -> bool:
+        while True:
+            with self._global_state_locker() as state_lock:
+                if self._stopped_or_interrupted:
+                    signal = Signal.TERMINATE
+                    state = ExecutionState.CANCELLED
+                else:
+                    signal = self._sync.set_signal()
+                    if signal is Signal.NONE:
+                        assert False  # TODO raise exception
+
+                    if signal is Signal.CONTINUE:
+                        # TODO remove the async condition
+                        state = ExecutionState.TRIGGERED if self._execution.is_async else ExecutionState.RUNNING
+                    else:
+                        state = self._sync.exec_state
+                        if not (state.is_waiting() or state.is_terminal()):
+                            raise UnexpectedStateError(f"Unsupported state returned from sync: {state}")
+
+                self._state_change(state, use_global_lock=False)
+
+                if signal is Signal.WAIT:
+                    self._sync.wait_and_unlock(state_lock)
+                    continue  # Repeat as waiting can be still needed or another waiting condition must be evaluated
+                if signal is Signal.TERMINATE:
+                    return False
+
+                self._executing = True
+                return True
 
     # Inline?
     def _log(self, event: str, msg: str):
