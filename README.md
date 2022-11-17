@@ -3,8 +3,9 @@
 Tool for monitoring and managing jobs and processes. Created for managing cron jobs scheduled on many remote instances
 from [single client application](https://github.com/taro-suite/taroc).
 
-## Similar products
-[Pueue](https://github.com/nukesor/pueue)
+## Similar or related projects
+[Pueue](https://github.com/nukesor/pueue)  
+[MProcs][https://github.com/pvolok/mprocs]  
 
 ## Main Features
 
