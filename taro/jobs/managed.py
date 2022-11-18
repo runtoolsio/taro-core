@@ -37,7 +37,8 @@ class ManagedJobInstance:
         output_dispatcher = OutputDispatcher()
         self.job_instance.add_output_observer(output_dispatcher)
 
-        api = Server(self.job_instance)
+        api = Server()
+        api.add_job_instance(self.job_instance)
         api_started = api.start()  # Starts a new thread
         if not api_started:
             log.warning("event=[api_not_started] message=[Interface for managing the job failed to start]")

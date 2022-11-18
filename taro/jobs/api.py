@@ -1,8 +1,9 @@
 import json
 import logging
+from abc import ABC, abstractmethod
 from json import JSONDecodeError
 
-from taro import dto
+from taro import dto, util
 from taro.socket import SocketServer
 
 log = logging.getLogger(__name__)
@@ -10,75 +11,167 @@ log = logging.getLogger(__name__)
 API_FILE_EXTENSION = '.api'
 
 
-def _create_socket_name(job_info):
-    return job_info.instance_id + API_FILE_EXTENSION
+def _create_socket_name():
+    return util.unique_timestamp_hex() + API_FILE_EXTENSION
+
+
+class _ServerError(Exception):
+
+    def __init__(self, code, error):
+        self.code = code
+        self.error = error
+
+    def create_response(self):
+        return _resp_err(self.code, self.error)
+
+
+class APIResource(ABC):
+
+    @property
+    @abstractmethod
+    def path(self):
+        """Path of the resource including leading '/' character"""
+
+    def validate(self, req_body):
+        """Raise :class:`__ServerError if request body is invalid"""
+
+    @abstractmethod
+    def handle(self, job_instance, req_body):
+        """Handle request and optionally return response or raise :class:`__ServerError"""
+
+
+class JobsResource(APIResource):
+
+    @property
+    def path(self):
+        return '/jobs'
+
+    def handle(self, job_instance, req_body):
+        return {"job_info": dto.to_info_dto(job_instance.create_info())}
+
+
+class ReleaseResource(APIResource):
+
+    @property
+    def path(self):
+        return '/jobs/release'
+
+    def validate(self, req_body):
+        if 'data' not in req_body:
+            raise _missing_field_error('data')
+        if 'pending' not in req_body['data']:
+            raise _missing_field_error('data.pending')
+
+    def handle(self, job_instance, req_body):
+        released = job_instance.release(req_body.get('data').get('pending'))
+        return {"released": released}
+
+
+class StopResource(APIResource):
+
+    @property
+    def path(self):
+        return '/jobs/stop'
+
+    def handle(self, job_instance, req_body):
+        job_instance.stop()
+        return {"result": "stop_performed"}
+
+
+class TailResource(APIResource):
+
+    @property
+    def path(self):
+        return '/jobs/tail'
+
+    def handle(self, job_instance, req_body):
+        return {"tail": job_instance.last_output}
+
+
+DEFAULT_RESOURCES = JobsResource(), ReleaseResource(), StopResource(), TailResource()
 
 
 class Server(SocketServer):
 
-    def __init__(self, job_instance):
-        super().__init__(_create_socket_name(job_instance))
-        self._job_instance = job_instance
+    def __init__(self, resources=DEFAULT_RESOURCES):
+        super().__init__(_create_socket_name())
+        self._resources = {resource.path: resource for resource in resources}
+        self._job_instances = []
+
+    def add_job_instance(self, job_instance):
+        self._job_instances.append(job_instance)
+
+    def remove_job_instance(self, job_instance):
+        self._job_instances.remove(job_instance)
 
     def handle(self, req):
         try:
             req_body = json.loads(req)
         except JSONDecodeError as e:
             log.warning(f"event=[invalid_json_request_body] length=[{e}]")
-            return self._resp_err(400, "invalid_req_body")
+            return _resp_err(400, "invalid_req_body")
 
-        if 'req' not in req_body:
-            return self._resp_err(422, "missing_req")
-        if 'api' not in req_body['req']:
-            return self._resp_err(422, "missing_req_api")
+        try:
+            resource = self._resolve_resource(req_body)
+            resource.validate(req_body)
+        except _ServerError as e:
+            return e.create_response()
 
         job_instance_filter = req_body.get('job_instance')
-        if job_instance_filter and not self._job_instance.create_info().matches(job_instance_filter):
-            return self._resp(412, {"reason": "job_instance_not_matching"})
+        job_instances = [job for job in self._job_instances.copy()
+                         if not job_instance_filter or job.create_info().matches(job_instance_filter)]
+        jobs = []
+        for job_instance in job_instances:
+            data = resource.handle(job_instance, req_body)
+            jobs.append(_job_data(job_instance, data))
 
-        if req_body['req']['api'] == '/job':
-            info_dto = dto.to_info_dto(self._job_instance.create_info())
-            return self._resp_ok({"job_info": info_dto})
+        return _resp_ok(jobs)
 
-        if req_body['req']['api'] == '/release':
-            if 'data' not in req_body:
-                return self._resp_err(422, "missing_data")
-            if 'pending' not in req_body['data']:
-                return self._resp_err(422, "missing_data_field:pending")
+    def _resolve_resource(self, req_body) -> APIResource:
+        if 'req' not in req_body:
+            raise _missing_field_error('req')
+        if 'api' not in req_body['req']:
+            raise _missing_field_error('req.api')
 
-            released = self._job_instance.release(req_body.get('data').get('pending'))
-            return self._resp_ok({"released": released})
+        api = req_body['req']['api']
+        resource = self._resources.get(api)
+        if not resource:
+            raise _ServerError(404, f"{api} API not found")
 
-        if req_body['req']['api'] == '/stop':
-            self._job_instance.stop()
-            return self._resp_ok({"result": "stop_performed"})
+        return resource
 
-        if req_body['req']['api'] == '/tail':
-            return self._resp_ok({"tail": self._job_instance.last_output})
 
-        return self._resp_err(404, "req_api_not_found")
+def _missing_field_error(field) -> _ServerError:
+    return _ServerError(422, f"missing_field:{field}")
 
-    def _resp_ok(self, data):
-        return self._resp(200, data)
 
-    def _resp(self, code: int, data):
-        resp = {
-            "resp": {"code": code},
-            "job_id": self._job_instance.job_id,
-            "instance_id": self._job_instance.instance_id,
-            "data": data
-        }
-        return json.dumps(resp)
+def _job_data(job_instance, data):
+    return {
+        "job_id": job_instance.job_id,
+        "instance_id": job_instance.instance_id,
+        "data": data
+    }
 
-    def _resp_err(self, code: int, error: str):
-        if 400 > code >= 600:
-            raise ValueError("Error code must be 4xx or 5xx")
 
-        err_resp = {
-            "resp": {"code": code},
-            "job_id": self._job_instance.job_id,
-            "instance_id": self._job_instance.instance_id,
-            "error": error
-        }
+def _resp_ok(jobs):
+    return _resp(200, jobs)
 
-        return json.dumps(err_resp)
+
+def _resp(code: int, jobs):
+    resp = {
+        "resp": {"code": code},
+        "jobs": jobs
+    }
+    return json.dumps(resp)
+
+
+def _resp_err(code: int, error: str):
+    if 400 > code >= 600:
+        raise ValueError("Error code must be 4xx or 5xx")
+
+    err_resp = {
+        "resp": {"code": code},
+        "error": error
+    }
+
+    return json.dumps(err_resp)

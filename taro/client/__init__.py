@@ -46,22 +46,21 @@ class JobsClient(SocketClient):
             req['data'] = data
 
         return [
-            resp
-            for _, resp_body, error in self.communicate(json.dumps(req), include=include)
-            if not error and (resp := json.loads(resp_body))['resp']['code'] != 412  # Ignore precondition failed
+            json.loads(resp_body) for _, resp_body, error in self.communicate(json.dumps(req), include=include)
+            if not error
         ]
 
     def read_jobs_info(self, job_instance="") -> List[JobInfo]:
-        responses = self._send_request('/job', job_instance=job_instance)
-        return [dto.to_job_info(resp['data']['job_info']) for resp in responses]
+        responses = self._send_request('/jobs', job_instance=job_instance)
+        return [dto.to_job_info(job['data']['job_info']) for job in _get_jobs(responses)]
 
     def read_tail(self, job_instance) -> List[Tuple[JobInstanceID, List[str]]]:
-        responses = self._send_request('/tail', job_instance=job_instance)
-        return [(_job_instance_id(resp), resp['data']['tail']) for resp in responses]
+        responses = self._send_request('/jobs/tail', job_instance=job_instance)
+        return [(_job_instance_id(job), job['data']['tail']) for job in _get_jobs(responses)]
 
     def release_jobs(self, pending) -> List[JobInstanceID]:
-        responses = self._send_request('/release', data={"pending": pending})
-        return [_job_instance_id(resp) for resp in responses if resp['data']['released']]
+        responses = self._send_request('/jobs/release', data={"pending": pending})
+        return [_job_instance_id(job) for job in _get_jobs(responses) if job['data']['released']]
 
     def stop_jobs(self, instances) -> List[Tuple[JobInstanceID, str]]:
         """
@@ -72,9 +71,13 @@ class JobsClient(SocketClient):
         if not instances:
             raise ValueError('Instances to be stopped cannot be empty')
 
-        responses = self._send_request('/stop', include=instances)
-        return [(_job_instance_id(resp), resp['data']['result']) for resp in responses]
+        responses = self._send_request('/jobs/stop', include=instances)
+        return [(_job_instance_id(job), job['data']['result']) for job in _get_jobs(responses)]
 
 
-def _job_instance_id(resp):
-    return JobInstanceID(resp['job_id'], resp['instance_id'])
+def _job_instance_id(job_resp):
+    return JobInstanceID(job_resp['job_id'], job_resp['instance_id'])
+
+
+def _get_jobs(responses):
+    return [job for resp in responses for job in resp['jobs']]
