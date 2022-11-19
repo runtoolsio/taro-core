@@ -38,17 +38,14 @@ class JobsClient(SocketClient):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def _send_request(self, api: str, *, data=None, job_instance: str = '', include=()) -> List[Dict[str, Any]]:
+    def _send_request(self, api: str, *, data=None, job_instance: str = '') -> List[Dict[str, Any]]:
         req = {'req': {'api': api}}
         if job_instance:
             req['job_instance'] = job_instance
         if data:
             req['data'] = data
 
-        return [
-            json.loads(resp_body) for _, resp_body, error in self.communicate(json.dumps(req), include=include)
-            if not error
-        ]
+        return [json.loads(resp_body) for _, resp_body, error in self.communicate(json.dumps(req)) if not error]
 
     def read_jobs_info(self, job_instance="") -> List[JobInfo]:
         responses = self._send_request('/jobs', job_instance=job_instance)
@@ -62,16 +59,16 @@ class JobsClient(SocketClient):
         responses = self._send_request('/jobs/release', data={"pending": pending})
         return [_job_instance_id(job) for job in _get_jobs(responses) if job['data']['released']]
 
-    def stop_jobs(self, instances) -> List[Tuple[JobInstanceID, str]]:
+    def stop_jobs(self, instance) -> List[Tuple[JobInstanceID, str]]:
         """
 
-        :param instances:
+        :param instance:
         :return: list of tuple[instance-id, stop-result]
         """
-        if not instances:
+        if not instance:
             raise ValueError('Instances to be stopped cannot be empty')
 
-        responses = self._send_request('/jobs/stop', include=instances)
+        responses = self._send_request('/jobs/stop', job_instance=instance)
         return [(_job_instance_id(job), job['data']['result']) for job in _get_jobs(responses)]
 
 
