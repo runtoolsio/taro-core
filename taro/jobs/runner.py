@@ -5,8 +5,10 @@ import contextlib
 import copy
 import logging
 from collections import deque, Counter
+from itertools import chain
+from operator import itemgetter
 from threading import RLock
-from typing import List, Union, Callable
+from typing import List, Union, Callable, Tuple
 
 import taro.client
 from taro import util
@@ -14,7 +16,7 @@ from taro.jobs import persistence
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver, \
     UnexpectedStateError
 from taro.jobs.job import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, Warn, \
-    WarnEventCtx, JobInstanceID
+    WarnEventCtx, JobInstanceID, DEFAULT_OBSERVER_PRIORITY
 from taro.jobs.sync import NoSync, CompositeSync, Latch, Signal
 
 log = logging.getLogger(__name__)
@@ -24,6 +26,18 @@ def run(job_id, execution, state_locker, no_overlap: bool = False):
     instance = RunnerJobInstance(job_id, execution, state_locker, no_overlap=no_overlap)
     instance.run()
     return instance
+
+
+def _add_prioritized(prioritized_seq, priority, item):
+    return sorted(chain(prioritized_seq, [(priority, item)]), key=itemgetter(0))
+
+
+def _remove_prioritized(prioritized_seq, item):
+    return [(priority, i) for priority, i in prioritized_seq if i != item]
+
+
+def _gen_prioritized(*prioritized_seq):
+    return (item for _, item in chain(*prioritized_seq))
 
 
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
@@ -84,23 +98,23 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             return JobInfo(self._id, copy.deepcopy(self._lifecycle), self.status, self.warnings, self.exec_error,
                            **self._params)
 
-    def add_state_observer(self, observer):
-        self._state_observers.append(observer)
+    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+        self._state_observers = _add_prioritized(self._state_observers, priority, observer)
 
     def remove_state_observer(self, observer):
-        self._state_observers.remove(observer)
+        self._state_observers = _remove_prioritized(self._state_observers, observer)
 
-    def add_warning_observer(self, observer):
-        self._warning_observers.append(observer)
+    def add_warning_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+        self._warning_observers = _add_prioritized(self._warning_observers, priority, observer)
 
     def remove_warning_observer(self, observer):
-        self._warning_observers.remove(observer)
+        self._warning_observers = _remove_prioritized(self._warning_observers, observer)
 
-    def add_output_observer(self, observer):
-        self._output_observers.append(observer)
+    def add_output_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+        self._output_observers = _add_prioritized(self._output_observers, priority, observer)
 
     def remove_output_observer(self, observer):
-        self._output_observers.remove(observer)
+        self._output_observers = _remove_prioritized(self._output_observers, observer)
 
     def release(self, pending_value=None):
         if not self._pending_value or (pending_value and pending_value != self._pending_value):
@@ -236,7 +250,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             self._notify_state_observers(job_info)
 
     def _notify_state_observers(self, job_info: JobInfo):
-        for observer in (self._state_observers + _state_observers):
+        for observer in _gen_prioritized(self._state_observers, _state_observers):
             # noinspection PyBroadException
             try:
                 if isinstance(observer, ExecutionStateObserver):
@@ -249,7 +263,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 log.exception("event=[state_observer_exception]")
 
     def _notify_warning_observers(self, job_info: JobInfo, warning: Warn, event_ctx: WarnEventCtx):
-        for observer in (self._warning_observers + _warning_observers):
+        for observer in _gen_prioritized(self._warning_observers, _warning_observers):
             # noinspection PyBroadException
             try:
                 if isinstance(observer, WarningObserver):
@@ -267,7 +281,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._notify_output_observers(self.create_info(), output)
 
     def _notify_output_observers(self, job_info: JobInfo, output):
-        for observer in (self._output_observers + _output_observers):
+        for observer in _gen_prioritized(self._output_observers, _output_observers):
             # noinspection PyBroadException
             try:
                 if isinstance(observer, JobOutputObserver):
@@ -280,30 +294,36 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 log.exception("event=[output_observer_exception]")
 
 
-_state_observers: List[Union[ExecutionStateObserver, Callable]] = []
-_warning_observers: List[Union[WarningObserver, Callable]] = []
-_output_observers: List[Union[JobOutputObserver, Callable]] = []
+_state_observers: List[Union[Tuple[int, ExecutionStateObserver], Tuple[int, Callable]]] = []
+_warning_observers: List[Union[Tuple[int, WarningObserver], Tuple[int, Callable]]] = []
+_output_observers: List[Union[Tuple[int, JobOutputObserver], Tuple[int, Callable]]] = []
 
 
-def register_state_observer(observer):
-    _state_observers.append(observer)
+def register_state_observer(observer, priority=DEFAULT_OBSERVER_PRIORITY):
+    global _state_observers
+    _state_observers = _add_prioritized(_state_observers, priority, observer)
 
 
 def deregister_state_observer(observer):
-    _state_observers.remove(observer)
+    global _state_observers
+    _state_observers = _remove_prioritized(_state_observers, observer)
 
 
-def register_warning_observer(observer):
-    _warning_observers.append(observer)
+def register_warning_observer(observer, priority=DEFAULT_OBSERVER_PRIORITY):
+    global _warning_observers
+    _warning_observers = _add_prioritized(_warning_observers, priority, observer)
 
 
 def deregister_warning_observer(observer):
-    _warning_observers.remove(observer)
+    global _warning_observers
+    _warning_observers = _remove_prioritized(_warning_observers, observer)
 
 
-def register_output_observer(observer):
-    _output_observers.append(observer)
+def register_output_observer(observer, priority=DEFAULT_OBSERVER_PRIORITY):
+    global _output_observers
+    _output_observers = _add_prioritized(_output_observers, priority, observer)
 
 
 def deregister_output_observer(observer):
-    _output_observers.remove(observer)
+    global _output_observers
+    _output_observers = _remove_prioritized(_output_observers, observer)

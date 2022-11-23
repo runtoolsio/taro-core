@@ -28,6 +28,9 @@ class JobInstanceID(NamedTuple):
         return "{}@{}".format(self.job_id, self.instance_id)
 
 
+DEFAULT_OBSERVER_PRIORITY = 100
+
+
 class JobInstance(abc.ABC):
 
     @property
@@ -111,14 +114,15 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_state_observer(self, observer):
+    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         """
         Register execution state observer
         Observer can be:
             1. An instance of ExecutionStateObserver
             2. Callable object with single parameter of JobInfo type
 
-        :param observer observer to register
+        :param observer: observer to register
+        :param priority: observer priority as number (lower number is notified first)
         """
 
     @abc.abstractmethod
@@ -130,11 +134,12 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_warning_observer(self, observer):
+    def add_warning_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         """
         Register warning observer
 
-        :param observer observer to register
+        :param observer: observer to register
+        :param priority: observer priority as number (lower number is notified first)
         """
 
     @abc.abstractmethod
@@ -146,11 +151,12 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_output_observer(self, observer):
+    def add_output_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         """
         Register output observer
 
-        :param observer observer to register
+        :param observer: observer to register
+        :param priority: observer priority as number (lower number is notified first)
         """
 
     @abc.abstractmethod
@@ -174,6 +180,7 @@ class DelegatingJobInstance(JobInstance):
     @abc.abstractmethod
     def run(self):
         """Run the job"""
+
     @property
     def lifecycle(self):
         return self.delegated.lifecycle
@@ -206,19 +213,19 @@ class DelegatingJobInstance(JobInstance):
     def interrupt(self):
         self.delegated.interrupt()
 
-    def add_state_observer(self, observer):
+    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self.delegated.add_state_observer(observer)
 
     def remove_state_observer(self, observer):
         self.delegated.remove_state_observer(observer)
 
-    def add_warning_observer(self, observer):
+    def add_warning_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self.delegated.add_warning_observer(observer)
 
     def remove_warning_observer(self, observer):
         self.delegated.remove_warning_observer(observer)
 
-    def add_output_observer(self, observer):
+    def add_output_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self.delegated.add_output_observer(observer)
 
     def remove_output_observer(self, observer):
