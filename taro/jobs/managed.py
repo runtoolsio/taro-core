@@ -82,7 +82,7 @@ class ManagedJobContext(ExecutionStateObserver):
         return job_instance
 
     def state_update(self, job_info: JobInfo):
-        if job_info.lifecycle.state().is_terminal():
+        if job_info.lifecycle.state.is_terminal():
             self._close_job(job_info.id)
 
     def _close_job(self, job_instance_id):

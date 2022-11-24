@@ -42,7 +42,7 @@ def run(args):
         if execution.ret_code < 0:
             raise ProgramExecutionError(abs(execution.ret_code) + 128)
 
-    term_state = job_instance.lifecycle.state()
+    term_state = job_instance.lifecycle.state
     if term_state.is_failure():
         raise ProgramExecutionError(1)
 

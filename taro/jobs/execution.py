@@ -201,44 +201,52 @@ class ExecutionLifecycle:
         return copied
 
     def __deepcopy__(self, memo):
-        return ExecutionLifecycle(*self.state_changes())
+        return ExecutionLifecycle(*self.state_changes)
 
+    @property
     def state(self):
         return next(reversed(self._state_changes.keys()), ExecutionState.NONE)
 
+    @property
     def states(self) -> List[ExecutionState]:
         return list(self._state_changes.keys())
 
+    @property
     def state_changes(self) -> Iterable[Tuple[ExecutionState, datetime.datetime]]:
         return ((state, changed) for state, changed in self._state_changes.items())
 
     def changed(self, state: ExecutionState) -> datetime.datetime:
         return self._state_changes[state]
 
+    @property
     def last_changed(self) -> Optional[datetime.datetime]:
         return next(reversed(self._state_changes.values()), None)
 
+    @property
     def first_executing_state(self) -> Optional[ExecutionState]:
         return next((state for state in self._state_changes if state.is_executing()), None)
 
     def executed(self) -> bool:
-        return self.first_executing_state() is not None
+        return self.first_executing_state is not None
 
+    @property
     def execution_started(self) -> Optional[datetime.datetime]:
-        return self._state_changes.get(self.first_executing_state())
+        return self._state_changes.get(self.first_executing_state)
 
+    @property
     def execution_finished(self) -> Optional[datetime.datetime]:
-        state = self.state()
+        state = self.state
         if not state.is_terminal():
             return None
         return self.changed(state)
 
+    @property
     def execution_time(self) -> Optional[datetime.timedelta]:
-        started = self.execution_started()
+        started = self.execution_started
         if not started:
             return None
 
-        finished = self.execution_finished() or util.utc_now()
+        finished = self.execution_finished or util.utc_now()
         return finished - started
 
     def __repr__(self) -> str:
@@ -252,7 +260,7 @@ class ExecutionLifecycleManagement(ExecutionLifecycle):
         super().__init__(*state_changes)
 
     def set_state(self, new_state) -> bool:
-        if not new_state or new_state == ExecutionState.NONE or self.state() == new_state:
+        if not new_state or new_state == ExecutionState.NONE or self.state == new_state:
             return False
         else:
             self._state_changes[new_state] = utc_now()

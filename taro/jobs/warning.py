@@ -29,7 +29,7 @@ class _ExecTimeWarning(ExecutionStateObserver):
             self.timer.cancel()
 
     def _check(self):
-        if not self.job_instance.lifecycle.state().is_terminal():
+        if not self.job_instance.lifecycle.state.is_terminal():
             warn = Warn(self.name, {'exceeded_sec': self.time})
             self.job_instance.add_warning(warn)
 

@@ -89,9 +89,9 @@ def _sort_key(sort: SortCriteria):
         if sort == SortCriteria.CREATED:
             return j.lifecycle.changed(ExecutionState.CREATED)
         if sort == SortCriteria.FINISHED:
-            return j.lifecycle.execution_finished()
+            return j.lifecycle.execution_finished
         if sort == SortCriteria.TIME:
-            return j.lifecycle.execution_time()
+            return j.lifecycle.execution_time
         raise ValueError(sort)
 
     return key

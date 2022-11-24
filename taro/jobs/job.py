@@ -270,7 +270,7 @@ class JobInfo:
 
     @property
     def state(self):
-        return self._lifecycle.state()
+        return self._lifecycle.state
 
     @property
     def status(self):
