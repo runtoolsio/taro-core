@@ -6,7 +6,6 @@ Command: exec
 import pytest
 
 import taro.jobs.managed
-import taroapp.cmd.exec
 import test_plugin
 from taro.jobs import runner
 from taro.jobs.execution import ExecutionState

@@ -1,8 +1,9 @@
 import logging
 import signal
 
-import taro
 from taro import util
+from taro.jobs import warning
+from taro.jobs.managed import ManagedJobContext
 from taro.jobs.program import ProgramExecution
 from taro.test.execution import TestExecution
 
@@ -15,21 +16,25 @@ def run(args):
         execution = TestExecution(args.dry_run)
     else:
         execution = ProgramExecution([args.command] + args.arg, read_output=not args.bypass_output)
-    extensions = []
-    for warn_time in args.warn_time:
-        extensions.append(taro.exec_time_warning(util.str_to_seconds(warn_time)))
-    for warn_output in args.warn_output:
-        extensions.append(taro.output_warning(warn_output))
 
-    managed_job = taro.managed_job(
-        job_id, execution, *extensions, no_overlap=args.no_overlap, depends_on=args.depends_on,
-        pending_value=args.pending, **(dict(args.param) if args.param else dict()))
+    with ManagedJobContext() as ctx:
+        job_instance = ctx.create_job(
+            job_id, execution, no_overlap=args.no_overlap, depends_on=args.depends_on, pending_value=args.pending,
+            **(dict(args.param) if args.param else dict()))
 
-    term = Term(managed_job.job_instance)
-    signal.signal(signal.SIGTERM, term.terminate)
-    signal.signal(signal.SIGINT, term.interrupt)
+        term = Term(job_instance)
+        signal.signal(signal.SIGTERM, term.terminate)
+        signal.signal(signal.SIGINT, term.interrupt)
 
-    managed_job()
+        # TODO Move to managed
+        for warn_time in args.warn_time:
+            time = util.str_to_seconds(warn_time)
+            warning.exec_time_exceeded(job_instance, f"exec_time>{time}s", time)
+
+        for warn_output in args.warn_output:
+            warning.output_matches(job_instance, f"output=~{warn_output}", warn_output)
+
+        job_instance.run()
 
     if isinstance(execution, ProgramExecution) and execution.ret_code:
         if execution.ret_code > 0:
@@ -37,7 +42,7 @@ def run(args):
         if execution.ret_code < 0:
             raise ProgramExecutionError(abs(execution.ret_code) + 128)
 
-    term_state = managed_job.job_instance.lifecycle.state()
+    term_state = job_instance.lifecycle.state()
     if term_state.is_failure():
         raise ProgramExecutionError(1)
 
