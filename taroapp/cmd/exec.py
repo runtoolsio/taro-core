@@ -1,8 +1,6 @@
 import logging
 import signal
 
-from taro import util
-from taro.jobs import warning
 from taro.jobs.managed import ManagedJobContext
 from taro.jobs.program import ProgramExecution
 from taro.test.execution import TestExecution
@@ -19,20 +17,18 @@ def run(args):
 
     with ManagedJobContext() as ctx:
         job_instance = ctx.create_job(
-            job_id, execution, no_overlap=args.no_overlap, depends_on=args.depends_on, pending_value=args.pending,
+            job_id,
+            execution,
+            warn_times=args.warn_time,
+            warn_outputs=args.warn_output,
+            no_overlap=args.no_overlap,
+            depends_on=args.depends_on,
+            pending_value=args.pending,
             **(dict(args.param) if args.param else dict()))
 
         term = Term(job_instance)
         signal.signal(signal.SIGTERM, term.terminate)
         signal.signal(signal.SIGINT, term.interrupt)
-
-        # TODO Move to managed
-        for warn_time in args.warn_time:
-            time = util.str_to_seconds(warn_time)
-            warning.exec_time_exceeded(job_instance, f"exec_time>{time}s", time)
-
-        for warn_output in args.warn_output:
-            warning.output_matches(job_instance, f"output=~{warn_output}", warn_output)
 
         job_instance.run()
 

@@ -2,9 +2,9 @@ import logging
 from threading import Lock
 from typing import List
 
-from taro import cfg, JobInstance, ExecutionStateObserver, JobInfo
+from taro import cfg, JobInstance, ExecutionStateObserver, JobInfo, util
 from taro.err import InvalidStateError
-from taro.jobs import lock, plugins
+from taro.jobs import lock, plugins, warning
 from taro.jobs.api import Server
 from taro.jobs.events import StateDispatcher, OutputDispatcher
 from taro.jobs.runner import RunnerJobInstance
@@ -55,8 +55,17 @@ class ManagedJobContext(ExecutionStateObserver):
             if not self._managed_jobs:
                 self._close()
 
-    def create_job(self, job_id, execution, state_locker=lock.default_state_locker(), *,
-                   no_overlap=False, depends_on=None, pending_value=None, **params) -> JobInstance:
+    def create_job(self,
+                   job_id,
+                   execution,
+                   state_locker=lock.default_state_locker(),
+                   *,
+                   warn_times=(),
+                   warn_outputs=(),
+                   no_overlap=False,
+                   depends_on=None,
+                   pending_value=None,
+                   **params) -> JobInstance:
         if not self._opened:
             raise InvalidStateError("Cannot create job because the context has not been opened")
         if self._closed:
@@ -75,6 +84,13 @@ class ManagedJobContext(ExecutionStateObserver):
 
         if cfg.plugins:
             plugins.register_new_job_instance(job_instance, cfg.plugins, plugin_module_prefix=EXT_PLUGIN_MODULE_PREFIX)
+
+        for warn_time in warn_times:
+            time = util.str_to_seconds(warn_time)
+            warning.exec_time_exceeded(job_instance, f"exec_time>{time}s", time)
+
+        for warn_output in warn_outputs:
+            warning.output_matches(job_instance, f"output=~{warn_output}", warn_output)
 
         job_instance.add_state_observer(self, 1000)  # Must be notified last because it is used to close job resources
         self._managed_jobs.append(job_instance)
