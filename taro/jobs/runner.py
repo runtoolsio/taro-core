@@ -22,8 +22,8 @@ from taro.jobs.sync import NoSync, CompositeSync, Latch, Signal
 log = logging.getLogger(__name__)
 
 
-def run(job_id, execution, state_locker, no_overlap: bool = False):
-    instance = RunnerJobInstance(job_id, execution, state_locker, no_overlap=no_overlap)
+def run(job_id, execution, state_locker):
+    instance = RunnerJobInstance(job_id, execution, state_locker)
     instance.run()
     return instance
 
@@ -42,8 +42,7 @@ def _gen_prioritized(*prioritized_seq):
 
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, state_locker, sync=NoSync(), *,
-                 pending_value=None, no_overlap: bool = False, depends_on=None, **params):
+    def __init__(self, job_id, execution, state_locker, sync=NoSync(), *, pending_value=None, depends_on=None, **params):
         self._id = JobInstanceID(job_id, util.unique_timestamp_hex())
         self._params = params
         self._execution = execution
@@ -54,7 +53,6 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             self._sync = CompositeSync((self._latch, sync))
         else:
             self._sync = sync
-        self._no_overlap = no_overlap
         self._depends_on = depends_on
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
         self._last_output = deque(maxlen=10)
@@ -155,19 +153,19 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def run(self):
         # TODO Check executed only once
 
-        synchronized = self._synchronize()
+        try:
+            synchronized = self._synchronize()
+        except Exception as e:
+            log.error('event=[sync_error]', exc_info=e)
+            self._state_change(ExecutionState.ERROR)
+            return
+
         if not synchronized:
             return
 
-        if self._no_overlap or self._depends_on:
+        if self._depends_on:
             try:
                 jobs = taro.client.read_jobs_info()
-
-                if self._no_overlap and any(j for j in jobs
-                                            if j.job_id == self.job_id and j.instance_id != self.instance_id):
-                    self._state_change(ExecutionState.SKIPPED)
-                    return
-
                 if self._depends_on and not any(j for j in jobs
                                                 if any(j.matches(dependency) for dependency in self._depends_on)):
                     self._state_change(ExecutionState.DEPENDENCY_NOT_RUNNING)
@@ -196,7 +194,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                     signal = Signal.TERMINATE
                     state = ExecutionState.CANCELLED
                 else:
-                    signal = self._sync.set_signal()
+                    signal = self._sync.set_signal(self.create_info())
                     if signal is Signal.NONE:
                         assert False  # TODO raise exception
 

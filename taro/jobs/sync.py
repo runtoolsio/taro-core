@@ -2,7 +2,9 @@ from abc import ABC, abstractmethod
 from enum import Enum, auto
 from threading import Event
 
+import taro.client
 from taro import ExecutionState
+from taro.err import InvalidStateError
 
 
 class Signal(Enum):
@@ -34,11 +36,13 @@ class Sync(ABC):
         """
 
     @abstractmethod
-    def set_signal(self) -> Signal:
+    def set_signal(self, job_info) -> Signal:
         """
         If returned signal is 'WAIT' then the job is obligated to call :func:`wait_and_release`
         which will likely suspend the job until an awaited condition is changed.
 
+        :param job_info:
+        :param: job_info job for which the signal is being set
         :return: sync state for job
         """
 
@@ -69,12 +73,12 @@ class NoSync(Sync):
     def exec_state(self) -> ExecutionState:
         return ExecutionState.NONE
 
-    def set_signal(self) -> Signal:
+    def set_signal(self, job_info) -> Signal:
         self._current_signal = Signal.CONTINUE
         return self.current_signal
 
     def wait_and_unlock(self, global_state_lock):
-        pass
+        raise InvalidStateError('Wait is not supported and this method is not supposed to be called')
 
     def release(self):
         pass
@@ -83,9 +87,8 @@ class NoSync(Sync):
 class CompositeSync(Sync):
 
     def __init__(self, syncs):
-        self._state = ExecutionState.NONE
-        self._syncs = list(syncs)
-        self._current = NoSync()
+        self._syncs = tuple(syncs) if syncs else (NoSync(),)
+        self._current = self._syncs[0]
 
     @property
     def current_signal(self) -> Signal:
@@ -95,10 +98,10 @@ class CompositeSync(Sync):
     def exec_state(self) -> ExecutionState:
         return self._current.exec_state
 
-    def set_signal(self) -> Signal:
+    def set_signal(self, job_info) -> Signal:
         for sync in self._syncs:
             self._current = sync
-            signal = sync.set_signal()
+            signal = sync.set_signal(job_info)
             if signal is not Signal.CONTINUE:
                 break
 
@@ -131,7 +134,7 @@ class Latch(Sync):
 
         return ExecutionState.NONE
 
-    def set_signal(self) -> Signal:
+    def set_signal(self, job_info) -> Signal:
         if self._event.is_set():
             self._signal = Signal.CONTINUE
         else:
@@ -149,3 +152,35 @@ class Latch(Sync):
     def release(self):
         self._signal = Signal.CONTINUE
         self._event.set()
+
+
+class NoOverlap(Sync):
+
+    def __init__(self):
+        self._signal = Signal.NONE
+
+    @property
+    def current_signal(self) -> Signal:
+        return self._signal
+
+    @property
+    def exec_state(self) -> ExecutionState:
+        if self._signal is Signal.TERMINATE:
+            return ExecutionState.SKIPPED
+
+        return ExecutionState.NONE
+
+    def set_signal(self, job_info) -> Signal:
+        jobs = taro.client.read_jobs_info()
+        if any(j for j in jobs if j.job_id == job_info.job_id and j.instance_id != job_info.instance_id):
+            self._signal = Signal.TERMINATE
+        else:
+            self._signal = Signal.CONTINUE
+
+        return self.current_signal
+
+    def wait_and_unlock(self, global_state_lock):
+        raise InvalidStateError("Wait is not supported by no-overlap sync")
+
+    def release(self):
+        pass
