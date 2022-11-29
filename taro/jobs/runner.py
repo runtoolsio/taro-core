@@ -10,7 +10,6 @@ from operator import itemgetter
 from threading import RLock
 from typing import List, Union, Callable, Tuple
 
-import taro.client
 from taro import util
 from taro.jobs import persistence
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver, \
@@ -42,7 +41,7 @@ def _gen_prioritized(*prioritized_seq):
 
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, state_locker, sync=NoSync(), *, pending_value=None, depends_on=None, **params):
+    def __init__(self, job_id, execution, state_locker, sync=NoSync(), *, pending_value=None, **params):
         self._id = JobInstanceID(job_id, util.unique_timestamp_hex())
         self._params = params
         self._execution = execution
@@ -53,7 +52,6 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             self._sync = CompositeSync((self._latch, sync))
         else:
             self._sync = sync
-        self._depends_on = depends_on
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
         self._last_output = deque(maxlen=10)
         self._exec_error = None
@@ -163,16 +161,6 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         if not synchronized:
             return
 
-        if self._depends_on:
-            try:
-                jobs = taro.client.read_jobs_info()
-                if self._depends_on and not any(j for j in jobs
-                                                if any(j.matches(dependency) for dependency in self._depends_on)):
-                    self._state_change(ExecutionState.DEPENDENCY_NOT_RUNNING)
-                    return
-            except Exception as e:
-                log.warning("event=[overlap_check_failed] error=[%s]", e)
-
         # Forward output from execution to the job instance for the instance's output listeners
         self._execution.add_output_observer(self)
 
@@ -186,6 +174,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             state = ExecutionState.COMPLETED if e.code == 0 else ExecutionState.FAILED  # TODO Different states?
             self._state_change(state)
             raise
+        finally:
+            self._execution.remove_output_observer(self)
 
     def _synchronize(self) -> bool:
         while True:

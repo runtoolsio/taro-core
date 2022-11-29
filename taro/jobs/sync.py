@@ -184,3 +184,36 @@ class NoOverlap(Sync):
 
     def release(self):
         pass
+
+
+class Dependency(Sync):
+
+    def __init__(self, *dependencies):
+        self.dependencies = dependencies
+        self._signal = Signal.NONE
+
+    @property
+    def current_signal(self) -> Signal:
+        return self._signal
+
+    @property
+    def exec_state(self) -> ExecutionState:
+        if self._signal is Signal.TERMINATE:
+            return ExecutionState.DEPENDENCY_NOT_RUNNING
+
+        return ExecutionState.NONE
+
+    def set_signal(self, job_info) -> Signal:
+        jobs = taro.client.read_jobs_info()
+        if any(j for j in jobs if any(j.matches(dependency) for dependency in self.dependencies)):
+            self._signal = Signal.CONTINUE
+        else:
+            self._signal = Signal.TERMINATE
+
+        return self._signal
+
+    def wait_and_unlock(self, global_state_lock):
+        raise InvalidStateError("Wait is not supported by no-overlap sync")
+
+    def release(self):
+        pass

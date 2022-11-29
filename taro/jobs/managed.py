@@ -8,7 +8,7 @@ from taro.jobs import lock, plugins, warning
 from taro.jobs.api import Server
 from taro.jobs.events import StateDispatcher, OutputDispatcher
 from taro.jobs.runner import RunnerJobInstance
-from taro.jobs.sync import NoOverlap, CompositeSync
+from taro.jobs.sync import NoOverlap, CompositeSync, Dependency
 
 log = logging.getLogger(__name__)
 
@@ -77,9 +77,10 @@ class ManagedJobContext(ExecutionStateObserver):
         syncs = []
         if no_overlap:
             syncs.append(NoOverlap())
-        job_instance = \
-            RunnerJobInstance(job_id, execution, state_locker, CompositeSync(syncs), pending_value=pending_value,
-                              depends_on=depends_on, **params)
+        if depends_on:
+            syncs.append(Dependency(*depends_on))
+        job_instance = RunnerJobInstance(
+            job_id, execution, state_locker, CompositeSync(syncs), pending_value=pending_value, **params)
         if self._state_dispatcher:
             job_instance.add_state_observer(self._state_dispatcher, 100)
         if self._output_dispatcher:
