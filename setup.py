@@ -30,6 +30,7 @@ setuptools.setup(
         "pypager>=3.0.0",
         "bottle>=0.12.18",
         "urllib3>=1.26.2",
+        "portalocker>=2.6.0",
         "python-dateutil>=2.8.2",
         "python-daemon>=2.3.0",
     ],

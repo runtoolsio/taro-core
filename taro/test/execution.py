@@ -11,7 +11,7 @@ from datetime import datetime
 from threading import Event
 from typing import List
 
-from taro.err import IllegalStateError
+from taro.err import InvalidStateError
 from taro.jobs.execution import ExecutionState, OutputExecution
 
 log = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class TestExecution(OutputExecution):
         if self._wait:
             self._wait.set()
         else:
-            raise IllegalStateError('Wait not set')
+            raise InvalidStateError('Wait not set')
 
     def execute(self) -> ExecutionState:
         self._execution_occurrences.append(datetime.now())

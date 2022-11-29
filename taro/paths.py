@@ -196,6 +196,41 @@ def socket_files(file_extension: str) -> Generator[Path, None, None]:
     return (entry for entry in s_dir.iterdir() if entry.is_socket() and file_extension == entry.suffix)
 
 
+def lock_dir(create: bool) -> Path:
+    """
+    1. Root user: /run/lock/taro
+    2. Non-root user: /tmp/taro_${USER}
+
+    :param create: create path directories if not exist
+    :return: directory path for file locks
+    :raises FileNotFoundError: when path cannot be created (only if create == True)
+    """
+
+    if _is_root():
+        path = Path('/run/lock/taro')
+    else:
+        path = Path(f"/tmp/taro_{getpass.getuser()}")
+
+    if create:
+        path.mkdir(mode=0o700, exist_ok=True)
+
+    return path
+
+
+def lock_path(lock_name: str, create: bool) -> Path:
+    """
+    1. Root user: /run/lock/taro/{lock-name}
+    2. Non-root user: /tmp/taro_${USER}/{lock-name}
+
+    :param lock_name: socket file name
+    :param create: create path directories if not exist
+    :return: path of a file to be used as a lock
+    :raises FileNotFoundError: when path cannot be created (only if create == True)
+    """
+
+    return lock_dir(create) / lock_name
+
+
 def sqlite_db_path(create: bool) -> Path:
     """
     1. Root user: /var/lib/taro/{db-file}

@@ -9,6 +9,8 @@ from taro.jobs.job import JobInstance
 
 log = logging.getLogger(__name__)
 
+DEF_PLUGIN_MODULE_PREFIX = 'taro_'
+
 
 # TODO plugin collisions
 class PluginBase(abc.ABC):
@@ -101,3 +103,12 @@ def discover_ext_plugins(ext_prefix, names, skip_imported=True) -> Dict[str, Mod
             log.exception("event=[ext_plugin_module_invalid] reason=[import_failed] name=[%s] detail=[%s]", name, e)
 
     return name2module
+
+
+def register_new_job_instance(job_instance, plugins, *, plugin_module_prefix=DEF_PLUGIN_MODULE_PREFIX, reload=False):
+    PluginBase.load_plugins(plugin_module_prefix, plugins, reload=reload)  # Load plugins if not yet loaded
+    for plugin in PluginBase.name2plugin.values():  # May contain other plugins loaded before
+        try:
+            plugin.new_job_instance(job_instance)
+        except BaseException as e:
+            log.warning("event=[plugin_failed] reason=[exception_on_new_job_instance] detail=[%s]", e)

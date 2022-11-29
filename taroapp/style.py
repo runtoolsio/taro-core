@@ -50,7 +50,7 @@ def job_status_line_styled(job_instance, *, prefix_ts=True):
     style_text_tuples =\
         job_instance_styled(job_instance) + [("", " -> "), (state_style(job_instance), job_instance.state.name)]
     if prefix_ts:
-        return [("", printer.format_dt(job_instance.lifecycle.last_changed()) + " ")] + style_text_tuples
+        return [("", printer.format_dt(job_instance.lifecycle.last_changed) + " ")] + style_text_tuples
     else:
         return style_text_tuples
 

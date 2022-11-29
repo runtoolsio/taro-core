@@ -28,6 +28,9 @@ class JobInstanceID(NamedTuple):
         return "{}@{}".format(self.job_id, self.instance_id)
 
 
+DEFAULT_OBSERVER_PRIORITY = 100
+
+
 class JobInstance(abc.ABC):
 
     @property
@@ -44,6 +47,14 @@ class JobInstance(abc.ABC):
     @abc.abstractmethod
     def id(self):
         """Identifier of this instance"""
+
+    @abc.abstractmethod
+    def run(self):
+        """Run the job"""
+
+    @abc.abstractmethod
+    def release(self, pending_value) -> bool:
+        """Release the job if it is waiting with the pending value otherwise ignore"""
 
     @property
     @abc.abstractmethod
@@ -103,14 +114,15 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_state_observer(self, observer):
+    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         """
         Register execution state observer
         Observer can be:
             1. An instance of ExecutionStateObserver
             2. Callable object with single parameter of JobInfo type
 
-        :param observer observer to register
+        :param observer: observer to register
+        :param priority: observer priority as number (lower number is notified first)
         """
 
     @abc.abstractmethod
@@ -122,11 +134,12 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_warning_observer(self, observer):
+    def add_warning_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         """
         Register warning observer
 
-        :param observer observer to register
+        :param observer: observer to register
+        :param priority: observer priority as number (lower number is notified first)
         """
 
     @abc.abstractmethod
@@ -138,11 +151,12 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_output_observer(self, observer):
+    def add_output_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         """
         Register output observer
 
-        :param observer observer to register
+        :param observer: observer to register
+        :param priority: observer priority as number (lower number is notified first)
         """
 
     @abc.abstractmethod
@@ -152,6 +166,70 @@ class JobInstance(abc.ABC):
 
         :param observer observer to de-register
         """
+
+
+class DelegatingJobInstance(JobInstance):
+
+    def __init__(self, delegated):
+        self.delegated = delegated
+
+    @property
+    def id(self):
+        return self.delegated.id
+
+    @abc.abstractmethod
+    def run(self):
+        """Run the job"""
+
+    @property
+    def lifecycle(self):
+        return self.delegated.lifecycle
+
+    @property
+    def status(self):
+        return self.delegated.status
+
+    @property
+    def last_output(self):
+        return self.delegated.last_output
+
+    @property
+    def warnings(self):
+        return self.delegated.warnings
+
+    def add_warning(self, warning):
+        self.delegated.add_warning(warning)
+
+    @property
+    def exec_error(self) -> ExecutionError:
+        return self.delegated.exec_error
+
+    def create_info(self):
+        return self.delegated.create_info()
+
+    def stop(self):
+        self.delegated.stop()
+
+    def interrupt(self):
+        self.delegated.interrupt()
+
+    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+        self.delegated.add_state_observer(observer)
+
+    def remove_state_observer(self, observer):
+        self.delegated.remove_state_observer(observer)
+
+    def add_warning_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+        self.delegated.add_warning_observer(observer)
+
+    def remove_warning_observer(self, observer):
+        self.delegated.remove_warning_observer(observer)
+
+    def add_output_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+        self.delegated.add_output_observer(observer)
+
+    def remove_output_observer(self, observer):
+        self.delegated.remove_output_observer(observer)
 
 
 class JobInfo:
@@ -192,7 +270,7 @@ class JobInfo:
 
     @property
     def state(self):
-        return self._lifecycle.state()
+        return self._lifecycle.state
 
     @property
     def status(self):
@@ -246,8 +324,6 @@ class ExecutionStateObserver(abc.ABC):
     def state_update(self, job_info: JobInfo):
         """This method is called when job instance execution state is changed."""
 
-
-DisabledJob = namedtuple('DisabledJob', 'job_id regex created expires')
 
 Warn = namedtuple('Warn', 'name params')
 WarnEventCtx = namedtuple('WarnEventCtx', 'count')

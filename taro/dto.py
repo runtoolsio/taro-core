@@ -13,7 +13,7 @@ def _format_td(td):
 
 def to_info_dto(info) -> Dict[str, Any]:
     lc = info.lifecycle
-    state_changes = [{"state": state.name, "changed": _format_td(change)} for state, change in lc.state_changes()]
+    state_changes = [{"state": state.name, "changed": _format_td(change)} for state, change in lc.state_changes]
     if info.exec_error:
         exec_error = {"message": info.exec_error.message, "state": info.exec_error.exec_state.name}
     else:
@@ -27,12 +27,12 @@ def to_info_dto(info) -> Dict[str, Any]:
         "params": info.params,
         "lifecycle": {
             "state_changes": state_changes,
-            "state": lc.state().name,
+            "state": lc.state.name,
             "created": _format_td(lc.changed(ExecutionState.CREATED)),
-            "last_changed": _format_td(lc.last_changed()),
-            "execution_started": _format_td(lc.execution_started()),
-            "execution_finished": _format_td(lc.execution_finished()),
-            "execution_time": lc.execution_time().total_seconds() if lc.execution_started() else None,
+            "last_changed": _format_td(lc.last_changed),
+            "execution_started": _format_td(lc.execution_started),
+            "execution_finished": _format_td(lc.execution_finished),
+            "execution_time": lc.execution_time.total_seconds() if lc.execution_started else None,
         },
         "status": info.status,
         "warnings": info.warnings,

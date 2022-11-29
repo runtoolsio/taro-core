@@ -11,7 +11,7 @@ from .hostinfo import read_hostinfo, HostinfoError
 from .jobs import warning, persistence, repo
 from .jobs.execution import ExecutionStateGroup, ExecutionState, ExecutionError, ExecutionLifecycle
 from .jobs.job import JobInstanceID, JobInstance, JobInfo, ExecutionStateObserver, Warn, WarningObserver, WarnEventCtx
-from .jobs.managed import create_managed_job
+from .jobs.managed import ManagedJobContext
 from .jobs.plugins import PluginBase, PluginDisabledError
 from .jobs.process import ProcessExecution
 from .jobs.program import ProgramExecution
@@ -34,25 +34,11 @@ def setup(**kwargs):
     log.init_by_config()
 
 
-def managed_job(job_id, job_execution, *ext, no_overlap=False, depends_on=None, pending_value=None, **params):
-    mng_job = create_managed_job(
-        job_id, job_execution, no_overlap=no_overlap, depends_on=depends_on, pending_value=pending_value, **params)
-    for extension in ext:
-        extension(mng_job.job_instance)
-    return mng_job
-
-
 def execute(job_id, job_execution, *ext, no_overlap=False, depends_on=None, pending_value=None):
-    managed_job(
-        job_id, job_execution, *ext, no_overlap=no_overlap, depends_on=depends_on, pending_value=pending_value)()
-
-
-def exec_time_warning(time: float):
-    return lambda job_instance: warning.exec_time_exceeded(job_instance, f"exec_time>{time}s", time)
-
-
-def output_warning(regex: str):
-    return lambda job_instance: warning.output_matches(job_instance, f"output=~{regex}", regex)
+    with ManagedJobContext() as ctx:
+        job_instance = ctx.create_job(job_id, job_execution, *ext, no_overlap=no_overlap, depends_on=depends_on,
+                                      pending_value=pending_value)
+        job_instance.run()
 
 
 def close():
