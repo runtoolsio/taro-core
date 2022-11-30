@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 from threading import Event
+from typing import Sequence
 
 import taro.client
 from taro import ExecutionState
@@ -217,3 +218,14 @@ class Dependency(Sync):
 
     def release(self):
         pass
+
+
+def create_composite(no_overlap: bool = False, depends_on: Sequence[str] = ()):
+    syncs = []
+
+    if no_overlap:
+        syncs.append(NoOverlap())
+    if depends_on:
+        syncs.append(Dependency(*depends_on))
+
+    return CompositeSync(syncs)

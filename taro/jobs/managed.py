@@ -4,11 +4,10 @@ from typing import List
 
 from taro import cfg, JobInstance, ExecutionStateObserver, JobInfo, util
 from taro.err import InvalidStateError
-from taro.jobs import lock, plugins, warning
+from taro.jobs import lock, plugins, warning, sync
 from taro.jobs.api import Server
 from taro.jobs.events import StateDispatcher, OutputDispatcher
 from taro.jobs.runner import RunnerJobInstance
-from taro.jobs.sync import NoOverlap, CompositeSync, Dependency
 
 log = logging.getLogger(__name__)
 
@@ -74,13 +73,9 @@ class ManagedJobContext(ExecutionStateObserver):
 
         # TODO instance_id and plugins
 
-        syncs = []
-        if no_overlap:
-            syncs.append(NoOverlap())
-        if depends_on:
-            syncs.append(Dependency(*depends_on))
+        sync_ = sync.create_composite(no_overlap=no_overlap, depends_on=depends_on)
         job_instance = RunnerJobInstance(
-            job_id, execution, state_locker, CompositeSync(syncs), pending_value=pending_value, **params)
+            job_id, execution, state_locker, sync_, pending_value=pending_value, **params)
         if self._state_dispatcher:
             job_instance.add_state_observer(self._state_dispatcher, 100)
         if self._output_dispatcher:
