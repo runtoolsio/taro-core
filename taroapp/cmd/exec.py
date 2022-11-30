@@ -1,6 +1,7 @@
 import logging
 import signal
 
+from taro.jobs import sync
 from taro.jobs.managed import ManagedJobContext
 from taro.jobs.program import ProgramExecution
 from taro.test.execution import TestExecution
@@ -19,10 +20,9 @@ def run(args):
         job_instance = ctx.create_job(
             job_id,
             execution,
+            sync.create_composite(no_overlap=args.no_overlap, depends_on=args.depends_on),
             warn_times=args.warn_time,
             warn_outputs=args.warn_output,
-            no_overlap=args.no_overlap,
-            depends_on=args.depends_on,
             pending_value=args.pending,
             **(dict(args.param) if args.param else dict()))
 

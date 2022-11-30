@@ -1,9 +1,9 @@
 import json
 from typing import List, Tuple, Any, Dict
 
-from taro import dto, JobInstanceID
+from taro import dto
 from taro.jobs.api import API_FILE_EXTENSION
-from taro.jobs.job import JobInfo
+from taro.jobs.job import JobInfo, JobInstanceID
 from taro.socket import SocketClient
 
 

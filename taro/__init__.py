@@ -8,7 +8,7 @@ IMPLEMENTATION NOTE:
 """
 from . import cfg, cfgfile, log
 from .hostinfo import read_hostinfo, HostinfoError
-from .jobs import warning, persistence, repo
+from .jobs import warning, persistence, repo, sync
 from .jobs.execution import ExecutionStateGroup, ExecutionState, ExecutionError, ExecutionLifecycle
 from .jobs.job import JobInstanceID, JobInstance, JobInfo, ExecutionStateObserver, Warn, WarningObserver, WarnEventCtx
 from .jobs.managed import ManagedJobContext
@@ -34,9 +34,10 @@ def setup(**kwargs):
     log.init_by_config()
 
 
-def execute(job_id, job_execution, *ext, no_overlap=False, depends_on=None, pending_value=None):
+def execute(job_id, job_execution, no_overlap=False, depends_on=None, pending_value=None):
     with ManagedJobContext() as ctx:
-        job_instance = ctx.create_job(job_id, job_execution, *ext, no_overlap=no_overlap, depends_on=depends_on,
+        job_instance = ctx.create_job(job_id, job_execution,
+                                      sync=sync.create_composite(no_overlap=no_overlap, depends_on=depends_on),
                                       pending_value=pending_value)
         job_instance.run()
 

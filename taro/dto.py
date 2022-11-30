@@ -1,8 +1,8 @@
 from typing import Dict, Any
 
-from taro import util, JobInstanceID
+from taro import util
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
-from taro.jobs.job import JobInfo
+from taro.jobs.job import JobInfo, JobInstanceID
 
 
 def _format_td(td):

@@ -1,6 +1,8 @@
 import re
 from threading import Timer
+from typing import Sequence
 
+from taro import util
 from taro.jobs.job import JobInstance, JobInfo, ExecutionStateObserver, Warn, JobOutputObserver
 
 
@@ -10,6 +12,15 @@ def exec_time_exceeded(job_instance: JobInstance, warning_name: str, time: float
 
 def output_matches(job_instance: JobInstance, warning_name: str, regex: str):
     job_instance.add_output_observer(_OutputMatchesWarning(job_instance, warning_name, regex))
+
+
+def register(job_instance: JobInstance, *, warn_times: Sequence[str] = (), warn_outputs: Sequence[str] = ()):
+    for warn_time in warn_times:
+        time = util.str_to_seconds(warn_time)
+        exec_time_exceeded(job_instance, f"exec_time>{time}s", time)
+
+    for warn_output in warn_outputs:
+        output_matches(job_instance, f"output=~{warn_output}", warn_output)
 
 
 class _ExecTimeWarning(ExecutionStateObserver):

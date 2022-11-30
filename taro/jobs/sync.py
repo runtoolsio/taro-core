@@ -4,8 +4,8 @@ from threading import Event
 from typing import Sequence
 
 import taro.client
-from taro import ExecutionState
 from taro.err import InvalidStateError
+from taro.jobs.execution import ExecutionState
 
 
 class Signal(Enum):
