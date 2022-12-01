@@ -4,11 +4,9 @@ from typing import List
 
 from taro import cfg, JobInstance, ExecutionStateObserver, JobInfo
 from taro.err import InvalidStateError
-from taro.jobs import plugins, warning
+from taro.jobs import plugins
 from taro.jobs.api import Server
 from taro.jobs.events import StateDispatcher, OutputDispatcher
-from taro.jobs.runner import RunnerJobInstance
-from taro.jobs.sync import NoSync
 
 log = logging.getLogger(__name__)
 
@@ -56,16 +54,12 @@ class ManagedJobContext(ExecutionStateObserver):
             if not self._managed_jobs:
                 self._close()
 
-    def create_job(self, job_id, execution, sync=NoSync(), state_locker=None,
-                   *, warn_times=(), warn_outputs=(), pending_value=None, **params) -> JobInstance:
+    def add(self, job_instance):
         if not self._opened:
-            raise InvalidStateError("Cannot create job because the context has not been opened")
+            raise InvalidStateError("Cannot add job instance because the context has not been opened")
         if self._closed:
-            raise InvalidStateError("Cannot create job because the context has been already closed")
+            raise InvalidStateError("Cannot add job instance because the context has been already closed")
 
-        # TODO instance_id and plugins
-
-        job_instance = RunnerJobInstance(job_id, execution, sync, state_locker, pending_value=pending_value, **params)
         if self._state_dispatcher:
             job_instance.add_state_observer(self._state_dispatcher, 100)
         if self._output_dispatcher:
@@ -73,10 +67,9 @@ class ManagedJobContext(ExecutionStateObserver):
         if self._api:
             self._api.add_job_instance(job_instance)
 
+        #  TODO optional plugins
         if cfg.plugins:
             plugins.register_new_job_instance(job_instance, cfg.plugins, plugin_module_prefix=EXT_PLUGIN_MODULE_PREFIX)
-
-        warning.register(job_instance, warn_times=warn_times, warn_outputs=warn_outputs)
 
         job_instance.add_state_observer(self, 1000)  # Must be notified last because it is used to close job resources
         self._managed_jobs.append(job_instance)

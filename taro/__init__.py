@@ -15,6 +15,7 @@ from .jobs.managed import ManagedJobContext
 from .jobs.plugins import PluginBase, PluginDisabledError
 from .jobs.process import ProcessExecution
 from .jobs.program import ProgramExecution
+from .jobs.runner import RunnerJobInstance
 from .paths import lookup_file_in_config_path
 from .util import NestedNamespace, format_timedelta, read_yaml_file
 
@@ -36,9 +37,11 @@ def setup(**kwargs):
 
 def execute(job_id, job_execution, no_overlap=False, depends_on=None, pending_value=None):
     with ManagedJobContext() as ctx:
-        job_instance = ctx.create_job(job_id, job_execution,
-                                      sync=sync.create_composite(no_overlap=no_overlap, depends_on=depends_on),
-                                      pending_value=pending_value)
+        job_instance = ctx.add(RunnerJobInstance(
+            job_id,
+            job_execution,
+            sync.create_composite(no_overlap=no_overlap, depends_on=depends_on),
+            pending_value=pending_value))
         job_instance.run()
 
 
