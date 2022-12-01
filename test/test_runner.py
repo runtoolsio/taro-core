@@ -28,13 +28,13 @@ def test_state_changes():
 
 
 def test_state_created():
-    instance = RunnerJobInstance('j', TestExecution(), lock.NullStateLocker())
+    instance = RunnerJobInstance('j', TestExecution(), state_locker=lock.NullStateLocker())
     assert instance.lifecycle.state == ExSt.CREATED
 
 
 def test_pending():
     latch = Latch(ExSt.PENDING)
-    instance = RunnerJobInstance('j', TestExecution(), lock.NullStateLocker(), latch)
+    instance = RunnerJobInstance('j', TestExecution(), latch, lock.NullStateLocker())
     t = Thread(target=instance.run)
     t.start()
 
@@ -51,7 +51,7 @@ def test_pending():
 
 def test_latch_cancellation():
     latch = Latch(ExSt.PENDING)
-    instance = RunnerJobInstance('j', TestExecution(), lock.NullStateLocker(), latch)
+    instance = RunnerJobInstance('j', TestExecution(), latch, lock.NullStateLocker())
     t = Thread(target=instance.run)
     t.start()
 
@@ -66,7 +66,7 @@ def test_latch_cancellation():
 
 def test_cancellation_before_start():
     latch = Latch(ExSt.PENDING)
-    instance = RunnerJobInstance('j', TestExecution(), lock.NullStateLocker(), latch)
+    instance = RunnerJobInstance('j', TestExecution(), latch, lock.NullStateLocker())
     t = Thread(target=instance.run)
 
     instance.stop()
@@ -104,6 +104,6 @@ def wait_for_pending_state(instance: RunnerJobInstance):
 def test_last_output():
     execution = ProgramExecution(['echo', "3\n2\n1\neveryone\nin\nthe\nworld\nis\ndoing\nsomething\nwithout\nme"],
                                  read_output=True)
-    instance = RunnerJobInstance('j', execution, lock.NullStateLocker())
+    instance = RunnerJobInstance('j', execution, state_locker=lock.NullStateLocker())
     instance.run()
     assert instance.last_output == "1 everyone in the world is doing something without me".split()

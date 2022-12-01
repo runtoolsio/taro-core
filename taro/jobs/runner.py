@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 
 
 def run(job_id, execution, state_locker):
-    instance = RunnerJobInstance(job_id, execution, state_locker)
+    instance = RunnerJobInstance(job_id, execution, state_locker=state_locker)
     instance.run()
     return instance
 
@@ -41,12 +41,11 @@ def _gen_prioritized(*prioritized_seq):
 
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, state_locker=cfg.state_locker, sync=NoSync(), *, pending_value=None,
-                 **params):
+    def __init__(self, job_id, execution, sync=NoSync(), state_locker=None, *, pending_value=None, **params):
         self._id = JobInstanceID(job_id, util.unique_timestamp_hex())
         self._params = params
         self._execution = execution
-        self._global_state_locker = state_locker
+        self._global_state_locker = state_locker or cfg.state_locker
         self._pending_value = pending_value
         sync = sync or NoSync()
         if pending_value:

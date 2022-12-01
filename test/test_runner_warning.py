@@ -22,7 +22,7 @@ def observer():
 
 
 def test_warning_added(observer: TestWarningObserver):
-    job = RunnerJobInstance('j1', TestExecution(ExecutionState.COMPLETED), lock.NullStateLocker())
+    job = RunnerJobInstance('j1', TestExecution(ExecutionState.COMPLETED), state_locker=lock.NullStateLocker())
     warn = Warn('test_warn', None)
     job.add_warning(warn)
 
@@ -32,7 +32,7 @@ def test_warning_added(observer: TestWarningObserver):
 
 
 def test_warning_repeated(observer: TestWarningObserver):
-    job = RunnerJobInstance('j1', TestExecution(ExecutionState.COMPLETED), lock.NullStateLocker())
+    job = RunnerJobInstance('j1', TestExecution(ExecutionState.COMPLETED), state_locker=lock.NullStateLocker())
     warn = Warn('test_warn1', None)
     updated = Warn('test_warn1', {'p': 1})
     job.add_warning(warn)

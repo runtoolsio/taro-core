@@ -13,7 +13,6 @@ from taro.jobs import lock
 
 
 class LogMode(Enum):
-
     ENABLED = auto()
     PROPAGATE = auto()
     DISABLED = auto()
@@ -68,6 +67,7 @@ persistence_database = DEF_PERSISTENCE_DATABASE
 plugins = DEF_PLUGINS
 default_action = DEF_ACTION
 state_locker = DEF_STATE_LOCKER
+
 
 def set_variables(**kwargs):
     module = sys.modules[__name__]

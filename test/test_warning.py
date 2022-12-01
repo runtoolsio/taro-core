@@ -17,7 +17,7 @@ def execution():
 
 @pytest.fixture
 def job(execution):
-    return RunnerJobInstance('j1', execution, lock.NullStateLocker())
+    return RunnerJobInstance('j1', execution, state_locker=lock.NullStateLocker())
 
 
 @pytest.fixture

@@ -56,7 +56,7 @@ class ManagedJobContext(ExecutionStateObserver):
             if not self._managed_jobs:
                 self._close()
 
-    def create_job(self, job_id, execution, sync=NoSync(), state_locker=cfg.state_locker,
+    def create_job(self, job_id, execution, sync=NoSync(), state_locker=None,
                    *, warn_times=(), warn_outputs=(), pending_value=None, **params) -> JobInstance:
         if not self._opened:
             raise InvalidStateError("Cannot create job because the context has not been opened")
@@ -65,8 +65,7 @@ class ManagedJobContext(ExecutionStateObserver):
 
         # TODO instance_id and plugins
 
-        job_instance = RunnerJobInstance(
-            job_id, execution, state_locker, sync, pending_value=pending_value, **params)
+        job_instance = RunnerJobInstance(job_id, execution, sync, state_locker, pending_value=pending_value, **params)
         if self._state_dispatcher:
             job_instance.add_state_observer(self._state_dispatcher, 100)
         if self._output_dispatcher:
