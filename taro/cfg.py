@@ -5,11 +5,11 @@ https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-a
 """
 
 import distutils.util
+import sys
 from enum import Enum, auto
 
-import sys
-
 from taro import util
+from taro.jobs import lock
 
 
 class LogMode(Enum):
@@ -49,6 +49,7 @@ DEF_PERSISTENCE_DATABASE = ''
 
 DEF_PLUGINS = ()
 DEF_ACTION = '--help'
+DEF_STATE_LOCKER = lock.default_state_locker()
 
 # ------------ CONFIG VALUES ------------ #
 # !! UPDATE CONFIG.md when changes are made !! #
@@ -66,7 +67,7 @@ persistence_database = DEF_PERSISTENCE_DATABASE
 
 plugins = DEF_PLUGINS
 default_action = DEF_ACTION
-
+state_locker = DEF_STATE_LOCKER
 
 def set_variables(**kwargs):
     module = sys.modules[__name__]

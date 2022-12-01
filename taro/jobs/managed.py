@@ -4,7 +4,7 @@ from typing import List
 
 from taro import cfg, JobInstance, ExecutionStateObserver, JobInfo
 from taro.err import InvalidStateError
-from taro.jobs import lock, plugins, warning
+from taro.jobs import plugins, warning
 from taro.jobs.api import Server
 from taro.jobs.events import StateDispatcher, OutputDispatcher
 from taro.jobs.runner import RunnerJobInstance
@@ -56,7 +56,7 @@ class ManagedJobContext(ExecutionStateObserver):
             if not self._managed_jobs:
                 self._close()
 
-    def create_job(self, job_id, execution, sync=NoSync(), state_locker=lock.default_state_locker(),
+    def create_job(self, job_id, execution, sync=NoSync(), state_locker=cfg.state_locker,
                    *, warn_times=(), warn_outputs=(), pending_value=None, **params) -> JobInstance:
         if not self._opened:
             raise InvalidStateError("Cannot create job because the context has not been opened")

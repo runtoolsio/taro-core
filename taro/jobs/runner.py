@@ -10,7 +10,7 @@ from operator import itemgetter
 from threading import RLock
 from typing import List, Union, Callable, Tuple
 
-from taro import util
+from taro import util, cfg
 from taro.jobs import persistence
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver, \
     UnexpectedStateError
@@ -41,12 +41,14 @@ def _gen_prioritized(*prioritized_seq):
 
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, state_locker, sync=NoSync(), *, pending_value=None, **params):
+    def __init__(self, job_id, execution, state_locker=cfg.state_locker, sync=NoSync(), *, pending_value=None,
+                 **params):
         self._id = JobInstanceID(job_id, util.unique_timestamp_hex())
         self._params = params
         self._execution = execution
         self._global_state_locker = state_locker
         self._pending_value = pending_value
+        sync = sync or NoSync()
         if pending_value:
             self._latch = Latch(ExecutionState.PENDING)
             self._sync = CompositeSync((self._latch, sync))
