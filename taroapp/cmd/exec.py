@@ -20,7 +20,7 @@ def run(args):
         args.id or " ".join([args.command] + args.arg),
         execution,
         sync.create_composite(no_overlap=args.no_overlap, depends_on=args.depends_on),
-        pending_value=args.pending,
+        pending_group=args.pending,
         **(dict(args.param) if args.param else dict()))
 
     warning.register(job_instance, warn_times=args.warn_time, warn_outputs=args.warn_output)

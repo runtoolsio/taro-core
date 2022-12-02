@@ -41,14 +41,14 @@ def _gen_prioritized(*prioritized_seq):
 
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, sync=NoSync(), state_locker=None, *, pending_value=None, **params):
+    def __init__(self, job_id, execution, sync=NoSync(), state_locker=None, *, pending_group=None, **params):
         self._id = JobInstanceID(job_id, util.unique_timestamp_hex())
         self._params = params
         self._execution = execution
         self._global_state_locker = state_locker or cfg.state_locker
-        self._pending_value = pending_value
+        self._pending_group = pending_group
         sync = sync or NoSync()
-        if pending_value:
+        if pending_group:
             self._latch = Latch(ExecutionState.PENDING)
             self._sync = CompositeSync((self._latch, sync))
         else:
@@ -113,8 +113,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def remove_output_observer(self, observer):
         self._output_observers = _remove_prioritized(self._output_observers, observer)
 
-    def release(self, pending_value=None):
-        if not self._pending_value or (pending_value and pending_value != self._pending_value):
+    def release(self, pending_group=None):
+        if not self._pending_group or (pending_group and pending_group != self._pending_group):
             return False
 
         self._latch.release()

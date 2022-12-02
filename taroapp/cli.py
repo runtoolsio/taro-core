@@ -105,7 +105,9 @@ def _init_exec_parser(common, subparsers):
                                   'can help if there is any problem with output processing.')
     exec_parser.add_argument('-o', '--no-overlap', action='store_true', default=False,
                              help='Skip if job with the same job ID is already running')
-    exec_parser.add_argument('-p', '--pending', type=str, help='specifies pending value for releasing of this job')
+    exec_parser.add_argument('-p', '--pending', type=str,
+                             help='Specifies pending group. The job will wait before execution in pending state'
+                                  'until the group receives releasing signal. See the `release` command.')
     exec_parser.add_argument('--warn-time', type=_warn_time_type, action='append', default=[],
                              help='This enables time warning which is trigger when the execution of the job exceeds '
                                   'the period specified by the value of this option. The value must be an integer '

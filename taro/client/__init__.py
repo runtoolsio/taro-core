@@ -12,9 +12,9 @@ def read_jobs_info(job_instance="") -> List[JobInfo]:
         return client.read_jobs_info(job_instance)
 
 
-def release_jobs(pending) -> List[JobInstanceID]:
+def release_jobs(pending_group) -> List[JobInstanceID]:
     with JobsClient() as client:
-        return client.release_jobs(pending)
+        return client.release_jobs(pending_group)
 
 
 def stop_jobs(instances, interrupt: bool) -> List[Tuple[JobInstanceID, str]]:
@@ -55,8 +55,8 @@ class JobsClient(SocketClient):
         responses = self._send_request('/jobs/tail', job_instance=job_instance)
         return [(_job_instance_id(job), job['data']['tail']) for job in _get_jobs(responses)]
 
-    def release_jobs(self, pending) -> List[JobInstanceID]:
-        responses = self._send_request('/jobs/release', data={"pending": pending})
+    def release_jobs(self, pending_group) -> List[JobInstanceID]:
+        responses = self._send_request('/jobs/release', data={"pending_group": pending_group})
         return [_job_instance_id(job) for job in _get_jobs(responses) if job['data']['released']]
 
     def stop_jobs(self, instance) -> List[Tuple[JobInstanceID, str]]:
