@@ -111,7 +111,7 @@ class SQLite:
              job_info.status,
              json.dumps(job_info.warnings),
              job_info.exec_error.message if job_info.exec_error else None,
-             json.dumps(job_info.params)
+             json.dumps(job_info.user_params)
              )
         )
         self._conn.commit()

@@ -93,6 +93,11 @@ class JobInstance(abc.ABC):
     def exec_error(self) -> ExecutionError:
         """Job execution error if occurred otherwise None"""
 
+    @property
+    @abc.abstractmethod
+    def user_params(self):
+        """Dictionary of arbitrary use parameters"""
+
     @abc.abstractmethod
     def create_info(self):
         """
@@ -204,6 +209,10 @@ class DelegatingJobInstance(JobInstance):
     def exec_error(self) -> ExecutionError:
         return self.delegated.exec_error
 
+    @property
+    def user_params(self):
+        return self.delegated.user_params
+
     def create_info(self):
         return self.delegated.create_info()
 
@@ -237,9 +246,8 @@ class JobInfo:
     Immutable snapshot of job instance state
     """
 
-    def __init__(self, job_instance_id, lifecycle, status, warnings, exec_error: ExecutionError, **params):
+    def __init__(self, job_instance_id, lifecycle, status, warnings, exec_error: ExecutionError, **user_params):
         self._job_instance_id = job_instance_id
-        self._params = params
         self._lifecycle = lifecycle
         if status:
             self._status = textwrap.shorten(status, 1000, placeholder=".. (truncated)", break_long_words=False)
@@ -247,6 +255,7 @@ class JobInfo:
             self._status = status
         self._warnings = warnings
         self._exec_error = exec_error
+        self._user_params = user_params
 
     @property
     def job_id(self) -> str:
@@ -259,10 +268,6 @@ class JobInfo:
     @property
     def id(self):
         return self._job_instance_id
-
-    @property
-    def params(self):
-        return dict(self._params)
 
     @property
     def lifecycle(self):
@@ -283,6 +288,10 @@ class JobInfo:
     @property
     def exec_error(self) -> ExecutionError:
         return self._exec_error
+
+    @property
+    def user_params(self):
+        return dict(self._user_params)
 
     def matches(self, job_instance, job_matching_strategy=fnmatch):
         return job_matching_strategy(self.job_id, job_instance) or fnmatch(self.instance_id, job_instance)

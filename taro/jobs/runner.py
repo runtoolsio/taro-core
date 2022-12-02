@@ -41,18 +41,18 @@ def _gen_prioritized(*prioritized_seq):
 
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, sync=NoSync(), state_locker=None, *, pending_group=None, **params):
+    def __init__(self, job_id, execution, sync=NoSync(), state_locker=None, *, pending_group=None, **user_params):
         self._id = JobInstanceID(job_id, util.unique_timestamp_hex())
-        self._params = params
         self._execution = execution
-        self._global_state_locker = state_locker or cfg.state_locker
-        self._pending_group = pending_group
         sync = sync or NoSync()
         if pending_group:
             self._latch = Latch(ExecutionState.PENDING)
             self._sync = CompositeSync((self._latch, sync))
         else:
             self._sync = sync
+        self._global_state_locker = state_locker or cfg.state_locker
+        self._pending_group = pending_group
+        self._user_params = user_params
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
         self._last_output = deque(maxlen=10)
         self._exec_error = None
@@ -90,10 +90,14 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def exec_error(self) -> Union[ExecutionError, None]:
         return self._exec_error
 
+    @property
+    def user_params(self):
+        return dict(self._user_params)
+
     def create_info(self):
         with self._state_lock:
             return JobInfo(self._id, copy.deepcopy(self._lifecycle), self.status, self.warnings, self.exec_error,
-                           **self._params)
+                           **self._user_params)
 
     def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self._state_observers = _add_prioritized(self._state_observers, priority, observer)

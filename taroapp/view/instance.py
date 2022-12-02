@@ -5,7 +5,7 @@ from taroapp.style import general_style, job_style, instance_style, warn_style, 
 
 JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_style)
 INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.instance_id, instance_style)
-PARAMETERS = Column('PARAMETERS', 23, lambda j: ', '.join("{}={}".format(k, v) for k, v in j.params.items()),
+PARAMETERS = Column('PARAMETERS', 23, lambda j: ', '.join("{}={}".format(k, v) for k, v in j.user_params.items()),
                     general_style)
 CREATED = Column('CREATED', 25, lambda j: format_dt(j.lifecycle.changed(ExecutionState.CREATED)), general_style)
 EXECUTED = Column('EXECUTED', 25, lambda j: format_dt(j.lifecycle.execution_started), general_style)

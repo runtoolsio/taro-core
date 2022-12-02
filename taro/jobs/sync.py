@@ -220,6 +220,36 @@ class Dependency(Sync):
         pass
 
 
+class ParallelMax(Sync):
+
+    def __init__(self, max_executions):
+        if max_executions < 1:
+            raise ValueError('Value max_executions must be greater than zero')
+        self._signal = Signal.NONE
+        self._max = max_executions
+
+    @property
+    def max_executions(self):
+        return self._max
+
+    @property
+    def current_signal(self) -> Signal:
+        return self._signal
+
+    @property
+    def exec_state(self) -> ExecutionState:
+        pass
+
+    def set_signal(self, job_info) -> Signal:
+        pass
+
+    def wait_and_unlock(self, global_state_lock):
+        pass
+
+    def release(self):
+        pass
+
+
 def create_composite(no_overlap: bool = False, depends_on: Sequence[str] = ()):
     syncs = []
 
