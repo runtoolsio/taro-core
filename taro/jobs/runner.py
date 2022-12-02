@@ -52,6 +52,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             self._sync = sync
         self._global_state_locker = state_locker or cfg.state_locker
         self._pending_group = pending_group
+        self._parameters = {**execution.parameters}
         self._user_params = user_params
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
         self._last_output = deque(maxlen=10)
@@ -91,13 +92,17 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         return self._exec_error
 
     @property
+    def parameters(self):
+        return dict(self._parameters)
+
+    @property
     def user_params(self):
         return dict(self._user_params)
 
     def create_info(self):
         with self._state_lock:
             return JobInfo(self._id, copy.deepcopy(self._lifecycle), self.status, self.warnings, self.exec_error,
-                           **self._user_params)
+                           self.parameters, **self._user_params)
 
     def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self._state_observers = _add_prioritized(self._state_observers, priority, observer)

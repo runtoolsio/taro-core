@@ -71,6 +71,10 @@ class ProgramExecution(OutputExecution):
     def status(self):
         return self._status
 
+    @property
+    def parameters(self):
+        return {'execution': 'program'}
+
     def stop(self):
         self._stopped = True
         if self._popen:

@@ -95,6 +95,11 @@ class JobInstance(abc.ABC):
 
     @property
     @abc.abstractmethod
+    def parameters(self):
+        """Dictionary of job parameters and its components"""
+
+    @property
+    @abc.abstractmethod
     def user_params(self):
         """Dictionary of arbitrary use parameters"""
 
@@ -210,6 +215,10 @@ class DelegatingJobInstance(JobInstance):
         return self.delegated.exec_error
 
     @property
+    def parameters(self):
+        return self.delegated.parameters
+
+    @property
     def user_params(self):
         return self.delegated.user_params
 
@@ -246,7 +255,8 @@ class JobInfo:
     Immutable snapshot of job instance state
     """
 
-    def __init__(self, job_instance_id, lifecycle, status, warnings, exec_error: ExecutionError, **user_params):
+    def __init__(self, job_instance_id, lifecycle, status, warnings, exec_error: ExecutionError, parameters,
+                 **user_params):
         self._job_instance_id = job_instance_id
         self._lifecycle = lifecycle
         if status:
@@ -255,6 +265,7 @@ class JobInfo:
             self._status = status
         self._warnings = warnings
         self._exec_error = exec_error
+        self._parameters = dict(parameters)
         self._user_params = user_params
 
     @property
@@ -288,6 +299,10 @@ class JobInfo:
     @property
     def exec_error(self) -> ExecutionError:
         return self._exec_error
+
+    @property
+    def parameters(self):
+        return dict(self._parameters)
 
     @property
     def user_params(self):

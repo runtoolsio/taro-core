@@ -154,6 +154,11 @@ class Execution(abc.ABC):
         :return: progress/result or None
         """
 
+    @property
+    @abc.abstractmethod
+    def parameters(self):
+        """Dictionary of arbitrary immutable execution parameters"""
+
     @abc.abstractmethod
     def stop(self):
         """
