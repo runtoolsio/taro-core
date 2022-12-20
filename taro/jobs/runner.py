@@ -52,7 +52,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             self._sync = sync
         self._global_state_locker = state_locker or cfg.state_locker
         self._pending_group = pending_group
-        self._parameters = {**execution.parameters}
+        self._parameters = (execution.parameters or ()) + (sync.parameters or ())
         self._user_params = user_params
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
         self._last_output = deque(maxlen=10)
@@ -93,7 +93,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
     @property
     def parameters(self):
-        return dict(self._parameters)
+        return self._parameters
 
     @property
     def user_params(self):

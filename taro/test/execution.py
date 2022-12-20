@@ -76,7 +76,7 @@ class TestExecution(OutputExecution):
 
     @property
     def parameters(self):
-        return {'execution': 'test'}
+        return ('execution', 'test'),
 
     def stop(self):
         raise NotImplementedError()

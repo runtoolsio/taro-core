@@ -24,6 +24,15 @@ class JobInstanceID(NamedTuple):
     job_id: str
     instance_id: str
 
+    def __eq__(self, other):
+        if type(self) is type(other):
+            return self.job_id == other.job_id and self.instance_id == other.instance_id
+        else:
+            return False
+
+    def __hash__(self):
+        return hash((self.job_id, self.instance_id))
+
     def __repr__(self):
         return "{}@{}".format(self.job_id, self.instance_id)
 
@@ -96,7 +105,7 @@ class JobInstance(abc.ABC):
     @property
     @abc.abstractmethod
     def parameters(self):
-        """Dictionary of job parameters and its components"""
+        """List of job parameters"""
 
     @property
     @abc.abstractmethod
@@ -265,7 +274,7 @@ class JobInfo:
             self._status = status
         self._warnings = warnings
         self._exec_error = exec_error
-        self._parameters = dict(parameters)
+        self._parameters = tuple(parameters)
         self._user_params = user_params
 
     @property
@@ -302,7 +311,7 @@ class JobInfo:
 
     @property
     def parameters(self):
-        return dict(self._parameters)
+        return self._parameters
 
     @property
     def user_params(self):

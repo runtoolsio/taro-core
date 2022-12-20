@@ -60,6 +60,11 @@ class Sync(ABC):
         Interrupt waiting
         """
 
+    @property
+    def parameters(self):
+        """Dictionary of arbitrary immutable execution parameters"""
+        return None
+
 
 class NoSync(Sync):
 
@@ -90,6 +95,7 @@ class CompositeSync(Sync):
     def __init__(self, syncs):
         self._syncs = tuple(syncs) if syncs else (NoSync(),)
         self._current = self._syncs[0]
+        self._parameters = tuple(p for s in syncs if s.parameters for p in s.parameters)
 
     @property
     def current_signal(self) -> Signal:
@@ -114,6 +120,10 @@ class CompositeSync(Sync):
     def release(self):
         self._current.release()
 
+    @property
+    def parameters(self):
+        return self._parameters
+
 
 class Latch(Sync):
 
@@ -122,6 +132,7 @@ class Latch(Sync):
             raise ValueError(f"Invalid execution state for latch: {waiting_state}. Latch requires waiting state.")
         self._signal = Signal.NONE
         self._event = Event()
+        self._parameters = (('sync', 'latch'), ('latch_waiting_state', str(waiting_state)))
         self.waiting_state = waiting_state
 
     @property
@@ -154,11 +165,21 @@ class Latch(Sync):
         self._signal = Signal.CONTINUE
         self._event.set()
 
+    @property
+    def parameters(self):
+        return self._parameters
+
 
 class NoOverlap(Sync):
 
-    def __init__(self):
+    def __init__(self, job_instance=None):
+        self._job_instance = job_instance
         self._signal = Signal.NONE
+        self._parameters = (('sync', 'no_overlap'), ('no_overlap', self._job_instance))
+
+    @property
+    def job_instance(self):
+        return self._job_instance
 
     @property
     def current_signal(self) -> Signal:
@@ -172,8 +193,10 @@ class NoOverlap(Sync):
         return ExecutionState.NONE
 
     def set_signal(self, job_info) -> Signal:
+        job_instance = self._job_instance or job_info.job_id
+
         jobs = taro.client.read_jobs_info()
-        if any(j for j in jobs if j.job_id == job_info.job_id and j.instance_id != job_info.instance_id):
+        if any(j for j in jobs if j.id != job_info.id and j.matches(job_instance)):
             self._signal = Signal.TERMINATE
         else:
             self._signal = Signal.CONTINUE
@@ -186,12 +209,17 @@ class NoOverlap(Sync):
     def release(self):
         pass
 
+    @property
+    def parameters(self):
+        return self._parameters
+
 
 class Dependency(Sync):
 
     def __init__(self, *dependencies):
         self.dependencies = dependencies
         self._signal = Signal.NONE
+        self._parameters = (('sync', 'dependency'), ('dependencies', ",".join(dependencies)))
 
     @property
     def current_signal(self) -> Signal:
@@ -219,6 +247,10 @@ class Dependency(Sync):
     def release(self):
         pass
 
+    @property
+    def parameters(self):
+        return self._parameters
+
 
 class ParallelMax(Sync):
 
@@ -238,7 +270,10 @@ class ParallelMax(Sync):
 
     @property
     def exec_state(self) -> ExecutionState:
-        pass
+        if self._signal is Signal.WAIT:
+            return ExecutionState.WAITING
+
+        return ExecutionState.NONE
 
     def set_signal(self, job_info) -> Signal:
         pass

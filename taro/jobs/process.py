@@ -79,7 +79,7 @@ class ProcessExecution(OutputExecution):
 
     @property
     def parameters(self):
-        return {'execution': 'process'}
+        return ('execution', 'process'),
 
     def stop(self):
         self._stopped = True

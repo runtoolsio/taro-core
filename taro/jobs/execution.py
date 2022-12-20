@@ -157,7 +157,7 @@ class Execution(abc.ABC):
     @property
     @abc.abstractmethod
     def parameters(self):
-        """Dictionary of arbitrary immutable execution parameters"""
+        """Sequence of tuples representing arbitrary immutable execution parameters"""
 
     @abc.abstractmethod
     def stop(self):
