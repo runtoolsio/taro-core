@@ -254,15 +254,23 @@ class Dependency(Sync):
 
 class ParallelMax(Sync):
 
-    def __init__(self, max_executions):
+    def __init__(self, max_executions, parallel_group):
         if max_executions < 1:
-            raise ValueError('Value max_executions must be greater than zero')
-        self._signal = Signal.NONE
+            raise ValueError('Max executions must be greater than zero')
+        if not parallel_group:
+            raise ValueError('Parallel group must be specified')
         self._max = max_executions
+        self._parallel_group = parallel_group
+        self._signal = Signal.NONE
+        self._parameters = (('sync', 'parallel_max'), ('parallel_group', parallel_group))
 
     @property
     def max_executions(self):
         return self._max
+
+    @property
+    def parallel_group(self):
+        return self._parallel_group
 
     @property
     def current_signal(self) -> Signal:
@@ -276,7 +284,25 @@ class ParallelMax(Sync):
         return ExecutionState.NONE
 
     def set_signal(self, job_info) -> Signal:
-        pass
+        jobs = taro.client.read_jobs_info()
+        parallel_group_jobs = sorted(
+            (job for job in jobs if any(1 for name, value in job.parameters
+                                        if name == 'parallel_group' and value == self._parallel_group)),
+            key=lambda job: job.lifecycle.changed(ExecutionState.CREATED)
+        )
+        executing = [job for job in parallel_group_jobs if job.lifecycle.state.is_executing()]
+        max_allowed = self.max_executions - len(executing)
+        if max_allowed <= 0:
+            return Signal.WAIT
+
+        next_allowed = [job for job in parallel_group_jobs if job not in executing][0:max_allowed]
+        job_created = job_info.lifecycle.changed(ExecutionState.CREATED)
+        for allowed in next_allowed:
+            if job_info.id == allowed.id or job_created <= allowed.lifecycle.changed(ExecutionState.CREATED):
+                # The second condition ensure this works even when the job is not contained in 'job' for any reasons
+                return Signal.CONTINUE
+
+        return Signal.WAIT
 
     def wait_and_unlock(self, global_state_lock):
         pass
