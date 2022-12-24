@@ -2,8 +2,8 @@ import abc
 import json
 import logging
 
-from taro import ExecutionStateObserver, JobInfo, dto, util
-from taro.jobs.job import JobOutputObserver
+from taro import dto, util
+from taro.jobs.job import ExecutionStateObserver, JobInfo, JobOutputObserver
 from taro.socket import SocketClient, PayloadTooLarge
 
 STATE_LISTENER_FILE_EXTENSION = '.slistener'

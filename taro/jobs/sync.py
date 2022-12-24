@@ -4,9 +4,9 @@ from threading import Event
 from typing import Sequence
 
 import taro.client
-from taro import ExecutionStateObserver, JobInfo
 from taro.err import InvalidStateError
 from taro.jobs.execution import ExecutionState
+from taro.jobs.job import ExecutionStateObserver, JobInfo
 from taro.listening import StateReceiver
 
 
