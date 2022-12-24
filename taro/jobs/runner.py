@@ -137,7 +137,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         """
         self._stopped_or_interrupted = True
 
-        self._sync.release()
+        self._sync.close()
         if self._executing:
             self._execution.stop()
 
@@ -149,7 +149,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         """
         self._stopped_or_interrupted = True
 
-        self._sync.release()
+        self._sync.close()
         if self._executing:
             self._execution.interrupt()
 
@@ -167,6 +167,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             log.error('event=[sync_error]', exc_info=e)
             self._state_change(ExecutionState.ERROR)
             return
+        finally:
+            self._sync.close()
 
         if not synchronized:
             return

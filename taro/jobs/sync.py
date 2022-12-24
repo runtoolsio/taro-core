@@ -4,8 +4,10 @@ from threading import Event
 from typing import Sequence
 
 import taro.client
+from taro import ExecutionStateObserver, JobInfo
 from taro.err import InvalidStateError
 from taro.jobs.execution import ExecutionState
+from taro.listening import StateReceiver
 
 
 class Signal(Enum):
@@ -54,16 +56,15 @@ class Sync(ABC):
         :param global_state_lock: global execution state lock for unlocking
         """
 
-    @abstractmethod
-    def release(self):
-        """
-        Interrupt waiting
-        """
-
     @property
     def parameters(self):
         """Dictionary of arbitrary immutable execution parameters"""
         return None
+
+    def close(self):
+        """
+        Interrupt waiting and perform cleanup
+        """
 
 
 class NoSync(Sync):
@@ -85,9 +86,6 @@ class NoSync(Sync):
 
     def wait_and_unlock(self, global_state_lock):
         raise InvalidStateError('Wait is not supported and this method is not supposed to be called')
-
-    def release(self):
-        pass
 
 
 class CompositeSync(Sync):
@@ -117,12 +115,13 @@ class CompositeSync(Sync):
     def wait_and_unlock(self, global_state_lock):
         self._current.wait_and_unlock(global_state_lock)
 
-    def release(self):
-        self._current.release()
-
     @property
     def parameters(self):
         return self._parameters
+
+    def close(self):
+        for sync in self._syncs:
+            sync.close()
 
 
 class Latch(Sync):
@@ -162,12 +161,15 @@ class Latch(Sync):
         self._event.wait()
 
     def release(self):
-        self._signal = Signal.CONTINUE
-        self._event.set()
+        self.close()
 
     @property
     def parameters(self):
         return self._parameters
+
+    def close(self):
+        self._signal = Signal.CONTINUE
+        self._event.set()
 
 
 class NoOverlap(Sync):
@@ -206,9 +208,6 @@ class NoOverlap(Sync):
     def wait_and_unlock(self, global_state_lock):
         raise InvalidStateError("Wait is not supported by no-overlap sync")
 
-    def release(self):
-        pass
-
     @property
     def parameters(self):
         return self._parameters
@@ -244,15 +243,12 @@ class Dependency(Sync):
     def wait_and_unlock(self, global_state_lock):
         raise InvalidStateError("Wait is not supported by no-overlap sync")
 
-    def release(self):
-        pass
-
     @property
     def parameters(self):
         return self._parameters
 
 
-class ParallelMax(Sync):
+class ParallelMax(Sync, ExecutionStateObserver):
 
     def __init__(self, max_executions, parallel_group):
         if max_executions < 1:
@@ -262,6 +258,7 @@ class ParallelMax(Sync):
         self._max = max_executions
         self._parallel_group = parallel_group
         self._signal = Signal.NONE
+        self._event = Event()
         self._parameters = (('sync', 'parallel_max'), ('parallel_group', parallel_group))
 
     @property
@@ -286,8 +283,7 @@ class ParallelMax(Sync):
     def set_signal(self, job_info) -> Signal:
         jobs = taro.client.read_jobs_info()
         parallel_group_jobs = sorted(
-            (job for job in jobs if any(1 for name, value in job.parameters
-                                        if name == 'parallel_group' and value == self._parallel_group)),
+            (job for job in jobs if self._is_same_parallel_group(job)),
             key=lambda job: job.lifecycle.changed(ExecutionState.CREATED)
         )
         executing = [job for job in parallel_group_jobs if job.lifecycle.state.is_executing()]
@@ -304,11 +300,47 @@ class ParallelMax(Sync):
 
         return Signal.WAIT
 
-    def wait_and_unlock(self, global_state_lock):
-        pass
+    def _is_same_parallel_group(self, job):
+        return any(1 for name, value in job.parameters if name == 'parallel_group' and value == self._parallel_group)
 
-    def release(self):
-        pass
+    def wait_and_unlock(self, global_state_lock):
+        self._event.clear()
+        global_state_lock.unlock()
+        self._event.wait()
+
+    @property
+    def parameters(self):
+        return self._parameters
+
+    def close(self):
+        self._event.set()
+
+    def state_update(self, job_info: JobInfo):
+        if job_info.lifecycle.state.is_terminal() and self._is_same_parallel_group(job_info):
+            self._event.set()
+
+
+class StateReceiverManagingSync(CompositeSync):
+    def __init__(self, syncs, state_receiver_factory=StateReceiver):
+        super().__init__(syncs)
+        self._receiver = state_receiver_factory()
+        for sync in syncs:
+            self._receiver.listeners.append(sync)
+        self._started = False
+
+    def set_signal(self, job_info) -> Signal:
+        if not self._started:
+            self._receiver.start()
+            self._started = True
+
+        return super(StateReceiverManagingSync, self).set_signal(job_info)
+
+    def close(self):
+        self._receiver.close()
+        for sync in self._syncs:
+            self._receiver.listeners.remove(sync)
+
+        super(StateReceiverManagingSync, self).close()
 
 
 def create_composite(no_overlap: bool = False, depends_on: Sequence[str] = ()):
