@@ -105,6 +105,22 @@ def _init_exec_parser(common, subparsers):
                                   'can help if there is any problem with output processing.')
     exec_parser.add_argument('-o', '--no-overlap', action='store_true', default=False,
                              help='Skip if job with the same job ID is already running')
+    exec_parser.add_argument('-s', '--serial', action='store_true', default=False,
+                             help='The execution will wait while there is a running job with the same job ID or a job '
+                                  'belonging to the same execution group (if specified). As the name implies, '
+                                  'this is used to achieve serial execution of the same (or same group of) jobs, '
+                                  'i.e., to prevent parallel execution. The difference between this option and '
+                                  '--no-overlap is that this option will not terminate the current job when a related '
+                                  'job is executing, but puts this job in a waiting state instead. This option is a '
+                                  'shortcut for the --max-executions 1 option (see help for more details).')
+    exec_parser.add_argument('-m', '--max-executions', type=int, default=0,
+                             help='This option restricts the maximum number of parallel executions of the same job or '
+                                  'jobs from the same execution group (if specified). If the current number of '
+                                  'related executions prevents this job from being executed, then the job is put in a '
+                                  'waiting state and resumed when the number of executions decreases. If there are '
+                                  'more jobs waiting, the earlier ones have priority.')
+    exec_parser.add_argument('-g', '--execution-group', type=str,
+                             help='TBS.')
     exec_parser.add_argument('-p', '--pending', type=str,
                              help='Specifies pending group. The job will wait before execution in pending state'
                                   'until the group receives releasing signal. See the `release` command.')

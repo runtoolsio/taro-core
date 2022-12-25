@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum, auto
 from threading import Event
 from typing import Sequence
@@ -61,9 +62,9 @@ class Sync(ABC):
         """Dictionary of arbitrary immutable execution parameters"""
         return None
 
-    def close(self):
+    def release(self):
         """
-        Interrupt waiting and perform cleanup
+        Interrupt waiting
         """
 
 
@@ -90,8 +91,8 @@ class NoSync(Sync):
 
 class CompositeSync(Sync):
 
-    def __init__(self, syncs):
-        self._syncs = tuple(syncs) if syncs else (NoSync(),)
+    def __init__(self, *syncs):
+        self._syncs = syncs or (NoSync(),)
         self._current = self._syncs[0]
         self._parameters = tuple(p for s in syncs if s.parameters for p in s.parameters)
 
@@ -119,9 +120,9 @@ class CompositeSync(Sync):
     def parameters(self):
         return self._parameters
 
-    def close(self):
+    def release(self):
         for sync in self._syncs:
-            sync.close()
+            sync.release()
 
 
 class Latch(Sync):
@@ -161,15 +162,12 @@ class Latch(Sync):
         self._event.wait()
 
     def release(self):
-        self.close()
+        self._signal = Signal.CONTINUE
+        self._event.set()
 
     @property
     def parameters(self):
         return self._parameters
-
-    def close(self):
-        self._signal = Signal.CONTINUE
-        self._event.set()
 
 
 class NoOverlap(Sync):
@@ -248,30 +246,38 @@ class Dependency(Sync):
         return self._parameters
 
 
-class ParallelMax(Sync, ExecutionStateObserver):
+class ExecutionsLimitation(Sync, ExecutionStateObserver):
 
-    def __init__(self, max_executions, parallel_group):
+    def __init__(self, execution_group, max_executions):
+        if not execution_group:
+            raise ValueError('Execution group must be specified')
         if max_executions < 1:
             raise ValueError('Max executions must be greater than zero')
-        if not parallel_group:
-            raise ValueError('Parallel group must be specified')
+        self._group = execution_group
         self._max = max_executions
-        self._parallel_group = parallel_group
         self._signal = Signal.NONE
         self._event = Event()
-        self._parameters = (('sync', 'parallel_max'), ('parallel_group', parallel_group))
+        self._parameters = (
+            ('sync', 'executions_limitation'),
+            ('execution_group', execution_group),
+            ('max_executions', max_executions)
+        )
+
+    @property
+    def group(self):
+        return self._group
 
     @property
     def max_executions(self):
         return self._max
 
     @property
-    def parallel_group(self):
-        return self._parallel_group
-
-    @property
     def current_signal(self) -> Signal:
         return self._signal
+
+    def _set_signal(self, signal):
+        self._signal = signal
+        return signal
 
     @property
     def exec_state(self) -> ExecutionState:
@@ -283,25 +289,26 @@ class ParallelMax(Sync, ExecutionStateObserver):
     def set_signal(self, job_info) -> Signal:
         jobs = taro.client.read_jobs_info()
         parallel_group_jobs = sorted(
-            (job for job in jobs if self._is_same_parallel_group(job)),
+            (job for job in jobs if self._is_same_exec_group(job)),
             key=lambda job: job.lifecycle.changed(ExecutionState.CREATED)
         )
         executing = [job for job in parallel_group_jobs if job.lifecycle.state.is_executing()]
         max_allowed = self.max_executions - len(executing)
         if max_allowed <= 0:
-            return Signal.WAIT
+            return self._set_signal(Signal.WAIT)
 
         next_allowed = [job for job in parallel_group_jobs if job not in executing][0:max_allowed]
         job_created = job_info.lifecycle.changed(ExecutionState.CREATED)
         for allowed in next_allowed:
             if job_info.id == allowed.id or job_created <= allowed.lifecycle.changed(ExecutionState.CREATED):
                 # The second condition ensure this works even when the job is not contained in 'job' for any reasons
-                return Signal.CONTINUE
+                return self._set_signal(Signal.CONTINUE)
 
-        return Signal.WAIT
+        return self._set_signal(Signal.WAIT)
 
-    def _is_same_parallel_group(self, job):
-        return any(1 for name, value in job.parameters if name == 'parallel_group' and value == self._parallel_group)
+    def _is_same_exec_group(self, job):
+        return job.job_id == self._group or \
+               any(1 for name, value in job.parameters if name == 'execution_group' and value == self._group)
 
     def wait_and_unlock(self, global_state_lock):
         self._event.clear()
@@ -312,43 +319,45 @@ class ParallelMax(Sync, ExecutionStateObserver):
     def parameters(self):
         return self._parameters
 
-    def close(self):
+    def release(self):
         self._event.set()
 
     def state_update(self, job_info: JobInfo):
-        if job_info.lifecycle.state.is_terminal() and self._is_same_parallel_group(job_info):
+        if job_info.lifecycle.state.is_terminal() and self._is_same_exec_group(job_info):
             self._event.set()
 
 
-class StateReceiverManagingSync(CompositeSync):
-    def __init__(self, syncs, state_receiver_factory=StateReceiver):
-        super().__init__(syncs)
-        self._receiver = state_receiver_factory()
-        for sync in syncs:
-            self._receiver.listeners.append(sync)
-        self._started = False
+class WaitForStateWrapper(CompositeSync):
+    def __init__(self, *syncs, state_receiver_factory=StateReceiver):
+        super().__init__(*syncs)
+        self._state_receiver_factory = state_receiver_factory
 
-    def set_signal(self, job_info) -> Signal:
-        if not self._started:
-            self._receiver.start()
-            self._started = True
-
-        return super(StateReceiverManagingSync, self).set_signal(job_info)
-
-    def close(self):
-        self._receiver.close()
-        for sync in self._syncs:
-            self._receiver.listeners.remove(sync)
-
-        super(StateReceiverManagingSync, self).close()
+    def wait_and_unlock(self, global_state_lock):
+        receiver = self._state_receiver_factory()
+        receiver.listeners.append(self._current)
+        receiver.start()
+        try:
+            super(WaitForStateWrapper, self).wait_and_unlock(global_state_lock)
+        finally:
+            receiver.close()
+            receiver.listeners.remove(self._current)
 
 
-def create_composite(no_overlap: bool = False, depends_on: Sequence[str] = ()):
+@dataclass
+class ExecutionsLimit:
+    execution_group: str
+    max_executions: int
+
+
+def create_composite(executions_limit: ExecutionsLimit = None, no_overlap: bool = False, depends_on: Sequence[str] = ()):
     syncs = []
 
+    if executions_limit:
+        syncs.append(WaitForStateWrapper(
+            ExecutionsLimitation(executions_limit.execution_group, executions_limit.max_executions)))
     if no_overlap:
         syncs.append(NoOverlap())
     if depends_on:
         syncs.append(Dependency(*depends_on))
 
-    return CompositeSync(syncs)
+    return CompositeSync(*syncs)

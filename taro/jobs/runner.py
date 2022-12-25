@@ -47,7 +47,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         sync = sync or NoSync()
         if pending_group:
             self._latch = Latch(ExecutionState.PENDING)
-            self._sync = CompositeSync((self._latch, sync))
+            self._sync = CompositeSync(self._latch, sync)
         else:
             self._sync = sync
         self._global_state_locker = state_locker or cfg.state_locker
@@ -137,7 +137,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         """
         self._stopped_or_interrupted = True
 
-        self._sync.close()
+        self._sync.release()
         if self._executing:
             self._execution.stop()
 
@@ -149,7 +149,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         """
         self._stopped_or_interrupted = True
 
-        self._sync.close()
+        self._sync.release()
         if self._executing:
             self._execution.interrupt()
 
@@ -167,10 +167,10 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             log.error('event=[sync_error]', exc_info=e)
             self._state_change(ExecutionState.ERROR)
             return
-        finally:
-            self._sync.close()
 
-        if not synchronized:
+        if synchronized:
+            self._executing = True
+        else:
             return
 
         # Forward output from execution to the job instance for the instance's output listeners
@@ -216,7 +216,6 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 if signal is Signal.TERMINATE:
                     return False
 
-                self._executing = True
                 return True
 
     # Inline?

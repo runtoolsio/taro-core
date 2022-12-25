@@ -5,6 +5,7 @@ from taro.jobs import sync, warning
 from taro.jobs.managed import ManagedJobContext
 from taro.jobs.program import ProgramExecution
 from taro.jobs.runner import RunnerJobInstance
+from taro.jobs.sync import ExecutionsLimit
 from taro.test.execution import TestExecution
 
 logger = logging.getLogger(__name__)
@@ -16,10 +17,17 @@ def run(args):
     else:
         execution = ProgramExecution([args.command] + args.arg, read_output=not args.bypass_output)
 
+    job_id = args.id or " ".join([args.command] + args.arg)
+    if args.serial:
+        exec_limit = ExecutionsLimit(args.execution_group or job_id, 1)
+    elif args.max_executions:
+        exec_limit = ExecutionsLimit(args.execution_group or job_id, args.max_executions)
+    else:
+        exec_limit = None
     job_instance = RunnerJobInstance(
-        args.id or " ".join([args.command] + args.arg),
+        job_id,
         execution,
-        sync.create_composite(no_overlap=args.no_overlap, depends_on=args.depends_on),
+        sync.create_composite(executions_limit=exec_limit, no_overlap=args.no_overlap, depends_on=args.depends_on),
         pending_group=args.pending,
         **(dict(args.param) if args.param else dict()))
 
