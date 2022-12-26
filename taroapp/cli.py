@@ -120,7 +120,9 @@ def _init_exec_parser(common, subparsers):
                                   'waiting state and resumed when the number of executions decreases. If there are '
                                   'more jobs waiting, the earlier ones have priority.')
     exec_parser.add_argument('-g', '--execution-group', type=str,
-                             help='TBS.')
+                             help='Sets the execution group for the job. The maximum number of simultaneous executions '
+                                  'for all jobs belonging to the same execution group can be specified using the '
+                                  '`--serial` or `max-executions` options.')
     exec_parser.add_argument('-p', '--pending', type=str,
                              help='Specifies pending group. The job will wait before execution in pending state'
                                   'until the group receives releasing signal. See the `release` command.')
