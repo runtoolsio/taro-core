@@ -5,7 +5,7 @@ from [single client application](https://github.com/taro-suite/taroc).
 
 ## Similar or related projects
 [Pueue](https://github.com/nukesor/pueue)  
-[MProcs][https://github.com/pvolok/mprocs]  
+[MProcs](https://github.com/pvolok/mprocs)  
 
 ## Main Features
 

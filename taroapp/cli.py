@@ -122,7 +122,8 @@ def _init_exec_parser(common, subparsers):
     exec_parser.add_argument('-g', '--execution-group', type=str,
                              help='Sets the execution group for the job. The maximum number of simultaneous executions '
                                   'for all jobs belonging to the same execution group can be specified using the '
-                                  '`--serial` or `max-executions` options.')
+                                  '`--serial` or `max-executions` options. If an execution group is not set then '
+                                  'it defaults to the job ID.')
     exec_parser.add_argument('-p', '--pending', type=str,
                              help='Specifies pending group. The job will wait before execution in pending state'
                                   'until the group receives releasing signal. See the `release` command.')
