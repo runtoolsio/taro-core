@@ -97,7 +97,11 @@ def _init_exec_parser(common, subparsers):
         It is recommended to use the `--id` option to specify the ID of the job otherwise the ID is constructed from the 
         command and its arguments. """)
     # General options
-    exec_parser.add_argument('--id', type=str, help='Set job ID. This is optional but recommended.')
+    exec_parser.add_argument('--id', type=str, help='Set the job ID. It is recommended to keep this value unset only '
+                                                    'for testing and development purposes.')
+    exec_parser.add_argument('--inst', type=str, help='Set the instance ID. A unique value is generated when this '
+                                                      'option is not set. It is recommended to keep this value unique '
+                                                      'across all jobs.')
     exec_parser.add_argument('-b', '--bypass-output', action='store_true',
                              help='Normally the output of the executed job is captured by taro where is processed '
                                   'and resend to standard streams. When this option is used taro does not capture '

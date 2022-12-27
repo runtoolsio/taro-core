@@ -41,8 +41,9 @@ def _gen_prioritized(*prioritized_seq):
 
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, sync=NoSync(), state_locker=None, *, pending_group=None, **user_params):
-        self._id = JobInstanceID(job_id, util.unique_timestamp_hex())
+    def __init__(self, job_id, execution, sync=NoSync(), state_locker=None, *, instance_id=None, pending_group=None,
+                 **user_params):
+        self._id = JobInstanceID(job_id, instance_id or util.unique_timestamp_hex())
         self._execution = execution
         sync = sync or NoSync()
         if pending_group:
