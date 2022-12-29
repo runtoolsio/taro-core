@@ -97,11 +97,12 @@ def _init_exec_parser(common, subparsers):
         It is recommended to use the `--id` option to specify the ID of the job otherwise the ID is constructed from the 
         command and its arguments. """)
     # General options
-    exec_parser.add_argument('--id', type=str, help='Set the job ID. It is recommended to keep this value unset only '
-                                                    'for testing and development purposes.')
-    exec_parser.add_argument('--inst', type=str, help='Set the instance ID. A unique value is generated when this '
-                                                      'option is not set. It is recommended to keep this value unique '
-                                                      'across all jobs.')
+    exec_parser.add_argument('--id', type=str,
+                             help='Set the job ID. It is recommended to keep this value unset only for testing and '
+                                  'development purposes.')
+    exec_parser.add_argument('--inst', type=str,
+                             help='Set the instance ID. A unique value is generated when this option is not set. It '
+                                  'is recommended to keep this value unique across all jobs.')
     exec_parser.add_argument('-b', '--bypass-output', action='store_true',
                              help='Normally the output of the executed job is captured by taro where is processed '
                                   'and resend to standard streams. When this option is used taro does not capture '
@@ -147,6 +148,10 @@ def _init_exec_parser(common, subparsers):
                              help='The job will be started without actual execution of its command. The final state '
                                   'of the job is specified by the value of this option. Default state is COMPLETED. '
                                   'This option can be used for testing some of the functionality like custom plugins.')
+    exec_parser.add_argument('-t', '--timeout', type=str,
+                             help='The value of this option specifies the signal number or code for stopping the job '
+                                  'due to a timeout. A timeout warning is added to the job when it is stopped in this '
+                                  'way.')
 
     exec_parser.add_argument('--param', type=lambda p: p.split('='), action='append',
                              help="Parameters are specified in `name=value` format. They represent metadata of the "

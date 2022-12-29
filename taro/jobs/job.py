@@ -14,8 +14,9 @@ There are two type of clients of the framework:
 import abc
 import textwrap
 from collections import namedtuple
+from dataclasses import dataclass
 from fnmatch import fnmatch
-from typing import NamedTuple
+from typing import NamedTuple, Dict, Any, Optional
 
 from taro.jobs.execution import ExecutionError
 
@@ -358,7 +359,12 @@ class ExecutionStateObserver(abc.ABC):
         """This method is called when job instance execution state is changed."""
 
 
-Warn = namedtuple('Warn', 'name params')
+@dataclass
+class Warn:
+    name: str
+    params: Optional[Dict[str, Any]] = None
+
+
 WarnEventCtx = namedtuple('WarnEventCtx', 'count')
 
 

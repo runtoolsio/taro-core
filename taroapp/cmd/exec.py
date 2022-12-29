@@ -2,6 +2,7 @@ import logging
 import signal
 
 from taro.jobs import sync, warning
+from taro.jobs.job import Warn
 from taro.jobs.managed import ManagedJobContext
 from taro.jobs.program import ProgramExecution
 from taro.jobs.runner import RunnerJobInstance
@@ -34,9 +35,7 @@ def run(args):
 
     warning.register(job_instance, warn_times=args.warn_time, warn_outputs=args.warn_output)
 
-    term = Term(job_instance)
-    signal.signal(signal.SIGTERM, term.terminate)
-    signal.signal(signal.SIGINT, term.interrupt)
+    _set_signal_handlers(job_instance, args.timeout)
 
     with ManagedJobContext() as ctx:
         ctx.add(job_instance)
@@ -53,6 +52,21 @@ def run(args):
         raise ProgramExecutionError(1)
 
 
+def _set_signal_handlers(job_instance, timeout_signal):
+    term = Term(job_instance)
+    signal.signal(signal.SIGTERM, term.terminate)
+    signal.signal(signal.SIGINT, term.interrupt)
+
+    if timeout_signal:
+        if timeout_signal.isnumeric():
+            timeout_signal_number = timeout_signal
+        else:
+            signal_enum = getattr(signal.Signals, timeout_signal)
+            timeout_signal_number = signal_enum.value
+
+        signal.signal(timeout_signal_number, term.timeout)
+
+
 class Term:
 
     def __init__(self, job_instance):
@@ -60,11 +74,16 @@ class Term:
 
     def terminate(self, _, __):
         logger.warning('event=[terminated_by_signal]')
-        self.job_instance.interrupt()
+        self.job_instance.stop()
 
     def interrupt(self, _, __):
         logger.warning('event=[interrupted_by_keyboard]')
         self.job_instance.interrupt()
+
+    def timeout(self, _, __):
+        logger.warning('event=[terminated_by_timeout_signal]')
+        self.job_instance.add_warning(Warn('timeout'))
+        self.job_instance.stop()
 
 
 class ProgramExecutionError(SystemExit):
