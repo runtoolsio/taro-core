@@ -16,7 +16,7 @@ def run(args):
     if args.dry_run:
         execution = TestExecution(args.dry_run)
     else:
-        execution = ProgramExecution([args.command] + args.arg, read_output=not args.bypass_output)
+        execution = ProgramExecution(*([args.command] + args.arg), read_output=not args.bypass_output)
 
     job_id = args.id or " ".join([args.command] + args.arg)
     if args.serial:

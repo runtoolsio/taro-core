@@ -6,6 +6,8 @@ IMPLEMENTATION NOTE:
     Avoid importing any module depending on any external package. This allows to use this module without installing
     additional packages.
 """
+from threading import Thread
+
 from . import cfg, cfgfile, log
 from .hostinfo import read_hostinfo, HostinfoError
 from .jobs import warning, persistence, repo, sync
@@ -43,6 +45,10 @@ def execute(job_id, job_execution, no_overlap=False, depends_on=None, pending_gr
             sync.create_composite(no_overlap=no_overlap, depends_on=depends_on),
             pending_group=pending_group))
         job_instance.run()
+
+
+def execute_background(job_id, job_execution, no_overlap=False, depends_on=None, pending_group=None):
+    Thread(target=execute, args=(job_id, job_execution, no_overlap, depends_on, pending_group)).start()
 
 
 def close():

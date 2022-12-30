@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 class ProgramExecution(OutputExecution):
 
-    def __init__(self, args, read_output: bool):
+    def __init__(self, *args, read_output: bool = True):
         self.args = args
         self.read_output: bool = read_output
         self._popen: Union[Popen, None] = None

@@ -102,7 +102,7 @@ def wait_for_pending_state(instance: RunnerJobInstance):
 
 
 def test_last_output():
-    execution = ProgramExecution(['echo', "3\n2\n1\neveryone\nin\nthe\nworld\nis\ndoing\nsomething\nwithout\nme"],
+    execution = ProgramExecution('echo', "3\n2\n1\neveryone\nin\nthe\nworld\nis\ndoing\nsomething\nwithout\nme",
                                  read_output=True)
     instance = RunnerJobInstance('j', execution, state_locker=lock.NullStateLocker())
     instance.run()
