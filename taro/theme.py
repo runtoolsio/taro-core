@@ -25,9 +25,11 @@ BASE 16 COLOURS:
 class Theme:
     job = 'bold'
     instance = 'ansibrightblack'
+    id_separator = ''
     warning = 'ansired'
     state_before_execution = 'ansigreen'
     state_executing = 'ansiblue'
     state_not_executed = 'ansiyellow'
     state_incomplete = 'ansibrightyellow'
     state_failure = 'ansibrightred'
+    separator = 'ansibrightcyan'

@@ -41,7 +41,7 @@ def state_style(job):
 def job_instance_styled(job_instance):
     return [
         (job_style(job_instance), job_instance.job_id),
-        ("", "@"),
+        (Theme.id_separator, "@"),
         (instance_style(job_instance), job_instance.instance_id)
     ]
 
@@ -56,4 +56,4 @@ def job_status_line_styled(job_instance, *, prefix_ts=True):
 
 
 def job_instance_id_styled(job_id, instance_id):
-    return [(Theme.job, job_id), ("", "@"), (Theme.instance, instance_id)]
+    return [(Theme.job, job_id), (Theme.id_separator, "@"), (Theme.instance, instance_id)]
