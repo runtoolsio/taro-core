@@ -194,7 +194,7 @@ def _init_history_parser(common, subparsers):
 
     filter_group = hist_parser.add_argument_group('filtering', 'These options allows to filter returned jobs')
     filter_group.add_argument('ids', nargs='*', type=str,
-                              help='Identifiers of job or instance ID matching pattern for result filtering')
+                              help='Identifiers of job or instance matching pattern for result filtering')
     filter_group.add_argument('-T', '--today', action='store_true', help='Show only jobs created today (local)')
     filter_group.add_argument('-Y', '--yesterday', action='store_true', help='Show only jobs created yesterday (local)')
     filter_group.add_argument('-S', '--since', type=_str2dt, help='Show entries not older than the specified date')
@@ -274,7 +274,8 @@ def _init_stop_parser(common, subparsers):
 
     stop_parser = subparsers.add_parser(ACTION_STOP, parents=[common], description='Stop job', add_help=False)
     stop_parser.add_argument('--force', action='store_true', help='Force stop all')
-    stop_parser.add_argument('instance', type=str, metavar='INSTANCE', help='Instance to stop')
+    stop_parser.add_argument('ids', type=str, nargs='+', metavar='IDs',
+                             help='Identifiers of job or instance to stop')
 
 
 def _init_tail_parser(common, subparsers):
