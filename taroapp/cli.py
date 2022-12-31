@@ -193,8 +193,8 @@ def _init_history_parser(common, subparsers):
         ACTION_HISTORY, aliases=['hist'], parents=[common], description='Show jobs history', add_help=False)
 
     filter_group = hist_parser.add_argument_group('filtering', 'These options allows to filter returned jobs')
-    filter_group.add_argument('id', nargs='?', type=str,
-                              help='Job or instance ID matching pattern for result filtering')
+    filter_group.add_argument('ids', nargs='*', type=str,
+                              help='Identifiers of job or instance ID matching pattern for result filtering')
     filter_group.add_argument('-T', '--today', action='store_true', help='Show only jobs created today (local)')
     filter_group.add_argument('-Y', '--yesterday', action='store_true', help='Show only jobs created yesterday (local)')
     filter_group.add_argument('-S', '--since', type=_str2dt, help='Show entries not older than the specified date')

@@ -1,4 +1,3 @@
-from ast import arg
 from taro.jobs import persistence
 from taro.jobs.persistence import SortCriteria
 from taroapp import printer, jfilter
@@ -7,7 +6,7 @@ from taroapp.view import instance as view_inst
 
 
 def run(args):
-    jobs = persistence.read_jobs(id_=args.id, sort=SortCriteria[args.sort.upper()], asc=args.asc,
+    jobs = persistence.read_jobs(ids=args.ids, sort=SortCriteria[args.sort.upper()], asc=args.asc,
                                  limit=args.lines or -1, last=args.last)
 
     columns = [view_inst.JOB_ID, view_inst.INSTANCE_ID, view_inst.CREATED, view_inst.ENDED, view_inst.EXEC_TIME,
@@ -21,8 +20,8 @@ def run(args):
 
 def _build_job_filter(args):
     job_filter = AllFilter()
-    if args.id:
-        job_filter <<= jfilter.create_id_filter(args.id)
+    # if args.id: TODO do we really need this?
+    #     job_filter <<= jfilter.create_id_filter(args.id)
     if args.today:
         job_filter <<= jfilter.today_filter
     if args.yesterday:

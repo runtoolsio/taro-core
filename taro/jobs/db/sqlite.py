@@ -47,7 +47,7 @@ class SQLite:
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
-    def read_jobs(self, *, id_, sort, asc, limit, last) -> List[JobInfo]:
+    def read_jobs(self, *, ids, sort, asc, limit, last) -> List[JobInfo]:
         def sort_exp():
             if sort == SortCriteria.CREATED:
                 return 'created'
@@ -59,8 +59,9 @@ class SQLite:
 
         statement = "SELECT * FROM history"
 
-        if id_:
-            statement += " WHERE job_id LIKE \"%{id}%\" OR instance_id = \"{id}\"".format(id=id_)
+        if ids:
+            conditions = ["job_id LIKE \"%{id}%\" OR instance_id = \"{id}\"".format(id=id_) for id_ in ids]
+            statement += " WHERE ({conditions})".format(conditions=" OR ".join(conditions))
         if last:
             statement += " GROUP BY job_id HAVING ROWID = max(ROWID) "
 
