@@ -119,7 +119,7 @@ class Server(SocketServer):
 
         job_instance_filter = req_body.get('job_instance')
         job_instances = [job for job in self._job_instances.copy()
-                         if not job_instance_filter or job.create_info().matches(job_instance_filter)]
+                         if not job_instance_filter or job.create_info().id.matches(job_instance_filter)]
         jobs = []
         for job_instance in job_instances:
             data = resource.handle(job_instance, req_body)

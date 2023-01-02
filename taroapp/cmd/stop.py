@@ -8,7 +8,7 @@ from taroapp.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
 def run(args):
     with JobsClient() as client:
         all_jobs = client.read_jobs_info()
-        jobs = [job for job in all_jobs if any(1 for args_id in args.ids if job.matches(args_id))]
+        jobs = [job for job in all_jobs if any(1 for args_id in args.ids if job.id.matches(args_id))]
 
         if not jobs:
             print('No instances to stop: ' + " ".join(args.ids))

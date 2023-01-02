@@ -25,6 +25,9 @@ class JobInstanceID(NamedTuple):
     job_id: str
     instance_id: str
 
+    def matches(self, job_instance, matching_strategy=fnmatch):
+        return matching_strategy(self.job_id, job_instance) or fnmatch(self.instance_id, job_instance)
+
     def __eq__(self, other):
         if type(self) is type(other):
             return self.job_id == other.job_id and self.instance_id == other.instance_id
@@ -317,9 +320,6 @@ class JobInfo:
     @property
     def user_params(self):
         return dict(self._user_params)
-
-    def matches(self, job_instance, job_matching_strategy=fnmatch):
-        return job_matching_strategy(self.job_id, job_instance) or fnmatch(self.instance_id, job_instance)
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r}, {!r}, {!r})".format(
