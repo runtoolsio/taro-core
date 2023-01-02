@@ -100,7 +100,7 @@ def _init_exec_parser(common, subparsers):
     exec_parser.add_argument('--id', type=str,
                              help='Set the job ID. It is recommended to keep this value unset only for testing and '
                                   'development purposes.')
-    exec_parser.add_argument('--inst', type=str,
+    exec_parser.add_argument('--instance', type=str,
                              help='Set the instance ID. A unique value is generated when this option is not set. It '
                                   'is recommended to keep this value unique across all jobs.')
     exec_parser.add_argument('-b', '--bypass-output', action='store_true',

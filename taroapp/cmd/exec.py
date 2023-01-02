@@ -29,7 +29,7 @@ def run(args):
         job_id,
         execution,
         sync.create_composite(executions_limit=exec_limit, no_overlap=args.no_overlap, depends_on=args.depends_on),
-        instance_id=args.inst,
+        instance_id=args.instance,
         pending_group=args.pending,
         **(dict(args.param) if args.param else dict()))
 
