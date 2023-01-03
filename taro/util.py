@@ -1,15 +1,15 @@
 import functools
+import itertools
 import os
-import secrets
 import re
+import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 from shutil import copy
 from typing import Dict
-from dateutil import relativedelta
 
-import itertools
 import yaml
+from dateutil import relativedelta
 
 from taro import utilns
 from taro.utilns import NestedNamespace
@@ -18,6 +18,14 @@ TRUE_OPTIONS = ['yes', 'true', 'y', '1', 'on']
 FALSE_OPTIONS = ['no', 'false', 'n', '0', 'off']
 BOOLEAN_OPTIONS = TRUE_OPTIONS + FALSE_OPTIONS
 LOG_LEVELS = ['critical', 'fatal', 'error', 'warn', 'warning', 'info', 'debug', 'off']
+
+
+def and_(a, b):
+    return a and b
+
+
+def or_(a, b):
+    return a or b
 
 
 def split_params(params, kv_sep="=") -> Dict[str, str]:

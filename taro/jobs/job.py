@@ -19,6 +19,7 @@ from fnmatch import fnmatch
 from typing import NamedTuple, Dict, Any, Optional
 
 from taro.jobs.execution import ExecutionError
+from taro.util import and_, or_
 
 
 class JobInstanceID(NamedTuple):
@@ -26,7 +27,13 @@ class JobInstanceID(NamedTuple):
     instance_id: str
 
     def matches(self, job_instance, matching_strategy=fnmatch):
-        return matching_strategy(self.job_id, job_instance) or fnmatch(self.instance_id, job_instance)
+        if "@" in job_instance:
+            job_id, instance_id = job_instance.split("@")
+            op = and_
+        else:
+            job_id = instance_id = job_instance
+            op = or_
+        return op(matching_strategy(self.job_id, job_id), matching_strategy(self.instance_id, instance_id))
 
     def __eq__(self, other):
         if type(self) is type(other):
