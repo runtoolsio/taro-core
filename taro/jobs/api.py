@@ -120,12 +120,14 @@ class Server(SocketServer):
         job_instance_filter = req_body.get('job_instance')
         job_instances = [job for job in self._job_instances.copy()
                          if not job_instance_filter or job.create_info().id.matches(job_instance_filter)]
-        jobs = []
-        for job_instance in job_instances:
-            data = resource.handle(job_instance, req_body)
-            jobs.append(_job_data(job_instance, data))
 
-        return _resp_ok(jobs)
+        instance_responses = []
+        for job_instance in job_instances:
+            instance_response = resource.handle(job_instance, req_body)
+            instance_response['response_metadata'] = _resp_metadata(job_instance)
+            instance_responses.append(instance_response)
+
+        return _resp_ok(instance_responses)
 
     def _resolve_resource(self, req_body) -> APIResource:
         if 'req' not in req_body:
@@ -145,22 +147,21 @@ def _missing_field_error(field) -> _ServerError:
     return _ServerError(422, f"missing_field:{field}")
 
 
-def _job_data(job_instance, data):
+def _resp_metadata(job_instance):
     return {
         "job_id": job_instance.job_id,
-        "instance_id": job_instance.instance_id,
-        "data": data
+        "instance_id": job_instance.instance_id
     }
 
 
-def _resp_ok(jobs):
-    return _resp(200, jobs)
+def _resp_ok(instance_responses):
+    return _resp(200, instance_responses)
 
 
-def _resp(code: int, jobs):
+def _resp(code: int, instance_responses):
     resp = {
         "resp": {"code": code},
-        "jobs": jobs
+        "instances": instance_responses
     }
     return json.dumps(resp)
 

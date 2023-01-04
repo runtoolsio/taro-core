@@ -49,15 +49,15 @@ class JobsClient(SocketClient):
 
     def read_jobs_info(self, job_instance="") -> List[JobInfo]:
         responses = self._send_request('/jobs', job_instance=job_instance)
-        return [dto.to_job_info(job['data']['job_info']) for job in _get_jobs(responses)]
+        return [dto.to_job_info(resp['job_info']) for resp in _instance_responses(responses)]
 
     def read_tail(self, job_instance) -> List[Tuple[JobInstanceID, List[str]]]:
         responses = self._send_request('/jobs/tail', job_instance=job_instance)
-        return [(_job_instance_id(job), job['data']['tail']) for job in _get_jobs(responses)]
+        return [(_job_instance_id(resp), resp['tail']) for resp in _instance_responses(responses)]
 
     def release_jobs(self, pending_group) -> List[JobInstanceID]:
         responses = self._send_request('/jobs/release', data={"pending_group": pending_group})
-        return [_job_instance_id(job) for job in _get_jobs(responses) if job['data']['released']]
+        return [_job_instance_id(resp) for resp in _instance_responses(responses) if resp['released']]
 
     def stop_jobs(self, instance) -> List[Tuple[JobInstanceID, str]]:
         """
@@ -69,12 +69,13 @@ class JobsClient(SocketClient):
             raise ValueError('Instances to be stopped cannot be empty')
 
         responses = self._send_request('/jobs/stop', job_instance=instance)
-        return [(_job_instance_id(job), job['data']['result']) for job in _get_jobs(responses)]
+        return [(_job_instance_id(resp), resp['result']) for resp in _instance_responses(responses)]
 
 
-def _job_instance_id(job_resp):
-    return JobInstanceID(job_resp['job_id'], job_resp['instance_id'])
+def _job_instance_id(inst_resp):
+    resp_metadata = inst_resp['response_metadata']
+    return JobInstanceID(resp_metadata['job_id'], resp_metadata['instance_id'])
 
 
-def _get_jobs(responses):
-    return [job for resp in responses for job in resp['jobs']]
+def _instance_responses(responses):
+    return [instance_resp for resp in responses for instance_resp in resp['instances']]  # TODO Handle errors
