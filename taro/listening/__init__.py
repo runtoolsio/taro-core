@@ -30,7 +30,7 @@ class EventReceiver(SocketServer):
             return
 
         job_info = dto.to_job_info(req_body_json['event']['job_info'])
-        if self.instance and not job_info.id.matches(self.instance, matching_strategy=util.substring_match):
+        if self.instance and not job_info.id.matches(self.instance, matching_strategy=util.partial_match):
             return
 
         self.handle_event(job_info, req_body_json['event'])

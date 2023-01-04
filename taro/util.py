@@ -4,6 +4,9 @@ import os
 import re
 import secrets
 from datetime import datetime, timezone
+from enum import Enum
+from fnmatch import fnmatch
+from operator import eq
 from pathlib import Path
 from shutil import copy
 from typing import Dict
@@ -160,10 +163,6 @@ def copy_resource(src: Path, dst: Path, overwrite=False):
     raise FileExistsError('File already exists: ' + str(dst))
 
 
-def substring_match(job_id, instance):
-    return bool(re.search(instance, job_id))
-
-
 def truncate(text, max_len, truncated_suffix=''):
     text_length = len(text)
     suffix_length = len(truncated_suffix)
@@ -181,3 +180,17 @@ def cli_confirmation():
     print("Do you want to continue? [Y/n] ", end="")
     i = input()
     return i.lower() in TRUE_OPTIONS
+
+
+def partial_match(string, pattern):
+    return bool(re.search(pattern, string))
+
+
+class MatchingStrategy(Enum):
+    """
+    Define functions for string match testing where the first parameter is the tested string and the second parameter
+    is the pattern.
+    """
+    EXACT = eq
+    FN_MATCH = fnmatch
+    PARTIAL = partial_match
