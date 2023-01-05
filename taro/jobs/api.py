@@ -5,6 +5,7 @@ from json import JSONDecodeError
 
 from taro import dto, util
 from taro.socket import SocketServer
+from taro.util import MatchingStrategy
 
 log = logging.getLogger(__name__)
 
@@ -117,9 +118,10 @@ class Server(SocketServer):
         except _ServerError as e:
             return e.create_response()
 
-        job_instance_filter = req_body.get('job_instance')
-        job_instances = [job for job in self._job_instances.copy()
-                         if not job_instance_filter or job.create_info().id.matches(job_instance_filter)]
+        try:
+            job_instances = self._matching_job_instances(req_body)
+        except AttributeError as e:
+            return _resp_err(422, str(e))
 
         instance_responses = []
         for job_instance in job_instances:
@@ -141,6 +143,19 @@ class Server(SocketServer):
             raise _ServerError(404, f"{api} API not found")
 
         return resource
+
+    def _matching_job_instances(self, req_body):
+        match = req_body.get('request_metadata', {}).get('match', {})
+        match_ids = match.get('ids', None)
+        if not match_ids:
+            return self._job_instances
+
+        if match_strategy_val := match.get('ids_match_strategy'):
+            match_strategy = MatchingStrategy[match.get(match_strategy_val.upper())]
+        else:
+            match_strategy = MatchingStrategy.FN_MATCH
+        return [job_instance for job_instance in self._job_instances
+                if any(1 for match_id in match_ids if job_instance.id.matches(match_id, match_strategy))]
 
 
 def _missing_field_error(field) -> _ServerError:

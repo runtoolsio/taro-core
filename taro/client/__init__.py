@@ -41,7 +41,7 @@ class JobsClient(SocketClient):
     def _send_request(self, api: str, *, data=None, job_instance: str = '') -> List[Dict[str, Any]]:
         req = {'req': {'api': api}}
         if job_instance:
-            req['job_instance'] = job_instance
+            req['request_metadata'] = {'match': {'ids': [job_instance]}}
         if data:
             req['data'] = data
 
