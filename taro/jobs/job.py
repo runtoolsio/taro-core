@@ -16,25 +16,33 @@ import textwrap
 from collections import namedtuple
 from dataclasses import dataclass
 from fnmatch import fnmatch
-from typing import NamedTuple, Dict, Any, Optional
+from typing import NamedTuple, Dict, Any, Optional, Sequence
 
 from taro.jobs.execution import ExecutionError
-from taro.util import and_, or_
+from taro.util import and_, or_, MatchingStrategy
+
+
+class IDMatchingCriteria(NamedTuple):
+    patterns: Sequence[str]
+    strategy: MatchingStrategy
 
 
 class JobInstanceID(NamedTuple):
     job_id: str
     instance_id: str
 
-    def matches(self, job_instance, matching_strategy=fnmatch):
-        if not job_instance:
+    def matches_any(self, matching_criteria):
+        return any(self.matches(pattern, matching_criteria.strategy) for pattern in matching_criteria.patterns)
+
+    def matches(self, id_pattern, matching_strategy=fnmatch):
+        if not id_pattern:
             return False
 
-        if "@" in job_instance:
-            job_id, instance_id = job_instance.split("@")
+        if "@" in id_pattern:
+            job_id, instance_id = id_pattern.split("@")
             op = and_
         else:
-            job_id = instance_id = job_instance
+            job_id = instance_id = id_pattern
             op = or_
         return op(not job_id or matching_strategy(self.job_id, job_id),
                   not instance_id or matching_strategy(self.instance_id, instance_id))
