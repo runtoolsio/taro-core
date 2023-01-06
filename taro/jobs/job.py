@@ -27,13 +27,17 @@ class JobInstanceID(NamedTuple):
     instance_id: str
 
     def matches(self, job_instance, matching_strategy=fnmatch):
+        if not job_instance:
+            return False
+
         if "@" in job_instance:
             job_id, instance_id = job_instance.split("@")
             op = and_
         else:
             job_id = instance_id = job_instance
             op = or_
-        return op(matching_strategy(self.job_id, job_id), matching_strategy(self.instance_id, instance_id))
+        return op(not job_id or matching_strategy(self.job_id, job_id),
+                  not instance_id or matching_strategy(self.instance_id, instance_id))
 
     def __eq__(self, other):
         if type(self) is type(other):
