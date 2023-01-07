@@ -112,6 +112,9 @@ class Server(SocketServer):
             log.warning(f"event=[invalid_json_request_body] length=[{e}]")
             return _resp_err(400, "invalid_req_body")
 
+        if 'request_metadata' not in req_body:
+            return _resp_err(422, "missing_field:request_metadata")
+
         try:
             resource = self._resolve_resource(req_body)
             resource.validate(req_body)
@@ -132,12 +135,10 @@ class Server(SocketServer):
         return _resp_ok(instance_responses)
 
     def _resolve_resource(self, req_body) -> APIResource:
-        if 'req' not in req_body:
-            raise _missing_field_error('req')
-        if 'api' not in req_body['req']:
-            raise _missing_field_error('req.api')
+        if 'api' not in req_body['request_metadata']:
+            raise _missing_field_error('request_metadata.api')
 
-        api = req_body['req']['api']
+        api = req_body['request_metadata']['api']
         resource = self._resources.get(api)
         if not resource:
             raise _ServerError(404, f"{api} API not found")
@@ -181,13 +182,13 @@ def _resp(code: int, instance_responses):
     return json.dumps(resp)
 
 
-def _resp_err(code: int, error: str):
+def _resp_err(code: int, reason: str):
     if 400 > code >= 600:
         raise ValueError("Error code must be 4xx or 5xx")
 
     err_resp = {
         "resp": {"code": code},
-        "error": error
+        "error": {"reason": reason}
     }
 
     return json.dumps(err_resp)
