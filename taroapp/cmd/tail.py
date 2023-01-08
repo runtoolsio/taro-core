@@ -19,11 +19,12 @@ def run(args):
         signal.signal(signal.SIGINT, lambda _, __: receiver.close())
         receiver.start()
     else:
-        for (job_id, instance_id), tail in taro.client.read_tail(None)[0]:
+        for tail_resp in taro.client.read_tail(None).responses:
+            job_id, instance_id = tail_resp.id
             if args.instance and not (fnmatch(job_id, args.instance) or fnmatch(instance_id, args.instance)):
-                continue
+                continue  # TODO match
             printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_id_styled(job_id, instance_id))
-            for line in tail:
+            for line in tail_resp.tail:
                 print(line)
 
 

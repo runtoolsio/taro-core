@@ -26,7 +26,7 @@ def instances():
         if query('sort'):
             raise http_error(412, "Query parameter 'sort' can be used only with query parameter 'finished'")
         jobs_info = list(util.sequence_view(
-            taro.client.read_jobs_info()[0],
+            taro.client.read_jobs_info().responses,
             sort_key=lambda j: j.lifecycle.changed(ExecutionState.CREATED),
             asc=asc,
             limit=limit))

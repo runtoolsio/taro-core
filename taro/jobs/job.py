@@ -285,6 +285,7 @@ class DelegatingJobInstance(JobInstance):
 class JobInfo:
     """
     Immutable snapshot of job instance state
+    TODO Rename to instance info?
     """
 
     def __init__(self, job_instance_id, lifecycle, status, warnings, exec_error: ExecutionError, parameters,

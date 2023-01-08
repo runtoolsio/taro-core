@@ -2,7 +2,7 @@ import json
 import logging
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import List, Tuple, Any, Dict, NamedTuple, Optional
+from typing import List, Tuple, Any, Dict, NamedTuple, Optional, TypeVar, Generic
 
 from taro import dto
 from taro.jobs.api import API_FILE_EXTENSION
@@ -12,7 +12,7 @@ from taro.socket import SocketClient, ServerResponse, Error
 log = logging.getLogger(__name__)
 
 
-class JobInstanceResponse(NamedTuple):
+class APIInstanceResponse(NamedTuple):
     id: JobInstanceID
     body: Dict[str, Any]
 
@@ -31,22 +31,55 @@ class APIError:
     resp_error: dict[str, Any]
 
 
-def read_jobs_info(job_instance="") -> Tuple[List[JobInfo], List[APIError]]:
+T = TypeVar('T')
+
+
+@dataclass
+class MultiResponse(Generic[T]):
+
+    responses: List[T]
+    errors: List[APIError]
+
+    def __iter__(self):
+        return iter((self.responses, self.errors))
+
+
+@dataclass
+class JobInstanceResponse:
+    id: JobInstanceID
+
+
+@dataclass
+class ReleaseResponse(JobInstanceResponse):
+    pass
+
+
+@dataclass
+class StopResponse(JobInstanceResponse):
+    result_str: str
+
+
+@dataclass
+class TailResponse(JobInstanceResponse):
+    tail: List[str]
+
+
+def read_jobs_info(job_instance="") -> MultiResponse[JobInfo]:
     with JobsClient() as client:
         return client.read_jobs_info(job_instance)
 
 
-def release_jobs(pending_group) -> Tuple[List[JobInstanceID], List[APIError]]:
+def release_jobs(pending_group) -> MultiResponse[ReleaseResponse]:
     with JobsClient() as client:
         return client.release_jobs(pending_group)
 
 
-def stop_jobs(instances, interrupt: bool) -> Tuple[List[Tuple[JobInstanceID, str]], List[APIError]]:
+def stop_jobs(instances, interrupt: bool) -> MultiResponse[StopResponse]:
     with JobsClient() as client:
         return client.stop_jobs(instances, interrupt)  # TODO ??
 
 
-def read_tail(instance) -> Tuple[List[Tuple[JobInstanceID, List[str]]], List[APIError]]:
+def read_tail(instance) -> MultiResponse[TailResponse]:
     with JobsClient() as client:
         return client.read_tail(instance)
 
@@ -62,8 +95,8 @@ class JobsClient(SocketClient):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def _send_request(self, api: str, req_body=None, *, job_instance: str = '')\
-            -> Tuple[List[JobInstanceResponse], List[APIError]]:
+    def _send_request(self, api: str, req_body=None, *, job_instance: str = '') \
+            -> Tuple[List[APIInstanceResponse], List[APIError]]:
         if not req_body:
             req_body = {}
         req_body["request_metadata"] = {"api": api}
@@ -73,19 +106,16 @@ class JobsClient(SocketClient):
         server_responses: List[ServerResponse] = self.communicate(json.dumps(req_body))
         return _process_responses(server_responses)
 
-    def read_jobs_info(self, job_instance="") -> Tuple[List[JobInfo], List[APIError]]:
+    def read_jobs_info(self, job_instance="") -> MultiResponse[JobInfo]:
         instance_responses, api_errors = self._send_request('/jobs', job_instance=job_instance)
-        return [dto.to_job_info(body["job_info"]) for _, body in instance_responses], api_errors
+        return MultiResponse([dto.to_job_info(body["job_info"]) for _, body in instance_responses], api_errors)
 
-    def read_tail(self, job_instance) -> Tuple[List[Tuple[JobInstanceID, List[str]]], List[APIError]]:
-        instance_responses, api_errors = self._send_request('/jobs/tail', job_instance=job_instance)
-        return [(jid, body["tail"]) for jid, body in instance_responses], api_errors
-
-    def release_jobs(self, pending_group) -> Tuple[List[JobInstanceID], List[APIError]]:
+    def release_jobs(self, pending_group) -> MultiResponse[ReleaseResponse]:
         instance_responses, api_errors = self._send_request('/jobs/release', {"pending_group": pending_group})
-        return [jid for jid, body in instance_responses if body["released"]], api_errors
+        return MultiResponse([ReleaseResponse(jid) for jid, body in instance_responses if body["released"]],
+                             api_errors)
 
-    def stop_jobs(self, instance) -> Tuple[List[Tuple[JobInstanceID, str]], List[APIError]]:
+    def stop_jobs(self, instance) -> MultiResponse[StopResponse]:
         """
 
         :param instance:
@@ -95,11 +125,15 @@ class JobsClient(SocketClient):
             raise ValueError('Instances to be stopped cannot be empty')
 
         instance_responses, api_errors = self._send_request('/jobs/stop', job_instance=instance)
-        return [(jid, body["result"]) for jid, body in instance_responses], api_errors
+        return MultiResponse([StopResponse(jid, body["result"]) for jid, body in instance_responses], api_errors)
+
+    def read_tail(self, job_instance) -> MultiResponse[TailResponse]:
+        instance_responses, api_errors = self._send_request('/jobs/tail', job_instance=job_instance)
+        return MultiResponse([TailResponse(jid, body["tail"]) for jid, body in instance_responses], api_errors)
 
 
-def _process_responses(responses) -> Tuple[List[JobInstanceResponse], List[APIError]]:
-    instance_responses: List[JobInstanceResponse] = []
+def _process_responses(responses) -> Tuple[List[APIInstanceResponse], List[APIError]]:
+    instance_responses: List[APIInstanceResponse] = []
     api_errors: List[APIError] = []
 
     for server_id, resp, error in responses:
@@ -122,6 +156,6 @@ def _process_responses(responses) -> Tuple[List[JobInstanceResponse], List[APIEr
         for instance_resp in resp_body['instances']:
             inst_metadata = instance_resp['instance_metadata']
             jid = JobInstanceID(inst_metadata["job_id"], inst_metadata["instance_id"])
-            instance_responses.append(JobInstanceResponse(jid, instance_resp))
+            instance_responses.append(APIInstanceResponse(jid, instance_resp))
 
     return instance_responses, api_errors
