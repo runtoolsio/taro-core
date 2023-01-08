@@ -90,8 +90,8 @@ class Error(Enum):
     TIMEOUT = auto()
 
 
-class InstanceResponse(NamedTuple):
-    instance_id: str
+class InstanceResponse(NamedTuple):  # TODO Rename to server_response
+    instance_id: str  # TODO rename to server_id
     response: Optional[str]
     error: Error = None
 

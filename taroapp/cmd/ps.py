@@ -12,7 +12,7 @@ from taroapp.view import instance as view_inst
 
 
 def run(args):
-    jobs = [job for job in taro.client.read_jobs_info()
+    jobs = [job for job in taro.client.read_jobs_info()[0]
             if not args.instance or job.id.matches(args.instance, matching_strategy=util.partial_match)]
     jobs = JobInfoCollection(*jobs)
 

@@ -58,13 +58,11 @@ class ReleaseResource(APIResource):
         return '/jobs/release'
 
     def validate(self, req_body):
-        if 'data' not in req_body:
-            raise _missing_field_error('data')
-        if 'pending_group' not in req_body['data']:
-            raise _missing_field_error('data.pending_group')
+        if 'pending_group' not in req_body:
+            raise _missing_field_error('pending_group')
 
     def handle(self, job_instance, req_body):
-        released = job_instance.release(req_body.get('data').get('pending_group'))
+        released = job_instance.release(req_body['pending_group'])
         return {"released": released}
 
 

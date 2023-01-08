@@ -7,7 +7,7 @@ from taroapp.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
 
 def run(args):
     with JobsClient() as client:
-        all_jobs = client.read_jobs_info()
+        all_jobs, _ = client.read_jobs_info()
         jobs = [job for job in all_jobs if any(1 for args_id in args.ids if job.id.matches(args_id))]
 
         if not jobs:
@@ -20,5 +20,5 @@ def run(args):
                 exit(0)
 
         for args_id in args.ids:
-            for id_, result in client.stop_jobs(args_id):
+            for id_, result in client.stop_jobs(args_id)[0]:
                 print_styled(*style.job_instance_id_styled(*id_) + [('', ' -> '), ('', result)])

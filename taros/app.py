@@ -3,9 +3,9 @@ import json
 from bottle import route, run, request, response
 
 import taro.client
+import taro.jobs.repo as Jobs
 from taro import dto, util
 from taro.jobs import persistence
-import taro.jobs.repo as Jobs
 from taro.jobs.execution import ExecutionState
 from taro.jobs.persistence import SortCriteria
 from taros.httputil import http_error, query_digit, query
@@ -26,7 +26,7 @@ def instances():
         if query('sort'):
             raise http_error(412, "Query parameter 'sort' can be used only with query parameter 'finished'")
         jobs_info = list(util.sequence_view(
-            taro.client.read_jobs_info(),
+            taro.client.read_jobs_info()[0],
             sort_key=lambda j: j.lifecycle.changed(ExecutionState.CREATED),
             asc=asc,
             limit=limit))
@@ -39,7 +39,7 @@ def instances():
 
 @route('/instances/<inst>')
 def instance(inst):
-    jobs_info = taro.client.read_jobs_info(job_instance=inst)
+    jobs_info, _ = taro.client.read_jobs_info(job_instance=inst)
     if not jobs_info:
         raise http_error(404, "Instance not found")
 
