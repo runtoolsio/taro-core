@@ -1,6 +1,7 @@
 import json
 import logging
 from dataclasses import dataclass
+from enum import Enum, auto
 from typing import List, Tuple, Any, Dict, NamedTuple, Optional
 
 from taro import dto
@@ -16,11 +17,18 @@ class JobInstanceResponse(NamedTuple):
     body: Dict[str, Any]
 
 
+class APIErrorType(Enum):
+    SOCKET = auto()
+    RESPONSE = auto()
+    MISSING_RESPONSE_METADATA = auto()
+
+
 @dataclass
 class APIError:
     api_id: str
+    error: APIErrorType
     socket_error: Optional[Error]
-    error: dict[str, Any]
+    resp_error: dict[str, Any]
 
 
 def read_jobs_info(job_instance="") -> Tuple[List[JobInfo], List[APIError]]:
@@ -97,16 +105,23 @@ def _process_responses(responses) -> Tuple[List[JobInstanceResponse], List[APIEr
     for server_id, resp, error in responses:
         if error:
             log.error("event=[response_error] type=[socket] error=[%s]", error)
-            api_errors.append(APIError(server_id, error, {}))
-        else:
-            resp_body = json.loads(resp)
-            if "error" in resp_body:
-                log.error("event=[response_error] type=[api] error=[%s]", resp_body["error"])
-                api_errors.append(APIError(server_id, None, resp_body["error"]))
-            else:
-                for instance_resp in resp_body['instances']:
-                    resp_metadata = instance_resp['response_metadata']
-                    jid = JobInstanceID(resp_metadata["job_id"], resp_metadata["instance_id"])
-                    instance_responses.append(JobInstanceResponse(jid, instance_resp))
+            api_errors.append(APIError(server_id, APIErrorType.SOCKET, error, {}))
+            continue
+
+        resp_body = json.loads(resp)
+        inst_metadata = resp_body.get("response_metadata")
+        if not inst_metadata:
+            log.error("event=[response_error] error=[missing response metadata]")
+            api_errors.append(APIError(server_id, APIErrorType.MISSING_RESPONSE_METADATA, None, {}))
+            continue
+        if "error" in inst_metadata:
+            log.error("event=[response_error] type=[api] error=[%s]", inst_metadata["error"])
+            api_errors.append(APIError(server_id, APIErrorType.RESPONSE, None, resp_body["error"]))
+            continue
+
+        for instance_resp in resp_body['instances']:
+            inst_metadata = instance_resp['instance_metadata']
+            jid = JobInstanceID(inst_metadata["job_id"], inst_metadata["instance_id"])
+            instance_responses.append(JobInstanceResponse(jid, instance_resp))
 
     return instance_responses, api_errors

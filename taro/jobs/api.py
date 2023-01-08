@@ -127,7 +127,7 @@ class Server(SocketServer):
         instance_responses = []
         for job_instance in job_instances:
             instance_response = resource.handle(job_instance, req_body)
-            instance_response['response_metadata'] = _resp_metadata(job_instance)
+            instance_response['instance_metadata'] = _inst_metadata(job_instance)
             instance_responses.append(instance_response)
 
         return _resp_ok(instance_responses)
@@ -161,7 +161,7 @@ def _missing_field_error(field) -> _ServerError:
     return _ServerError(422, f"missing_field:{field}")
 
 
-def _resp_metadata(job_instance):
+def _inst_metadata(job_instance):
     return {
         "job_id": job_instance.job_id,
         "instance_id": job_instance.instance_id
@@ -174,7 +174,7 @@ def _resp_ok(instance_responses):
 
 def _resp(code: int, instance_responses):
     resp = {
-        "resp": {"code": code},
+        "response_metadata": {"code": code},
         "instances": instance_responses
     }
     return json.dumps(resp)
@@ -185,8 +185,7 @@ def _resp_err(code: int, reason: str):
         raise ValueError("Error code must be 4xx or 5xx")
 
     err_resp = {
-        "resp": {"code": code},
-        "error": {"reason": reason}
+        "response_metadata": {"code": code, "error": {"reason": reason}}
     }
 
     return json.dumps(err_resp)
