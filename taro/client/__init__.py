@@ -7,7 +7,7 @@ from typing import List, Tuple, Any, Dict, NamedTuple, Optional
 from taro import dto
 from taro.jobs.api import API_FILE_EXTENSION
 from taro.jobs.job import JobInfo, JobInstanceID
-from taro.socket import SocketClient, InstanceResponse, Error
+from taro.socket import SocketClient, ServerResponse, Error
 
 log = logging.getLogger(__name__)
 
@@ -70,7 +70,7 @@ class JobsClient(SocketClient):
         if job_instance:
             req_body["request_metadata"]["match"] = {"ids": [job_instance]}
 
-        server_responses: List[InstanceResponse] = self.communicate(json.dumps(req_body))
+        server_responses: List[ServerResponse] = self.communicate(json.dumps(req_body))
         return _process_responses(server_responses)
 
     def read_jobs_info(self, job_instance="") -> Tuple[List[JobInfo], List[APIError]]:

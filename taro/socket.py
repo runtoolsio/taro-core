@@ -90,8 +90,8 @@ class Error(Enum):
     TIMEOUT = auto()
 
 
-class InstanceResponse(NamedTuple):  # TODO Rename to server_response
-    instance_id: str  # TODO rename to server_id
+class ServerResponse(NamedTuple):
+    server_id: str
     response: Optional[str]
     error: Error = None
 
@@ -119,8 +119,8 @@ class SocketClient:
         resp = None
         skip = False
         for api_file in paths.socket_files(self._file_extension):
-            instance_id = api_file.stem
-            if (api_file in self.dead_sockets) or (include and instance_id not in include):
+            server_id = api_file.stem
+            if (api_file in self.dead_sockets) or (include and server_id not in include):
                 continue
             while True:
                 if not skip:
@@ -134,10 +134,10 @@ class SocketClient:
                     self._client.sendto(encoded, str(api_file))
                     if self._bidirectional:
                         datagram = self._client.recv(RECV_BUFFER_LENGTH)
-                        resp = InstanceResponse(instance_id, datagram.decode())
+                        resp = ServerResponse(server_id, datagram.decode())
                 except TimeoutError:
                     log.warning('event=[socket_timeout] socket=[{}]'.format(api_file))
-                    resp = InstanceResponse(instance_id, None, Error.TIMEOUT)
+                    resp = ServerResponse(server_id, None, Error.TIMEOUT)
                 except ConnectionRefusedError:  # TODO what about other errors?
                     log.warning('event=[dead_socket] socket=[{}]'.format(api_file))
                     self.dead_sockets.append(api_file)
@@ -148,7 +148,7 @@ class SocketClient:
                         raise PayloadTooLarge(len(encoded))
                     raise e
 
-    def communicate(self, req, include=()) -> List[InstanceResponse]:
+    def communicate(self, req, include=()) -> List[ServerResponse]:
         server = self.servers(include=include)
         responses = []
         while True:
