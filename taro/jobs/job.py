@@ -16,7 +16,7 @@ import textwrap
 from collections import namedtuple
 from dataclasses import dataclass
 from fnmatch import fnmatch
-from typing import NamedTuple, Dict, Any, Optional, Sequence
+from typing import NamedTuple, Dict, Any, Optional, Sequence, Callable, Union
 
 from taro.jobs.execution import ExecutionError
 from taro.util import and_, or_, MatchingStrategy
@@ -24,7 +24,19 @@ from taro.util import and_, or_, MatchingStrategy
 
 class IDMatchingCriteria(NamedTuple):
     patterns: Sequence[str]
-    strategy: MatchingStrategy
+    strategy: Union[Callable[[str, str], bool], MatchingStrategy] = MatchingStrategy.EXACT
+
+    def __bool__(self):
+        return bool(self.patterns) and bool(self.strategy)
+
+
+class InstanceMatchingCriteria:
+
+    def __init__(self, id_patterns: Sequence[str], *, id_match_strategy: MatchingStrategy = MatchingStrategy.EXACT):
+        if id_patterns:
+            self.id_matching_criteria = IDMatchingCriteria(id_patterns, id_match_strategy)
+        else:
+            self.id_matching_criteria = None
 
 
 class JobInstanceID(NamedTuple):
@@ -340,6 +352,14 @@ class JobInfo:
     @property
     def user_params(self):
         return dict(self._user_params)
+
+    def matches(self, instance_matching_criteria):
+        if not instance_matching_criteria:
+            return ValueError('No instance matching criteria')
+        if not instance_matching_criteria.id_matching_criteria:
+            return ValueError('ID matching criteria must be set in instance matching criteria')
+
+        return self.id.matches_any(instance_matching_criteria.id_matching_criteria)
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r}, {!r}, {!r})".format(

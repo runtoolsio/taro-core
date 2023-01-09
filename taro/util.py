@@ -191,6 +191,9 @@ class MatchingStrategy(Enum):
     Define functions for string match testing where the first parameter is the tested string and the second parameter
     is the pattern.
     """
-    EXACT = eq
-    FN_MATCH = fnmatch
-    PARTIAL = partial_match
+    EXACT = (eq,)
+    FN_MATCH = (fnmatch,)
+    PARTIAL = (partial_match,)
+
+    def __call__(self, *args, **kwargs):
+        return self.value[0](*args, **kwargs)

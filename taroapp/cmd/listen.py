@@ -2,11 +2,13 @@ import signal
 
 from taro.jobs.job import ExecutionStateObserver, JobInfo
 from taro.listening import StateReceiver
+from taro.util import MatchingStrategy
 from taroapp import printer, style
+from taroapp.cmd import cliutil
 
 
 def run(args):
-    receiver = StateReceiver(args.instance)
+    receiver = StateReceiver(cliutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL))
     receiver.listeners.append(EventPrint())
     signal.signal(signal.SIGTERM, lambda _, __: receiver.close())
     signal.signal(signal.SIGINT, lambda _, __: receiver.close())

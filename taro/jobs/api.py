@@ -116,13 +116,9 @@ class Server(SocketServer):
         try:
             resource = self._resolve_resource(req_body)
             resource.validate(req_body)
+            job_instances = self._matching_instances(req_body)
         except _ServerError as e:
             return e.create_response()
-
-        try:
-            job_instances = self._matching_job_instances(req_body)
-        except AttributeError as e:
-            return _resp_err(422, str(e))
 
         instance_responses = []
         for job_instance in job_instances:
@@ -143,22 +139,25 @@ class Server(SocketServer):
 
         return resource
 
-    def _matching_job_instances(self, req_body):
-        match = req_body.get('request_metadata', {}).get('match', {})
+    def _matching_instances(self, req_body):
+        match = req_body.get('request_metadata', {}).get('instance_match', {})
         match_ids = match.get('ids', None)
         if not match_ids:
             return self._job_instances
 
-        if match_strategy_val := match.get('ids_match_strategy'):
-            match_strategy = MatchingStrategy[match.get(match_strategy_val.upper())]
+        if match_strategy_val := match.get('id_match_strategy'):
+            try:
+                match_strategy = MatchingStrategy[match_strategy_val.upper()]
+            except KeyError as e:
+                raise _ServerError(422, f"Invalid id_match_strategy value: {match_strategy_val}")
         else:
-            match_strategy = MatchingStrategy.FN_MATCH
+            match_strategy = MatchingStrategy.EXACT
         return [job_instance for job_instance in self._job_instances
                 if any(1 for match_id in match_ids if job_instance.id.matches(match_id, match_strategy))]
 
 
 def _missing_field_error(field) -> _ServerError:
-    return _ServerError(422, f"missing_field:{field}")
+    return _ServerError(422, f"Missing field {field}")
 
 
 def _inst_metadata(job_instance):

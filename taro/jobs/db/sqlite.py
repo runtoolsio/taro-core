@@ -26,6 +26,9 @@ class SQLite:
         self._conn = connection
 
     def check_tables_exist(self):
+        # Old versions:
+        # `ALTER TABLE history RENAME COLUMN parameters TO user_params;`
+        # `ALTER TABLE history ADD COLUMN parameters text;`
         c = self._conn.cursor()
         c.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='history' ''')
         if c.fetchone()[0] != 1:

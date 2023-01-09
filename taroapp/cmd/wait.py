@@ -8,11 +8,14 @@ import sys
 
 from taro.jobs.job import ExecutionStateObserver, JobInfo
 from taro.listening import StateReceiver
+from taro.util import MatchingStrategy
 from taroapp import printer, style
+from taroapp.cmd import cliutil
 
 
 def run(args):
-    receiver = StateReceiver(args.instance, args.states)
+    instance_match = cliutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL)
+    receiver = StateReceiver(instance_match, args.states)
     receiver.listeners.append(lambda job_info: print_state_change(job_info))
     receiver.listeners.append(StoppingListener(receiver, args.count))
     signal.signal(signal.SIGTERM, lambda _, __: _close_server_and_exit(receiver, signal.SIGTERM))

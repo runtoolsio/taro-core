@@ -7,7 +7,9 @@ import taro.jobs.repo as Jobs
 from taro import dto, util
 from taro.jobs import persistence
 from taro.jobs.execution import ExecutionState
+from taro.jobs.job import InstanceMatchingCriteria
 from taro.jobs.persistence import SortCriteria
+from taro.util import MatchingStrategy
 from taros.httputil import http_error, query_digit, query
 
 
@@ -39,7 +41,8 @@ def instances():
 
 @route('/instances/<inst>')
 def instance(inst):
-    jobs_info, _ = taro.client.read_jobs_info(job_instance=inst)
+    match_criteria = InstanceMatchingCriteria([inst], id_match_strategy=MatchingStrategy.PARTIAL)
+    jobs_info, _ = taro.client.read_jobs_info(match_criteria)
     if not jobs_info:
         raise http_error(404, "Instance not found")
 

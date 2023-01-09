@@ -1,17 +1,19 @@
 import taro.util
 from taro.client import JobsClient
+from taro.util import MatchingStrategy
 from taroapp import printer, style
+from taroapp.cmd import cliutil
 from taroapp.printer import print_styled
 from taroapp.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
 
 
 def run(args):
     with JobsClient() as client:
-        jobs, _ = client.read_jobs_info()
-        stop_jobs = [job for job in jobs if any(1 for args_id in args.ids if job.id.matches(args_id))]
+        instance_match = cliutil.instance_matching_criteria(args, MatchingStrategy.FN_MATCH)
+        stop_jobs, _ = client.read_jobs_info(instance_match)
 
         if not stop_jobs:
-            print('No instances to stop: ' + " ".join(args.ids))
+            print('No instances to stop: ' + " ".join(args.instances))
             exit(1)
 
         if not args.force:
@@ -19,6 +21,5 @@ def run(args):
             if not taro.util.cli_confirmation():
                 exit(0)
 
-        for args_id in args.ids:
-            for stop_resp in client.stop_jobs(args_id).responses:
-                print_styled(*style.job_instance_id_styled(*stop_resp.id) + [('', ' -> '), ('', stop_resp.result_str)])
+        for stop_resp in client.stop_jobs(instance_match).responses:
+            print_styled(*style.job_instance_id_styled(*stop_resp.id) + [('', ' -> '), ('', stop_resp.result_str)])

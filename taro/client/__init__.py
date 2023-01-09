@@ -64,24 +64,24 @@ class TailResponse(JobInstanceResponse):
     tail: List[str]
 
 
-def read_jobs_info(job_instance="") -> MultiResponse[JobInfo]:
+def read_jobs_info(instance_match=None) -> MultiResponse[JobInfo]:
     with JobsClient() as client:
-        return client.read_jobs_info(job_instance)
+        return client.read_jobs_info(instance_match)
 
 
-def release_jobs(pending_group) -> MultiResponse[ReleaseResponse]:
+def release_jobs(pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
     with JobsClient() as client:
-        return client.release_jobs(pending_group)
+        return client.release_jobs(pending_group, instance_match)
 
 
-def stop_jobs(instances, interrupt: bool) -> MultiResponse[StopResponse]:
+def stop_jobs(instance_match) -> MultiResponse[StopResponse]:
     with JobsClient() as client:
-        return client.stop_jobs(instances, interrupt)  # TODO ??
+        return client.stop_jobs(instance_match)
 
 
-def read_tail(instance) -> MultiResponse[TailResponse]:
+def read_tail(instance_match=None) -> MultiResponse[TailResponse]:
     with JobsClient() as client:
-        return client.read_tail(instance)
+        return client.read_tail(instance_match)
 
 
 class JobsClient(SocketClient):
@@ -95,40 +95,43 @@ class JobsClient(SocketClient):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def _send_request(self, api: str, req_body=None, *, job_instance: str = '') \
+    def _send_request(self, api: str, instance_match=None, req_body=None) \
             -> Tuple[List[APIInstanceResponse], List[APIError]]:
         if not req_body:
             req_body = {}
         req_body["request_metadata"] = {"api": api}
-        if job_instance:
-            req_body["request_metadata"]["match"] = {"ids": [job_instance]}
+        if instance_match and instance_match.id_matching_criteria:
+            id_match = instance_match.id_matching_criteria
+            req_body["request_metadata"]["instance_match"] =\
+                {"ids": id_match.patterns, "id_match_strategy": id_match.strategy.name}
 
         server_responses: List[ServerResponse] = self.communicate(json.dumps(req_body))
         return _process_responses(server_responses)
 
-    def read_jobs_info(self, job_instance="") -> MultiResponse[JobInfo]:
-        instance_responses, api_errors = self._send_request('/jobs', job_instance=job_instance)
+    def read_jobs_info(self, instance_match=None) -> MultiResponse[JobInfo]:
+        instance_responses, api_errors = self._send_request('/jobs', instance_match)
         return MultiResponse([dto.to_job_info(body["job_info"]) for _, body in instance_responses], api_errors)
 
-    def release_jobs(self, pending_group) -> MultiResponse[ReleaseResponse]:
-        instance_responses, api_errors = self._send_request('/jobs/release', {"pending_group": pending_group})
+    def release_jobs(self, pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
+        instance_responses, api_errors =\
+            self._send_request('/jobs/release', instance_match, {"pending_group": pending_group})
         return MultiResponse([ReleaseResponse(jid) for jid, body in instance_responses if body["released"]],
                              api_errors)
 
-    def stop_jobs(self, instance) -> MultiResponse[StopResponse]:
+    def stop_jobs(self, instance_match) -> MultiResponse[StopResponse]:
         """
 
-        :param instance:
+        :param instance_match: instance id matching criteria is mandatory for the stop operation
         :return: list of tuple[instance-id, stop-result]
         """
-        if not instance:
-            raise ValueError('Instances to be stopped cannot be empty')
+        if not instance_match:
+            raise ValueError('Id matching criteria is mandatory for the stop operation')
 
-        instance_responses, api_errors = self._send_request('/jobs/stop', job_instance=instance)
+        instance_responses, api_errors = self._send_request('/jobs/stop', instance_match)
         return MultiResponse([StopResponse(jid, body["result"]) for jid, body in instance_responses], api_errors)
 
-    def read_tail(self, job_instance) -> MultiResponse[TailResponse]:
-        instance_responses, api_errors = self._send_request('/jobs/tail', job_instance=job_instance)
+    def read_tail(self, instance_match) -> MultiResponse[TailResponse]:
+        instance_responses, api_errors = self._send_request('/jobs/tail', instance_match)
         return MultiResponse([TailResponse(jid, body["tail"]) for jid, body in instance_responses], api_errors)
 
 
@@ -143,14 +146,14 @@ def _process_responses(responses) -> Tuple[List[APIInstanceResponse], List[APIEr
             continue
 
         resp_body = json.loads(resp)
-        inst_metadata = resp_body.get("response_metadata")
-        if not inst_metadata:
+        resp_metadata = resp_body.get("response_metadata")
+        if not resp_metadata:
             log.error("event=[response_error] error=[missing response metadata]")
             api_errors.append(APIError(server_id, APIErrorType.MISSING_RESPONSE_METADATA, None, {}))
             continue
-        if "error" in inst_metadata:
-            log.error("event=[response_error] type=[api] error=[%s]", inst_metadata["error"])
-            api_errors.append(APIError(server_id, APIErrorType.RESPONSE, None, resp_body["error"]))
+        if "error" in resp_metadata:
+            log.error("event=[response_error] type=[api] error=[%s]", resp_metadata["error"])
+            api_errors.append(APIError(server_id, APIErrorType.RESPONSE, None, resp_metadata["error"]))
             continue
 
         for instance_resp in resp_body['instances']:

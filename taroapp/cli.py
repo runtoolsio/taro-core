@@ -173,7 +173,7 @@ def _init_ps_parser(common, subparsers):
     """
 
     ps_parser = subparsers.add_parser(ACTION_PS, parents=[common], description='Show running jobs', add_help=False)
-    ps_parser.add_argument('instance', nargs='?', default=None, type=str, help='instance filter')
+    ps_parser.add_argument('instances', nargs='*', default=None, type=str, help='Instance matching pattern')
     ps_parser.add_argument('-f', '--format', type=str, choices=['table', 'json', 'jsonp'], default='table',
                            help='output format')
     ps_parser.add_argument('--show-params', action='store_true', help='')
@@ -193,7 +193,7 @@ def _init_history_parser(common, subparsers):
         ACTION_HISTORY, aliases=['hist'], parents=[common], description='Show jobs history', add_help=False)
 
     filter_group = hist_parser.add_argument_group('filtering', 'These options allows to filter returned jobs')
-    filter_group.add_argument('ids', nargs='*', type=str,
+    filter_group.add_argument('instances', nargs='*', type=str,
                               help='Identifiers of job or instance matching pattern for result filtering')
     filter_group.add_argument('-T', '--today', action='store_true', help='Show only jobs created today (local)')
     filter_group.add_argument('-Y', '--yesterday', action='store_true', help='Show only jobs created yesterday (local)')
@@ -246,7 +246,7 @@ def _init_listen_parser(common, subparsers):
 
     release_parser = subparsers.add_parser(ACTION_LISTEN, parents=[common],
                                            description='Print job state changes', add_help=False)
-    release_parser.add_argument('instance', nargs='?', default=None, type=str, help='instance filter')
+    release_parser.add_argument('instances', nargs='?', default=None, type=str, help='instance filter')
 
 
 def _init_wait_parser(common, subparsers):
@@ -258,7 +258,7 @@ def _init_wait_parser(common, subparsers):
     """
 
     wait_parser = subparsers.add_parser(ACTION_WAIT, parents=[common], description='Wait for job state', add_help=False)
-    wait_parser.add_argument('instance', nargs='?', default=None, type=str, help='instance filter')
+    wait_parser.add_argument('instances', nargs='?', default=None, type=str, help='instance filter')
     wait_parser.add_argument('-c', '--count', type=int, default=1, help='Number of occurrences to finish the wait')
     wait_parser.add_argument('-s', '--states', type=_str2state, metavar='STATES', nargs=argparse.REMAINDER,
                              help='States for which the command waits')
@@ -274,7 +274,7 @@ def _init_stop_parser(common, subparsers):
 
     stop_parser = subparsers.add_parser(ACTION_STOP, parents=[common], description='Stop job', add_help=False)
     stop_parser.add_argument('--force', action='store_true', help='Force stop all')
-    stop_parser.add_argument('ids', type=str, nargs='+', metavar='IDs',
+    stop_parser.add_argument('instances', type=str, nargs='+', metavar='IDs',
                              help='Identifiers of job or instance to stop')
 
 
@@ -287,7 +287,7 @@ def _init_tail_parser(common, subparsers):
     """
 
     tail_parser = subparsers.add_parser(ACTION_TAIL, parents=[common], description='Print last output', add_help=False)
-    tail_parser.add_argument('instance', nargs='?', default=None, type=str, help='instance filter')
+    tail_parser.add_argument('instances', nargs='*', default=None, type=str, help='instance filter')
     tail_parser.add_argument('-f', '--follow', action='store_true', help='Keep printing')
 
 

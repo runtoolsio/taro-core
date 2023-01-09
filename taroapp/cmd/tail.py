@@ -1,28 +1,28 @@
 import signal
-from fnmatch import fnmatch
 
 import taro.client
 from taro import JobInfo
 from taro.jobs.job import JobOutputObserver
 from taro.listening import OutputReceiver
 from taro.theme import Theme
+from taro.util import MatchingStrategy
 from taroapp import printer, style
+from taroapp.cmd import cliutil
 
 HIGHLIGHT_TOKEN = (Theme.separator, ' ---> ')
 
 
 def run(args):
+    instance_match = cliutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL)
     if args.follow:
-        receiver = OutputReceiver(args.instance)
+        receiver = OutputReceiver(instance_match)
         receiver.listeners.append(TailPrint())
         signal.signal(signal.SIGTERM, lambda _, __: receiver.close())
         signal.signal(signal.SIGINT, lambda _, __: receiver.close())
         receiver.start()
     else:
-        for tail_resp in taro.client.read_tail(None).responses:
+        for tail_resp in taro.client.read_tail(instance_match).responses:
             job_id, instance_id = tail_resp.id
-            if args.instance and not (fnmatch(job_id, args.instance) or fnmatch(instance_id, args.instance)):
-                continue  # TODO match
             printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_id_styled(job_id, instance_id))
             for line in tail_resp.tail:
                 print(line)
