@@ -1,4 +1,5 @@
 import signal
+import sys
 
 import taro.client
 from taro import JobInfo
@@ -26,6 +27,7 @@ def run(args):
             printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_id_styled(job_id, instance_id))
             for line in tail_resp.tail:
                 print(line)
+            sys.stdout.flush()
 
 
 class TailPrint(JobOutputObserver):
@@ -38,4 +40,4 @@ class TailPrint(JobOutputObserver):
         if self.last_printed_job_instance != job_info.instance_id:
             printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_styled(job_info))
         self.last_printed_job_instance = job_info.instance_id
-        print(output)
+        print(output, flush=True)

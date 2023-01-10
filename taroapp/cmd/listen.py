@@ -1,4 +1,5 @@
 import signal
+import sys
 
 from taro.jobs.job import ExecutionStateObserver, JobInfo
 from taro.listening import StateReceiver
@@ -27,3 +28,4 @@ class EventPrint(ExecutionStateObserver):
 
 def print_state_change(job_info):
     printer.print_styled(*style.job_status_line_styled(job_info))
+    sys.stdout.flush()
