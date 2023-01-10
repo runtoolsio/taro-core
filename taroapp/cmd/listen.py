@@ -10,7 +10,7 @@ from taroapp.cmd import cliutil
 
 def run(args):
     receiver = StateReceiver(cliutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL))
-    receiver.listeners.append(EventPrint())
+    receiver.listeners.append(EventPrint(receiver))
     signal.signal(signal.SIGTERM, lambda _, __: receiver.close())
     signal.signal(signal.SIGINT, lambda _, __: receiver.close())
     receiver.start()
@@ -18,12 +18,15 @@ def run(args):
 
 class EventPrint(ExecutionStateObserver):
 
-    def __init__(self, condition=lambda _: True):
-        self.condition = condition
+    def __init__(self, closeable):
+        self._closeable = closeable
 
     def state_update(self, job_info: JobInfo):
-        if self.condition(job_info):
+        try:
             print_state_change(job_info)
+        except BrokenPipeError:
+            self._closeable.close()
+            cliutil.handle_broken_pipe(exit_code=1)
 
 
 def print_state_change(job_info):
