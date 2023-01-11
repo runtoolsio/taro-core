@@ -19,6 +19,7 @@ class SocketServer(abc.ABC):
     def __init__(self, socket_name):
         self._socket_name = socket_name
         self._server: socket = None
+        self._serving_thread = Thread(target=self.serve, name='Thread-ApiServer')
         self._stopped = False
 
     def start(self) -> bool:
@@ -33,7 +34,7 @@ class SocketServer(abc.ABC):
         self._server = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         try:
             self._server.bind(str(socket_path))
-            Thread(target=self.serve, name='Thread-ApiServer').start()
+            self._serving_thread.start()
             return True
         except PermissionError as e:
             log.error("event=[unable_create_socket] socket=[%s] message=[%s]", socket_path, e)
@@ -84,6 +85,13 @@ class SocketServer(abc.ABC):
         finally:
             if os.path.exists(socket_name):
                 os.remove(socket_name)
+
+    def wait(self):
+        self._serving_thread.join()
+
+    def close_and_wait(self):
+        self.close()
+        self.wait()
 
 
 class Error(Enum):

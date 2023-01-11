@@ -3,9 +3,6 @@ TODO: Create option where the command will terminates if the specified state is 
       of an existing instance.
 """
 
-import signal
-import sys
-
 from taro.jobs.job import ExecutionStateObserver, JobInfo
 from taro.listening import StateReceiver
 from taro.util import MatchingStrategy
@@ -17,14 +14,9 @@ def run(args):
     instance_match = cliutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL)
     receiver = StateReceiver(instance_match, args.states)
     receiver.listeners.append(EventHandler(receiver, args.count))
-    signal.signal(signal.SIGTERM, lambda _, __: _close_server_and_exit(receiver, signal.SIGTERM))
-    signal.signal(signal.SIGINT, lambda _, __: _close_server_and_exit(receiver, signal.SIGINT))
     receiver.start()
-
-
-def _close_server_and_exit(server, signal_number: int):
-    server.close()
-    sys.exit(128 + signal_number)
+    cliutil.exit_on_signal(cleanups=[receiver.close_and_wait])
+    receiver.wait()  # Prevents 'exception ignored in: <module 'threading' from ...>` error message, remove when fixed
 
 
 def print_state_change(job_info):
@@ -33,17 +25,17 @@ def print_state_change(job_info):
 
 class EventHandler(ExecutionStateObserver):
 
-    def __init__(self, closeable, count=1):
-        self._closeable = closeable
+    def __init__(self, receiver, count=1):
+        self._receiver = receiver
         self.count = count
 
     def state_update(self, job_info: JobInfo):
         try:
             print_state_change(job_info)
         except BrokenPipeError:
-            self._closeable.close()
+            self._receiver.close_and_wait()
             cliutil.handle_broken_pipe(exit_code=1)
 
         self.count -= 1
         if self.count <= 0:
-            self._closeable.close()
+            self._receiver.close()

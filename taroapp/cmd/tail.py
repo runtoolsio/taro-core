@@ -1,4 +1,3 @@
-import signal
 import sys
 
 import taro.client
@@ -18,9 +17,9 @@ def run(args):
     if args.follow:
         receiver = OutputReceiver(instance_match)
         receiver.listeners.append(TailPrint(receiver))
-        signal.signal(signal.SIGTERM, lambda _, __: receiver.close())
-        signal.signal(signal.SIGINT, lambda _, __: receiver.close())
         receiver.start()
+        cliutil.exit_on_signal(cleanups=[receiver.close_and_wait])
+        receiver.wait()  # Prevents 'exception ignored in: <module 'threading' from ...>` error message
     else:
         for tail_resp in taro.client.read_tail(instance_match).responses:
             job_id, instance_id = tail_resp.id
@@ -32,8 +31,8 @@ def run(args):
 
 class TailPrint(JobOutputObserver):
 
-    def __init__(self, closeable):
-        self._closeable = closeable
+    def __init__(self, receiver):
+        self._receiver = receiver
         self.last_printed_job_instance = None
 
     def output_update(self, job_info: JobInfo, output):
@@ -44,5 +43,5 @@ class TailPrint(JobOutputObserver):
             self.last_printed_job_instance = job_info.instance_id
             print(output, flush=True)
         except BrokenPipeError:
-            self._closeable.close()
+            self._receiver.close_and_wait()
             cliutil.handle_broken_pipe(exit_code=1)
