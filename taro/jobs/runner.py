@@ -184,18 +184,11 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             exec_error = e if isinstance(e, ExecutionError) else ExecutionError.from_unexpected_error(e)
             self._state_change(exec_error.exec_state, exec_error)
         except KeyboardInterrupt:
-            log.warning("event=[premature_interruption]")
+            log.warning("event=[keyboard_interruption]")
             self._state_change(ExecutionState.INTERRUPTED)  # Assuming child processes received SIGINT as well
             raise
         except SystemExit as e:
-            if e.code == 0:
-                state = ExecutionState.COMPLETED
-            elif e.code == 130:
-                state = ExecutionState.INTERRUPTED
-            elif e.code == 143:
-                state = ExecutionState.STOPPED
-            else:
-                state = ExecutionState.FAILED
+            state = ExecutionState.COMPLETED if e.code == 0 else ExecutionState.FAILED
             self._state_change(state)
             raise
         finally:
