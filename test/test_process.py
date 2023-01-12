@@ -74,4 +74,4 @@ def test_interrupt():
 
 def interrupt_after(sec, execution):
     sleep(sec)
-    execution.interrupt()
+    execution.interrupted()

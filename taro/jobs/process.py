@@ -89,10 +89,8 @@ class ProcessExecution(OutputExecution):
         if self._process:
             self._process.terminate()
 
-    def interrupt(self):
+    def interrupted(self):
         self._interrupted = True
-        if self._process:
-            self._process.terminate()
 
     def add_output_observer(self, observer):
         self._output_observers.append(observer)

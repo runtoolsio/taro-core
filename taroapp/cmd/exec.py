@@ -78,7 +78,7 @@ class Term:
 
     def interrupt(self, _, __):
         logger.warning('event=[interrupted_by_keyboard]')
-        self.job_instance.interrupt()
+        self.job_instance.interrupted()
 
     def timeout(self, _, __):
         logger.warning('event=[terminated_by_timeout_signal]')

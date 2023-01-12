@@ -142,7 +142,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         if self._executing:
             self._execution.stop()
 
-    def interrupt(self):
+    def interrupted(self):
         """
         Cancel not yet started execution or interrupt started execution.
         Due to synchronous design there is a small window when an execution can be interrupted before it is started.
@@ -152,7 +152,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
         self._sync.release()
         if self._executing:
-            self._execution.interrupt()
+            self._execution.interrupted()
 
     def add_warning(self, warning):
         self._warnings.update([warning.name])

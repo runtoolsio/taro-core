@@ -168,11 +168,10 @@ class Execution(abc.ABC):
         """
 
     @abc.abstractmethod
-    def interrupt(self):
+    def interrupted(self):
         """
-        If not yet executed: Do not execute
-        If already executing: Interrupt running execution
-        If execution finished: Ignore
+        Keyboard interruption signal received
+        Up to the implementation how to handle it
         """
 
 

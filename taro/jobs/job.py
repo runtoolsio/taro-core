@@ -162,9 +162,9 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def interrupt(self):
+    def interrupted(self):
         """
-        Stop running execution immediately
+        Notify about keyboard interruption signal
         """
 
     @abc.abstractmethod
@@ -272,8 +272,8 @@ class DelegatingJobInstance(JobInstance):
     def stop(self):
         self.delegated.stop()
 
-    def interrupt(self):
-        self.delegated.interrupt()
+    def interrupted(self):
+        self.delegated.interrupted()
 
     def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self.delegated.add_state_observer(observer)

@@ -80,17 +80,11 @@ class ProgramExecution(OutputExecution):
         if self._popen:
             self._popen.terminate()
 
-    def interrupt(self):
+    def interrupted(self):
         """
         Call this if the execution was possibly interrupted externally (Ctrl+C) to set the correct final state.
-        Attempt to interrupt the program if called repeatably.
+        On windows might be needed to send a signal?
         """
-
-        if self._interrupted:  # Already interrupted before
-            if self._popen:
-                # Probably not responding to the signal or maybe the signal is being sent only to taro
-                self._popen.send_signal(signal.SIGINT)  # Send signal to the subprocess manually just in case
-
         self._interrupted = True
 
     def add_output_observer(self, observer):

@@ -81,7 +81,7 @@ class TestExecution(OutputExecution):
     def stop(self):
         raise NotImplementedError()
 
-    def interrupt(self):
+    def interrupted(self):
         raise NotImplementedError()
 
     def add_output_observer(self, observer):
