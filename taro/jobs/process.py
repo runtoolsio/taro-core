@@ -37,14 +37,15 @@ class ProcessExecution(OutputExecution):
             output_reader = Thread(target=self._read_output, name='Output-Reader', daemon=True)
             output_reader.start()
             self._process.join()
+            # TODO Cleanup in finally
             self.output_queue.put_nowait(_QueueStop())
             output_reader.join(timeout=1)
             self.output_queue.close()
             if self._process.exitcode == 0:
                 return ExecutionState.COMPLETED
-        if self._stopped:
+        if self._stopped or self._process.exitcode == 143:
             return ExecutionState.STOPPED
-        if self._interrupted:
+        if self._interrupted or self._process.exitcode == 130:
             return ExecutionState.INTERRUPTED
         raise ExecutionError("Process returned non-zero code " + str(self._process.exitcode), ExecutionState.FAILED)
 
