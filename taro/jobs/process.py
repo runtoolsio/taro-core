@@ -1,4 +1,5 @@
 import logging
+import signal
 import sys
 import traceback
 from contextlib import contextmanager
@@ -43,10 +44,11 @@ class ProcessExecution(OutputExecution):
             self.output_queue.close()
             if self._process.exitcode == 0:
                 return ExecutionState.COMPLETED
-        if self._stopped or self._process.exitcode == 143:
-            return ExecutionState.STOPPED
-        if self._interrupted or self._process.exitcode == 130:
+        if self._interrupted or self._process.exitcode == -signal.SIGINT:
+            # Exit code is -SIGINT only when SIGINT handler is set back to DFL (KeyboardInterrupt gets exit code 1)
             return ExecutionState.INTERRUPTED
+        if self._stopped or self._process.exitcode < 0:  # Negative exit code means terminated by a signal
+            return ExecutionState.STOPPED
         raise ExecutionError("Process returned non-zero code " + str(self._process.exitcode), ExecutionState.FAILED)
 
     def _run(self):
