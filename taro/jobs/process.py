@@ -17,10 +17,10 @@ log = logging.getLogger(__name__)
 
 class ProcessExecution(OutputExecution):
 
-    def __init__(self, target, args):
+    def __init__(self, target, args=()):
         self.target = target
         self.args = args
-        self.output_queue = Queue(maxsize=2048)
+        self.output_queue = Queue(maxsize=2048)  # Create later in execute method?
         self._process: Union[Process, None] = None
         self._status = None
         self._stopped: bool = False
@@ -33,17 +33,21 @@ class ProcessExecution(OutputExecution):
 
     def execute(self) -> ExecutionState:
         if not self._stopped and not self._interrupted:
-            self._process = Process(target=self._run)
-            self._process.start()
             output_reader = Thread(target=self._read_output, name='Output-Reader', daemon=True)
             output_reader.start()
-            self._process.join()
-            # TODO Cleanup in finally
-            self.output_queue.put_nowait(_QueueStop())
-            output_reader.join(timeout=1)
-            self.output_queue.close()
+            self._process = Process(target=self._run)
+
+            try:
+                self._process.start()
+                self._process.join()
+            finally:
+                self.output_queue.put_nowait(_QueueStop())
+                output_reader.join(timeout=1)
+                self.output_queue.close()
+
             if self._process.exitcode == 0:
                 return ExecutionState.COMPLETED
+
         if self._interrupted or self._process.exitcode == -signal.SIGINT:
             # Exit code is -SIGINT only when SIGINT handler is set back to DFL (KeyboardInterrupt gets exit code 1)
             return ExecutionState.INTERRUPTED

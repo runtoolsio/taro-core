@@ -185,9 +185,11 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             self._state_change(exec_error.exec_state, exec_error)
         except KeyboardInterrupt:
             log.warning("event=[keyboard_interruption]")
-            self._state_change(ExecutionState.INTERRUPTED)  # Assuming child processes received SIGINT as well
+            # Assuming child processes received SIGINT, TODO different state on other platforms?
+            self._state_change(ExecutionState.INTERRUPTED)
             raise
         except SystemExit as e:
+            # Consider UNKNOWN (or new state DETACHED?) if there is possibility the execution is not completed
             state = ExecutionState.COMPLETED if e.code == 0 else ExecutionState.FAILED
             self._state_change(state)
             raise
@@ -250,7 +252,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
         if job_info:
             if new_state.is_terminal() and persistence.is_enabled():
-                persistence.store_job(job_info)
+                persistence.store_job(job_info)  # TODO Consider move (managed _close_job()?)
             self._notify_state_observers(job_info)
 
     def _notify_state_observers(self, job_info: JobInfo):
