@@ -47,7 +47,7 @@ def execute(job_id, job_execution, no_overlap=False, depends_on=None, pending_gr
         job_instance.run()
 
 
-def execute_background(job_id, job_execution, no_overlap=False, depends_on=None, pending_group=None):
+def execute_no_wait(job_id, job_execution, no_overlap=False, depends_on=None, pending_group=None):
     Thread(target=execute, args=(job_id, job_execution, no_overlap, depends_on, pending_group)).start()
 
 
