@@ -6,10 +6,9 @@ from pygments.lexers.data import JsonLexer
 
 import taro.client
 from taro import dto
-from taro.jobs.job import JobInfoCollection, InstanceMatchingCriteria
+from taro.jobs.job import JobInfoCollection
 from taro.util import MatchingStrategy
-from taroapp import printer
-from taroapp.cmd import cliutil
+from taroapp import printer, cliutil
 from taroapp.view import instance as view_inst
 
 

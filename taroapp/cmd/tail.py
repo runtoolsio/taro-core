@@ -6,8 +6,7 @@ from taro.jobs.job import JobOutputObserver
 from taro.listening import OutputReceiver
 from taro.theme import Theme
 from taro.util import MatchingStrategy
-from taroapp import printer, style
-from taroapp.cmd import cliutil
+from taroapp import printer, style, cliutil
 
 HIGHLIGHT_TOKEN = (Theme.separator, ' ---> ')
 

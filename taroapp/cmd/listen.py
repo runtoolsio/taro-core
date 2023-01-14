@@ -3,8 +3,7 @@ import sys
 from taro.jobs.job import ExecutionStateObserver, JobInfo
 from taro.listening import StateReceiver
 from taro.util import MatchingStrategy
-from taroapp import printer, style
-from taroapp.cmd import cliutil
+from taroapp import printer, style, cliutil
 
 
 def run(args):

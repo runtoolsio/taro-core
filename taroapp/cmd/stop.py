@@ -1,8 +1,7 @@
 import taro.util
 from taro.client import JobsClient
 from taro.util import MatchingStrategy
-from taroapp import printer, style
-from taroapp.cmd import cliutil
+from taroapp import printer, style, cliutil
 from taroapp.printer import print_styled
 from taroapp.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
 
