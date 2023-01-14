@@ -5,7 +5,7 @@ import socket
 from enum import Enum, auto
 from threading import Thread
 from types import coroutine
-from typing import List, NamedTuple, Optional
+from typing import List, NamedTuple, Optional, Sequence
 
 from taro import paths
 
@@ -16,8 +16,9 @@ log = logging.getLogger(__name__)
 
 class SocketServer(abc.ABC):
 
-    def __init__(self, socket_name):
+    def __init__(self, socket_name, *, allow_ping=False):
         self._socket_name = socket_name
+        self._allow_ping = allow_ping
         self._server: socket = None
         self._serving_thread = Thread(target=self.serve, name='Thread-ApiServer')
         self._stopped = False
@@ -47,7 +48,11 @@ class SocketServer(abc.ABC):
             if not datagram:
                 break
 
-            resp_body = self.handle(datagram.decode())
+            req_body = datagram.decode()
+            if self._allow_ping and req_body == 'ping':
+                resp_body = 'pong'
+            else:
+                resp_body = self.handle(req_body)
 
             if resp_body:
                 if client_address:
@@ -113,13 +118,14 @@ class SocketClient:
         if bidirectional:
             self._client.bind(self._client.getsockname())
             self._client.settimeout(timeout)
+        self.timed_out_sockets = []
         self.dead_sockets = []
 
     @coroutine
     def servers(self, include=()):
         """
 
-        :param include: TODO
+        :param include: server IDs exact match filter
         :return: response if bidirectional
         :raises PayloadTooLarge: when request payload is too large
         """
@@ -145,6 +151,7 @@ class SocketClient:
                         resp = ServerResponse(server_id, datagram.decode())
                 except TimeoutError:
                     log.warning('event=[socket_timeout] socket=[{}]'.format(api_file))
+                    self.timed_out_sockets.append(api_file)
                     resp = ServerResponse(server_id, None, Error.TIMEOUT)
                 except ConnectionRefusedError:  # TODO what about other errors?
                     log.warning('event=[dead_socket] socket=[{}]'.format(api_file))
@@ -179,3 +186,10 @@ class PayloadTooLarge(Exception):
 
     def __init__(self, payload_size):
         super().__init__("Datagram payload is too large: " + str(payload_size))
+
+
+def clean_dead_sockets(file_extensions: Sequence[str]):
+    for ext in file_extensions:
+        client = SocketClient(ext, True)
+        responses = client.communicate('ping')
+        print(responses)

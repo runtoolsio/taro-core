@@ -93,7 +93,7 @@ DEFAULT_RESOURCES = JobsResource(), ReleaseResource(), StopResource(), TailResou
 class Server(SocketServer):
 
     def __init__(self, resources=DEFAULT_RESOURCES):
-        super().__init__(_create_socket_name())
+        super().__init__(_create_socket_name(), allow_ping=True)
         self._resources = {resource.path: resource for resource in resources}
         self._job_instances = []
 

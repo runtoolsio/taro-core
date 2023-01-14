@@ -17,6 +17,7 @@ ACTION_LISTEN = 'listen'
 ACTION_WAIT = 'wait'
 ACTION_STOP = 'stop'
 ACTION_TAIL = 'tail'
+ACTION_CLEAN = 'clean'
 ACTION_CONFIG = 'config'
 ACTION_CONFIG_SHOW = 'show'
 ACTION_CONFIG_CREATE = 'create'
@@ -41,6 +42,7 @@ def parse_args(args):
     _init_wait_parser(common, subparsers)
     _init_stop_parser(common, subparsers)
     _init_tail_parser(common, subparsers)
+    _init_clean_parser(common, subparsers)
     _init_config_parser(subparsers)
     _init_hostinfo_parser(common, subparsers)
     _init_history_remove_parser(common, subparsers)
@@ -289,6 +291,17 @@ def _init_tail_parser(common, subparsers):
     tail_parser = subparsers.add_parser(ACTION_TAIL, parents=[common], description='Print last output', add_help=False)
     tail_parser.add_argument('instances', nargs='*', default=None, type=str, help='instance filter')
     tail_parser.add_argument('-f', '--follow', action='store_true', help='Keep printing')
+
+
+def _init_clean_parser(common, subparsers):
+    """
+    Creates parsers for `clean` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for clean parser to be added to
+    """
+
+    clean_parser = subparsers.add_parser(ACTION_CLEAN, parents=[common], description='Performs cleanups', add_help=False)
 
 
 def _init_config_parser(subparsers):
