@@ -2,10 +2,12 @@ import abc
 import logging
 import os
 import socket
+from dataclasses import dataclass
 from enum import Enum, auto
+from pathlib import Path
 from threading import Thread
 from types import coroutine
-from typing import List, NamedTuple, Optional, Sequence
+from typing import List, NamedTuple, Optional
 
 from taro import paths
 
@@ -118,8 +120,8 @@ class SocketClient:
         if bidirectional:
             self._client.bind(self._client.getsockname())
             self._client.settimeout(timeout)
-        self.timed_out_sockets = []
-        self.dead_sockets = []
+        self.timed_out_servers = []
+        self.stale_sockets = []
 
     @coroutine
     def servers(self, include=()):
@@ -134,7 +136,7 @@ class SocketClient:
         skip = False
         for api_file in paths.socket_files(self._file_extension):
             server_id = api_file.stem
-            if (api_file in self.dead_sockets) or (include and server_id not in include):
+            if (api_file in self.stale_sockets) or (include and server_id not in include):
                 continue
             while True:
                 if not skip:
@@ -151,11 +153,11 @@ class SocketClient:
                         resp = ServerResponse(server_id, datagram.decode())
                 except TimeoutError:
                     log.warning('event=[socket_timeout] socket=[{}]'.format(api_file))
-                    self.timed_out_sockets.append(api_file)
+                    self.timed_out_servers.append(server_id)
                     resp = ServerResponse(server_id, None, Error.TIMEOUT)
                 except ConnectionRefusedError:  # TODO what about other errors?
-                    log.warning('event=[dead_socket] socket=[{}]'.format(api_file))
-                    self.dead_sockets.append(api_file)
+                    log.warning('event=[stale_socket] socket=[{}]'.format(api_file))
+                    self.stale_sockets.append(api_file)
                     skip = True  # Ignore this one and continue with another one
                     break
                 except OSError as e:
@@ -188,8 +190,31 @@ class PayloadTooLarge(Exception):
         super().__init__("Datagram payload is too large: " + str(payload_size))
 
 
-def clean_dead_sockets(file_extensions: Sequence[str]):
-    for ext in file_extensions:
-        client = SocketClient(ext, True)
+@dataclass
+class PingResult:
+    active_servers: List[str]
+    timed_out_servers: List[str]
+    stale_sockets: List[Path]
+
+
+def ping(file_extension) -> PingResult:
+    client = SocketClient(file_extension, True)
+    try:
         responses = client.communicate('ping')
-        print(responses)
+        active = [resp.server_id for resp in responses]
+        timed_out = list(client.timed_out_servers)
+        stale = list(client.stale_sockets)
+        return PingResult(active, timed_out, stale)
+    finally:
+        client.close()
+
+
+def clean_stale_sockets(file_extension) -> List[str]:
+    cleaned = []
+
+    ping_result = ping(file_extension)
+    for stale_socket in ping_result.stale_sockets:
+        stale_socket.unlink(missing_ok=True)
+        cleaned.append(stale_socket.name)
+    
+    return cleaned

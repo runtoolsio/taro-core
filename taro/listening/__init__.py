@@ -19,7 +19,7 @@ def _listener_socket_name(ext):
 class EventReceiver(SocketServer):
 
     def __init__(self, socket_name, instance_match=None):
-        super().__init__(socket_name)
+        super().__init__(socket_name, allow_ping=True)
         self.instance_match = instance_match
         self.listeners = []
 
