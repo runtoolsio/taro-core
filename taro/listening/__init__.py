@@ -30,7 +30,7 @@ class EventReceiver(SocketServer):
             log.warning(f"event=[invalid_json_event_received] length=[{len(req_body)}]")
             return
 
-        job_info = dto.to_job_info(req_body_json['event']['job_info'])
+        job_info = dto.to_job_info(req_body_json['event_metadata']['job_info'])
         if self.instance_match and not job_info.matches(self.instance_match):
             return
 

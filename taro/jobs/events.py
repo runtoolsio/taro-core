@@ -18,8 +18,8 @@ class EventDispatcher(abc.ABC):
     def __init__(self, client):
         self._client = client
 
-    def _send_event(self, type_, event):
-        event_body = {"event_type": type_, "event": event}
+    def _send_event(self, type_, job_info, event):
+        event_body = {"event_metadata": {"event_type": type_, "job_info": dto.to_info_dto(job_info)}, "event": event}
         try:
             self._client.communicate(json.dumps(event_body))
         except PayloadTooLarge:
@@ -35,7 +35,8 @@ class StateDispatcher(EventDispatcher, ExecutionStateObserver):
         super(StateDispatcher, self).__init__(SocketClient(STATE_LISTENER_FILE_EXTENSION, bidirectional=False))
 
     def state_update(self, job_info: JobInfo):
-        self._send_event("execution_state_change", {"job_info": dto.to_info_dto(job_info)})
+        event = {"new_state": job_info.state.name}
+        self._send_event("execution_state_change", job_info, event)
 
 
 class OutputDispatcher(EventDispatcher, JobOutputObserver):
@@ -45,8 +46,7 @@ class OutputDispatcher(EventDispatcher, JobOutputObserver):
 
     def output_update(self, job_info: JobInfo, output, is_error):
         event = {
-            "job_info": dto.to_info_dto(job_info),
             "output": util.truncate(output, 10000, truncated_suffix=".. (truncated)"),
             "is_error": is_error,
         }
-        self._send_event("new_output", event)
+        self._send_event("new_output", job_info, event)

@@ -3,6 +3,7 @@
 while true;
 do
  date=$(date +%N) ;
- echo $date ;
+ echo "$date stdout";
+ echo "$date stderr" >&2;
  sleep  1 ;
 done
