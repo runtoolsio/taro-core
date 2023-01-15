@@ -81,7 +81,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         return self._execution.status
 
     @property
-    def last_output(self) -> List[str]:
+    def last_output(self) -> List[Tuple[str, bool]]:
         return list(self._last_output)
 
     @property
@@ -281,19 +281,19 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             except BaseException:
                 log.exception("event=[warning_observer_exception]")
 
-    def output_update(self, output):
+    def output_update(self, output, is_error):
         """Executed when new output line is available"""
-        self._last_output.append(output)
-        self._notify_output_observers(self.create_info(), output)
+        self._last_output.append((output, is_error))
+        self._notify_output_observers(self.create_info(), output, is_error)
 
-    def _notify_output_observers(self, job_info: JobInfo, output):
+    def _notify_output_observers(self, job_info: JobInfo, output, is_error):
         for observer in _gen_prioritized(self._output_observers, _output_observers):
             # noinspection PyBroadException
             try:
                 if isinstance(observer, JobOutputObserver):
-                    observer.output_update(job_info, output)
+                    observer.output_update(job_info, output, is_error)
                 elif callable(observer):
-                    observer(job_info, output)
+                    observer(job_info, output, is_error)
                 else:
                     log.warning("event=[unsupported_output_observer] observer=[%s]", observer)
             except BaseException:

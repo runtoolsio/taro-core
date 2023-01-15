@@ -67,5 +67,6 @@ class OutputReceiver(EventReceiver):
 
     def handle_event(self, job_info, event):
         output = event['output']
+        is_error = event['is_error']
         for listener in self.listeners:
-            listener.output_update(job_info, output)
+            listener.output_update(job_info, output, is_error)

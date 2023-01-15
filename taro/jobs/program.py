@@ -98,16 +98,16 @@ class ProgramExecution(OutputExecution):
             line_stripped = line.rstrip()
             self._status = line_stripped
             print(line_stripped)
-            self._notify_output_observers(line_stripped)
+            self._notify_output_observers(line_stripped, False)
 
-    def _notify_output_observers(self, output):
+    def _notify_output_observers(self, output, is_error):
         for observer in self._output_observers:
             # noinspection PyBroadException
             try:
                 if isinstance(observer, ExecutionOutputObserver):
-                    observer.output_update(output)
+                    observer.output_update(output, is_error)
                 elif callable(observer):
-                    observer(output)
+                    observer(output, is_error)
                 else:
                     log.warning("event=[unsupported_output_observer] observer=[%s]", observer)
             except BaseException:

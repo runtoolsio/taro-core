@@ -418,5 +418,11 @@ class WarningObserver(abc.ABC):
 class JobOutputObserver(abc.ABC):
 
     @abc.abstractmethod
-    def output_update(self, job_info: JobInfo, output):
-        """Executed when new output line is available."""
+    def output_update(self, job_info: JobInfo, output, is_error):
+        """
+        Executed when new output line is available.
+
+        :param job_info: job instance producing the output
+        :param output: job instance output text
+        :param is_error: True when it is an error output
+        """

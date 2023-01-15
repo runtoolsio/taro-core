@@ -273,5 +273,10 @@ class ExecutionLifecycleManagement(ExecutionLifecycle):
 
 class ExecutionOutputObserver(abc.ABC):
 
-    def output_update(self, output):
-        """Executed when new output line is available"""
+    def output_update(self, output, is_error: bool):
+        """
+        Executed when new output line is available
+
+        :param output: output text
+        :param is_error: True when the text represents error output
+        """

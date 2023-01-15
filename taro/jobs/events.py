@@ -43,9 +43,10 @@ class OutputDispatcher(EventDispatcher, JobOutputObserver):
     def __init__(self):
         super(OutputDispatcher, self).__init__(SocketClient(OUTPUT_LISTENER_FILE_EXTENSION, bidirectional=False))
 
-    def output_update(self, job_info: JobInfo, output):
+    def output_update(self, job_info: JobInfo, output, is_error):
         event = {
             "job_info": dto.to_info_dto(job_info),
-            "output": util.truncate(output, 10000, truncated_suffix=".. (truncated)")
+            "output": util.truncate(output, 10000, truncated_suffix=".. (truncated)"),
+            "is_error": is_error,
         }
         self._send_event("new_output", event)

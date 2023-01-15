@@ -23,8 +23,8 @@ def run(args):
         for tail_resp in taro.client.read_tail(instance_match).responses:
             job_id, instance_id = tail_resp.id
             printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_id_styled(job_id, instance_id))
-            for line in tail_resp.tail:
-                print(line)
+            for line, is_error in tail_resp.tail:
+                print(line, file=sys.stderr if is_error else sys.stdout)
             sys.stdout.flush()
 
 
@@ -34,13 +34,13 @@ class TailPrint(JobOutputObserver):
         self._receiver = receiver
         self.last_printed_job_instance = None
 
-    def output_update(self, job_info: JobInfo, output):
+    def output_update(self, job_info: JobInfo, output, is_error):
         # TODO It seems that this needs locking
         try:
             if self.last_printed_job_instance != job_info.instance_id:
                 printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_styled(job_info))
             self.last_printed_job_instance = job_info.instance_id
-            print(output, flush=True)
+            print(output, flush=True, file=sys.stderr if is_error else sys.stdout)
         except BrokenPipeError:
             self._receiver.close_and_wait()
             cliutil.handle_broken_pipe(exit_code=1)

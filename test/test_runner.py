@@ -106,4 +106,4 @@ def test_last_output():
                                  read_output=True)
     instance = RunnerJobInstance('j', execution, state_locker=lock.NullStateLocker())
     instance.run()
-    assert instance.last_output == "1 everyone in the world is doing something without me".split()
+    assert [out for out, _ in instance.last_output] == "1 everyone in the world is doing something without me".split()
