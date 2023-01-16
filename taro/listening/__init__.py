@@ -1,12 +1,14 @@
 #  Sender, Listening
+import abc
 import json
 import logging
 from abc import abstractmethod
 from json import JSONDecodeError
 
-from taro import util, dto
+from taro import util
 from taro.jobs.events import STATE_LISTENER_FILE_EXTENSION, OUTPUT_LISTENER_FILE_EXTENSION
-from taro.jobs.job import ExecutionStateObserver
+from taro.jobs.execution import ExecutionState
+from taro.jobs.job import JobInstanceID
 from taro.socket import SocketServer
 
 log = logging.getLogger(__name__)
@@ -16,11 +18,37 @@ def _listener_socket_name(ext):
     return util.unique_timestamp_hex() + ext
 
 
-class EventReceiver(SocketServer):
+def _missing_field_txt(obj, missing):
+    return f"event=[invalid_event] object=[{obj}] reason=[missing field: {missing}]"
 
-    def __init__(self, socket_name, instance_match=None):
+
+def _read_metadata(req_body_json):
+    metadata = req_body_json.get('event_metadata')
+    if not metadata:
+        raise ValueError(_missing_field_txt('root', 'event_metadata'))
+
+    event_type = metadata.get('event_type')
+    if not event_type:
+        raise ValueError(_missing_field_txt('event_metadata', 'event_type'))
+
+    job_id = metadata.get('job_id')
+    if not job_id:
+        raise ValueError(_missing_field_txt('event_metadata', 'job_id'))
+    instance_id = metadata.get('instance_id')
+    if not instance_id:
+        raise ValueError(_missing_field_txt('event_metadata', 'instance_id'))
+
+    return event_type, JobInstanceID(job_id, instance_id)
+
+
+class EventReceiver(SocketServer):
+    """
+    TODO Do not extend this class instead create separate handler interface
+    """
+
+    def __init__(self, socket_name, id_match=None):
         super().__init__(socket_name, allow_ping=True)
-        self.instance_match = instance_match
+        self.id_match = id_match
         self.listeners = []
 
     def handle(self, req_body):
@@ -30,43 +58,79 @@ class EventReceiver(SocketServer):
             log.warning(f"event=[invalid_json_event_received] length=[{len(req_body)}]")
             return
 
-        job_info = dto.to_job_info(req_body_json['event_metadata']['job_info'])
-        if self.instance_match and not job_info.matches(self.instance_match):
+        try:
+            event_type, job_instance_id = _read_metadata(req_body_json)
+        except ValueError as e:
+            log.warning(e)
             return
 
-        self.handle_event(job_info, req_body_json['event'])
+        if self.id_match and not job_instance_id.matches(self.id_match):
+            return
+
+        self.handle_event(event_type, job_instance_id, req_body_json.get('event'))
 
     @abstractmethod
-    def handle_event(self, job_info, event):
+    def handle_event(self, event_type, job_instance_id, event):
         pass
 
 
 class StateReceiver(EventReceiver):
 
-    def __init__(self, instance_match=None, states=()):
-        super().__init__(_listener_socket_name(STATE_LISTENER_FILE_EXTENSION), instance_match)
+    def __init__(self, id_match=None, states=()):
+        super().__init__(_listener_socket_name(STATE_LISTENER_FILE_EXTENSION), id_match)
         self.states = states
 
-    def handle_event(self, job_info, _):
-        if self.states and job_info.state not in self.states:
+    def handle_event(self, _, job_instance_id, event):
+        new_state = ExecutionState[event["new_state"]]
+
+        if self.states and new_state not in self.states:
             return
 
+        previous_state = ExecutionState[event['previous_state']]
+        changed = util.dt_from_utc_str(event["changed"])
+
         for listener in self.listeners:
-            if isinstance(listener, ExecutionStateObserver):
-                listener.state_update(job_info)
+            if isinstance(listener, ExecutionStateEventObserver):
+                listener.state_update(job_instance_id, previous_state, new_state, changed)
             elif callable(listener):
-                listener(job_info)
+                listener(job_instance_id, previous_state, new_state, changed)
             else:
                 log.warning("event=[unsupported_state_observer] observer=[%s]", listener)
 
 
+class ExecutionStateEventObserver(abc.ABC):
+    @abc.abstractmethod
+    def state_update(self, job_instance_id, previous_state, new_state, changed):
+        """
+        This method is called when the execution state of the job instance has changed.
+
+        :param job_instance_id: ID of the job instance
+        :param previous_state: state before
+        :param new_state: new state
+        :param changed: timestamp of the change
+        """
+
+
 class OutputReceiver(EventReceiver):
 
-    def __init__(self, instance_match=None):
-        super().__init__(_listener_socket_name(OUTPUT_LISTENER_FILE_EXTENSION), instance_match)
+    def __init__(self, id_match=None):
+        super().__init__(_listener_socket_name(OUTPUT_LISTENER_FILE_EXTENSION), id_match)
 
-    def handle_event(self, job_info, event):
+    def handle_event(self, _, job_instance_id, event):
         output = event['output']
         is_error = event['is_error']
         for listener in self.listeners:
-            listener.output_update(job_info, output, is_error)
+            listener.output_update(job_instance_id, output, is_error)
+
+
+class OutputEventObserver(abc.ABC):
+
+    @abc.abstractmethod
+    def output_update(self, job_instance_id, output, is_error):
+        """
+        Executed when new output line is available.
+
+        :param job_instance_id: ID of the job instance producing the output
+        :param output: job instance output text
+        :param is_error: True when it is an error output
+        """

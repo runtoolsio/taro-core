@@ -1,9 +1,7 @@
 import sys
 
 import taro.client
-from taro import JobInfo
-from taro.jobs.job import JobOutputObserver
-from taro.listening import OutputReceiver
+from taro.listening import OutputReceiver, OutputEventObserver
 from taro.theme import Theme
 from taro.util import MatchingStrategy
 from taroapp import printer, style, cliutil
@@ -21,25 +19,24 @@ def run(args):
         receiver.wait()  # Prevents 'exception ignored in: <module 'threading' from ...>` error message
     else:
         for tail_resp in taro.client.read_tail(instance_match).responses:
-            job_id, instance_id = tail_resp.id
-            printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_id_styled(job_id, instance_id))
+            printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_id_styled(tail_resp.id))
             for line, is_error in tail_resp.tail:
                 print(line, file=sys.stderr if is_error else sys.stdout)
             sys.stdout.flush()
 
 
-class TailPrint(JobOutputObserver):
+class TailPrint(OutputEventObserver):
 
     def __init__(self, receiver):
         self._receiver = receiver
         self.last_printed_job_instance = None
 
-    def output_update(self, job_info: JobInfo, output, is_error):
+    def output_update(self, job_instance_id, output, is_error):
         # TODO It seems that this needs locking
         try:
-            if self.last_printed_job_instance != job_info.instance_id:
-                printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_styled(job_info))
-            self.last_printed_job_instance = job_info.instance_id
+            if self.last_printed_job_instance != job_instance_id:
+                printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_id_styled(job_instance_id))
+            self.last_printed_job_instance = job_instance_id
             print(output, flush=True, file=sys.stderr if is_error else sys.stdout)
         except BrokenPipeError:
             self._receiver.close_and_wait()

@@ -1,7 +1,6 @@
 import sys
 
-from taro.jobs.job import ExecutionStateObserver, JobInfo
-from taro.listening import StateReceiver
+from taro.listening import StateReceiver, ExecutionStateEventObserver
 from taro.util import MatchingStrategy
 from taroapp import printer, style, cliutil
 
@@ -14,19 +13,15 @@ def run(args):
     receiver.wait()  # Prevents 'exception ignored in: <module 'threading' from ...>` error message
 
 
-class EventPrint(ExecutionStateObserver):
+class EventPrint(ExecutionStateEventObserver):
 
     def __init__(self, receiver):
         self._receiver = receiver
 
-    def state_update(self, job_info: JobInfo):
+    def state_update(self, job_instance_id, previous_state, new_state, changed):
         try:
-            print_state_change(job_info)
+            printer.print_styled(*style.job_instance_id_status_line_styled(job_instance_id, new_state, changed))
+            sys.stdout.flush()
         except BrokenPipeError:
             self._receiver.close_and_wait()
             cliutil.handle_broken_pipe(exit_code=1)
-
-
-def print_state_change(job_info):
-    printer.print_styled(*style.job_status_line_styled(job_info))
-    sys.stdout.flush()

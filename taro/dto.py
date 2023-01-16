@@ -5,7 +5,7 @@ from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecyc
 from taro.jobs.job import JobInfo, JobInstanceID
 
 
-def _format_td(td):
+def datetime_str(td):
     if td is None:
         return None
     return td.isoformat()
@@ -13,7 +13,7 @@ def _format_td(td):
 
 def to_info_dto(info) -> Dict[str, Any]:
     lc = info.lifecycle
-    state_changes = [{"state": state.name, "changed": _format_td(change)} for state, change in lc.state_changes]
+    state_changes = [{"state": state.name, "changed": datetime_str(change)} for state, change in lc.state_changes]
     if info.exec_error:
         exec_error = {"message": info.exec_error.message, "state": info.exec_error.exec_state.name}
     else:
@@ -27,10 +27,10 @@ def to_info_dto(info) -> Dict[str, Any]:
         "lifecycle": {
             "state_changes": state_changes,
             "state": lc.state.name,
-            "created": _format_td(lc.changed(ExecutionState.CREATED)),
-            "last_changed": _format_td(lc.last_changed),
-            "execution_started": _format_td(lc.execution_started),
-            "execution_finished": _format_td(lc.execution_finished),
+            "created": datetime_str(lc.changed(ExecutionState.CREATED)),
+            "last_changed": datetime_str(lc.last_changed),
+            "execution_started": datetime_str(lc.execution_started),
+            "execution_finished": datetime_str(lc.execution_finished),
             "execution_time": lc.execution_time.total_seconds() if lc.execution_started else None,
         },
         "status": info.status,
