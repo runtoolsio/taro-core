@@ -42,13 +42,11 @@ def _read_metadata(req_body_json):
 
 
 class EventReceiver(SocketServer):
-    """
-    TODO Do not extend this class instead create separate handler interface
-    """
 
-    def __init__(self, socket_name, id_match=None):
+    def __init__(self, socket_name, id_match=None, event_types=()):
         super().__init__(socket_name, allow_ping=True)
         self.id_match = id_match
+        self.event_types = event_types
         self.listeners = []
 
     def handle(self, req_body):
@@ -64,7 +62,8 @@ class EventReceiver(SocketServer):
             log.warning(e)
             return
 
-        if self.id_match and not job_instance_id.matches(self.id_match):
+        if (self.event_types and event_type not in self.event_types) or\
+                (self.id_match and not job_instance_id.matches_any(self.id_match)):
             return
 
         self.handle_event(event_type, job_instance_id, req_body_json.get('event'))

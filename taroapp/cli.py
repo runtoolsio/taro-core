@@ -248,7 +248,7 @@ def _init_listen_parser(common, subparsers):
 
     release_parser = subparsers.add_parser(ACTION_LISTEN, parents=[common],
                                            description='Print job state changes', add_help=False)
-    release_parser.add_argument('instances', nargs='?', default=None, type=str, help='instance filter')
+    release_parser.add_argument('instances', nargs='*', default=None, type=str, help='instance filter')
 
 
 def _init_wait_parser(common, subparsers):
@@ -260,7 +260,7 @@ def _init_wait_parser(common, subparsers):
     """
 
     wait_parser = subparsers.add_parser(ACTION_WAIT, parents=[common], description='Wait for job state', add_help=False)
-    wait_parser.add_argument('instances', nargs='?', default=None, type=str, help='instance filter')
+    wait_parser.add_argument('instances', nargs='*', default=None, type=str, help='instance filter')
     wait_parser.add_argument('-c', '--count', type=int, default=1, help='Number of occurrences to finish the wait')
     wait_parser.add_argument('-s', '--states', type=_str2state, metavar='STATES', nargs=argparse.REMAINDER,
                              help='States for which the command waits')
