@@ -121,8 +121,10 @@ def parse_iso8601_duration(duration):
                                        seconds=seconds).normalized()
 
 
-def sequence_view(seq, *, sort_key, asc, limit):
+def sequence_view(seq, *, sort_key, asc, limit, filter_=None):
     sorted_seq = sorted(seq, key=sort_key, reverse=not asc)
+    if filter_:
+        sorted_seq = filter(filter_, sorted_seq)
     return itertools.islice(sorted_seq, 0, limit if limit > 0 else None)
 
 
