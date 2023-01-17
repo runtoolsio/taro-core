@@ -3,8 +3,7 @@ TODO: Create option where the command will terminates if the specified state is 
       of an existing instance.
 """
 
-from taro.jobs.job import ExecutionStateObserver, JobInfo
-from taro.listening import StateReceiver
+from taro.listening import StateReceiver, ExecutionStateEventObserver
 from taro.util import MatchingStrategy
 from taroapp import printer, style, cliutil
 
@@ -18,19 +17,15 @@ def run(args):
     receiver.wait()  # Prevents 'exception ignored in: <module 'threading' from ...>` error message, remove when fixed
 
 
-def print_state_change(job_info):
-    printer.print_styled(*style.job_status_line_styled(job_info))
-
-
-class EventHandler(ExecutionStateObserver):
+class EventHandler(ExecutionStateEventObserver):
 
     def __init__(self, receiver, count=1):
         self._receiver = receiver
         self.count = count
 
-    def state_update(self, job_info: JobInfo):
+    def state_update(self, job_instance_id, previous_state, new_state, changed):
         try:
-            print_state_change(job_info)
+            printer.print_styled(*style.job_instance_id_status_line_styled(job_instance_id, new_state, changed))
         except BrokenPipeError:
             self._receiver.close_and_wait()
             cliutil.handle_broken_pipe(exit_code=1)
