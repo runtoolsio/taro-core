@@ -115,10 +115,10 @@ def to_json(d):
     return json.dumps(d, indent=2)
 
 
-def start(host, port):
-    taro.load_defaults()
-    run(host=host, port=port, debug=True, reloader=True)
+def start(host, port, reload=False):
+    run(host=host, port=port, debug=True, reloader=reload)
 
 
 if __name__ == '__main__':
-    start('localhost', 8000)
+    taro.load_defaults()
+    start('localhost', 8000, True)

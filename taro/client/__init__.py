@@ -28,7 +28,7 @@ class APIError:
     api_id: str
     error: APIErrorType
     socket_error: Optional[Error]
-    resp_error: dict[str, Any]
+    resp_error: Dict[str, Any]
 
 
 T = TypeVar('T')
