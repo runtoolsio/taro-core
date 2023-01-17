@@ -1,19 +1,27 @@
 from bottle import request, HTTPError
 
 
-def query(name: str, *, mandatory=False, default=None, aliases=None, allowed=()):
+def query_multi(name: str, *, mandatory=False, default=(), aliases=None, allowed=()):
     if name not in request.query:
         if mandatory:
             raise http_error(412, "Mandatory query parameter '{}' not found".format(name))
         return default
-    val = request.query[name]
-    if aliases and val in aliases:
-        val = aliases[val]
-    if allowed and val not in allowed:
+    values = request.query.getall(name)
+    if aliases:
+        values = [aliases.get(val, val) for val in values]
+    if allowed and not all(val in allowed for val in values):
         allowed_val = ", ".join(allowed)
         raise http_error(
-            412, "Invalid value '{}' for query parameter '{}'. Allowed values: {}".format(val, name, allowed_val))
-    return val
+            412, "Invalid value '{}' for query parameter '{}'. Allowed values: {}".format(values, name, allowed_val))
+    return values
+
+
+def query(name: str, *, mandatory=False, default=None, aliases=None, allowed=()):
+    values = query_multi(name, mandatory=mandatory, default=default, aliases=aliases, allowed=allowed)
+    if values == default:
+        return values
+
+    return values[0]
 
 
 def query_digit(name: str, *, mandatory=False, default=None):

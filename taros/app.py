@@ -10,25 +10,27 @@ from taro.jobs.execution import ExecutionState
 from taro.jobs.job import InstanceMatchingCriteria
 from taro.jobs.persistence import SortCriteria
 from taro.util import MatchingStrategy
-from taros.httputil import http_error, query_digit, query
+from taros.httputil import http_error, query_digit, query, query_multi
 
 
 @route('/instances')
 def instances():
+    include = query_multi('include', default='active', allowed=('active', 'finished'))
     limit = query_digit('limit', default=-1)
     order = query('order', default='desc', allowed=('asc', 'desc'), aliases={'ascending': 'asc', 'descending': 'desc'})
-    asc = order == 'asc'
+    asc = (order == 'asc')
 
-    if request.GET.get('finished') is not None:  # Check if `finished` query param without value is present
+    jobs_info = []
+    if 'finished' in include:
         sort = query('sort', default='created', allowed=[c.name.lower() for c in SortCriteria])
         if not persistence.is_enabled():
             raise http_error(409, "Persistence is not enabled in the config file")
         jobs_info = persistence.read_jobs(sort=SortCriteria[sort.upper()], asc=asc, limit=limit)
-    else:
+    if 'active' in include:
         if query('sort'):
             raise http_error(412, "Query parameter 'sort' can be used only with query parameter 'finished'")
         jobs_info = list(util.sequence_view(
-            taro.client.read_jobs_info().responses,
+            jobs_info + taro.client.read_jobs_info().responses,
             sort_key=lambda j: j.lifecycle.changed(ExecutionState.CREATED),
             asc=asc,
             limit=limit))
@@ -95,7 +97,8 @@ def to_json(d):
 
 
 def start(host, port):
-    run(host=host, port=port, debug=True, reloader=False)
+    taro.load_defaults()
+    run(host=host, port=port, debug=True, reloader=True)
 
 
 if __name__ == '__main__':
