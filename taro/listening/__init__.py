@@ -47,7 +47,6 @@ class EventReceiver(SocketServer):
         super().__init__(socket_name, allow_ping=True)
         self.id_match = id_match
         self.event_types = event_types
-        self.listeners = []
 
     def handle(self, req_body):
         try:
@@ -78,6 +77,7 @@ class StateReceiver(EventReceiver):
     def __init__(self, id_match=None, states=()):
         super().__init__(_listener_socket_name(STATE_LISTENER_FILE_EXTENSION), id_match)
         self.states = states
+        self.listeners = []
 
     def handle_event(self, _, job_instance_id, event):
         new_state = ExecutionState[event["new_state"]]
@@ -114,6 +114,7 @@ class OutputReceiver(EventReceiver):
 
     def __init__(self, id_match=None):
         super().__init__(_listener_socket_name(OUTPUT_LISTENER_FILE_EXTENSION), id_match)
+        self.listeners = []
 
     def handle_event(self, _, job_instance_id, event):
         output = event['output']
