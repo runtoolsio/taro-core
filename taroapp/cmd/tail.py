@@ -1,6 +1,7 @@
 import sys
 
 import taro.client
+from taro.jobs.job import InstanceMatchingCriteria
 from taro.listening import OutputReceiver, OutputEventObserver
 from taro.theme import Theme
 from taro.util import MatchingStrategy
@@ -10,15 +11,15 @@ HIGHLIGHT_TOKEN = (Theme.separator, ' ---> ')
 
 
 def run(args):
-    instance_match = cliutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL)
+    id_match = cliutil.id_matching_criteria(args, MatchingStrategy.PARTIAL)
     if args.follow:
-        receiver = OutputReceiver(instance_match)
+        receiver = OutputReceiver(id_match)
         receiver.listeners.append(TailPrint(receiver))
         receiver.start()
         cliutil.exit_on_signal(cleanups=[receiver.close_and_wait])
         receiver.wait()  # Prevents 'exception ignored in: <module 'threading' from ...>` error message
     else:
-        for tail_resp in taro.client.read_tail(instance_match).responses:
+        for tail_resp in taro.client.read_tail(InstanceMatchingCriteria(id_match)).responses:
             printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_id_styled(tail_resp.id))
             for line, is_error in tail_resp.tail:
                 print(line, file=sys.stderr if is_error else sys.stdout)

@@ -32,11 +32,8 @@ class IDMatchingCriteria(NamedTuple):
 
 class InstanceMatchingCriteria:
 
-    def __init__(self, id_patterns: Sequence[str], *, id_match_strategy: MatchingStrategy = MatchingStrategy.EXACT):
-        if id_patterns:
-            self.id_matching_criteria = IDMatchingCriteria(id_patterns, id_match_strategy)
-        else:
-            self.id_matching_criteria = None
+    def __init__(self, id_matching_criteria):
+        self.id_matching_criteria = id_matching_criteria
 
 
 class JobInstanceID(NamedTuple):

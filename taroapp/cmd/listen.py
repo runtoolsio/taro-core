@@ -6,7 +6,7 @@ from taroapp import printer, style, cliutil
 
 
 def run(args):
-    receiver = StateReceiver(cliutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL))
+    receiver = StateReceiver(cliutil.id_matching_criteria(args, MatchingStrategy.PARTIAL))
     receiver.listeners.append(EventPrint(receiver))
     receiver.start()
     cliutil.exit_on_signal(cleanups=[receiver.close_and_wait])

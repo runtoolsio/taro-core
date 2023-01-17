@@ -3,12 +3,24 @@ import signal
 import sys
 from typing import Optional, Callable, Sequence
 
-from taro.jobs.job import InstanceMatchingCriteria
+from taro.jobs.job import InstanceMatchingCriteria, IDMatchingCriteria
+
+
+def id_matching_criteria(args, def_id_match_strategy) -> Optional[IDMatchingCriteria]:
+    """
+    :param args: cli args
+    :param def_id_match_strategy: id match strategy used when not overridden by args
+    :return: instance of ID match criteria or None when args has no criteria specified
+    """
+    if args.instances:
+        return IDMatchingCriteria(args.instances, def_id_match_strategy)
+    else:
+        return None
 
 
 def instance_matching_criteria(args, def_id_match_strategy) -> Optional[InstanceMatchingCriteria]:
     if args.instances:
-        return InstanceMatchingCriteria(args.instances, id_match_strategy=def_id_match_strategy)
+        return InstanceMatchingCriteria(IDMatchingCriteria(args.instances, def_id_match_strategy))
     else:
         return None
 

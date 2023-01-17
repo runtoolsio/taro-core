@@ -10,7 +10,7 @@ from taroapp import printer, style, cliutil
 
 
 def run(args):
-    instance_match = cliutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL)
+    instance_match = cliutil.id_matching_criteria(args, MatchingStrategy.PARTIAL)
     receiver = StateReceiver(instance_match, args.states)
     receiver.listeners.append(EventHandler(receiver, args.count))
     receiver.start()
