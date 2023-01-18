@@ -114,6 +114,11 @@ class JobInstance(abc.ABC):
 
     @property
     @abc.abstractmethod
+    def error_output(self):
+        """Lines of error output or None if not supported"""
+
+    @property
+    @abc.abstractmethod
     def warnings(self):
         """
         Return dictionary of {alarm_name: occurrence_count}
@@ -245,6 +250,10 @@ class DelegatingJobInstance(JobInstance):
         return self.delegated.last_output
 
     @property
+    def error_output(self):
+        return self.delegated.error_output
+
+    @property
     def warnings(self):
         return self.delegated.warnings
 
@@ -294,10 +303,9 @@ class DelegatingJobInstance(JobInstance):
 class JobInfo:
     """
     Immutable snapshot of job instance state
-    TODO Rename to instance info?
     """
 
-    def __init__(self, job_instance_id, lifecycle, status, warnings, exec_error: ExecutionError, parameters,
+    def __init__(self, job_instance_id, lifecycle, status, error_output, warnings, exec_error: ExecutionError, parameters,
                  **user_params):
         self._job_instance_id = job_instance_id
         self._lifecycle = lifecycle
@@ -305,6 +313,7 @@ class JobInfo:
             self._status = textwrap.shorten(status, 1000, placeholder=".. (truncated)", break_long_words=False)
         else:
             self._status = status
+        self._error_output = tuple(error_output)
         self._warnings = warnings
         self._exec_error = exec_error
         self._parameters = tuple(parameters)
@@ -337,6 +346,10 @@ class JobInfo:
     @property
     def warnings(self):
         return self._warnings
+
+    @property
+    def error_output(self):
+        return self._error_output
 
     @property
     def exec_error(self) -> ExecutionError:

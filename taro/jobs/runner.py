@@ -56,7 +56,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._parameters = (execution.parameters or ()) + (sync.parameters or ())
         self._user_params = user_params
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
-        self._last_output = deque(maxlen=10)
+        self._last_output = deque(maxlen=10)  # TODO Max len configurable
+        self._error_output = deque(maxlen=1000)  # TODO Max len configurable
         self._exec_error = None
         self._executing = False
         self._stopped_or_interrupted: bool = False
@@ -85,6 +86,10 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         return list(self._last_output)
 
     @property
+    def error_output(self) -> List[str]:
+        return list(self._error_output)
+
+    @property
     def warnings(self):
         return dict(self._warnings)
 
@@ -102,8 +107,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
     def create_info(self):
         with self._state_lock:
-            return JobInfo(self._id, copy.deepcopy(self._lifecycle), self.status, self.warnings, self.exec_error,
-                           self.parameters, **self._user_params)
+            return JobInfo(self._id, copy.deepcopy(self._lifecycle), self.status, self.error_output, self.warnings,
+                           self.exec_error, self.parameters, **self._user_params)
 
     def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self._state_observers = _add_prioritized(self._state_observers, priority, observer)
@@ -284,6 +289,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def output_update(self, output, is_error):
         """Executed when new output line is available"""
         self._last_output.append((output, is_error))
+        if is_error:
+            self._error_output.append(output)
         self._notify_output_observers(self.create_info(), output, is_error)
 
     def _notify_output_observers(self, job_info: JobInfo, output, is_error):

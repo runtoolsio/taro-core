@@ -34,6 +34,7 @@ def to_info_dto(info) -> Dict[str, Any]:
             "execution_time": lc.execution_time.total_seconds() if lc.execution_started else None,
         },
         "status": info.status,
+        "error_output": info.error_output,
         "warnings": info.warnings,
         "exec_error": exec_error,
         "parameters": info.parameters,
@@ -55,5 +56,13 @@ def to_job_info(as_dict) -> JobInfo:
     else:
         exec_error = None
 
-    return JobInfo(JobInstanceID(as_dict['id']['job_id'], as_dict['id']['instance_id']), lifecycle, as_dict['status'],
-                   as_dict['warnings'], exec_error, as_dict['parameters'], **as_dict['user_params'])
+    return JobInfo(
+        JobInstanceID(as_dict['id']['job_id'], as_dict['id']['instance_id']),
+        lifecycle,
+        as_dict['status'],
+        as_dict['error_output'],
+        as_dict['warnings'],
+        exec_error,
+        as_dict['parameters'],
+        **as_dict['user_params']
+    )
