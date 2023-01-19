@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from fnmatch import fnmatch
 from typing import NamedTuple, Dict, Any, Optional, Sequence, Callable, Union
 
-from taro.jobs.execution import ExecutionError
+from taro.jobs.execution import ExecutionError, ExecutionState
 from taro.util import and_, or_, MatchingStrategy
 
 
@@ -305,7 +305,8 @@ class JobInfo:
     Immutable snapshot of job instance state
     """
 
-    def __init__(self, job_instance_id, lifecycle, status, error_output, warnings, exec_error: ExecutionError, parameters,
+    def __init__(self, job_instance_id, lifecycle, status, error_output, warnings, exec_error: ExecutionError,
+                 parameters,
                  **user_params):
         self._job_instance_id = job_instance_id
         self._lifecycle = lifecycle
@@ -318,6 +319,10 @@ class JobInfo:
         self._exec_error = exec_error
         self._parameters = tuple(parameters)
         self._user_params = user_params
+
+    @staticmethod
+    def created(job_info):
+        return job_info.lifecycle.changed(ExecutionState.CREATED)
 
     @property
     def job_id(self) -> str:
