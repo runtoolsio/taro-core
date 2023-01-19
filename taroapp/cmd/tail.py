@@ -5,13 +5,14 @@ from taro.jobs.job import InstanceMatchingCriteria
 from taro.listening import OutputReceiver, OutputEventObserver
 from taro.theme import Theme
 from taro.util import MatchingStrategy
+from taroapp import argsutil
 from taroapp import printer, style, cliutil
 
 HIGHLIGHT_TOKEN = (Theme.separator, ' ---> ')
 
 
 def run(args):
-    id_match = cliutil.id_matching_criteria(args, MatchingStrategy.PARTIAL)
+    id_match = argsutil.id_matching_criteria(args, MatchingStrategy.PARTIAL)
     if args.follow:
         receiver = OutputReceiver(id_match)
         receiver.listeners.append(TailPrint(receiver))

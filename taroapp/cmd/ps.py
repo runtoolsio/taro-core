@@ -5,15 +5,16 @@ from pygments.formatters.terminal import TerminalFormatter
 from pygments.lexers.data import JsonLexer
 
 import taro.client
+import taroapp.argsutil
 from taro import dto
 from taro.jobs.job import JobInfoCollection
 from taro.util import MatchingStrategy
-from taroapp import printer, cliutil
+from taroapp import printer
 from taroapp.view import instance as view_inst
 
 
 def run(args):
-    instance_match = cliutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL)
+    instance_match = taroapp.argsutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL)
     jobs = taro.client.read_jobs_info(instance_match).responses
     jobs = JobInfoCollection(*jobs)
 

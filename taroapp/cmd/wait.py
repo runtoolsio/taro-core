@@ -2,14 +2,14 @@
 TODO: Create option where the command will terminates if the specified state is found in the previous or current state
       of an existing instance.
 """
-
 from taro.listening import StateReceiver, ExecutionStateEventObserver
 from taro.util import MatchingStrategy
+from taroapp import argsutil
 from taroapp import printer, style, cliutil
 
 
 def run(args):
-    instance_match = cliutil.id_matching_criteria(args, MatchingStrategy.PARTIAL)
+    instance_match = argsutil.id_matching_criteria(args, MatchingStrategy.PARTIAL)
     receiver = StateReceiver(instance_match, args.states)
     receiver.listeners.append(EventHandler(receiver, args.count))
     receiver.start()
