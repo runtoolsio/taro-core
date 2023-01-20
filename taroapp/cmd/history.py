@@ -1,12 +1,14 @@
 from taro.jobs import persistence
 from taro.jobs.persistence import SortCriteria
-from taroapp import printer, jfilter
+from taro.util import MatchingStrategy
+from taroapp import printer, jfilter, argsutil
 from taroapp.jfilter import AllFilter
 from taroapp.view import instance as view_inst
 
 
 def run(args):
-    jobs = persistence.read_jobs(ids=args.instances, sort=SortCriteria[args.sort.upper()], asc=args.asc,
+    instance_match = argsutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL)
+    jobs = persistence.read_jobs(instance_match=instance_match, sort=SortCriteria[args.sort.upper()], asc=args.asc,
                                  limit=args.lines or -1, last=args.last)
 
     columns = [view_inst.JOB_ID, view_inst.INSTANCE_ID, view_inst.CREATED, view_inst.ENDED, view_inst.EXEC_TIME,
