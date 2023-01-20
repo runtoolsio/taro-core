@@ -75,7 +75,10 @@ class SQLite:
                     op = 'OR'
 
                 if criteria.strategy == MatchingStrategy.PARTIAL:
-                    conditions.append("job_id LIKE \"%{jid}%\" {op} instance_id LIKE \"%{iid}%\""
+                    conditions.append("job_id GLOB \"*{jid}*\" {op} instance_id GLOB \"*{iid}*\""
+                                      .format(jid=job_id, iid=instance_id, op=op))
+                elif criteria.strategy == MatchingStrategy.FN_MATCH:
+                    conditions.append("job_id GLOB \"{jid}\" {op} instance_id GLOB \"{iid}\""
                                       .format(jid=job_id, iid=instance_id, op=op))
                 elif criteria.strategy == MatchingStrategy.EXACT:
                     conditions.append("job_id = \"{jid}\" {op} instance_id = \"{iid}\""

@@ -224,7 +224,7 @@ def _init_history_remove_parser(common, subparsers):
     hist_rm_parser = subparsers.add_parser(
         ACTION_HISTORY_REMOVE, parents=[common], description="Remove job from history", add_help=False)
 
-    hist_rm_parser.add_argument('id', nargs=argparse.REMAINDER, type=str, help='Job or instance ID')
+    hist_rm_parser.add_argument('instances', nargs='+', type=str, help='instance filter')
 
 
 def _init_release_parser(common, subparsers):

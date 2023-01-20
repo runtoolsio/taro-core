@@ -58,8 +58,9 @@ def read_jobs(*, instance_match=None, sort=SortCriteria.CREATED, asc=False, limi
     return _instance().read_jobs(instance_match=instance_match, sort=sort, asc=asc, limit=limit, last=last)
 
 
-def num_of_job(id_):
-    return len(_instance().read_jobs(instance_match=[id_], sort=SortCriteria.CREATED, asc=False, limit=-1, last=False))
+def num_of_job(instance_match):
+    return len(_instance().read_jobs(instance_match=instance_match, sort=SortCriteria.CREATED, asc=False, limit=-1,
+                                     last=False))
 
 
 def store_job(job_info):
