@@ -54,7 +54,7 @@ class SortCriteria(Enum):
     TIME = 3
 
 
-def read_jobs(*, instance_match=None, sort=SortCriteria.CREATED, asc=False, limit=-1, last=False):
+def read_jobs(instance_match=None, sort=SortCriteria.CREATED, *, asc=False, limit=-1, last=False):
     return _instance().read_jobs(instance_match=instance_match, sort=sort, asc=asc, limit=limit, last=last)
 
 
@@ -100,7 +100,7 @@ def _sort_key(sort: SortCriteria):
 
 class NoPersistence:
 
-    def read_jobs(self, *, instance_match=None, sort, asc, limit):
+    def read_jobs(self, instance_match=None, sort=SortCriteria.CREATED, *, asc, limit):
         raise PersistenceDisabledError()
 
     def store_job(self, job_info):

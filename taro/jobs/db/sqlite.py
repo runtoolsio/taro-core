@@ -52,7 +52,7 @@ class SQLite:
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
-    def read_jobs(self, *, instance_match, sort, asc, limit, last) -> List[JobInfo]:
+    def read_jobs(self, instance_match=None, sort=SortCriteria.CREATED, *, asc, limit, last) -> List[JobInfo]:
         def sort_exp():
             if sort == SortCriteria.CREATED:
                 return 'created'
