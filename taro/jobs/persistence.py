@@ -68,8 +68,8 @@ def store_job(job_info):
     clean_up()
 
 
-def remove_job(id_):
-    _instance().remove_job(id_=id_)
+def remove_jobs(instance_match):
+    _instance().remove_jobs(instance_match)
 
 
 def clean_up():
@@ -106,7 +106,7 @@ class NoPersistence:
     def store_job(self, job_info):
         raise PersistenceDisabledError()
 
-    def remove_job(self, id_):
+    def remove_jobs(self, instance_match):
         raise PersistenceDisabledError()
 
     def clean_up(self):

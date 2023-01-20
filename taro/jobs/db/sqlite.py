@@ -21,6 +21,35 @@ def create_persistence():
     return sqlite_
 
 
+def _build_where_clause(instance_match):
+    if not instance_match or not instance_match.id_matching_criteria:
+        return ""
+
+    criteria = instance_match.id_matching_criteria
+    conditions = []
+    for id_pattern in criteria.patterns:
+        if "@" in id_pattern:
+            job_id, instance_id = id_pattern.split("@")
+            op = 'AND'
+        else:
+            job_id = instance_id = id_pattern
+            op = 'OR'
+
+        if criteria.strategy == MatchingStrategy.PARTIAL:
+            conditions.append("job_id GLOB \"*{jid}*\" {op} instance_id GLOB \"*{iid}*\""
+                              .format(jid=job_id, iid=instance_id, op=op))
+        elif criteria.strategy == MatchingStrategy.FN_MATCH:
+            conditions.append("job_id GLOB \"{jid}\" {op} instance_id GLOB \"{iid}\""
+                              .format(jid=job_id, iid=instance_id, op=op))
+        elif criteria.strategy == MatchingStrategy.EXACT:
+            conditions.append("job_id = \"{jid}\" {op} instance_id = \"{iid}\""
+                              .format(jid=job_id, iid=instance_id, op=op))
+        else:
+            raise ValueError(f"Matching strategy {criteria.strategy} is not supported")
+
+    return " WHERE ({conditions})".format(conditions=" OR ".join(conditions))
+
+
 class SQLite:
 
     def __init__(self, connection):
@@ -63,30 +92,7 @@ class SQLite:
             raise ValueError(sort)
 
         statement = "SELECT * FROM history"
-
-        if instance_match and (criteria := instance_match.id_matching_criteria):
-            conditions = []
-            for id_pattern in criteria.patterns:
-                if "@" in id_pattern:
-                    job_id, instance_id = id_pattern.split("@")
-                    op = 'AND'
-                else:
-                    job_id = instance_id = id_pattern
-                    op = 'OR'
-
-                if criteria.strategy == MatchingStrategy.PARTIAL:
-                    conditions.append("job_id GLOB \"*{jid}*\" {op} instance_id GLOB \"*{iid}*\""
-                                      .format(jid=job_id, iid=instance_id, op=op))
-                elif criteria.strategy == MatchingStrategy.FN_MATCH:
-                    conditions.append("job_id GLOB \"{jid}\" {op} instance_id GLOB \"{iid}\""
-                                      .format(jid=job_id, iid=instance_id, op=op))
-                elif criteria.strategy == MatchingStrategy.EXACT:
-                    conditions.append("job_id = \"{jid}\" {op} instance_id = \"{iid}\""
-                                      .format(jid=job_id, iid=instance_id, op=op))
-                else:
-                    raise ValueError(f"Matching strategy {criteria.strategy} is not supported")
-
-            statement += " WHERE ({conditions})".format(conditions=" OR ".join(conditions))
+        statement += _build_where_clause(instance_match)
 
         if last:
             statement += " GROUP BY job_id HAVING ROWID = max(ROWID) "
@@ -149,8 +155,11 @@ class SQLite:
         )
         self._conn.commit()
 
-    def remove_job(self, id_):
-        self._conn.execute("DELETE FROM history WHERE job_id = (?) or instance_id = (?)", (id_, id_,))
+    def remove_jobs(self, instance_match):
+        where_clause = _build_where_clause(instance_match)
+        if not where_clause:
+            raise ValueError("No rows to remove")
+        self._conn.execute("DELETE FROM history" + where_clause)
         self._conn.commit()
 
     def close(self):
