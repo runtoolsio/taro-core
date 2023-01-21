@@ -303,8 +303,9 @@ def _init_output_parser(common, subparsers):
     :param subparsers: sub-parser for output parser to be added to
     """
 
-    tail_parser = subparsers.add_parser(ACTION_OUTPUT, parents=[common], description='TBS', add_help=False)
-    tail_parser.add_argument('instance', type=str, help='instance filter')
+    output_parser = subparsers.add_parser(ACTION_OUTPUT, parents=[common], description='TBS', add_help=False)
+    output_parser.add_argument('instance', type=str, help='instance filter')
+    output_parser.add_argument('-P', '--no-pager', action='store_true', help='Do not use pager for output')
 
 
 def _init_clean_parser(common, subparsers):

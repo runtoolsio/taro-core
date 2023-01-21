@@ -1,16 +1,29 @@
+import itertools
+
 from taro import client, JobInfo
+from taro.jobs import persistence
 from taro.jobs.job import InstanceMatchingCriteria, IDMatchingCriteria
+from taro.theme import Theme
 from taro.util import MatchingStrategy
-from taroapp.view import instance as view_inst
+from taroapp import printer
+from taroapp.view.instance import JOB_ID, INSTANCE_ID, CREATED, ENDED, STATE
 
 
 def run(args):
-    instance_match = InstanceMatchingCriteria(IDMatchingCriteria(args.instance, MatchingStrategy.PARTIAL))
+    instance_match = InstanceMatchingCriteria(IDMatchingCriteria([args.instance], MatchingStrategy.PARTIAL))
     instances, _ = client.read_jobs_info(instance_match)
 
+    if not instances:
+        instances = persistence.read_jobs(instance_match)
 
-    if instances:
-        columns = [view_inst.JOB_ID, view_inst.INSTANCE_ID, view_inst.CREATED, view_inst.ENDED, view_inst.STATE]
-        sorted_instances = sorted(instances, key=JobInfo.created, reverse=True)
-        for line in sorted_instances[0].error_output:
-            print(line)
+    if not instances:
+        print('No matching instance found')
+        return
+
+    columns = [JOB_ID, INSTANCE_ID, CREATED, ENDED, STATE]
+    instance = sorted(instances, key=JobInfo.created, reverse=True)[0]
+    footer_gen = itertools.chain(
+        (('', ''), (Theme.warning, 'Error output:')),
+        (['', err] for err in instance.error_output)
+    )
+    printer.print_table([instance], columns, show_header=True, pager=not args.no_pager, footer=footer_gen)

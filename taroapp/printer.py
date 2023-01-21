@@ -1,10 +1,10 @@
+import itertools
 import os
 import re
+import sys
 from collections import namedtuple
 from typing import List, Dict, Tuple
 
-import itertools
-import sys
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.formatted_text import FormattedText
 from pypager.pager import Pager
@@ -32,8 +32,8 @@ def print_styled(*style_and_text: Tuple[str, str]):
 
 
 @iterates
-def print_table(items, columns: List[Column], *, show_header: bool, pager: bool):
-    gen = output_gen(items, columns, show_header, stretch_last_column=pager)
+def print_table(items, columns: List[Column], *, show_header: bool, pager: bool, footer=()):
+    gen = output_gen(items, columns, show_header, stretch_last_column=False, footer=footer)
 
     if pager and sys.stdout.isatty():
         p = Pager()
@@ -44,7 +44,7 @@ def print_table(items, columns: List[Column], *, show_header: bool, pager: bool)
             print_styled(*next(gen))
 
 
-def output_gen(items, columns: List[Column], show_header: bool, stretch_last_column: bool):
+def output_gen(items, columns: List[Column], show_header: bool, stretch_last_column: bool, footer=()):
     """
     Table Representation:
         Each column has padding of size 1 from each side applied in both header and values
@@ -67,6 +67,9 @@ def output_gen(items, columns: List[Column], show_header: bool, stretch_last_col
     for item in itertools.chain(first_fifty, job_iter):
         yield [(c.colour_fnc(item), f.format(_limit_text(c.value_fnc(item), w - 2)))
                for c, w, f in zip(columns, column_widths, column_formats)]
+
+    for line in footer:
+        yield [line]
 
 
 def _calc_widths(items, columns: List[Column], stretch_last_column: bool):
