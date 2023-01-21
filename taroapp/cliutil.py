@@ -3,6 +3,8 @@ import signal
 import sys
 from typing import Callable, Sequence
 
+from taro.util import TRUE_OPTIONS
+
 
 def handle_broken_pipe(*, exit_code):
     # According to the official Python doc: https://docs.python.org/3/library/signal.html#note-on-sigpipe
@@ -40,3 +42,16 @@ class SignalHandler:
     def _cleanup(self):
         for c in self.cleanups:
             c()
+
+
+def user_confirmation(*, yes_on_empty=False, catch_interrupt=False):
+    print("Do you want to continue? [Y/n] ", end="")
+    try:
+        i = input()
+    except KeyboardInterrupt:
+        if catch_interrupt:
+            return False
+        else:
+            raise
+
+    return i.lower() in TRUE_OPTIONS or (yes_on_empty and '' == i)

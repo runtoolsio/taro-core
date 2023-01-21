@@ -178,18 +178,6 @@ def truncate(text, max_len, truncated_suffix=''):
     return text
 
 
-def cli_confirmation(*, catch_interrupt=False):
-    print("Do you want to continue? [Y/n] ", end="")
-    try:
-        i = input()
-    except KeyboardInterrupt:
-        if catch_interrupt:
-            return False
-        else:
-            raise
-    return i.lower() in TRUE_OPTIONS
-
-
 def partial_match(string, pattern):
     return bool(re.search(pattern, string))
 
