@@ -178,9 +178,15 @@ def truncate(text, max_len, truncated_suffix=''):
     return text
 
 
-def cli_confirmation():
+def cli_confirmation(*, catch_interrupt=False):
     print("Do you want to continue? [Y/n] ", end="")
-    i = input()
+    try:
+        i = input()
+    except KeyboardInterrupt:
+        if catch_interrupt:
+            return False
+        else:
+            raise
     return i.lower() in TRUE_OPTIONS
 
 

@@ -13,7 +13,7 @@ def run(args):
         print(str(count) + " records found for " + instance)
         total += count
 
-    if total and taro.util.cli_confirmation():
+    if total and taro.util.cli_confirmation(catch_interrupt=True):
         for instance in args.instances:
             instance_match = InstanceMatchingCriteria(IDMatchingCriteria([instance], MatchingStrategy.FN_MATCH))
             persistence.remove_jobs(instance_match)
