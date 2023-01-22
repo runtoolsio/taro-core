@@ -1,6 +1,6 @@
 """
-Public API of this package is imported here and it is safe to use by plugins.
-Any API in sub-modules (except 'util' module) is a subject to change and doesn't ensure backwards compatibility.
+Public API of this package is imported here, and it is safe to use by plugins.
+Any API in submodules (except 'util' module) is a subject to change and doesn't ensure backwards compatibility.
 
 IMPLEMENTATION NOTE:
     Avoid importing any module depending on any external package. This allows to use this module without installing
@@ -19,7 +19,8 @@ from .jobs.process import ProcessExecution
 from .jobs.program import ProgramExecution
 from .jobs.runner import RunnerJobInstance
 from .paths import lookup_file_in_config_path
-from .util import NestedNamespace, format_timedelta, read_yaml_file
+from .util import format_timedelta, read_yaml_file
+from .utilns import NestedNamespace
 
 
 def load_defaults(**kwargs):
