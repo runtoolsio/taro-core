@@ -4,8 +4,8 @@ from shutil import copy
 
 import yaml
 
-from taro import utilns
-from taro.utilns import NestedNamespace
+from taro import ns
+from taro.ns import NestedNamespace
 
 
 def expand_user(file):
@@ -24,7 +24,7 @@ def print_file(path):
 
 def read_yaml_file(file_path) -> NestedNamespace:
     with open(file_path, 'r') as file:
-        return utilns.wrap_namespace(yaml.safe_load(file))
+        return ns.wrap_namespace(yaml.safe_load(file))
 
 
 def write_yaml_file(content, file_path):
