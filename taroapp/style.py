@@ -1,5 +1,5 @@
 from taro.theme import Theme
-from taroapp import printer
+from taro.util import DateTimeFormat
 
 
 def job_style(job):
@@ -58,15 +58,17 @@ def job_instance_id_styled(job_instance_id):
     ]
 
 
-def job_status_line_styled(job_instance, *, prefix_ts=True):
-    changed = job_instance.lifecycle.last_changed if prefix_ts else None
-    return job_instance_id_status_line_styled(job_instance.id, job_instance.state, changed)
+def job_status_line_styled(job_instance, *, ts_prefix_format=DateTimeFormat.DATE_TIME_MS_LOCAL_ZONE):
+    return job_instance_id_status_line_styled(
+        job_instance.id, job_instance.state, job_instance.lifecycle.last_changed, ts_prefix_format=ts_prefix_format)
 
 
-def job_instance_id_status_line_styled(job_instance_id, current_state, ts=None):
+def job_instance_id_status_line_styled(
+        job_instance_id, current_state, ts=None, *, ts_prefix_format=DateTimeFormat.DATE_TIME_MS_LOCAL_ZONE):
     style_text_tuples = \
         job_instance_id_styled(job_instance_id) + [("", " -> "), (state_style(current_state), current_state.name)]
-    if ts:
-        return [("", printer.format_dt(ts) + " ")] + style_text_tuples
+    ts_prefix_formatted = ts_prefix_format(ts) if ts else None
+    if ts_prefix_formatted:
+        return [("", ts_prefix_formatted + " ")] + style_text_tuples
     else:
         return style_text_tuples

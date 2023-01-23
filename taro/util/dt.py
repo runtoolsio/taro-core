@@ -1,6 +1,7 @@
 import re
 import secrets
 from datetime import datetime, timezone
+from enum import Enum
 
 from dateutil import relativedelta
 
@@ -35,7 +36,7 @@ def format_timedelta(td):
 
         s = ("%d day%s, " % plural(td.days)) + s
     if td.microseconds:
-        s = s + ".%06d" % td.microseconds
+        s = s + (".%06d" % td.microseconds)[:-3]
         # s = s + ("%f" % (td.microseconds / 1000000))[1:-3]
     return s
 
@@ -69,3 +70,26 @@ def parse_iso8601_duration(duration):
     seconds = int(match.group(7)) if match.group(7) else 0
     return relativedelta.relativedelta(years=years, months=months, weeks=weeks, days=days, hours=hours, minutes=minutes,
                                        seconds=seconds).normalized()
+
+
+def format_dt_ms_local_tz(dt):
+    if not dt:
+        return 'N/A'
+
+    return dt.astimezone().replace(tzinfo=None).isoformat(sep=' ', timespec='milliseconds')
+
+
+def format_time_ms_local_tz(dt):
+    if not dt:
+        return 'N/A'
+
+    return dt.astimezone().strftime('%H:%M:%S.%f')[:-3]
+
+
+class DateTimeFormat(Enum):
+    DATE_TIME_MS_LOCAL_ZONE = (format_dt_ms_local_tz,)
+    TIME_MS_LOCAL_ZONE = (format_time_ms_local_tz,)
+    NONE = (lambda dt: None,)
+
+    def __call__(self, *args, **kwargs):
+        return self.value[0](*args, **kwargs)

@@ -101,13 +101,6 @@ def _calc_widths(items, columns: List[Column], stretch_last_column: bool):
     return widths
 
 
-def format_dt(dt):
-    if not dt:
-        return 'N/A'
-
-    return dt.astimezone().replace(tzinfo=None).isoformat(sep=' ', timespec='milliseconds')
-
-
 def _limit_text(text, limit):
     if not text or len(text) <= limit:
         return text
