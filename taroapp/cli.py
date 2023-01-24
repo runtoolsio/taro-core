@@ -7,6 +7,7 @@ from datetime import datetime
 from taro.jobs.execution import ExecutionState
 from taro.jobs.persistence import SortCriteria
 from taroapp import version
+from taroapp.argsutil import TimestampFormat
 
 ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
@@ -248,9 +249,14 @@ def _init_listen_parser(common, subparsers):
     :param subparsers: sub-parser for listen parser to be added to
     """
 
-    release_parser = subparsers.add_parser(ACTION_LISTEN, parents=[common],
-                                           description='Print job state changes', add_help=False)
-    release_parser.add_argument('instances', nargs='*', default=None, type=str, help='instance filter')
+    listen_parser = subparsers.add_parser(ACTION_LISTEN, parents=[common],
+                                          description='Print job state changes', add_help=False)
+    listen_parser.add_argument('instances', nargs='*', default=None, type=str, help='instance filter')
+    listen_parser.add_argument('-t', '--timestamp',
+                               type=TimestampFormat.from_str,
+                               choices=[f for f in TimestampFormat if f is not TimestampFormat.UNKNOWN],
+                               default=TimestampFormat.DATE_TIME,
+                               help='Timestamp prefix format')
 
 
 def _init_wait_parser(common, subparsers):
