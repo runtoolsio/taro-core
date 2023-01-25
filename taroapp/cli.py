@@ -272,6 +272,11 @@ def _init_wait_parser(common, subparsers):
     wait_parser.add_argument('-c', '--count', type=int, default=1, help='Number of occurrences to finish the wait')
     wait_parser.add_argument('-s', '--states', type=_str2state, metavar='STATES', nargs=argparse.REMAINDER,
                              help='States for which the command waits')
+    wait_parser.add_argument('-t', '--timestamp',
+                             type=TimestampFormat.from_str,
+                             choices=[f for f in TimestampFormat if f is not TimestampFormat.UNKNOWN],
+                             default=TimestampFormat.DATE_TIME,
+                             help='Timestamp prefix format')
 
 
 def _init_stop_parser(common, subparsers):
