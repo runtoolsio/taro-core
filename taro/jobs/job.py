@@ -13,13 +13,15 @@ There are two type of clients of the framework:
 
 import abc
 import textwrap
-from collections import namedtuple
+from collections import namedtuple, deque
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from typing import NamedTuple, Dict, Any, Optional, Sequence, Callable, Union
 
 from taro.jobs.execution import ExecutionError, ExecutionState
 from taro.util import and_, or_, MatchingStrategy
+
+DEFAULT_OBSERVER_PRIORITY = 100
 
 
 class IDMatchingCriteria(NamedTuple):
@@ -69,7 +71,49 @@ class JobInstanceID(NamedTuple):
         return "{}@{}".format(self.job_id, self.instance_id)
 
 
-DEFAULT_OBSERVER_PRIORITY = 100
+class TimePeriod:
+    def __init__(self):
+        self.start_date = None
+        self.end_date = None
+
+
+class Progress(TimePeriod):
+    def __init__(self):
+        super().__init__()
+        self.completed = 0
+        self.total = 0
+        self.last_update = None
+
+    def update(self, completed: int, total: int = 0):
+        self.completed = completed
+        if total:
+            self.total = total
+        self.last_update = None  # TODO TBD
+
+
+class Operation:
+
+    def __init__(self, name):
+        self.name = name
+        self.progress = Progress()
+
+
+class Task(TimePeriod):
+    def __init__(self, max_events=100):
+        super().__init__()
+        self.events = deque(maxlen=max_events)
+        self.operations = []
+
+    def add_event(self, name: str):
+        self.events.appendleft((name, None))  # TODO
+
+    def add_operation(self, progress: Progress):
+        self.operations.append(progress)
+
+    def get_last_event(self) -> Optional[str]:
+        if not self.events:
+            return None
+        return self.events[0]
 
 
 class JobInstance(abc.ABC):
