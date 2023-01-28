@@ -103,7 +103,7 @@ class TestJobOutputObserver(JobOutputObserver):
     def __init__(self):
         self.output = []
 
-    def output_update(self, job_info: JobInfo, output, is_error):
+    def job_output_update(self, job_info: JobInfo, output, is_error):
         self.output.append((job_info, output,))
 
     def last_output(self):

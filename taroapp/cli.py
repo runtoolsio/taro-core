@@ -134,7 +134,7 @@ def _init_exec_parser(common, subparsers):
                                   'for all jobs belonging to the same execution group can be specified using the '
                                   '`--serial` or `max-executions` options. If an execution group is not set then '
                                   'it defaults to the job ID.')
-    exec_parser.add_argument('-p', '--pending', type=str,
+    exec_parser.add_argument('-P', '--pending', type=str,
                              help='Specifies pending group. The job will wait before execution in pending state'
                                   'until the group receives releasing signal. See the `release` command.')
     exec_parser.add_argument('--warn-time', type=_warn_time_type, action='append', default=[],
@@ -149,6 +149,8 @@ def _init_exec_parser(common, subparsers):
                                   'with ERR.')
     exec_parser.add_argument('-d', '--depends-on', type=str, action='append', default=[],
                              help='The execution will be skipped if specified dependency job is not running.')
+    exec_parser.add_argument('-p', '--pattern', type=str, action='append', default=[],
+                             help='Grok pattern for extracting fields from output used for job instance tracking.')
     exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=ExecutionState.COMPLETED,
                              help='The job will be started without actual execution of its command. The final state '
                                   'of the job is specified by the value of this option. Default state is COMPLETED. '

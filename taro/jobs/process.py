@@ -115,7 +115,7 @@ class ProcessExecution(OutputExecution):
             # noinspection PyBroadException
             try:
                 if isinstance(observer, ExecutionOutputObserver):
-                    observer.output_update(output, is_err)
+                    observer.execution_output_update(output, is_err)
                 elif callable(observer):
                     observer(output)
                 else:

@@ -109,7 +109,7 @@ class ProgramExecution(OutputExecution):
             # noinspection PyBroadException
             try:
                 if isinstance(observer, ExecutionOutputObserver):
-                    observer.output_update(output, is_error)
+                    observer.execution_output_update(output, is_error)
                 elif callable(observer):
                     observer(output, is_error)
                 else:

@@ -107,13 +107,18 @@ class Task(TimePeriod):
     def add_event(self, name: str):
         self.events.appendleft((name, None))  # TODO
 
-    def add_operation(self, progress: Progress):
-        self.operations.append(progress)
-
-    def get_last_event(self) -> Optional[str]:
+    @property
+    def last_event(self) -> Optional[str]:
         if not self.events:
             return None
         return self.events[0]
+
+    def add_operation(self, progress: Progress):
+        self.operations.append(progress)
+
+    @property
+    def status(self):
+        return self.last_event[0] if self.last_event else None
 
 
 class JobInstance(abc.ABC):
@@ -477,7 +482,7 @@ class WarningObserver(abc.ABC):
 class JobOutputObserver(abc.ABC):
 
     @abc.abstractmethod
-    def output_update(self, job_info: JobInfo, output, is_error):
+    def job_output_update(self, job_info: JobInfo, output, is_error):
         """
         Executed when new output line is available.
 

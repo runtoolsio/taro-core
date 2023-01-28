@@ -20,7 +20,7 @@ def test_job_running(capsys):
 
 
 def test_job_waiting(capsys):
-    run_app_as_process_and_wait('exec -mc -p val sleep 1', wait_for=ExecutionState.PENDING, daemon=True)
+    run_app_as_process_and_wait('exec -mc -P val sleep 1', wait_for=ExecutionState.PENDING, daemon=True)
 
     run_app('ps')
     output = capsys.readouterr().out

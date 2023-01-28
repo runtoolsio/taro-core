@@ -33,7 +33,7 @@ class TailPrint(OutputEventObserver):
         self._receiver = receiver
         self.last_printed_job_instance = None
 
-    def output_update(self, job_instance_id, output, is_error):
+    def output_event_update(self, job_instance_id, output, is_error):
         # TODO It seems that this needs locking
         try:
             if self.last_printed_job_instance != job_instance_id:

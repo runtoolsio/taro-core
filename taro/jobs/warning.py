@@ -56,7 +56,7 @@ class _OutputMatchesWarning(JobOutputObserver):
         self.id = w_id
         self.regex = re.compile(regex)
 
-    def output_update(self, _, output, is_error):
+    def job_output_update(self, _, output, is_error):
         m = self.regex.search(output)
         if m:
             warn = Warn(self.id, {'matches': output})

@@ -2,16 +2,18 @@ import logging
 import signal
 
 from taro.jobs import sync, warning
-from taro.jobs.job import Warn
+from taro.jobs.job import Warn, Task
 from taro.jobs.managed import ManagedJobContext
 from taro.jobs.program import ProgramExecution
 from taro.jobs.runner import RunnerJobInstance
 from taro.jobs.sync import ExecutionsLimit
+from taro.jobs.track import GrokTrackingParser
 from taro.test.execution import TestExecution
 
 logger = logging.getLogger(__name__)
 
 
+# TODO refactor -> extract methods
 def run(args):
     if args.dry_run:
         execution = TestExecution(args.dry_run)
@@ -25,10 +27,20 @@ def run(args):
         exec_limit = ExecutionsLimit(args.execution_group or job_id, args.max_executions)
     else:
         exec_limit = None
+
+    if args.pattern:
+        pattern = args.pattern[0]
+        task = Task()
+        parser = GrokTrackingParser(task, pattern)
+        execution.add_output_observer(parser)
+    else:
+        task = None
+
     job_instance = RunnerJobInstance(
         job_id,
         execution,
         sync.create_composite(executions_limit=exec_limit, no_overlap=args.no_overlap, depends_on=args.depends_on),
+        task,
         instance_id=args.instance,
         pending_group=args.pending,
         **(dict(args.param) if args.param else dict()))

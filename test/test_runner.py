@@ -34,7 +34,7 @@ def test_state_created():
 
 def test_pending():
     latch = Latch(ExSt.PENDING)
-    instance = RunnerJobInstance('j', TestExecution(), latch, lock.NullStateLocker())
+    instance = RunnerJobInstance('j', TestExecution(), latch, state_locker=lock.NullStateLocker())
     t = Thread(target=instance.run)
     t.start()
 
@@ -51,7 +51,7 @@ def test_pending():
 
 def test_latch_cancellation():
     latch = Latch(ExSt.PENDING)
-    instance = RunnerJobInstance('j', TestExecution(), latch, lock.NullStateLocker())
+    instance = RunnerJobInstance('j', TestExecution(), latch, state_locker=lock.NullStateLocker())
     t = Thread(target=instance.run)
     t.start()
 
@@ -66,7 +66,7 @@ def test_latch_cancellation():
 
 def test_cancellation_before_start():
     latch = Latch(ExSt.PENDING)
-    instance = RunnerJobInstance('j', TestExecution(), latch, lock.NullStateLocker())
+    instance = RunnerJobInstance('j', TestExecution(), latch, state_locker=lock.NullStateLocker())
     t = Thread(target=instance.run)
 
     instance.stop()

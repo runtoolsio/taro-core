@@ -13,6 +13,7 @@ log = logging.getLogger(__name__)
 EXT_PLUGIN_MODULE_PREFIX = plugins.DEF_PLUGIN_MODULE_PREFIX
 
 
+# TODO Consider rename to better convey meaning of this class which is to expose jobs outside of the current runtime env
 class ManagedJobContext(ExecutionStateObserver):
 
     def __init__(self,

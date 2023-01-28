@@ -120,13 +120,13 @@ class OutputReceiver(EventReceiver):
         output = event['output']
         is_error = event['is_error']
         for listener in self.listeners:
-            listener.output_update(job_instance_id, output, is_error)
+            listener.output_event_update(job_instance_id, output, is_error)
 
 
 class OutputEventObserver(abc.ABC):
 
     @abc.abstractmethod
-    def output_update(self, job_instance_id, output, is_error):
+    def output_event_update(self, job_instance_id, output, is_error):
         """
         Executed when new output line is available.
 
