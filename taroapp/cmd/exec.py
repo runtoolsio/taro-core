@@ -29,11 +29,11 @@ def run(args):
         exec_limit = None
 
     if args.pattern:
-        pattern = args.pattern[0]
         task = Task()
-        parser = GrokTrackingParser(task, pattern)
         execution.tracking = task
-        execution.add_output_observer(parser)
+        for pattern in args.pattern:
+            parser = GrokTrackingParser(task, pattern)
+            execution.add_output_observer(parser)
 
     job_instance = RunnerJobInstance(
         job_id,

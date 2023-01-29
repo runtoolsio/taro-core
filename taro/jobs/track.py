@@ -2,13 +2,16 @@ from enum import Enum
 
 from pygrok import Grok
 
-from taro import JobInfo
+from taro import JobInfo, util
 from taro.jobs.execution import ExecutionOutputObserver
 from taro.jobs.job import JobOutputObserver
 
 
 class Fields(Enum):
     EVENT = 'event'
+    TIMESTAMP = 'timestamp'
+    COMPLETED = 'completed'
+    TOTAL = 'total'
 
 
 class GrokTrackingParser(ExecutionOutputObserver, JobOutputObserver):
@@ -28,5 +31,18 @@ class GrokTrackingParser(ExecutionOutputObserver, JobOutputObserver):
         if not match:
             return
 
+        ts = _str_to_dt(match.get(Fields.TIMESTAMP.value))
+
         event = match.get(Fields.EVENT.value)
-        self.task.add_event(event)
+        if event:
+            self.task.add_event(event, ts)
+
+        completed = match.get(Fields.COMPLETED.value)
+        total = match.get(Fields.TOTAL.value)
+        if completed or total:
+            self.task.update_operation(event, completed, total)
+
+
+def _str_to_dt(timestamp):
+    # TODO support more formats
+    return util.dt_from_utc_str(timestamp)
