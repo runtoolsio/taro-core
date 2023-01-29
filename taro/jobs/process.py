@@ -17,9 +17,10 @@ log = logging.getLogger(__name__)
 
 class ProcessExecution(OutputExecution):
 
-    def __init__(self, target, args=()):
+    def __init__(self, target, args=(), tracking=None):
         self.target = target
         self.args = args
+        self._tracking = tracking
         self.output_queue: Queue[Tuple[Union[str, _QueueStop], bool]] = Queue(maxsize=2048)  # Create in execute method?
         self._process: Union[Process, None] = None
         self._status = None
@@ -81,8 +82,19 @@ class ProcessExecution(OutputExecution):
             sys.stderr = original_stderr
 
     @property
+    def tracking(self):
+        return self._tracking
+
+    @tracking.setter
+    def tracking(self, tracking):
+        self._tracking = tracking
+
+    @property
     def status(self):
-        return self._status
+        if self.tracking:
+            return self.tracking.status
+        else:
+            return self._status
 
     @property
     def parameters(self):

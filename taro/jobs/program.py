@@ -15,9 +15,10 @@ log = logging.getLogger(__name__)
 
 class ProgramExecution(OutputExecution):
 
-    def __init__(self, *args, read_output: bool = True):
+    def __init__(self, *args, read_output: bool = True, tracking=None):
         self.args = args
         self.read_output: bool = read_output
+        self._tracking = tracking
         self._popen: Union[Popen, None] = None
         self._status = None
         self._stopped: bool = False
@@ -71,8 +72,19 @@ class ProgramExecution(OutputExecution):
         return t
 
     @property
+    def tracking(self):
+        return self._tracking
+
+    @tracking.setter
+    def tracking(self, tracking):
+        self._tracking = tracking
+
+    @property
     def status(self):
-        return self._status
+        if self.tracking:
+            return self.tracking.status
+        else:
+            return self._status
 
     @property
     def parameters(self):

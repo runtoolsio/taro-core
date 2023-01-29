@@ -122,6 +122,7 @@ class Execution(abc.ABC):
     @abc.abstractmethod
     def is_async(self) -> bool:
         """
+        TODO Delete
         SYNCHRONOUS TASK
             - finishes after the call of the execute() method
             - execution state is changed to RUNNING before the call of the execute() method
@@ -141,6 +142,13 @@ class Execution(abc.ABC):
         :return: state after the execution of this method
         :raises ExecutionError: when execution failed
         :raises Exception: on unexpected failure
+        """
+
+    @property
+    @abc.abstractmethod
+    def tracking(self):
+        """
+        :return: an object containing tracking information about the progress of the execution
         """
 
     @property

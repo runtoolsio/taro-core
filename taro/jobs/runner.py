@@ -42,7 +42,7 @@ def _gen_prioritized(*prioritized_seq):
 # TODO Consider rename as `runner` may create impression that the job is executed in background
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, sync=NoSync(), tracking=None, state_locker=None,
+    def __init__(self, job_id, execution, sync=NoSync(), state_locker=None,
                  *, instance_id=None, pending_group=None, **user_params):
         self._id = JobInstanceID(job_id, instance_id or util.unique_timestamp_hex())
         self._execution = execution
@@ -52,7 +52,6 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             self._sync = CompositeSync(self._latch, sync)
         else:
             self._sync = sync
-        self._tracking = tracking
         self._global_state_locker = state_locker or cfg.state_locker
         self._pending_group = pending_group
         self._parameters = (execution.parameters or ()) + (sync.parameters or ())
@@ -81,10 +80,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
     @property
     def status(self):
-        if self._tracking:
-            return self._tracking.status
-        else:
-            return self._execution.status
+        return self._execution.status
 
     @property
     def last_output(self) -> List[Tuple[str, bool]]:

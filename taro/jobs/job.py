@@ -125,12 +125,12 @@ class JobInstance(abc.ABC):
 
     @property
     def job_id(self) -> str:
-        """Identifier of the job of this instance"""
+        """Job part of the instance identifier"""
         return self.id.job_id
 
     @property
     def instance_id(self) -> str:
-        """Instance identifier"""
+        """Instance part of the instance identifier"""
         return self.id.instance_id
 
     @property
@@ -170,6 +170,7 @@ class JobInstance(abc.ABC):
     @abc.abstractmethod
     def warnings(self):
         """
+        TODO Warning as custom type?
         Return dictionary of {alarm_name: occurrence_count}
 
         :return: warnings
@@ -221,6 +222,7 @@ class JobInstance(abc.ABC):
     @abc.abstractmethod
     def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         """
+        TODO Should move to Lifecycle class?
         Register execution state observer
         Observer can be:
             1. An instance of ExecutionStateObserver

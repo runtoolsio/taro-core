@@ -32,15 +32,13 @@ def run(args):
         pattern = args.pattern[0]
         task = Task()
         parser = GrokTrackingParser(task, pattern)
+        execution.tracking = task
         execution.add_output_observer(parser)
-    else:
-        task = None
 
     job_instance = RunnerJobInstance(
         job_id,
         execution,
         sync.create_composite(executions_limit=exec_limit, no_overlap=args.no_overlap, depends_on=args.depends_on),
-        task,
         instance_id=args.instance,
         pending_group=args.pending,
         **(dict(args.param) if args.param else dict()))

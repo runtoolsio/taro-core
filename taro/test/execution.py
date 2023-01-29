@@ -28,6 +28,7 @@ class TestExecution(OutputExecution):
         self._raise_exc = raise_exc
         self._wait = Event() if wait else None
         self._execution_occurrences: List[datetime] = []
+        self._tracking = None
 
     def __repr__(self):
         return "{}(ExecutionState.{}, {!r})".format(
@@ -69,6 +70,14 @@ class TestExecution(OutputExecution):
 
     def last_execution_occurrence(self) -> datetime:
         return self._execution_occurrences[-1]
+
+    @property
+    def tracking(self):
+        return self._tracking
+    
+    @tracking.setter
+    def tracking(self, tracking):
+        self._tracking = tracking
 
     @property
     def status(self):
