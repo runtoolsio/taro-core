@@ -13,7 +13,7 @@ There are two type of clients of the framework:
 
 import abc
 import textwrap
-from collections import namedtuple, deque, OrderedDict
+from collections import namedtuple
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from typing import NamedTuple, Dict, Any, Optional, Sequence, Callable, Union
@@ -69,70 +69,6 @@ class JobInstanceID(NamedTuple):
 
     def __repr__(self):
         return "{}@{}".format(self.job_id, self.instance_id)
-
-
-class TimePeriod:
-    def __init__(self):
-        self.start_date = None
-        self.end_date = None
-
-
-class Progress(TimePeriod):
-    def __init__(self):
-        super().__init__()
-        self.completed = 0
-        self.total = 0
-        self.last_update = None
-
-    def update(self, completed: int, total: int = 0):
-        self.completed = completed
-        if total:
-            self.total = total
-        self.last_update = None  # TODO TBD
-
-    def __str__(self):
-        if self.total:
-            return f"{self.completed}/{self.total}"
-        else:
-            return f"{self.completed}"
-
-
-class Operation:
-
-    def __init__(self, name):
-        self.name = name
-        self.progress = Progress()
-
-    def __str__(self):
-        return f"{self.name}: {self.progress}"
-
-
-class Task(TimePeriod):
-    def __init__(self, max_events=100):
-        super().__init__()
-        self.events = deque(maxlen=max_events)
-        self.operations = OrderedDict()
-
-    def add_event(self, name: str, timestamp=None):
-        self.events.appendleft((name, timestamp))  # TODO
-
-    @property
-    def last_event(self) -> Optional[str]:
-        if not self.events:
-            return None
-        return self.events[0]
-
-    def update_operation(self, name, completed, total):
-        op = self.operations.get(name)
-        if not op:
-            self.operations[name] = (op := Operation(name))
-        op.progress.update(completed, total)
-
-    @property
-    def status(self):
-        statuses = [self.last_event[0] if self.last_event else '']
-        statuses += self.operations.values()
-        return " | ".join((str(s) for s in statuses))
 
 
 class JobInstance(abc.ABC):

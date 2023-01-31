@@ -2,12 +2,12 @@ import logging
 import signal
 
 from taro.jobs import sync, warning
-from taro.jobs.job import Warn, Task
+from taro.jobs.job import Warn
 from taro.jobs.managed import ManagedJobContext
 from taro.jobs.program import ProgramExecution
 from taro.jobs.runner import RunnerJobInstance
 from taro.jobs.sync import ExecutionsLimit
-from taro.jobs.track import GrokTrackingParser
+from taro.jobs.track import GrokTrackingParser, MutableTrackedTask
 from taro.test.execution import TestExecution
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ def run(args):
         exec_limit = None
 
     if args.pattern:
-        task = Task()
+        task = MutableTrackedTask(job_id)
         execution.tracking = task
         for pattern in args.pattern:
             parser = GrokTrackingParser(task, pattern)

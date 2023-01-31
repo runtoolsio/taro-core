@@ -1,5 +1,6 @@
 import re
 import secrets
+from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from enum import Enum
 
@@ -93,3 +94,16 @@ class DateTimeFormat(Enum):
 
     def __call__(self, *args, **kwargs):
         return self.value[0](*args, **kwargs)
+
+
+class TimePeriod(ABC):
+
+    @property
+    @abstractmethod
+    def start_date(self):
+        pass
+
+    @property
+    @abstractmethod
+    def end_date(self):
+        pass
