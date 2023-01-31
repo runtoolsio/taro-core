@@ -39,7 +39,6 @@ class Progress(ABC):
 
 @dataclass
 class ProgressView(Progress):
-
     completed: Any
     total: Any
     unit: str
@@ -64,6 +63,11 @@ class TrackedTask(TimePeriod):
     @property
     @abstractmethod
     def name(self):
+        pass
+
+    @property
+    @abstractmethod
+    def events(self):
         pass
 
     @property
@@ -101,7 +105,7 @@ class MutableProgress(Progress):
 
     def __init__(self):
         self._completed = 0
-        self._total = 0
+        self._total = None
         self._unit = ''
         self._last_update = None
 
@@ -121,8 +125,12 @@ class MutableProgress(Progress):
     def last_update(self):
         return self._last_update
 
-    def update(self, completed: int, total: int = 0, unit: str = ''):
-        self._completed = completed
+    def update(self, completed, total=None, unit: str = '', is_increment=False):
+        if is_increment:
+            self._completed += completed
+        else:
+            self._completed = completed
+
         if total:
             self._total = total
         if unit:
@@ -159,8 +167,8 @@ class MutableOperation(Operation):
     def progress(self):
         return self._progress
 
-    def update(self, completed: int, total: int = 0, unit: str = ''):
-        self._progress.update(completed, total, unit)
+    def update(self, completed, total=None, unit: str = '', is_increment=False):
+        self._progress.update(completed, total, unit, is_increment)
 
     def __str__(self):
         return f"{self._name}: {self._progress}"
@@ -186,8 +194,12 @@ class MutableTrackedTask(TrackedTask):
     def end_date(self):
         return self._end_date
 
+    @property
+    def events(self):
+        return list(self._events)
+
     def add_event(self, name: str, timestamp=None):
-        self._events.appendleft((name, timestamp))  # TODO
+        self._events.append((name, timestamp))  # TODO
 
     @property
     def last_event(self) -> Optional[str]:
@@ -195,20 +207,20 @@ class MutableTrackedTask(TrackedTask):
             return None
         return self._events[0]
 
-    def update_operation(self, name, completed, total, unit):
+    def update_operation(self, name, completed, total=None, unit='', is_increment=False):
         op = self._operations.get(name)
         if not op:
             self._operations[name] = (op := MutableOperation(name))
-        op.update(completed, total, unit)
+        op.update(completed, total, unit, is_increment)
 
     @property
     def operations(self):
-        return self._operations
+        return list(self._operations.values())
 
     @property
     def status(self):
         statuses = [self.last_event[0] if self.last_event else '']
-        statuses += self.operations.values()
+        statuses += self.operations
         return " | ".join((str(s) for s in statuses))
 
 
@@ -216,6 +228,7 @@ class Fields(Enum):
     EVENT = 'event'
     TIMESTAMP = 'timestamp'
     COMPLETED = 'completed'
+    INCREMENT = 'increment'
     TOTAL = 'total'
     UNIT = 'unit'
 
@@ -238,16 +251,16 @@ class GrokTrackingParser(ExecutionOutputObserver, JobOutputObserver):
             return
 
         ts = _str_to_dt(match.get(Fields.TIMESTAMP.value))
-
         event = match.get(Fields.EVENT.value)
-        if event:
-            self.task.add_event(event, ts)
-
         completed = match.get(Fields.COMPLETED.value)
+        increment = match.get(Fields.INCREMENT.value)
         total = match.get(Fields.TOTAL.value)
         unit = match.get(Fields.UNIT.value)
+
         if completed or total or unit:
-            self.task.update_operation(event, completed, total, unit)
+            self.task.update_operation(event, completed or increment, total, unit, increment is not None)
+        elif event:
+            self.task.add_event(event, ts)
 
 
 def _str_to_dt(timestamp):
