@@ -205,7 +205,7 @@ class MutableTrackedTask(TrackedTask):
     def last_event(self) -> Optional[str]:
         if not self._events:
             return None
-        return self._events[0]
+        return self._events[-1]
 
     def update_operation(self, name, completed, total=None, unit='', is_increment=False):
         op = self._operations.get(name)

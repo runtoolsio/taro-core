@@ -1,4 +1,4 @@
-from taro.jobs.track import MutableTrackedTask
+from taro.jobs.track import MutableTrackedTask, GrokTrackingParser
 
 
 def test_add_event():
@@ -39,3 +39,16 @@ def test_operation_incr_update():
     assert op2.name == 'op2'
     assert op2.progress.total == 10
 
+
+def test_grok_event():
+    task = MutableTrackedTask('task1')
+    grok = GrokTrackingParser(task, "event=\\[%{WORD:event}\\]")
+
+    grok.new_output('no events here')
+    assert task.last_event is None
+
+    grok.new_output('event=[eventim_apollo] we have first event here')
+    assert task.last_event[0] == 'eventim_apollo'
+
+    grok.new_output('second event follows event=[event_horizon]')
+    assert task.last_event[0] == 'event_horizon'
