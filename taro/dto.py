@@ -47,7 +47,7 @@ def to_jobs_dto(jobs):
 
 
 def to_job_info(as_dict) -> JobInfo:
-    state_changes = ((ExecutionState[state_change['state']], util.dt_from_utc_str(state_change['changed']))
+    state_changes = ((ExecutionState[state_change['state']], util.str_to_datetime(state_change['changed']))
                      for state_change in as_dict['lifecycle']['state_changes'])
     lifecycle = ExecutionLifecycle(*state_changes)
 

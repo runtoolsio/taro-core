@@ -15,16 +15,15 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def dt_from_utc_str(str_ts, is_iso=True):
+def str_to_datetime(str_ts):
     if not str_ts:
         return None
-    sep = "T" if is_iso else " "
 
-    # Workaround: https://stackoverflow.com/questions/30999230/how-to-parse-timezone-with-colon to support Python <3.7
-    if ":" == str_ts[-3:-2]:
-        str_ts = str_ts[:-3] + str_ts[-2:]
+    sep = "T" if "T" in str_ts else " "
+    dec = ".%f" if "." in str_ts else ""
+    zone = "%z" if any(1 for z in ('z', 'Z', '+') if z in str_ts) else ""
 
-    return datetime.strptime(str_ts, "%Y-%m-%d" + sep + "%H:%M:%S.%f%z")
+    return datetime.strptime(str_ts, "%Y-%m-%d" + sep + "%H:%M:%S" + dec + zone)
 
 
 def format_timedelta(td):

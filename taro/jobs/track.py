@@ -253,7 +253,8 @@ class GrokTrackingParser(ExecutionOutputObserver, JobOutputObserver):
         if not match:
             return
 
-        ts = _str_to_dt(match.get(Fields.TIMESTAMP.value))
+        timestamp = match.get(Fields.TIMESTAMP.value)
+        ts = util.str_to_datetime(timestamp)
         event = match.get(Fields.EVENT.value)
         completed = match.get(Fields.COMPLETED.value)
         increment = _convert_if_number(match, Fields.INCREMENT)
@@ -267,24 +268,21 @@ class GrokTrackingParser(ExecutionOutputObserver, JobOutputObserver):
 
 
 def _convert_if_number(match, field):
-    str_val = match.get(field.value)
-    if not str_val:
-        return str_val
+    val = match.get(field.value)
+    if isinstance(val, (int, float)) or not val:
+        return val
 
-    if '.' in (dec := str_val.replace(',', '.')):
+    if '.' in (dec := val.replace(',', '.')):
         try:
             return float(dec)
         except ValueError:
             pass
 
     try:
-        return int(str_val)
+        return int(val)
     except ValueError:
         pass
 
-    return str_val
+    return val
 
 
-def _str_to_dt(timestamp):
-    # TODO support more formats
-    return util.dt_from_utc_str(timestamp)

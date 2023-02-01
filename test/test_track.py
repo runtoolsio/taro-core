@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from taro.jobs.track import MutableTrackedTask, GrokTrackingParser
 
 
@@ -52,3 +54,14 @@ def test_grok_event():
 
     grok.new_output('second event follows event=[event_horizon]')
     assert task.last_event[0] == 'event_horizon'
+
+
+def test_grok_timestamps():
+    task = MutableTrackedTask('task1')
+    grok = GrokTrackingParser(task, "%{TIMESTAMP_ISO8601:timestamp} event=\\[%{WORD:event}\\]")
+
+    grok.new_output('2020-10-01 10:30:30 event=[e1]')
+    assert task.last_event[1] == datetime.strptime('2020-10-01 10:30:30', "%Y-%m-%d %H:%M:%S")
+
+    grok.new_output('2020-10-01T10:30:30.543 event=[e1]')
+    assert task.last_event[1] == datetime.strptime('2020-10-01 10:30:30.543', "%Y-%m-%d %H:%M:%S.%f")
