@@ -1,3 +1,4 @@
+import logging
 from abc import ABC
 from abc import abstractmethod
 from collections import deque, OrderedDict
@@ -12,6 +13,8 @@ from taro import JobInfo, util
 from taro.jobs.execution import ExecutionOutputObserver
 from taro.jobs.job import JobOutputObserver
 from taro.util import TimePeriod
+
+log = logging.getLogger(__name__)
 
 
 class Progress(ABC):
@@ -104,7 +107,7 @@ class MutableTimePeriod(TimePeriod):
 class MutableProgress(Progress):
 
     def __init__(self):
-        self._completed = 0
+        self._completed = None
         self._total = None
         self._unit = ''
         self._last_update = None
@@ -126,8 +129,8 @@ class MutableProgress(Progress):
         return self._last_update
 
     def update(self, completed, total=None, unit: str = '', is_increment=False):
-        if is_increment:
-            self._completed += completed
+        if self.completed and is_increment:
+            self._completed += completed  # Must be a number if it's an increment
         else:
             self._completed = completed
 
@@ -253,14 +256,33 @@ class GrokTrackingParser(ExecutionOutputObserver, JobOutputObserver):
         ts = _str_to_dt(match.get(Fields.TIMESTAMP.value))
         event = match.get(Fields.EVENT.value)
         completed = match.get(Fields.COMPLETED.value)
-        increment = match.get(Fields.INCREMENT.value)
+        increment = _convert_if_number(match, Fields.INCREMENT)
         total = match.get(Fields.TOTAL.value)
         unit = match.get(Fields.UNIT.value)
 
-        if completed or total or unit:
+        if completed or increment or total or unit:
             self.task.update_operation(event, completed or increment, total, unit, increment is not None)
         elif event:
             self.task.add_event(event, ts)
+
+
+def _convert_if_number(match, field):
+    str_val = match.get(field.value)
+    if not str_val:
+        return str_val
+
+    if '.' in (dec := str_val.replace(',', '.')):
+        try:
+            return float(dec)
+        except ValueError:
+            pass
+
+    try:
+        return int(str_val)
+    except ValueError:
+        pass
+
+    return str_val
 
 
 def _str_to_dt(timestamp):
