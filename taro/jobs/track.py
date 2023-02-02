@@ -39,6 +39,11 @@ class Progress(ABC):
     def last_update(self):
         pass
 
+    @property
+    @abstractmethod
+    def is_finished(self):
+        pass
+
 
 @dataclass
 class ProgressView(Progress):
@@ -46,6 +51,7 @@ class ProgressView(Progress):
     total: Any
     unit: str
     last_update: datetime
+    is_finished: bool
 
 
 class Operation(TimePeriod):
@@ -127,6 +133,10 @@ class MutableProgress(Progress):
     @property
     def last_update(self):
         return self._last_update
+
+    @property
+    def is_finished(self):
+        return self.total and (self.completed == self.total)
 
     def update(self, completed, total=None, unit: str = '', is_increment=False):
         if self.completed and is_increment:

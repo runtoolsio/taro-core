@@ -91,7 +91,7 @@ def _calc_widths(items, columns: List[Column], stretch_last_column: bool):
             widths[-1] += spare_length
         else:
             max_length_in_last_column = \
-                max(itertools.chain((len(columns[-1].value_fnc(i)) + 2 for i in items), (widths[-1], )))
+                max(itertools.chain((len(columns[-1].value_fnc(i)) + 2 for i in items), (widths[-1],)))
 
             if max_length_in_last_column < widths[-1] + spare_length:
                 widths[-1] = max_length_in_last_column
@@ -126,3 +126,39 @@ def parse_table(output, columns) -> List[Dict[Column, str]]:
     column_spans = [column.span() for column in sep_line_pattern.finditer(column_sep_line)]
     return [dict(zip(columns, (line[slice(*span)].strip() for span in column_spans)))
             for line in lines[header_idx[0] + 2:]]
+
+
+def build_progress_line(completed, total, unit="", bar_length=20, *,
+                        chart=True,
+                        progress=True,
+                        percentage=True,
+                        complete_char="#",
+                        incomplete_char="-"):
+    """
+    Builds a text representing console progress bar.
+
+    Original source: https://stackoverflow.com/a/15860757/1391441
+    """
+    completed_pct = float(completed) / float(total)
+    complete_count = int(round(bar_length * completed_pct))
+    incomplete_count = (bar_length - complete_count)
+    bar = ""
+    if chart:
+        bar += "[" + complete_char * complete_count + incomplete_char * incomplete_count + "] "
+    if progress:
+        bar += f"{completed}/{total} "
+        if unit:
+            bar += f"{unit} "
+    if percentage:
+        bar += f"({round(completed_pct * 100, 0):.0f}%)"
+
+    return bar.rstrip()
+
+
+def print_progress_line(completed, total, unit="", bar_length=20, *, complete_char="#", incomplete_char="-"):
+    bar = build_progress_line(completed, total, unit, bar_length,
+                              complete_char=complete_char, incomplete_char=incomplete_char)
+    suffix = " \r\n" if (float(completed) / float(total)) >= 1. else ""
+    text = f"\r{bar}{suffix}"
+    sys.stdout.write(text)
+    sys.stdout.flush()
