@@ -91,7 +91,7 @@ class TrackedTask(TimePeriod):
 
     @property
     @abstractmethod
-    def status(self):
+    def subtasks(self):
         pass
 
 
@@ -188,12 +188,14 @@ class MutableOperation(Operation):
 
 
 class MutableTrackedTask(TrackedTask):
+
     def __init__(self, name, max_events=100):
         self._name = name
         self._start_date = None
         self._end_date = None
         self._events = deque(maxlen=max_events)
         self._operations = OrderedDict()
+        self._subtasks = OrderedDict()
 
     @property
     def name(self):
@@ -220,18 +222,30 @@ class MutableTrackedTask(TrackedTask):
             return None
         return self._events[-1]
 
-    def update_operation(self, name, completed, total=None, unit='', is_increment=False):
+    def operation(self, name):
         op = self._operations.get(name)
         if not op:
             self._operations[name] = (op := MutableOperation(name))
-        op.update(completed, total, unit, is_increment)
+
+        return op
 
     @property
     def operations(self):
         return list(self._operations.values())
 
+    def subtask(self, name):
+        task = self._subtasks.get(name)
+        if not task:
+            self._subtasks[name] = (task := MutableTrackedTask(name))
+
+        return task
+
     @property
-    def status(self):
+    def subtasks(self):
+        return list(self._subtasks.values())
+
+    @property
+    def __str__(self):
         statuses = [self.last_event[0] if self.last_event else '']
         statuses += self.operations
         return " | ".join((str(s) for s in statuses))
@@ -239,6 +253,7 @@ class MutableTrackedTask(TrackedTask):
 
 class Fields(Enum):
     EVENT = 'event'
+    TASK = 'task'
     TIMESTAMP = 'timestamp'
     COMPLETED = 'completed'
     INCREMENT = 'increment'
@@ -263,18 +278,23 @@ class GrokTrackingParser(ExecutionOutputObserver, JobOutputObserver):
         if not match:
             return
 
-        timestamp = match.get(Fields.TIMESTAMP.value)
-        ts = util.str_to_datetime(timestamp)
         event = match.get(Fields.EVENT.value)
+        task = match.get(Fields.TASK.value)
+        ts = util.str_to_datetime(match.get(Fields.TIMESTAMP.value))
         completed = match.get(Fields.COMPLETED.value)
         increment = _convert_if_number(match, Fields.INCREMENT)
         total = match.get(Fields.TOTAL.value)
         unit = match.get(Fields.UNIT.value)
 
+        if task:
+            rel_task = self.task.subtask(task)
+        else:
+            rel_task = self.task
+
         if completed or increment or total or unit:
-            self.task.update_operation(event, completed or increment, total, unit, increment is not None)
+            rel_task.operation(event).update(completed or increment, total, unit, increment is not None)
         elif event:
-            self.task.add_event(event, ts)
+            rel_task.add_event(event, ts)
 
 
 def _convert_if_number(match, field):
