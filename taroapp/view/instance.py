@@ -10,8 +10,9 @@ PARAMETERS = Column('PARAMETERS', 23, lambda j: ', '.join("{}={}".format(k, v) f
                     general_style)
 CREATED = Column('CREATED', 25, lambda j: format_dt_ms_local_tz(j.lifecycle.changed(ExecutionState.CREATED)),
                  general_style)
-EXECUTED = Column('EXECUTED', 25, lambda j: format_dt_ms_local_tz(j.lifecycle.execution_started), general_style)
-ENDED = Column('ENDED', 25, lambda j: format_dt_ms_local_tz(j.lifecycle.execution_finished), general_style)
+EXECUTED = Column('EXECUTED', 25, lambda j: format_dt_ms_local_tz(j.lifecycle.execution_started, null='N/A'),
+                  general_style)
+ENDED = Column('ENDED', 25, lambda j: format_dt_ms_local_tz(j.lifecycle.execution_finished, null='N/A'), general_style)
 EXEC_TIME = Column('TIME', 18, lambda j: execution_time_str(j), general_style)
 STATE = Column('STATE', max(len(s.name) for s in ExecutionState) + 2, lambda j: j.state.name, job_state_style)
 WARNINGS = Column('WARNINGS', 40, lambda j: ', '.join("{}: {}".format(k, v) for k, v in j.warnings.items()), warn_style)

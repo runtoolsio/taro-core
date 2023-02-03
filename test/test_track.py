@@ -77,3 +77,12 @@ def test_grok_timestamps():
 
     grok.new_output('2020-10-01T10:30:30.543 event=[e1]')
     assert task.last_event[1] == datetime.strptime('2020-10-01 10:30:30.543', "%Y-%m-%d %H:%M:%S.%f")
+
+
+def test_grok_optional():
+    task = MutableTrackedTask('task')
+    grok = GrokTrackingParser(task, "(event=\\[%{WORD:event}\\])? (count=\\[%{NUMBER:completed}\\])?")
+
+    grok.new_output("event=[downloaded] count=[10] total=[100] unit=[files]")
+    assert task.operations[0].name == 'downloaded'
+    assert task.operations[0].progress.completed == 10

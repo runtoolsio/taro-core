@@ -72,9 +72,9 @@ def parse_iso8601_duration(duration):
                                        seconds=seconds).normalized()
 
 
-def format_dt_ms_local_tz(dt):
+def format_dt_ms_local_tz(dt, null=''):
     if not dt:
-        return 'N/A'
+        return null
 
     return dt.astimezone().replace(tzinfo=None).isoformat(sep=' ', timespec='milliseconds')
 

@@ -134,6 +134,12 @@ class MutableProgress(Progress):
     def last_update(self):
         return self._last_update
 
+    def pct_done(self):
+        if isinstance(self.completed, (int, float)) and isinstance(self.total, (int, float)):
+            return self.completed / self.total
+        else:
+            return None
+
     @property
     def is_finished(self):
         return self.total and (self.completed == self.total)
@@ -152,12 +158,17 @@ class MutableProgress(Progress):
 
     def __str__(self):
         if self._total:
-            return f"{self._completed}/{self._total} {self._unit}"
+            val = f"{self._completed}/{self._total} {self._unit}"
+            pct_done = self.pct_done()
+            if pct_done:
+                val += f" ({round(pct_done * 100, 0):.0f}%)"
+            return val
         else:
             return f"{self._completed} {self._unit}"
 
 
 class MutableOperation(Operation):
+
     def __init__(self, name):
         self._name = name
         self._start_date = None
@@ -244,9 +255,11 @@ class MutableTrackedTask(TrackedTask):
     def subtasks(self):
         return list(self._subtasks.values())
 
-    @property
     def __str__(self):
-        statuses = [self.last_event[0] if self.last_event else '']
+        if self.last_event:
+            statuses = [f"{util.format_dt_ms_local_tz(self.last_event[1])} {self.last_event[0]} "]
+        else:
+            statuses = []
         statuses += self.operations
         return " | ".join((str(s) for s in statuses))
 
@@ -259,6 +272,9 @@ class Fields(Enum):
     INCREMENT = 'increment'
     TOTAL = 'total'
     UNIT = 'unit'
+
+
+DEFAULT_PATTERN = ''
 
 
 class GrokTrackingParser(ExecutionOutputObserver, JobOutputObserver):
@@ -281,9 +297,9 @@ class GrokTrackingParser(ExecutionOutputObserver, JobOutputObserver):
         event = match.get(Fields.EVENT.value)
         task = match.get(Fields.TASK.value)
         ts = util.str_to_datetime(match.get(Fields.TIMESTAMP.value))
-        completed = match.get(Fields.COMPLETED.value)
+        completed = _convert_if_number(match, Fields.COMPLETED)
         increment = _convert_if_number(match, Fields.INCREMENT)
-        total = match.get(Fields.TOTAL.value)
+        total = _convert_if_number(match, Fields.TOTAL)
         unit = match.get(Fields.UNIT.value)
 
         if task:
