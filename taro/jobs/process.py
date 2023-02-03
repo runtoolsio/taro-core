@@ -92,7 +92,7 @@ class ProcessExecution(OutputExecution):
     @property
     def status(self):
         if self.tracking:
-            return self.tracking.status
+            return str(self.tracking)
         else:
             return self._status
 
