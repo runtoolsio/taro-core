@@ -128,37 +128,41 @@ def parse_table(output, columns) -> List[Dict[Column, str]]:
             for line in lines[header_idx[0] + 2:]]
 
 
-def build_progress_line(completed, total, unit="", bar_length=20, *,
-                        chart=True,
-                        progress=True,
-                        percentage=True,
-                        complete_char="#",
-                        incomplete_char="-"):
-    """
-    Builds a text representing console progress bar.
+class ProgressBar:
 
-    Original source: https://stackoverflow.com/a/15860757/1391441
-    """
-    completed_pct = float(completed) / float(total)
-    complete_count = int(round(bar_length * completed_pct))
-    incomplete_count = (bar_length - complete_count)
-    bar = ""
-    if chart:
-        bar += "[" + complete_char * complete_count + incomplete_char * incomplete_count + "] "
-    if progress:
-        bar += f"{completed}/{total} "
-        if unit:
-            bar += f"{unit} "
-    if percentage:
-        bar += f"({round(completed_pct * 100, 0):.0f}%)"
+    def __init__(self, *, bar_length=20, chart=True, progress=True, percentage=True,
+                 complete_char="#", incomplete_char="-"):
+        self.bar_length = bar_length
+        self.chart = chart
+        self.progress = progress
+        self.percentage = percentage
+        self.complete_char = complete_char
+        self.incomplete_char = incomplete_char
 
-    return bar.rstrip()
+    def build_bar(self, completed, total, unit=""):
+        """
+        Builds a text representing console progress bar.
 
+        Original source: https://stackoverflow.com/a/15860757/1391441
+        """
+        completed_pct = float(completed) / float(total)
+        complete_count = int(round(self.bar_length * completed_pct))
+        incomplete_count = (self.bar_length - complete_count)
+        bar = ""
+        if self.chart:
+            bar += "[" + self.complete_char * complete_count + self.incomplete_char * incomplete_count + "] "
+        if self.progress:
+            bar += f"{completed}/{total} "
+            if unit:
+                bar += f"{unit} "
+        if self.percentage:
+            bar += f"({round(completed_pct * 100, 0):.0f}%)"
 
-def print_progress_line(completed, total, unit="", bar_length=20, *, complete_char="#", incomplete_char="-"):
-    bar = build_progress_line(completed, total, unit, bar_length,
-                              complete_char=complete_char, incomplete_char=incomplete_char)
-    suffix = " \r\n" if (float(completed) / float(total)) >= 1. else ""
-    text = f"\r{bar}{suffix}"
-    sys.stdout.write(text)
-    sys.stdout.flush()
+        return bar.rstrip()
+
+    def print_bar(self, completed, total, unit=""):
+        bar = self.build_bar(completed, total, unit)
+        suffix = " \r\n" if (float(completed) / float(total)) >= 1. else ""
+        text = f"\r{bar}{suffix}"
+        sys.stdout.write(text)
+        sys.stdout.flush()
