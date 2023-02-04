@@ -8,8 +8,8 @@ class KVParser:
                  prefix: str = "",
                  field_split: str = " ",
                  value_split: str = "=",
-                 trim_key: str = None,
-                 trim_value: str = None,
+                 trim_key: str = '',
+                 trim_value: str = '',
                  include_brackets: bool = True):
         """
         :param prefix:
@@ -18,7 +18,7 @@ class KVParser:
             A string of characters to use as single-character field delimiters for parsing out key-value pairs.
         :param value_split:
             A non-empty string of characters to use as single-character value delimiters
-            for parsing out key-value pairs..
+            for parsing out key-value pairs.
         :param trim_key:
             A string of characters to trim from the key. Only leading and trailing characters are trimmed from the key.
         :param trim_value:
@@ -37,7 +37,6 @@ class KVParser:
         self._bracket_kv_pattern = re.compile(
             fr'([^{self.field_split}]+)({self.value_split})(\(([^()]+)\)|\[([^\[\]]+)]|<([^<>]+)>)')
         self._brackets_pattern = re.compile(r'[()<>\[\]]')
-        self._trim_pattern = re.compile(r'^[{}]+|[{}]+$')
 
     def _extract_and_remove_bracket_kv(self, text):
         fields = []
@@ -63,8 +62,8 @@ class KVParser:
             if len(key_value) == 2:
                 key, value = key_value
                 if self.trim_key:
-                    key = re.sub(self._trim_pattern.format(self.trim_key, self.trim_key), "", key)
+                    key = key.strip(self.trim_key)
                 if self.trim_value:
-                    value = re.sub(self._trim_pattern.format(self.trim_value, self.trim_value), "", value)
+                    value = value.strip(self.trim_value)
                 result[self.prefix + key] = value
         return result
