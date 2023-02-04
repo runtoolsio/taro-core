@@ -1,5 +1,5 @@
 import re
-from typing import Dict
+from typing import Dict, Set
 
 
 class KVParser:
@@ -10,7 +10,8 @@ class KVParser:
                  value_split: str = "=",
                  trim_key: str = '',
                  trim_value: str = '',
-                 include_brackets: bool = True):
+                 include_brackets: bool = True,
+                 exclude_keys: Set[str] = ()):
         """
         :param prefix:
             A string to prepend to all the extracted keys. Default is "".
@@ -24,19 +25,44 @@ class KVParser:
         :param trim_value:
             A string of characters to trim from the value. Only leading and trailing characters
             are trimmed from the value.
-        ":param include_brackets:
+        :param include_brackets:
             A boolean specifying whether to treat square brackets, angle brackets, and parentheses as value "wrappers"
             that should be removed from the value.
+        :param exclude_keys:
+            An array specifying the parsed keys which should not be added to the result.
         """
         self.prefix = prefix
-        self.field_split = field_split
-        self.value_split = value_split
+        self._field_split = field_split
+        self._value_split = value_split
         self.trim_key = trim_key
         self.trim_value = trim_value
         self.include_brackets = include_brackets
-        self._bracket_kv_pattern = re.compile(
-            fr'([^{self.field_split}]+)({self.value_split})(\(([^()]+)\)|\[([^\[\]]+)]|<([^<>]+)>)')
+        self._bracket_kv_pattern = None
+        self._compile_bracket_kv_pattern()
         self._brackets_pattern = re.compile(r'[()<>\[\]]')
+        self.exclude_keys = exclude_keys
+
+    def _compile_bracket_kv_pattern(self):
+        self._bracket_kv_pattern = re.compile(
+            fr'([^{self._field_split}]+)({self._value_split})(\(([^()]+)\)|\[([^\[\]]+)]|<([^<>]+)>)')
+
+    @property
+    def field_split(self):
+        return self._field_split
+
+    @field_split.setter
+    def field_split(self, value):
+        self._field_split = value
+        self._compile_bracket_kv_pattern()
+
+    @property
+    def value_split(self):
+        return self._field_split
+
+    @value_split.setter
+    def value_split(self, value):
+        self._value_split = value
+        self._compile_bracket_kv_pattern()
 
     def _extract_and_remove_bracket_kv(self, text):
         fields = []
@@ -56,11 +82,13 @@ class KVParser:
         else:
             fields = []
 
-        fields += re.split(self.field_split, text)
+        fields += re.split(self._field_split, text)
         for field in fields:
-            key_value = re.split(self.value_split, field, maxsplit=1)
+            key_value = re.split(self._value_split, field, maxsplit=1)
             if len(key_value) == 2:
                 key, value = key_value
+                if key in self.exclude_keys:
+                    continue
                 if self.trim_key:
                     key = key.strip(self.trim_key)
                 if self.trim_value:
