@@ -46,3 +46,21 @@ class MatchingStrategy(Enum):
 
     def __call__(self, *args, **kwargs):
         return self.value[0](*args, **kwargs)
+
+
+def convert_if_number(val):
+    if isinstance(val, (int, float)) or not val:
+        return val
+
+    if '.' in (dec := val.replace(',', '.')):
+        try:
+            return float(dec)
+        except ValueError:
+            pass
+
+    try:
+        return int(val)
+    except ValueError:
+        pass
+
+    return val

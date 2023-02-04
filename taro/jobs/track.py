@@ -12,7 +12,7 @@ from pygrok import Grok
 from taro import JobInfo, util
 from taro.jobs.execution import ExecutionOutputObserver
 from taro.jobs.job import JobOutputObserver
-from taro.util import TimePeriod
+from taro.util import TimePeriod, convert_if_number
 
 log = logging.getLogger(__name__)
 
@@ -297,9 +297,9 @@ class GrokTrackingParser(ExecutionOutputObserver, JobOutputObserver):
         event = match.get(Fields.EVENT.value)
         task = match.get(Fields.TASK.value)
         ts = util.str_to_datetime(match.get(Fields.TIMESTAMP.value))
-        completed = _convert_if_number(match, Fields.COMPLETED)
-        increment = _convert_if_number(match, Fields.INCREMENT)
-        total = _convert_if_number(match, Fields.TOTAL)
+        completed = convert_if_number(match.get(Fields.COMPLETED.value))
+        increment = convert_if_number(match.get(Fields.INCREMENT.value))
+        total = convert_if_number(match.get(Fields.TOTAL.value))
         unit = match.get(Fields.UNIT.value)
 
         if task:
@@ -311,24 +311,3 @@ class GrokTrackingParser(ExecutionOutputObserver, JobOutputObserver):
             rel_task.operation(event).update(completed or increment, total, unit, increment is not None)
         elif event:
             rel_task.add_event(event, ts)
-
-
-def _convert_if_number(match, field):
-    val = match.get(field.value)
-    if isinstance(val, (int, float)) or not val:
-        return val
-
-    if '.' in (dec := val.replace(',', '.')):
-        try:
-            return float(dec)
-        except ValueError:
-            pass
-
-    try:
-        return int(val)
-    except ValueError:
-        pass
-
-    return val
-
-
