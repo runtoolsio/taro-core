@@ -3,6 +3,7 @@ from typing import Dict
 
 
 class KVParser:
+
     def __init__(self,
                  prefix: str = "",
                  field_split: str = " ",
@@ -33,16 +34,19 @@ class KVParser:
         self.trim_key = trim_key
         self.trim_value = trim_value
         self.include_brackets = include_brackets
+        self._bracket_kv_pattern = re.compile(
+            fr'([^{self.field_split}]+)({self.value_split})(\(([^()]+)\)|\[([^\[\]]+)]|<([^<>]+)>)')
+        self._brackets_pattern = re.compile(r'[()<>\[\]]')
+        self._trim_pattern = re.compile(r'^[{}]+|[{}]+$')
 
     def _extract_and_remove_bracket_kv(self, text):
-        pattern = re.compile(fr'([^{self.field_split}]+)({self.value_split})(\(([^()]+)\)|\[([^\[\]]+)]|<([^<>]+)>)')
         fields = []
         while True:
-            match = re.search(pattern, text)
+            match = re.search(self._bracket_kv_pattern, text)
             if not match:
                 break
             start, end = match.span()
-            fields.append(re.sub(r'[()<>\[\]]', '', match.group(0)))
+            fields.append(re.sub(self._brackets_pattern, '', match.group(0)))
             text = text[:start] + text[end:]
         return fields, text
 
@@ -59,8 +63,8 @@ class KVParser:
             if len(key_value) == 2:
                 key, value = key_value
                 if self.trim_key:
-                    key = re.sub("^[{}]+|[{}]+$".format(self.trim_key, self.trim_key), "", key)
+                    key = re.sub(self._trim_pattern.format(self.trim_key, self.trim_key), "", key)
                 if self.trim_value:
-                    value = re.sub("^[{}]+|[{}]+$".format(self.trim_value, self.trim_value), "", value)
+                    value = re.sub(self._trim_pattern.format(self.trim_value, self.trim_value), "", value)
                 result[self.prefix + key] = value
         return result
