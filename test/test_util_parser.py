@@ -25,3 +25,9 @@ def test_exclude_keys():
     kv = KVParser(field_split="&", exclude_keys={"k1"})
     parsed = kv.parse("k1=v1&k2=v2")
     assert parsed == {"k2": "v2"}
+
+
+def test_alias():
+    kv = KVParser(value_split=":", aliases={'k1': 'key1'})
+    parsed = kv.parse("k1:value1 key2:value2")
+    assert parsed == {"key1": "value1", "key2": "value2"}

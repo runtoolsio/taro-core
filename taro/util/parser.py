@@ -1,5 +1,5 @@
 import re
-from typing import Dict, Set
+from typing import Dict, Set, Optional
 
 
 class KVParser:
@@ -11,7 +11,8 @@ class KVParser:
                  trim_key: str = '',
                  trim_value: str = '',
                  include_brackets: bool = True,
-                 exclude_keys: Set[str] = ()):
+                 exclude_keys: Set[str] = (),
+                 aliases: Optional[Dict[str, str]] = None):
         """
         :param prefix:
             A string to prepend to all the extracted keys. Default is "".
@@ -41,6 +42,7 @@ class KVParser:
         self._compile_bracket_kv_pattern()
         self._brackets_pattern = re.compile(r'[()<>\[\]]')
         self.exclude_keys = exclude_keys
+        self.aliases = aliases
 
     def _compile_bracket_kv_pattern(self):
         self._bracket_kv_pattern = re.compile(
@@ -93,5 +95,7 @@ class KVParser:
                     key = key.strip(self.trim_key)
                 if self.trim_value:
                     value = value.strip(self.trim_value)
+                if self.aliases:
+                    key = self.aliases.get(key, key)
                 result[self.prefix + key] = value
         return result
