@@ -34,7 +34,7 @@ def run(args):
         task = MutableTrackedTask(job_id)
         execution.tracking = task
         for pattern in args.pattern:
-            tracker = TrackerOutput(task, Grok(pattern).match)
+            tracker = TrackerOutput(task, [Grok(pattern).match])
             execution.add_output_observer(tracker)
 
     job_instance = RunnerJobInstance(

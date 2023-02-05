@@ -58,48 +58,47 @@ def test_subtask():
 
 def test_grok_event():
     task = MutableTrackedTask('task')
-    grok = TrackerOutput(task, Grok("event=\\[%{WORD:event}\\]").match)
+    tracker = TrackerOutput(task, [Grok("event=\\[%{WORD:event}\\]").match])
 
-    grok.new_output('no events here')
+    tracker.new_output('no events here')
     assert task.last_event is None
 
-    grok.new_output('event=[eventim_apollo] we have first event here')
+    tracker.new_output('event=[eventim_apollo] we have first event here')
     assert task.last_event[0] == 'eventim_apollo'
 
-    grok.new_output('second event follows event=[event_horizon]')
+    tracker.new_output('second event follows event=[event_horizon]')
     assert task.last_event[0] == 'event_horizon'
 
 
 def test_grok_timestamps():
     task = MutableTrackedTask('task')
-    grok = TrackerOutput(task, Grok("%{TIMESTAMP_ISO8601:timestamp} event=\\[%{WORD:event}\\]").match)
+    tracker = TrackerOutput(task, [Grok("%{TIMESTAMP_ISO8601:timestamp} event=\\[%{WORD:event}\\]").match])
 
-    grok.new_output('2020-10-01 10:30:30 event=[e1]')
+    tracker.new_output('2020-10-01 10:30:30 event=[e1]')
     assert task.last_event[1] == datetime.strptime('2020-10-01 10:30:30', "%Y-%m-%d %H:%M:%S")
 
-    grok.new_output('2020-10-01T10:30:30.543 event=[e1]')
+    tracker.new_output('2020-10-01T10:30:30.543 event=[e1]')
     assert task.last_event[1] == datetime.strptime('2020-10-01 10:30:30.543', "%Y-%m-%d %H:%M:%S.%f")
 
 
 def test_grok_optional():
     task = MutableTrackedTask('task')
-    grok = TrackerOutput(task, Grok("(event=\\[%{WORD:event}\\])? (count=\\[%{NUMBER:completed}\\])?").match)
+    tracker = TrackerOutput(task, [Grok("(event=\\[%{WORD:event}\\])? (count=\\[%{NUMBER:completed}\\])?").match])
 
-    grok.new_output("event=[downloaded] count=[10] total=[100] unit=[files]")
+    tracker.new_output("event=[downloaded] count=[10] total=[100] unit=[files]")
     assert task.operations[0].name == 'downloaded'
     assert task.operations[0].progress.completed == 10
 
 
 def test_grok_tasks():
     task = MutableTrackedTask('main')
-    grok1 = TrackerOutput(task, Grok("(?<task>task1)").match)
-    grok2 = TrackerOutput(task, Grok("%{GREEDYDATA}task=%{WORD:task}&happened=%{WORD:event}").match)
-
+    pattern1 = "(?<task>task1)"
+    pattern2 = "%{GREEDYDATA}task=%{WORD:task}&happened=%{WORD:event}"
     # Test multiple grok patterns can be used together to parse the same input
-    grok1.new_output('task1')
-    grok1.new_output('?time=2.3&task=task2&happened=e1')
-    grok2.new_output('task1')
-    grok2.new_output('?time=2.3&task=task2&happened=e1')
+    tracker = TrackerOutput(task, [Grok(pattern1).match, Grok(pattern2).match])
+
+    tracker.new_output('task1')
+    tracker.new_output('?time=2.3&task=task2&happened=e1')
     assert task.subtasks[0].name == 'task1'
     assert task.subtasks[1].name == 'task2'
     assert task.subtasks[1].last_event[0] == 'e1'

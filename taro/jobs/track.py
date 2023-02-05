@@ -277,9 +277,9 @@ DEFAULT_PATTERN = ''
 
 class TrackerOutput(ExecutionOutputObserver, JobOutputObserver):
 
-    def __init__(self, task, parser):
+    def __init__(self, task, parsers):
         self.task = task
-        self.parser = parser
+        self.parsers = parsers
 
     def execution_output_update(self, output, is_error: bool):
         self.new_output(output)
@@ -288,7 +288,11 @@ class TrackerOutput(ExecutionOutputObserver, JobOutputObserver):
         self.new_output(output)
 
     def new_output(self, output):
-        parsed = self.parser(output)
+        parsed = {}
+        for parser in self.parsers:
+            if p := parser(output):
+                parsed.update(p)
+
         if not parsed:
             return
 
