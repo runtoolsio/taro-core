@@ -88,3 +88,19 @@ def test_grok_optional():
     grok.new_output("event=[downloaded] count=[10] total=[100] unit=[files]")
     assert task.operations[0].name == 'downloaded'
     assert task.operations[0].progress.completed == 10
+
+
+def test_grok_tasks():
+    task = MutableTrackedTask('main')
+    grok1 = GrokTrackingParser(task, Grok("(?<task>task1)"))
+    grok2 = GrokTrackingParser(task, Grok("%{GREEDYDATA}task=%{WORD:task}&happened=%{WORD:event}"))
+
+    # Test multiple grok patterns can be used together to parse the same input
+    grok1.new_output('task1')
+    grok1.new_output('?time=2.3&task=task2&happened=e1')
+    grok2.new_output('task1')
+    grok2.new_output('?time=2.3&task=task2&happened=e1')
+    assert task.subtasks[0].name == 'task1'
+    assert task.subtasks[1].name == 'task2'
+    assert task.subtasks[1].last_event[0] == 'e1'
+    assert not task.events
