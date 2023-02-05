@@ -275,11 +275,11 @@ class Fields(Enum):
 DEFAULT_PATTERN = ''
 
 
-class GrokTrackingParser(ExecutionOutputObserver, JobOutputObserver):
+class TrackerOutput(ExecutionOutputObserver, JobOutputObserver):
 
-    def __init__(self, task, grok):
+    def __init__(self, task, parser):
         self.task = task
-        self.grok = grok
+        self.parser = parser
 
     def execution_output_update(self, output, is_error: bool):
         self.new_output(output)
@@ -288,17 +288,17 @@ class GrokTrackingParser(ExecutionOutputObserver, JobOutputObserver):
         self.new_output(output)
 
     def new_output(self, output):
-        match = self.grok.match(output)
-        if not match:
+        parsed = self.parser(output)
+        if not parsed:
             return
 
-        event = match.get(Fields.EVENT.value)
-        task = match.get(Fields.TASK.value)
-        ts = util.str_to_datetime(match.get(Fields.TIMESTAMP.value))
-        completed = convert_if_number(match.get(Fields.COMPLETED.value))
-        increment = convert_if_number(match.get(Fields.INCREMENT.value))
-        total = convert_if_number(match.get(Fields.TOTAL.value))
-        unit = match.get(Fields.UNIT.value)
+        event = parsed.get(Fields.EVENT.value)
+        task = parsed.get(Fields.TASK.value)
+        ts = util.str_to_datetime(parsed.get(Fields.TIMESTAMP.value))
+        completed = convert_if_number(parsed.get(Fields.COMPLETED.value))
+        increment = convert_if_number(parsed.get(Fields.INCREMENT.value))
+        total = convert_if_number(parsed.get(Fields.TOTAL.value))
+        unit = parsed.get(Fields.UNIT.value)
 
         if task:
             rel_task = self.task.subtask(task)

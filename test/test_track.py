@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pygrok import Grok
 
-from taro.jobs.track import MutableTrackedTask, GrokTrackingParser
+from taro.jobs.track import MutableTrackedTask, TrackerOutput
 
 
 def test_add_event():
@@ -58,7 +58,7 @@ def test_subtask():
 
 def test_grok_event():
     task = MutableTrackedTask('task')
-    grok = GrokTrackingParser(task, Grok("event=\\[%{WORD:event}\\]"))
+    grok = TrackerOutput(task, Grok("event=\\[%{WORD:event}\\]").match)
 
     grok.new_output('no events here')
     assert task.last_event is None
@@ -72,7 +72,7 @@ def test_grok_event():
 
 def test_grok_timestamps():
     task = MutableTrackedTask('task')
-    grok = GrokTrackingParser(task, Grok("%{TIMESTAMP_ISO8601:timestamp} event=\\[%{WORD:event}\\]"))
+    grok = TrackerOutput(task, Grok("%{TIMESTAMP_ISO8601:timestamp} event=\\[%{WORD:event}\\]").match)
 
     grok.new_output('2020-10-01 10:30:30 event=[e1]')
     assert task.last_event[1] == datetime.strptime('2020-10-01 10:30:30', "%Y-%m-%d %H:%M:%S")
@@ -83,7 +83,7 @@ def test_grok_timestamps():
 
 def test_grok_optional():
     task = MutableTrackedTask('task')
-    grok = GrokTrackingParser(task, Grok("(event=\\[%{WORD:event}\\])? (count=\\[%{NUMBER:completed}\\])?"))
+    grok = TrackerOutput(task, Grok("(event=\\[%{WORD:event}\\])? (count=\\[%{NUMBER:completed}\\])?").match)
 
     grok.new_output("event=[downloaded] count=[10] total=[100] unit=[files]")
     assert task.operations[0].name == 'downloaded'
@@ -92,8 +92,8 @@ def test_grok_optional():
 
 def test_grok_tasks():
     task = MutableTrackedTask('main')
-    grok1 = GrokTrackingParser(task, Grok("(?<task>task1)"))
-    grok2 = GrokTrackingParser(task, Grok("%{GREEDYDATA}task=%{WORD:task}&happened=%{WORD:event}"))
+    grok1 = TrackerOutput(task, Grok("(?<task>task1)").match)
+    grok2 = TrackerOutput(task, Grok("%{GREEDYDATA}task=%{WORD:task}&happened=%{WORD:event}").match)
 
     # Test multiple grok patterns can be used together to parse the same input
     grok1.new_output('task1')
