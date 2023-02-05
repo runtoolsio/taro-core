@@ -1,6 +1,8 @@
 import logging
 import signal
 
+from pygrok import Grok
+
 from taro.jobs import sync, warning
 from taro.jobs.job import Warn
 from taro.jobs.managed import ManagedJobContext
@@ -32,7 +34,7 @@ def run(args):
         task = MutableTrackedTask(job_id)
         execution.tracking = task
         for pattern in args.pattern:
-            parser = GrokTrackingParser(task, pattern)
+            parser = GrokTrackingParser(task, Grok(pattern))
             execution.add_output_observer(parser)
 
     job_instance = RunnerJobInstance(

@@ -7,8 +7,6 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Any
 
-from pygrok import Grok
-
 from taro import JobInfo, util
 from taro.jobs.execution import ExecutionOutputObserver
 from taro.jobs.job import JobOutputObserver
@@ -279,9 +277,9 @@ DEFAULT_PATTERN = ''
 
 class GrokTrackingParser(ExecutionOutputObserver, JobOutputObserver):
 
-    def __init__(self, task, pattern):
+    def __init__(self, task, grok):
         self.task = task
-        self.grok = Grok(pattern)
+        self.grok = grok
 
     def execution_output_update(self, output, is_error: bool):
         self.new_output(output)
