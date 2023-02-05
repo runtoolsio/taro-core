@@ -6,6 +6,9 @@ from enum import Enum
 
 from dateutil import relativedelta
 
+# Produced by ChatGPT - seems correct
+ISO_DATE_TIME_PATTERN = re.compile(r'\b(\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{2}:\d{2})?)\b')
+
 
 def unique_timestamp_hex(random_suffix_length=4):
     return secrets.token_hex(random_suffix_length) + format(int(datetime.utcnow().timestamp() * 1000000), 'x')[::-1]

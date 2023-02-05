@@ -1,5 +1,18 @@
 import re
-from typing import Dict, Set, Optional
+from typing import Dict, Set, Optional, Sequence, Callable
+
+from taro import util
+
+
+def iso_date_time_parser(ts_key):
+    def parse(text):
+        match = re.search(util.ISO_DATE_TIME_PATTERN, text)
+        if match:
+            return {ts_key: match.group(0)}
+        else:
+            return None
+
+    return parse
 
 
 class KVParser:
@@ -12,7 +25,8 @@ class KVParser:
                  trim_value: str = '',
                  include_brackets: bool = True,
                  exclude_keys: Set[str] = (),
-                 aliases: Optional[Dict[str, str]] = None):
+                 aliases: Optional[Dict[str, str]] = None,
+                 post_parsers: Sequence[Callable[[str], Optional[Dict[str, str]]]] = ()):
         """
         :param prefix:
             A string to prepend to all the extracted keys. Default is "".
@@ -43,6 +57,7 @@ class KVParser:
         self._brackets_pattern = re.compile(r'[()<>\[\]]')
         self.exclude_keys = exclude_keys
         self.aliases = aliases
+        self.post_parsers = post_parsers
 
     def _compile_bracket_kv_pattern(self):
         self._bracket_kv_pattern = re.compile(
@@ -77,8 +92,11 @@ class KVParser:
             text = text[:start] + text[end:]
         return fields, text
 
+    def __call__(self, text: str) -> Dict[str, str]:
+        return self.parse(text)
+
     def parse(self, text: str) -> Dict[str, str]:
-        result = {}
+        kv = {}
         if self.include_brackets:
             fields, text = self._extract_and_remove_bracket_kv(text)
         else:
@@ -97,5 +115,13 @@ class KVParser:
                     value = value.strip(self.trim_value)
                 if self.aliases:
                     key = self.aliases.get(key, key)
-                result[self.prefix + key] = value
-        return result
+                kv[self.prefix + key] = value
+
+        self.post_parse(kv, text)
+        return kv
+
+    def post_parse(self, kv, processed_text):
+        for post_parser in self.post_parsers:
+            parsed = post_parser(processed_text)
+            if parsed:
+                kv.update(parsed)

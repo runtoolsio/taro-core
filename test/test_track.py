@@ -2,7 +2,8 @@ from datetime import datetime
 
 from pygrok import Grok
 
-from taro.jobs.track import MutableTrackedTask, TrackerOutput
+from taro.jobs.track import MutableTrackedTask, TrackerOutput, Fields
+from taro.util import KVParser, iso_date_time_parser
 
 
 def test_add_event():
@@ -56,9 +57,9 @@ def test_subtask():
     assert task.subtasks[1].last_event[0] == 'e2'
 
 
-def test_grok_event():
+def test_parse_event():
     task = MutableTrackedTask('task')
-    tracker = TrackerOutput(task, [Grok("event=\\[%{WORD:event}\\]").match])
+    tracker = TrackerOutput(task, [KVParser()])
 
     tracker.new_output('no events here')
     assert task.last_event is None
@@ -66,13 +67,13 @@ def test_grok_event():
     tracker.new_output('event=[eventim_apollo] we have first event here')
     assert task.last_event[0] == 'eventim_apollo'
 
-    tracker.new_output('second event follows event=[event_horizon]')
+    tracker.new_output('second follows: event=[event_horizon]')
     assert task.last_event[0] == 'event_horizon'
 
 
-def test_grok_timestamps():
+def test_timestamps():
     task = MutableTrackedTask('task')
-    tracker = TrackerOutput(task, [Grok("%{TIMESTAMP_ISO8601:timestamp} event=\\[%{WORD:event}\\]").match])
+    tracker = TrackerOutput(task, [KVParser(post_parsers=[(iso_date_time_parser(Fields.TIMESTAMP.value))])])
 
     tracker.new_output('2020-10-01 10:30:30 event=[e1]')
     assert task.last_event[1] == datetime.strptime('2020-10-01 10:30:30', "%Y-%m-%d %H:%M:%S")
