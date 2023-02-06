@@ -9,8 +9,9 @@ from taro.jobs.managed import ManagedJobContext
 from taro.jobs.program import ProgramExecution
 from taro.jobs.runner import RunnerJobInstance
 from taro.jobs.sync import ExecutionsLimit
-from taro.jobs.track import OutputTracker, MutableTrackedTask
+from taro.jobs.track import OutputTracker, MutableTrackedTask, Fields
 from taro.test.execution import TestExecution
+from taro.util import KVParser, iso_date_time_parser
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +31,17 @@ def run(args):
     else:
         exec_limit = None
 
-    if args.pattern:
+    output_parsers = []
+    for grok_pattern in args.grok_pattern:
+        output_parsers.append(Grok(grok_pattern).match)
+    if args.kv_filter:
+        output_parsers.append(KVParser(post_parsers=[(iso_date_time_parser(Fields.TIMESTAMP.value))]))
+
+    if output_parsers:
         task = MutableTrackedTask(job_id)
         execution.tracking = task
-        for pattern in args.pattern:
-            tracker = OutputTracker(task, [Grok(pattern).match])
-            execution.add_output_observer(tracker)
+        tracker = OutputTracker(task, output_parsers)
+        execution.add_output_observer(tracker)
 
     job_instance = RunnerJobInstance(
         job_id,
