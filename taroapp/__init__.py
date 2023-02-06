@@ -1,5 +1,4 @@
 import os
-
 import sys
 
 import taro
@@ -52,7 +51,7 @@ def init_taro(args):
 
     :param args: CLI arguments
     """
-    config_vars = util.split_params(args.set) if args.set else {}  # Config variables and override values
+    config_vars = util.split_params(args.set)  # Config variables and override values
 
     if getattr(args, 'config', None):
         taro.load_config(args.config, **config_vars)

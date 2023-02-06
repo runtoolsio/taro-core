@@ -3,6 +3,7 @@ import signal
 
 from pygrok import Grok
 
+from taro import util
 from taro.jobs import sync, warning
 from taro.jobs.job import Warn
 from taro.jobs.managed import ManagedJobContext
@@ -35,7 +36,8 @@ def run(args):
     for grok_pattern in args.grok_pattern:
         output_parsers.append(Grok(grok_pattern).match)
     if args.kv_filter:
-        output_parsers.append(KVParser(post_parsers=[(iso_date_time_parser(Fields.TIMESTAMP.value))]))
+        aliases = util.split_params(args.kv_alias)
+        output_parsers.append(KVParser(aliases=aliases, post_parsers=[(iso_date_time_parser(Fields.TIMESTAMP.value))]))
 
     if output_parsers:
         task = MutableTrackedTask(job_id)

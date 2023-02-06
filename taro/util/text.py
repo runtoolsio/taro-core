@@ -9,6 +9,8 @@ def split_params(params, kv_sep="=") -> Dict[str, str]:
     f"""
     Converts sequence of values in format "key{kv_sep}value" to dict[key, value]
     """
+    if not params:
+        return {}
 
     def split(s):
         if len(s) < 3 or kv_sep not in s[1:-1]:

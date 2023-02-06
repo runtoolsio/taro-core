@@ -151,6 +151,8 @@ def _init_exec_parser(common, subparsers):
                              help='The execution will be skipped if specified dependency job is not running.')
     exec_parser.add_argument('-k', '--kv-filter', action='store_true', default=False,
                              help='Key-value output parser is used for task tracking.')
+    exec_parser.add_argument('--kv-alias', type=str, action='append', default=[],
+                             help='Mapping of output keys to common fields.')
     exec_parser.add_argument('-p', '--grok-pattern', type=str, action='append', default=[],
                              help='Grok pattern for extracting fields from output used for task tracking.')
     exec_parser.add_argument('--dry-run', type=_str2state, nargs='?', const=ExecutionState.COMPLETED,

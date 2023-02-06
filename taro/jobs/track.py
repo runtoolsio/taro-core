@@ -156,13 +156,13 @@ class MutableProgress(Progress):
 
     def __str__(self):
         if self._total:
-            val = f"{self._completed}/{self._total} {self._unit}"
+            val = f"{self._completed or '?'}/{self._total or '?'} {self._unit or ''}"
             pct_done = self.pct_done()
             if pct_done:
                 val += f" ({round(pct_done * 100, 0):.0f}%)"
             return val
         else:
-            return f"{self._completed} {self._unit}"
+            return f"{self._completed or '?'} {self._unit}"
 
 
 class MutableOperation(Operation):
