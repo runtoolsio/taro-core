@@ -275,7 +275,7 @@ class Fields(Enum):
 DEFAULT_PATTERN = ''
 
 
-class TrackerOutput(ExecutionOutputObserver, JobOutputObserver):
+class OutputTracker(ExecutionOutputObserver, JobOutputObserver):
 
     def __init__(self, task, parsers):
         self.task = task
