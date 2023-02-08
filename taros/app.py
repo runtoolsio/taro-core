@@ -5,7 +5,7 @@ from bottle import route, run, response
 
 import taro.client
 import taro.jobs.repo as Jobs
-from taro import dto, util
+from taro import util
 from taro.jobs import persistence
 from taro.jobs.execution import ExecutionState
 from taro.jobs.job import InstanceMatchingCriteria, IDMatchingCriteria
@@ -107,7 +107,7 @@ def resource(props, *, links=None, embedded=None):
 
 
 def resource_job_info(job_info):
-    return resource(dto.to_info_dto(job_info),
+    return resource(job_info.to_dict(),
                     links={"self": "/instances/" + job_info.instance_id, "jobs": "/jobs/" + job_info.job_id})
 
 

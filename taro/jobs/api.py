@@ -3,7 +3,7 @@ import logging
 from abc import ABC, abstractmethod
 from json import JSONDecodeError
 
-from taro import dto, util
+from taro import util
 from taro.socket import SocketServer
 from taro.util import MatchingStrategy
 
@@ -48,7 +48,7 @@ class JobsResource(APIResource):
         return '/jobs'
 
     def handle(self, job_instance, req_body):
-        return {"job_info": dto.to_info_dto(job_instance.create_info())}
+        return {"job_info": job_instance.create_info().to_dict()}
 
 
 class ReleaseResource(APIResource):

@@ -111,8 +111,8 @@ class SQLite:
             exec_error = ExecutionError(t[8], lifecycle.state) if t[8] else None  # TODO more data
             user_params = json.loads(t[9]) if t[9] else dict()
             parameters = json.loads(t[10]) if t[10] else tuple()
-            return JobInfo(JobInstanceID(t[0], t[1]), lifecycle, t[5], error_output, warnings, exec_error, parameters,
-                           **user_params)
+            return JobInfo(JobInstanceID(t[0], t[1]), lifecycle, None, t[5], error_output, warnings, exec_error,
+                           parameters, **user_params)
 
         return [to_job_info(row) for row in c.fetchall()]
 

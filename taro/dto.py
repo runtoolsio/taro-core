@@ -1,5 +1,3 @@
-from typing import Dict, Any
-
 from taro import util
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
 from taro.jobs.job import JobInfo, JobInstanceID
@@ -11,39 +9,8 @@ def datetime_str(td):
     return td.isoformat()
 
 
-def to_info_dto(info) -> Dict[str, Any]:
-    lc = info.lifecycle
-    state_changes = [{"state": state.name, "changed": datetime_str(change)} for state, change in lc.state_changes]
-    if info.exec_error:
-        exec_error = {"message": info.exec_error.message, "state": info.exec_error.exec_state.name}
-    else:
-        exec_error = None
-
-    return {
-        "id": {
-            "job_id": info.job_id,
-            "instance_id": info.instance_id,
-        },
-        "lifecycle": {
-            "state_changes": state_changes,
-            "state": lc.state.name,
-            "created": datetime_str(lc.changed(ExecutionState.CREATED)),
-            "last_changed": datetime_str(lc.last_changed),
-            "execution_started": datetime_str(lc.execution_started),
-            "execution_finished": datetime_str(lc.execution_finished),
-            "execution_time": lc.execution_time.total_seconds() if lc.execution_started else None,
-        },
-        "status": info.status,
-        "error_output": info.error_output,
-        "warnings": info.warnings,
-        "exec_error": exec_error,
-        "parameters": info.parameters,
-        "user_params": info.user_params
-    }
-
-
 def to_jobs_dto(jobs):
-    return {"jobs": [to_info_dto(job) for job in jobs.jobs]}
+    return {"jobs": [job.to_dict() for job in jobs.jobs]}
 
 
 def to_job_info(as_dict) -> JobInfo:
@@ -59,6 +26,7 @@ def to_job_info(as_dict) -> JobInfo:
     return JobInfo(
         JobInstanceID(as_dict['id']['job_id'], as_dict['id']['instance_id']),
         lifecycle,
+        None,  # TODO
         as_dict['status'],
         as_dict['error_output'],
         as_dict['warnings'],

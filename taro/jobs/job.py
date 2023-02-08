@@ -103,6 +103,11 @@ class JobInstance(abc.ABC):
 
     @property
     @abc.abstractmethod
+    def tracking(self):
+        """Task tracking information, None if tracking is not supported"""
+
+    @property
+    @abc.abstractmethod
     def status(self):
         """Current status of the job or None if not supported"""
 
@@ -306,10 +311,11 @@ class JobInfo:
     Immutable snapshot of job instance
     """
 
-    def __init__(self, job_instance_id, lifecycle, status, error_output, warnings, exec_error: ExecutionError,
+    def __init__(self, job_instance_id, lifecycle, tracking, status, error_output, warnings, exec_error: ExecutionError,
                  parameters, **user_params):
         self._job_instance_id = job_instance_id
         self._lifecycle = lifecycle
+        self._tracking = tracking
         if status:
             self._status = textwrap.shorten(status, 1000, placeholder=".. (truncated)", break_long_words=False)
         else:
@@ -345,6 +351,10 @@ class JobInfo:
         return self._lifecycle.state
 
     @property
+    def tracking(self):
+        return self._tracking
+
+    @property
     def status(self):
         return self._status
 
@@ -376,10 +386,46 @@ class JobInfo:
 
         return self.id.matches_any(instance_matching_criteria.id_matching_criteria)
 
+    def to_dict(self) -> Dict[str, Any]:
+        lc = self.lifecycle
+        state_changes = [{"state": state.name, "changed": datetime_str(change)} for state, change in lc.state_changes]
+        if self.exec_error:
+            exec_error = {"message": self.exec_error.message, "state": self.exec_error.exec_state.name}
+        else:
+            exec_error = None
+
+        return {
+            "id": {
+                "job_id": self.job_id,
+                "instance_id": self.instance_id,
+            },
+            "lifecycle": {
+                "state_changes": state_changes,
+                "state": lc.state.name,
+                "created": datetime_str(lc.changed(ExecutionState.CREATED)),
+                "last_changed": datetime_str(lc.last_changed),
+                "execution_started": datetime_str(lc.execution_started),
+                "execution_finished": datetime_str(lc.execution_finished),
+                "execution_time": lc.execution_time.total_seconds() if lc.execution_started else None,
+            },
+            "status": self.status,
+            "error_output": self.error_output,
+            "warnings": self.warnings,
+            "exec_error": exec_error,
+            "parameters": self.parameters,
+            "user_params": self.user_params
+        }
+
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.__class__.__name__, self._job_instance_id, self._lifecycle, self._status, self._warnings,
             self._exec_error)
+
+
+def datetime_str(td):
+    if td is None:
+        return None
+    return td.isoformat()
 
 
 class JobInfoCollection:

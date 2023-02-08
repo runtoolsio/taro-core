@@ -79,6 +79,10 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         return self._lifecycle
 
     @property
+    def tracking(self):
+        return self._execution.tracking
+
+    @property
     def status(self):
         return self._execution.status
 
@@ -108,8 +112,16 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
     def create_info(self):
         with self._state_lock:
-            return JobInfo(self._id, copy.deepcopy(self._lifecycle), self.status, self.error_output, self.warnings,
-                           self.exec_error, self.parameters, **self._user_params)
+            return JobInfo(
+                self._id,
+                copy.deepcopy(self._lifecycle),
+                self.tracking.copy() if self.tracking else None,
+                self.status,
+                self.error_output,
+                self.warnings,
+                self.exec_error,
+                self.parameters,
+                **self._user_params)
 
     def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self._state_observers = _add_prioritized(self._state_observers, priority, observer)
