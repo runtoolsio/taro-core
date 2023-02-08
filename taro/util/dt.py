@@ -7,7 +7,8 @@ from enum import Enum
 from dateutil import relativedelta
 
 # Produced by ChatGPT - seems correct
-ISO_DATE_TIME_PATTERN = re.compile(r'\b(\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{2}:\d{2})?)\b')
+ISO_DATE_TIME_PATTERN = re.compile(
+    r'\b(\d{4}-\d{2}-\d{2}(?:T|\s)\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{2}:\d{2})?)\b')
 
 
 def unique_timestamp_hex(random_suffix_length=4):
@@ -73,6 +74,12 @@ def parse_iso8601_duration(duration):
     seconds = int(match.group(7)) if match.group(7) else 0
     return relativedelta.relativedelta(years=years, months=months, weeks=weeks, days=days, hours=hours, minutes=minutes,
                                        seconds=seconds).normalized()
+
+
+def datetime_to_str(td):
+    if td is None:
+        return None
+    return td.isoformat()
 
 
 def format_dt_ms_local_tz(dt, null=''):

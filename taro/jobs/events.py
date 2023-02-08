@@ -3,9 +3,9 @@ import json
 import logging
 
 from taro import util
-from taro.dto import datetime_str
 from taro.jobs.job import ExecutionStateObserver, JobInfo, JobOutputObserver
 from taro.socket import SocketClient, PayloadTooLarge
+from taro.util import datetime_to_str
 
 STATE_LISTENER_FILE_EXTENSION = '.slistener'
 OUTPUT_LISTENER_FILE_EXTENSION = '.olistener'
@@ -46,7 +46,7 @@ class StateDispatcher(EventDispatcher, ExecutionStateObserver):
         event = {
             "new_state": job_info.state.name,
             "previous_state": None,  # TODO previous_state
-            "changed": datetime_str(job_info.lifecycle.last_changed),
+            "changed": datetime_to_str(job_info.lifecycle.last_changed),
         }
         self._send_event("execution_state_change", job_info.id, event)
 

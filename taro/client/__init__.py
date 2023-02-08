@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import List, Tuple, Any, Dict, NamedTuple, Optional, TypeVar, Generic
 
-from taro import dto
 from taro.jobs.api import API_FILE_EXTENSION
 from taro.jobs.job import JobInfo, JobInstanceID
 from taro.socket import SocketClient, ServerResponse, Error
@@ -110,7 +109,7 @@ class JobsClient(SocketClient):
 
     def read_jobs_info(self, instance_match=None) -> MultiResponse[JobInfo]:
         instance_responses, api_errors = self._send_request('/jobs', instance_match)
-        return MultiResponse([dto.to_job_info(body["job_info"]) for _, body in instance_responses], api_errors)
+        return MultiResponse([JobInfo.from_dict(body["job_info"]) for _, body in instance_responses], api_errors)
 
     def release_jobs(self, pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
         instance_responses, api_errors =\

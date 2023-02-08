@@ -6,7 +6,6 @@ from pygments.lexers.data import JsonLexer
 
 import taro.client
 import taroapp.argsutil
-from taro import dto
 from taro.jobs.job import JobInfoCollection
 from taro.util import MatchingStrategy
 from taroapp import printer
@@ -24,9 +23,9 @@ def run(args):
             columns.insert(2, view_inst.PARAMETERS)
         printer.print_table(jobs.jobs, columns, show_header=True, pager=False)
     elif args.format == 'json':
-        print(json.dumps(dto.to_jobs_dto(jobs)))
+        print(json.dumps({"jobs": [job.to_dict() for job in jobs.jobs]}))
     elif args.format == 'jsonp':
-        json_str = json.dumps(dto.to_jobs_dto(jobs), indent=2)
+        json_str = json.dumps({"jobs": [job.to_dict() for job in jobs.jobs]}, indent=2)
         print(highlight(json_str, JsonLexer(), TerminalFormatter()))
     else:
         assert False, 'Unknown format: ' + args.format

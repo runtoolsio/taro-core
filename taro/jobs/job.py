@@ -18,7 +18,8 @@ from dataclasses import dataclass
 from fnmatch import fnmatch
 from typing import NamedTuple, Dict, Any, Optional, Sequence, Callable, Union
 
-from taro.jobs.execution import ExecutionError, ExecutionState
+from taro import util
+from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
 from taro.util import and_, or_, MatchingStrategy
 
 DEFAULT_OBSERVER_PRIORITY = 100
@@ -310,6 +311,30 @@ class JobInfo:
     """
     Immutable snapshot of job instance
     """
+
+    @classmethod
+    def from_dict(cls, as_dict):
+        state_changes = ((ExecutionState[state_change['state']], util.str_to_datetime(state_change['changed']))
+                         for state_change in as_dict['lifecycle']['state_changes'])
+        lifecycle = ExecutionLifecycle(*state_changes)
+
+        if as_dict['exec_error']:
+            exec_error = ExecutionError(as_dict['exec_error']['message'],
+                                        ExecutionState[as_dict['exec_error']['state']])
+        else:
+            exec_error = None
+
+        return cls(
+            JobInstanceID(as_dict['id']['job_id'], as_dict['id']['instance_id']),
+            lifecycle,
+            None,  # TODO
+            as_dict['status'],
+            as_dict['error_output'],
+            as_dict['warnings'],
+            exec_error,
+            as_dict['parameters'],
+            **as_dict['user_params']
+        )
 
     def __init__(self, job_instance_id, lifecycle, tracking, status, error_output, warnings, exec_error: ExecutionError,
                  parameters, **user_params):
