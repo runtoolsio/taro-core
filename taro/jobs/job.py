@@ -303,12 +303,11 @@ class DelegatingJobInstance(JobInstance):
 
 class JobInfo:
     """
-    Immutable snapshot of job instance state
+    Immutable snapshot of job instance
     """
 
     def __init__(self, job_instance_id, lifecycle, status, error_output, warnings, exec_error: ExecutionError,
-                 parameters,
-                 **user_params):
+                 parameters, **user_params):
         self._job_instance_id = job_instance_id
         self._lifecycle = lifecycle
         if status:

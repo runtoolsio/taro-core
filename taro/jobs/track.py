@@ -5,7 +5,7 @@ from collections import deque, OrderedDict
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Any
+from typing import Optional, Any, Sequence, Tuple
 
 from taro import JobInfo, util
 from taro.jobs.execution import ExecutionOutputObserver
@@ -38,18 +38,51 @@ class Progress(ABC):
         pass
 
     @property
-    @abstractmethod
+    def pct_done(self):
+        if isinstance(self.completed, (int, float)) and isinstance(self.total, (int, float)):
+            return self.completed / self.total
+        else:
+            return None
+
+    @property
     def is_finished(self):
-        pass
+        return self.completed and self.total and (self.completed == self.total)
+
+    def __str__(self):
+        val = f"{self.completed or '?'}/{self.total or '?'}"
+        if self.unit:
+            val += f" {self.unit}"
+        if pct_done := self.pct_done:
+            val += f" ({round(pct_done * 100, 0):.0f}%)"
+
+        return val
+
+    def copy(self):
+        return ProgressInfo(self.completed, self.total, self.unit, self.last_update)
 
 
-@dataclass
-class ProgressView(Progress):
-    completed: Any
-    total: Any
-    unit: str
-    last_update: datetime
-    is_finished: bool
+@dataclass(frozen=True)
+class ProgressInfo(Progress):
+    _completed: Any
+    _total: Any
+    _unit: str = ''
+    _last_update: datetime = None
+
+    @property
+    def completed(self):
+        return self._completed
+
+    @property
+    def total(self):
+        return self._total
+
+    @property
+    def unit(self):
+        return self._unit
+
+    @property
+    def last_update(self):
+        return self._last_update
 
 
 class Operation(TimePeriod):
@@ -63,6 +96,36 @@ class Operation(TimePeriod):
     @abstractmethod
     def progress(self):
         pass
+
+    def __str__(self):
+        return f"{self.name}: {self.progress}"
+
+    def copy(self):
+        return OperationInfo(self.name, self.progress.copy(), self.start_date, self.end_date)
+
+
+@dataclass(frozen=True)
+class OperationInfo(Operation):
+    _name: str
+    _progress: Progress
+    _start_date: datetime
+    _end_date: datetime
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def progress(self):
+        return self._progress
+
+    @property
+    def start_date(self):
+        return self._start_date
+
+    @property
+    def end_date(self):
+        return self._end_date
 
 
 class TrackedTask(TimePeriod):
@@ -91,6 +154,53 @@ class TrackedTask(TimePeriod):
     @abstractmethod
     def subtasks(self):
         pass
+
+    def copy(self):
+        return TrackedTaskInfo(
+            self.name,
+            self.events,
+            [op.copy() for op in self.operations],
+            [task.copy() for task in self.subtasks],
+            self.start_date,
+            self.end_date)
+
+
+@dataclass(frozen=True)
+class TrackedTaskInfo(TrackedTask):
+    _name: str
+    _events: Sequence[Tuple[str, datetime]]
+    _operations: Sequence[Operation]
+    _subtasks: Sequence[TrackedTask]
+    _start_date: datetime
+    _end_date: datetime
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def events(self):
+        return self._events
+
+    @property
+    def last_event(self):
+        return self._events[-1] if self._events else None
+
+    @property
+    def operations(self):
+        return self._operations
+
+    @property
+    def subtasks(self):
+        return self._subtasks
+
+    @property
+    def start_date(self):
+        return self._start_date
+
+    @property
+    def end_date(self):
+        return self._end_date
 
 
 class MutableTimePeriod(TimePeriod):
@@ -132,16 +242,6 @@ class MutableProgress(Progress):
     def last_update(self):
         return self._last_update
 
-    def pct_done(self):
-        if isinstance(self.completed, (int, float)) and isinstance(self.total, (int, float)):
-            return self.completed / self.total
-        else:
-            return None
-
-    @property
-    def is_finished(self):
-        return self.total and (self.completed == self.total)
-
     def update(self, completed, total=None, unit: str = '', is_increment=False):
         if self.completed and is_increment:
             self._completed += completed  # Must be a number if it's an increment
@@ -153,16 +253,6 @@ class MutableProgress(Progress):
         if unit:
             self._unit = unit
         self._last_update = None  # TODO TBD
-
-    def __str__(self):
-        if self._total:
-            val = f"{self._completed or '?'}/{self._total or '?'} {self._unit or ''}"
-            pct_done = self.pct_done()
-            if pct_done:
-                val += f" ({round(pct_done * 100, 0):.0f}%)"
-            return val
-        else:
-            return f"{self._completed or '?'} {self._unit}"
 
 
 class MutableOperation(Operation):
@@ -191,9 +281,6 @@ class MutableOperation(Operation):
 
     def update(self, completed, total=None, unit: str = '', is_increment=False):
         self._progress.update(completed, total, unit, is_increment)
-
-    def __str__(self):
-        return f"{self._name}: {self._progress}"
 
 
 class MutableTrackedTask(TrackedTask):
