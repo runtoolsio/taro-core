@@ -5,12 +5,12 @@ from pygrok import Grok
 
 from taro import util
 from taro.jobs import sync, warning
-from taro.jobs.job import Warn
+from taro.jobs.job import Warn, OutputTracker
 from taro.jobs.managed import ManagedJobContext
 from taro.jobs.program import ProgramExecution
 from taro.jobs.runner import RunnerJobInstance
 from taro.jobs.sync import ExecutionsLimit
-from taro.jobs.track import OutputTracker, MutableTrackedTask, Fields
+from taro.jobs.track import MutableTrackedTask, Fields
 from taro.test.execution import TestExecution
 from taro.util import KVParser, iso_date_time_parser
 

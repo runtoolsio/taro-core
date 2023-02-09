@@ -7,10 +7,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, Any, Sequence, Tuple
 
-from taro import JobInfo, util
-from taro.jobs.execution import ExecutionOutputObserver
-from taro.jobs.job import JobOutputObserver
-from taro.util import TimePeriod, convert_if_number, datetime_to_str
+from taro import util
+from taro.util import TimePeriod, datetime_to_str
 
 log = logging.getLogger(__name__)
 
@@ -418,43 +416,3 @@ class Fields(Enum):
 
 
 DEFAULT_PATTERN = ''
-
-
-class OutputTracker(ExecutionOutputObserver, JobOutputObserver):
-
-    def __init__(self, task, parsers):
-        self.task = task
-        self.parsers = parsers
-
-    def execution_output_update(self, output, is_error: bool):
-        self.new_output(output)
-
-    def job_output_update(self, job_info: JobInfo, output, is_error):
-        self.new_output(output)
-
-    def new_output(self, output):
-        parsed = {}
-        for parser in self.parsers:
-            if p := parser(output):
-                parsed.update(p)
-
-        if not parsed:
-            return
-
-        event = parsed.get(Fields.EVENT.value)
-        task = parsed.get(Fields.TASK.value)
-        ts = util.str_to_datetime(parsed.get(Fields.TIMESTAMP.value))
-        completed = convert_if_number(parsed.get(Fields.COMPLETED.value))
-        increment = convert_if_number(parsed.get(Fields.INCREMENT.value))
-        total = convert_if_number(parsed.get(Fields.TOTAL.value))
-        unit = parsed.get(Fields.UNIT.value)
-
-        if task:
-            rel_task = self.task.subtask(task)
-        else:
-            rel_task = self.task
-
-        if completed or increment or total or unit:
-            rel_task.operation(event).update(completed or increment, total, unit, increment is not None)
-        elif event:
-            rel_task.add_event(event, ts)

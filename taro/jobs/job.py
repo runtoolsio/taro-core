@@ -18,8 +18,10 @@ from dataclasses import dataclass
 from fnmatch import fnmatch
 from typing import NamedTuple, Dict, Any, Optional, Sequence, Callable, Union
 
-from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
-from taro.util import and_, or_, MatchingStrategy
+from taro import util
+from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle, ExecutionOutputObserver
+from taro.jobs.track import TrackedTaskInfo, Fields
+from taro.util import and_, or_, MatchingStrategy, convert_if_number
 
 DEFAULT_OBSERVER_PRIORITY = 100
 
@@ -323,6 +325,11 @@ class JobInfo:
 
     @classmethod
     def from_dict(cls, as_dict):
+        if as_dict['tracking']:
+            tracking = TrackedTaskInfo.from_dict(as_dict['tracking'])
+        else:
+            tracking = None
+
         if as_dict['exec_error']:
             exec_error = ExecutionError.from_dict(as_dict['exec_error'])
         else:
@@ -331,7 +338,7 @@ class JobInfo:
         return cls(
             JobInstanceID.from_dict(as_dict['id']),
             ExecutionLifecycle.from_dict(as_dict['lifecycle']),
-            None,  # TODO
+            tracking,
             as_dict['status'],
             as_dict['error_output'],
             as_dict['warnings'],
@@ -419,6 +426,7 @@ class JobInfo:
         return {
             "id": self.id.to_dict(),
             "lifecycle": self.lifecycle.to_dict(),
+            "tracking": self.tracking.to_dict() if self.tracking else None,
             "status": self.status,
             "error_output": self.error_output,
             "warnings": self.warnings,
@@ -492,3 +500,43 @@ class JobOutputObserver(abc.ABC):
         :param output: job instance output text
         :param is_error: True when it is an error output
         """
+
+
+class OutputTracker(ExecutionOutputObserver, JobOutputObserver):
+
+    def __init__(self, task, parsers):
+        self.task = task
+        self.parsers = parsers
+
+    def execution_output_update(self, output, is_error: bool):
+        self.new_output(output)
+
+    def job_output_update(self, job_info, output, is_error):
+        self.new_output(output)
+
+    def new_output(self, output):
+        parsed = {}
+        for parser in self.parsers:
+            if p := parser(output):
+                parsed.update(p)
+
+        if not parsed:
+            return
+
+        event = parsed.get(Fields.EVENT.value)
+        task = parsed.get(Fields.TASK.value)
+        ts = util.str_to_datetime(parsed.get(Fields.TIMESTAMP.value))
+        completed = convert_if_number(parsed.get(Fields.COMPLETED.value))
+        increment = convert_if_number(parsed.get(Fields.INCREMENT.value))
+        total = convert_if_number(parsed.get(Fields.TOTAL.value))
+        unit = parsed.get(Fields.UNIT.value)
+
+        if task:
+            rel_task = self.task.subtask(task)
+        else:
+            rel_task = self.task
+
+        if completed or increment or total or unit:
+            rel_task.operation(event).update(completed or increment, total, unit, increment is not None)
+        elif event:
+            rel_task.add_event(event, ts)
