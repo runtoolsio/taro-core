@@ -10,10 +10,10 @@ import abc
 import datetime
 from collections import OrderedDict
 from enum import Enum, auto, EnumMeta
-from typing import Tuple, List, Iterable, Set, Optional
+from typing import Tuple, List, Iterable, Set, Optional, Dict, Any
 
 from taro import util
-from taro.util import utc_now
+from taro.util import utc_now, datetime_to_str
 
 
 class ExecutionStateGroup(Enum):
@@ -115,6 +115,12 @@ class ExecutionError(Exception):
         self.unexpected_error = unexpected_error
         self.params = kwargs
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "message": self.message,
+            "state": self.exec_state.name,
+        }
+
 
 class Execution(abc.ABC):
 
@@ -207,14 +213,6 @@ class ExecutionLifecycle:
     def __init__(self, *state_changes: Tuple[ExecutionState, datetime.datetime]):
         self._state_changes: OrderedDict[ExecutionState, datetime.datetime] = OrderedDict(state_changes)
 
-    def __copy__(self):
-        copied = ExecutionLifecycle()
-        copied._state_changes = self._state_changes
-        return copied
-
-    def __deepcopy__(self, memo):
-        return ExecutionLifecycle(*self.state_changes)
-
     @property
     def state(self):
         return next(reversed(self._state_changes.keys()), ExecutionState.NONE)
@@ -260,6 +258,26 @@ class ExecutionLifecycle:
 
         finished = self.execution_finished or util.utc_now()
         return finished - started
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "state_changes": [{"state": state.name, "changed": datetime_to_str(change)} for state, change in
+                              self.state_changes],
+            "state": self.state.name,
+            "created": datetime_to_str(self.changed(ExecutionState.CREATED)),
+            "last_changed": datetime_to_str(self.last_changed),
+            "execution_started": datetime_to_str(self.execution_started),
+            "execution_finished": datetime_to_str(self.execution_finished),
+            "execution_time": self.execution_time.total_seconds() if self.execution_started else None,
+        }
+
+    def __copy__(self):
+        copied = ExecutionLifecycle()
+        copied._state_changes = self._state_changes
+        return copied
+
+    def __deepcopy__(self, memo):
+        return ExecutionLifecycle(*self.state_changes)
 
     def __repr__(self) -> str:
         return "{}({!r})".format(

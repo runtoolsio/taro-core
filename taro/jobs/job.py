@@ -20,7 +20,7 @@ from typing import NamedTuple, Dict, Any, Optional, Sequence, Callable, Union
 
 from taro import util
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
-from taro.util import and_, or_, MatchingStrategy, datetime_to_str
+from taro.util import and_, or_, MatchingStrategy
 
 DEFAULT_OBSERVER_PRIORITY = 100
 
@@ -58,6 +58,12 @@ class JobInstanceID(NamedTuple):
             op = or_
         return op(not job_id or matching_strategy(self.job_id, job_id),
                   not instance_id or matching_strategy(self.instance_id, instance_id))
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "job_id": self.job_id,
+            "instance_id": self.instance_id
+        }
 
     def __eq__(self, other):
         if type(self) is type(other):
@@ -412,31 +418,13 @@ class JobInfo:
         return self.id.matches_any(instance_matching_criteria.id_matching_criteria)
 
     def to_dict(self) -> Dict[str, Any]:
-        lc = self.lifecycle
-        state_changes = [{"state": state.name, "changed": datetime_to_str(change)} for state, change in lc.state_changes]
-        if self.exec_error:
-            exec_error = {"message": self.exec_error.message, "state": self.exec_error.exec_state.name}
-        else:
-            exec_error = None
-
         return {
-            "id": {
-                "job_id": self.job_id,
-                "instance_id": self.instance_id,
-            },
-            "lifecycle": {
-                "state_changes": state_changes,
-                "state": lc.state.name,
-                "created": datetime_to_str(lc.changed(ExecutionState.CREATED)),
-                "last_changed": datetime_to_str(lc.last_changed),
-                "execution_started": datetime_to_str(lc.execution_started),
-                "execution_finished": datetime_to_str(lc.execution_finished),
-                "execution_time": lc.execution_time.total_seconds() if lc.execution_started else None,
-            },
+            "id": self.id.to_dict(),
+            "lifecycle": self.lifecycle.to_dict(),
             "status": self.status,
             "error_output": self.error_output,
             "warnings": self.warnings,
-            "exec_error": exec_error,
+            "exec_error": self.exec_error.to_dict() if self.exec_error else None,
             "parameters": self.parameters,
             "user_params": self.user_params
         }
