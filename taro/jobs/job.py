@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from fnmatch import fnmatch
 from typing import NamedTuple, Dict, Any, Optional, Sequence, Callable, Union
 
-from taro import util
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
 from taro.util import and_, or_, MatchingStrategy
 
@@ -42,6 +41,10 @@ class InstanceMatchingCriteria:
 class JobInstanceID(NamedTuple):
     job_id: str
     instance_id: str
+
+    @classmethod
+    def from_dict(cls, as_dict):
+        return cls(as_dict['job_id'], as_dict['instance_id'])
 
     def matches_any(self, matching_criteria):
         return any(self.matches(pattern, matching_criteria.strategy) for pattern in matching_criteria.patterns)
@@ -320,19 +323,14 @@ class JobInfo:
 
     @classmethod
     def from_dict(cls, as_dict):
-        state_changes = ((ExecutionState[state_change['state']], util.str_to_datetime(state_change['changed']))
-                         for state_change in as_dict['lifecycle']['state_changes'])
-        lifecycle = ExecutionLifecycle(*state_changes)
-
         if as_dict['exec_error']:
-            exec_error = ExecutionError(as_dict['exec_error']['message'],
-                                        ExecutionState[as_dict['exec_error']['state']])
+            exec_error = ExecutionError.from_dict(as_dict['exec_error'])
         else:
             exec_error = None
 
         return cls(
-            JobInstanceID(as_dict['id']['job_id'], as_dict['id']['instance_id']),
-            lifecycle,
+            JobInstanceID.from_dict(as_dict['id']),
+            ExecutionLifecycle.from_dict(as_dict['lifecycle']),
             None,  # TODO
             as_dict['status'],
             as_dict['error_output'],

@@ -106,6 +106,10 @@ class ExecutionError(Exception):
     def from_unexpected_error(cls, e: Exception):
         return cls("Unexpected error", ExecutionState.ERROR, unexpected_error=e)
 
+    @classmethod
+    def from_dict(cls, as_dict):
+        return cls(as_dict['message'], ExecutionState[as_dict['state']])
+
     def __init__(self, message: str, exec_state: ExecutionState, unexpected_error: Exception = None, **kwargs):
         if not exec_state.is_failure():
             raise ValueError('exec_state must be a failure', exec_state)
@@ -212,6 +216,12 @@ class ExecutionLifecycle:
 
     def __init__(self, *state_changes: Tuple[ExecutionState, datetime.datetime]):
         self._state_changes: OrderedDict[ExecutionState, datetime.datetime] = OrderedDict(state_changes)
+
+    @classmethod
+    def from_dict(cls, as_dict):
+        state_changes = ((ExecutionState[state_change['state']], util.str_to_datetime(state_change['changed']))
+                         for state_change in as_dict['state_changes'])
+        return cls(*state_changes)
 
     @property
     def state(self):
