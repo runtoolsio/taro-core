@@ -20,7 +20,7 @@ from typing import NamedTuple, Dict, Any, Optional, Sequence, Callable, Union
 
 from taro import util
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
-from taro.util import and_, or_, MatchingStrategy
+from taro.util import and_, or_, MatchingStrategy, datetime_to_str
 
 DEFAULT_OBSERVER_PRIORITY = 100
 
@@ -413,7 +413,7 @@ class JobInfo:
 
     def to_dict(self) -> Dict[str, Any]:
         lc = self.lifecycle
-        state_changes = [{"state": state.name, "changed": datetime_str(change)} for state, change in lc.state_changes]
+        state_changes = [{"state": state.name, "changed": datetime_to_str(change)} for state, change in lc.state_changes]
         if self.exec_error:
             exec_error = {"message": self.exec_error.message, "state": self.exec_error.exec_state.name}
         else:
@@ -427,10 +427,10 @@ class JobInfo:
             "lifecycle": {
                 "state_changes": state_changes,
                 "state": lc.state.name,
-                "created": datetime_str(lc.changed(ExecutionState.CREATED)),
-                "last_changed": datetime_str(lc.last_changed),
-                "execution_started": datetime_str(lc.execution_started),
-                "execution_finished": datetime_str(lc.execution_finished),
+                "created": datetime_to_str(lc.changed(ExecutionState.CREATED)),
+                "last_changed": datetime_to_str(lc.last_changed),
+                "execution_started": datetime_to_str(lc.execution_started),
+                "execution_finished": datetime_to_str(lc.execution_finished),
                 "execution_time": lc.execution_time.total_seconds() if lc.execution_started else None,
             },
             "status": self.status,
@@ -445,12 +445,6 @@ class JobInfo:
         return "{}({!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.__class__.__name__, self._job_instance_id, self._lifecycle, self._status, self._warnings,
             self._exec_error)
-
-
-def datetime_str(td):
-    if td is None:
-        return None
-    return td.isoformat()
 
 
 class JobInfoCollection:

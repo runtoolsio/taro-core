@@ -10,7 +10,7 @@ from typing import Optional, Any, Sequence, Tuple
 from taro import JobInfo, util
 from taro.jobs.execution import ExecutionOutputObserver
 from taro.jobs.job import JobOutputObserver
-from taro.util import TimePeriod, convert_if_number
+from taro.util import TimePeriod, convert_if_number, datetime_to_str
 
 log = logging.getLogger(__name__)
 
@@ -48,6 +48,19 @@ class Progress(ABC):
     def is_finished(self):
         return self.completed and self.total and (self.completed == self.total)
 
+    def copy(self):
+        return ProgressInfo(self.completed, self.total, self.unit, self.last_update)
+
+    def to_dict(self):
+        return {
+            'completed': self.completed,
+            'total': self.total,
+            'unit': self.unit,
+            'last_update': datetime_to_str(self.last_update),
+            'pct_done': self.pct_done,
+            'is_finished': self.is_finished
+        }
+
     def __str__(self):
         val = f"{self.completed or '?'}/{self.total or '?'}"
         if self.unit:
@@ -57,16 +70,22 @@ class Progress(ABC):
 
         return val
 
-    def copy(self):
-        return ProgressInfo(self.completed, self.total, self.unit, self.last_update)
-
 
 @dataclass(frozen=True)
 class ProgressInfo(Progress):
+
     _completed: Any
     _total: Any
     _unit: str = ''
     _last_update: datetime = None
+
+    @classmethod
+    def from_dict(cls, data):
+        completed = data.get("completed", None)
+        total = data.get("total", None)
+        unit = data.get("unit", '')
+        last_update = util.str_to_datetime(data.get("last_update", None))
+        return cls(completed, total, unit, last_update)
 
     @property
     def completed(self):
@@ -97,11 +116,19 @@ class Operation(TimePeriod):
     def progress(self):
         pass
 
-    def __str__(self):
-        return f"{self.name}: {self.progress}"
-
     def copy(self):
         return OperationInfo(self.name, self.progress.copy(), self.start_date, self.end_date)
+
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'progress': self.progress.to_dict(),
+            'start_date': datetime_to_str(self.start_date),
+            'end_date': datetime_to_str(self.end_date)
+        }
+
+    def __str__(self):
+        return f"{self.name}: {self.progress}"
 
 
 @dataclass(frozen=True)
@@ -110,6 +137,17 @@ class OperationInfo(Operation):
     _progress: Progress
     _start_date: datetime
     _end_date: datetime
+
+    @classmethod
+    def from_dict(cls, data):
+        name = data.get("name", None)
+        if progress_data := data.get("progress", None):
+            progress = ProgressInfo.from_dict(progress_data)
+        else:
+            progress = None
+        start_date = util.str_to_datetime(data.get("start_date", None))
+        end_date = util.str_to_datetime(data.get("end_date", None))
+        return cls(name, progress, start_date, end_date)
 
     @property
     def name(self):
@@ -164,6 +202,16 @@ class TrackedTask(TimePeriod):
             self.start_date,
             self.end_date)
 
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'events': self.events,
+            'operations': [op.to_dict() for op in self.operations],
+            'subtasks': [task.to_dict() for task in self.subtasks],
+            'start_date': datetime_to_str(self.start_date),
+            'end_date': datetime_to_str(self.end_date),
+        }
+
 
 @dataclass(frozen=True)
 class TrackedTaskInfo(TrackedTask):
@@ -173,6 +221,16 @@ class TrackedTaskInfo(TrackedTask):
     _subtasks: Sequence[TrackedTask]
     _start_date: datetime
     _end_date: datetime
+
+    @classmethod
+    def from_dict(cls, data):
+        name = data.get("name", None)
+        events = data.get("events", ())
+        operations = [OperationInfo.from_dict(op) for op in data.get("operations", ())]
+        subtasks = [TrackedTaskInfo.from_dict(task) for task in data.get("subtasks", ())]
+        start_date = util.str_to_datetime(data.get("start_date", None))
+        end_date = util.str_to_datetime(data.get("end_date", None))
+        return cls(name, events, operations, subtasks, start_date, end_date)
 
     @property
     def name(self):
