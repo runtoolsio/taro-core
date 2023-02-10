@@ -9,6 +9,7 @@ from taro import cfg, paths, JobInstanceID
 from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle
 from taro.jobs.job import JobInfo
 from taro.jobs.persistence import SortCriteria
+from taro.jobs.track import TrackedTaskInfo
 from taro.util import MatchingStrategy
 
 log = logging.getLogger(__name__)
@@ -68,6 +69,7 @@ class SQLite:
                          created timestamp,
                          finished timestamp,
                          state_changed text,
+                         tracking text,
                          result text,
                          error_output text,
                          warnings text,
@@ -106,12 +108,13 @@ class SQLite:
             state_changes = ((ExecutionState[state], datetime.datetime.fromtimestamp(changed, tz=timezone.utc))
                              for state, changed in json.loads(t[4]))
             lifecycle = ExecutionLifecycle(*state_changes)
-            error_output = json.loads(t[6]) if t[6] else tuple()
-            warnings = json.loads(t[7]) if t[7] else dict()
-            exec_error = ExecutionError(t[8], lifecycle.state) if t[8] else None  # TODO more data
-            user_params = json.loads(t[9]) if t[9] else dict()
-            parameters = json.loads(t[10]) if t[10] else tuple()
-            return JobInfo(JobInstanceID(t[0], t[1]), lifecycle, None, t[5], error_output, warnings, exec_error,
+            tracking = TrackedTaskInfo.from_dict(json.loads(t[6])) if t[6] else None,
+            error_output = json.loads(t[7]) if t[7] else tuple()
+            warnings = json.loads(t[8]) if t[8] else dict()
+            exec_error = ExecutionError.from_dict(json.loads(t[9])) if t[9] else None
+            user_params = json.loads(t[10]) if t[10] else dict()
+            parameters = json.loads(t[11]) if t[11] else tuple()
+            return JobInfo(JobInstanceID(t[0], t[1]), lifecycle, tracking, t[5], error_output, warnings, exec_error,
                            parameters, **user_params)
 
         return [to_job_info(row) for row in c.fetchall()]
@@ -138,17 +141,18 @@ class SQLite:
 
     def store_job(self, job_info):
         self._conn.execute(
-            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (job_info.job_id,
              job_info.instance_id,
              job_info.lifecycle.changed(ExecutionState.CREATED),
              job_info.lifecycle.last_changed,
              json.dumps(
                  [(state.name, int(changed.timestamp())) for state, changed in job_info.lifecycle.state_changes]),
+             json.dumps(job_info.tracking.to_dict()) if job_info.tracking else None,
              job_info.status,
              json.dumps(job_info.error_output),
              json.dumps(job_info.warnings),
-             job_info.exec_error.message if job_info.exec_error else None,
+             json.dumps(job_info.exec_error.to_dict()) if job_info.exec_error else None,
              json.dumps(job_info.user_params),
              json.dumps(job_info.parameters)
              )
