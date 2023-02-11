@@ -269,9 +269,9 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                     job_info = self.create_info()  # Be sure both new_state and exec_error are already set
 
         if job_info:
+            self._notify_state_observers(job_info)
             if new_state.is_terminal() and persistence.is_enabled():
                 persistence.store_job(job_info)  # TODO Consider move (managed _close_job()?)
-            self._notify_state_observers(job_info)
 
     def _notify_state_observers(self, job_info: JobInfo):
         for observer in _gen_prioritized(self._state_observers, _state_observers):
