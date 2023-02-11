@@ -356,11 +356,11 @@ class JobInfo:
             self._status = textwrap.shorten(status, 1000, placeholder=".. (truncated)", break_long_words=False)
         else:
             self._status = status
-        self._error_output = tuple(error_output)
-        self._warnings = warnings
+        self._error_output = error_output or ()
+        self._warnings = warnings or {}
         self._exec_error = exec_error
-        self._parameters = tuple(parameters)
-        self._user_params = user_params
+        self._parameters = parameters or ()
+        self._user_params = user_params or {}
 
     @staticmethod
     def created(job_info):

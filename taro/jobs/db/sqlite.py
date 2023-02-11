@@ -150,11 +150,11 @@ class SQLite:
                  [(state.name, int(changed.timestamp())) for state, changed in job_info.lifecycle.state_changes]),
              json.dumps(job_info.tracking.to_dict()) if job_info.tracking else None,
              job_info.status,
-             json.dumps(job_info.error_output),
-             json.dumps(job_info.warnings),
+             json.dumps(job_info.error_output) if job_info.error_output else None,
+             json.dumps(job_info.warnings) if job_info.warnings else None,
              json.dumps(job_info.exec_error.to_dict()) if job_info.exec_error else None,
-             json.dumps(job_info.user_params),
-             json.dumps(job_info.parameters)
+             json.dumps(job_info.user_params) if job_info.user_params else None,
+             json.dumps(job_info.parameters) if job_info.parameters else None
              )
         )
         self._conn.commit()
