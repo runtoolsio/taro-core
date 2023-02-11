@@ -71,7 +71,6 @@ class Progress(ABC):
 
 @dataclass(frozen=True)
 class ProgressInfo(Progress):
-
     _completed: Any
     _total: Any
     _unit: str = ''
@@ -209,6 +208,14 @@ class TrackedTask(TimePeriod):
             'start_date': datetime_to_str(self.start_date),
             'end_date': datetime_to_str(self.end_date),
         }
+
+    def __str__(self):
+        if self.last_event:
+            statuses = [f"{util.format_dt_ms_local_tz(self.last_event[1])} {self.last_event[0]} "]
+        else:
+            statuses = []
+        statuses += [op for op in self.operations if not op.progress.is_finished]
+        return " | ".join((str(s) for s in statuses))
 
 
 @dataclass(frozen=True)
@@ -395,14 +402,6 @@ class MutableTrackedTask(TrackedTask):
     @property
     def subtasks(self):
         return list(self._subtasks.values())
-
-    def __str__(self):
-        if self.last_event:
-            statuses = [f"{util.format_dt_ms_local_tz(self.last_event[1])} {self.last_event[0]} "]
-        else:
-            statuses = []
-        statuses += self.operations
-        return " | ".join((str(s) for s in statuses))
 
 
 class Fields(Enum):
