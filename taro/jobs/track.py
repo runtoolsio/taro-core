@@ -32,7 +32,7 @@ class Progress(ABC):
 
     @property
     @abstractmethod
-    def last_update(self):
+    def last_updated_at(self):
         pass
 
     @property
@@ -47,14 +47,14 @@ class Progress(ABC):
         return self.completed and self.total and (self.completed == self.total)
 
     def copy(self):
-        return ProgressInfo(self.completed, self.total, self.unit, self.last_update)
+        return ProgressInfo(self.completed, self.total, self.unit, self.last_updated_at)
 
     def to_dict(self):
         return {
             'completed': self.completed,
             'total': self.total,
             'unit': self.unit,
-            'last_update': datetime_to_str(self.last_update),
+            'last_updated_at': datetime_to_str(self.last_updated_at),
             'pct_done': self.pct_done,
             'is_finished': self.is_finished
         }
@@ -74,15 +74,15 @@ class ProgressInfo(Progress):
     _completed: Any
     _total: Any
     _unit: str = ''
-    _last_update: datetime = None
+    _last_updated_at: datetime = None
 
     @classmethod
     def from_dict(cls, data):
         completed = data.get("completed", None)
         total = data.get("total", None)
         unit = data.get("unit", '')
-        last_update = util.str_to_datetime(data.get("last_update", None))
-        return cls(completed, total, unit, last_update)
+        last_updated_at = util.str_to_datetime(data.get("last_updated_at", None))
+        return cls(completed, total, unit, last_updated_at)
 
     @property
     def completed(self):
@@ -97,8 +97,8 @@ class ProgressInfo(Progress):
         return self._unit
 
     @property
-    def last_update(self):
-        return self._last_update
+    def last_updated_at(self):
+        return self._last_updated_at
 
 
 class Operation(TimePeriod):
@@ -114,14 +114,14 @@ class Operation(TimePeriod):
         pass
 
     def copy(self):
-        return OperationInfo(self.name, self.progress.copy(), self.start_date, self.end_date)
+        return OperationInfo(self.name, self.progress.copy(), self.started_at, self.ended_at)
 
     def to_dict(self):
         return {
             'name': self.name,
             'progress': self.progress.to_dict(),
-            'start_date': datetime_to_str(self.start_date),
-            'end_date': datetime_to_str(self.end_date)
+            'started_at': datetime_to_str(self.started_at),
+            'ended_at': datetime_to_str(self.ended_at)
         }
 
     def __str__(self):
@@ -132,8 +132,8 @@ class Operation(TimePeriod):
 class OperationInfo(Operation):
     _name: str
     _progress: Progress
-    _start_date: datetime
-    _end_date: datetime
+    _started_at: datetime
+    _ended_at: datetime
 
     @classmethod
     def from_dict(cls, data):
@@ -142,9 +142,9 @@ class OperationInfo(Operation):
             progress = ProgressInfo.from_dict(progress_data)
         else:
             progress = None
-        start_date = util.str_to_datetime(data.get("start_date", None))
-        end_date = util.str_to_datetime(data.get("end_date", None))
-        return cls(name, progress, start_date, end_date)
+        started_at = util.str_to_datetime(data.get("started_at", None))
+        ended_at = util.str_to_datetime(data.get("ended_at", None))
+        return cls(name, progress, started_at, ended_at)
 
     @property
     def name(self):
@@ -155,12 +155,12 @@ class OperationInfo(Operation):
         return self._progress
 
     @property
-    def start_date(self):
-        return self._start_date
+    def started_at(self):
+        return self._started_at
 
     @property
-    def end_date(self):
-        return self._end_date
+    def ended_at(self):
+        return self._ended_at
 
 
 class TrackedTask(TimePeriod):
@@ -196,8 +196,8 @@ class TrackedTask(TimePeriod):
             self.events,
             [op.copy() for op in self.operations],
             [task.copy() for task in self.subtasks],
-            self.start_date,
-            self.end_date)
+            self.started_at,
+            self.ended_at)
 
     def to_dict(self):
         return {
@@ -205,8 +205,8 @@ class TrackedTask(TimePeriod):
             'events': self.events,
             'operations': [op.to_dict() for op in self.operations],
             'subtasks': [task.to_dict() for task in self.subtasks],
-            'start_date': datetime_to_str(self.start_date),
-            'end_date': datetime_to_str(self.end_date),
+            'started_at': datetime_to_str(self.started_at),
+            'ended_at': datetime_to_str(self.ended_at),
         }
 
     def __str__(self):
@@ -224,8 +224,8 @@ class TrackedTaskInfo(TrackedTask):
     _events: Sequence[Tuple[str, datetime]]
     _operations: Sequence[Operation]
     _subtasks: Sequence[TrackedTask]
-    _start_date: datetime
-    _end_date: datetime
+    _started_at: datetime
+    _ended_at: datetime
 
     @classmethod
     def from_dict(cls, data):
@@ -233,9 +233,9 @@ class TrackedTaskInfo(TrackedTask):
         events = data.get("events", ())
         operations = [OperationInfo.from_dict(op) for op in data.get("operations", ())]
         subtasks = [TrackedTaskInfo.from_dict(task) for task in data.get("subtasks", ())]
-        start_date = util.str_to_datetime(data.get("start_date", None))
-        end_date = util.str_to_datetime(data.get("end_date", None))
-        return cls(name, events, operations, subtasks, start_date, end_date)
+        started_at = util.str_to_datetime(data.get("started_at", None))
+        ended_at = util.str_to_datetime(data.get("ended_at", None))
+        return cls(name, events, operations, subtasks, started_at, ended_at)
 
     @property
     def name(self):
@@ -258,27 +258,27 @@ class TrackedTaskInfo(TrackedTask):
         return self._subtasks
 
     @property
-    def start_date(self):
-        return self._start_date
+    def started_at(self):
+        return self._started_at
 
     @property
-    def end_date(self):
-        return self._end_date
+    def ended_at(self):
+        return self._ended_at
 
 
 class MutableTimePeriod(TimePeriod):
 
     def __init__(self):
-        self._start_date = None
-        self._end_date = None
+        self._started_at = None
+        self._ended_at = None
 
     @property
-    def start_date(self):
-        return self._start_date
+    def started_at(self):
+        return self._started_at
 
     @property
-    def end_date(self):
-        return self._end_date
+    def ended_at(self):
+        return self._ended_at
 
 
 class MutableProgress(Progress):
@@ -287,7 +287,7 @@ class MutableProgress(Progress):
         self._completed = None
         self._total = None
         self._unit = ''
-        self._last_update = None
+        self._last_updated_at = None
 
     @property
     def completed(self):
@@ -302,8 +302,8 @@ class MutableProgress(Progress):
         return self._unit
 
     @property
-    def last_update(self):
-        return self._last_update
+    def last_updated_at(self):
+        return self._last_updated_at
 
     def update(self, completed, total=None, unit: str = '', timestamp=None, *, increment=False):
         if self.completed and increment:
@@ -315,15 +315,15 @@ class MutableProgress(Progress):
             self._total = total
         if unit:
             self._unit = unit
-        self._last_update = timestamp
+        self._last_updated_at = timestamp
 
 
 class MutableOperation(Operation):
 
     def __init__(self, name):
         self._name = name
-        self._start_date = None
-        self._end_date = None
+        self._started_at = None
+        self._ended_at = None
         self._progress = MutableProgress()
 
     @property
@@ -331,33 +331,33 @@ class MutableOperation(Operation):
         return self._name
 
     @property
-    def start_date(self):
-        return self._start_date
+    def started_at(self):
+        return self._started_at
 
     @property
-    def end_date(self):
-        return self._end_date
+    def ended_at(self):
+        return self._ended_at
 
     @property
     def progress(self):
         return self._progress
 
     def update(self, completed, total=None, unit: str = '', timestamp=None, *, increment=False):
-        if not self.start_date:
-            self._start_date = timestamp
+        if not self.started_at:
+            self._started_at = timestamp
 
         self._progress.update(completed, total, unit, timestamp, increment=increment)
 
-        if not self.end_date and self.progress.is_finished:
-            self._end_date = timestamp
+        if not self.ended_at and self.progress.is_finished:
+            self._ended_at = timestamp
 
 
 class MutableTrackedTask(TrackedTask):
 
     def __init__(self, name, max_events=100):
         self._name = name
-        self._start_date = None
-        self._end_date = None
+        self._started_at = None
+        self._ended_at = None
         self._events = deque(maxlen=max_events)
         self._operations = OrderedDict()
         self._subtasks = OrderedDict()
@@ -367,12 +367,12 @@ class MutableTrackedTask(TrackedTask):
         return self._name
 
     @property
-    def start_date(self):
-        return self._start_date
+    def started_at(self):
+        return self._started_at
 
     @property
-    def end_date(self):
-        return self._end_date
+    def ended_at(self):
+        return self._ended_at
 
     @property
     def events(self):

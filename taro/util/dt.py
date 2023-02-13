@@ -109,10 +109,10 @@ class TimePeriod(ABC):
 
     @property
     @abstractmethod
-    def start_date(self):
+    def started_at(self):
         pass
 
     @property
     @abstractmethod
-    def end_date(self):
+    def ended_at(self):
         pass
