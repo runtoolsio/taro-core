@@ -22,7 +22,7 @@ def test_operation_updates():
 
 def test_operation_incr_update():
     task = MutableTrackedTask('task')
-    task.operation('op1').update(1, is_increment=True)
+    task.operation('op1').update(1, increment=True)
 
     op1 = task.operations[0]
     assert op1.name == 'op1'
@@ -30,7 +30,7 @@ def test_operation_incr_update():
     assert op1.progress.total is None
     assert op1.progress.unit == ''
 
-    task.operation('op1').update(3, 5, is_increment=True)
+    task.operation('op1').update(3, 5, increment=True)
     task.operation('op2').update(0, 10)
     assert op1.progress.completed == 4
     assert op1.progress.total == 5

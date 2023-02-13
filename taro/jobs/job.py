@@ -537,6 +537,6 @@ class OutputTracker(ExecutionOutputObserver, JobOutputObserver):
             rel_task = self.task
 
         if completed or increment or total or unit:
-            rel_task.operation(event).update(completed or increment, total, unit, increment is not None)
+            rel_task.operation(event).update(completed or increment, total, unit, ts, increment=increment is not None)
         elif event:
             rel_task.add_event(event, ts)

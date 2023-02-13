@@ -305,8 +305,8 @@ class MutableProgress(Progress):
     def last_update(self):
         return self._last_update
 
-    def update(self, completed, total=None, unit: str = '', is_increment=False):
-        if self.completed and is_increment:
+    def update(self, completed, total=None, unit: str = '', timestamp=None, *, increment=False):
+        if self.completed and increment:
             self._completed += completed  # Must be a number if it's an increment
         else:
             self._completed = completed
@@ -315,7 +315,7 @@ class MutableProgress(Progress):
             self._total = total
         if unit:
             self._unit = unit
-        self._last_update = None  # TODO TBD
+        self._last_update = timestamp
 
 
 class MutableOperation(Operation):
@@ -342,8 +342,14 @@ class MutableOperation(Operation):
     def progress(self):
         return self._progress
 
-    def update(self, completed, total=None, unit: str = '', is_increment=False):
-        self._progress.update(completed, total, unit, is_increment)
+    def update(self, completed, total=None, unit: str = '', timestamp=None, *, increment=False):
+        if not self.start_date:
+            self._start_date = timestamp
+
+        self._progress.update(completed, total, unit, timestamp, increment=increment)
+
+        if not self.end_date and self.progress.is_finished:
+            self._end_date = timestamp
 
 
 class MutableTrackedTask(TrackedTask):
@@ -373,7 +379,7 @@ class MutableTrackedTask(TrackedTask):
         return list(self._events)
 
     def add_event(self, name: str, timestamp=None):
-        self._events.append((name, timestamp))  # TODO
+        self._events.append((name, timestamp))
 
     @property
     def last_event(self) -> Optional[str]:
