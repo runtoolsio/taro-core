@@ -24,7 +24,13 @@ def parse_datetime(str_ts):
         return None
 
     sep = "T" if "T" in str_ts else " "
-    dec = ".%f" if "." in str_ts else ""
+    if "." in str_ts:
+        dec = ".%f"
+    elif "," in str_ts:
+        dec = ",%f"
+    else:
+        dec = ""
+
     zone = "%z" if any(1 for z in ('z', 'Z', '+') if z in str_ts) else ""
 
     return datetime.strptime(str_ts, "%Y-%m-%d" + sep + "%H:%M:%S" + dec + zone)
