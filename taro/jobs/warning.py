@@ -16,7 +16,7 @@ def output_matches(job_instance: JobInstance, warning_name: str, regex: str):
 
 def register(job_instance: JobInstance, *, warn_times: Sequence[str] = (), warn_outputs: Sequence[str] = ()):
     for warn_time in warn_times:
-        time = util.str_to_seconds(warn_time)
+        time = util.parse_duration_to_sec(warn_time)
         exec_time_exceeded(job_instance, f"exec_time>{time}s", time)
 
     for warn_output in warn_outputs:

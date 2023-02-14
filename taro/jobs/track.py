@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Optional, Any, Sequence, Tuple
 
 from taro import util
-from taro.util import TimePeriod, datetime_to_str
+from taro.util import TimePeriod, format_dt_iso
 
 log = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class Progress(ABC):
             'completed': self.completed,
             'total': self.total,
             'unit': self.unit,
-            'last_updated_at': datetime_to_str(self.last_updated_at),
+            'last_updated_at': format_dt_iso(self.last_updated_at),
             'pct_done': self.pct_done,
             'is_finished': self.is_finished
         }
@@ -120,8 +120,8 @@ class Operation(TimePeriod):
         return {
             'name': self.name,
             'progress': self.progress.to_dict(),
-            'started_at': datetime_to_str(self.started_at),
-            'ended_at': datetime_to_str(self.ended_at)
+            'started_at': format_dt_iso(self.started_at),
+            'ended_at': format_dt_iso(self.ended_at)
         }
 
     def __str__(self):
@@ -205,8 +205,8 @@ class TrackedTask(TimePeriod):
             'events': self.events,
             'operations': [op.to_dict() for op in self.operations],
             'subtasks': [task.to_dict() for task in self.subtasks],
-            'started_at': datetime_to_str(self.started_at),
-            'ended_at': datetime_to_str(self.ended_at),
+            'started_at': format_dt_iso(self.started_at),
+            'ended_at': format_dt_iso(self.ended_at),
         }
 
     def __str__(self):

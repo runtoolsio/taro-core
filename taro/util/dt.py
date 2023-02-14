@@ -36,22 +36,7 @@ def parse_datetime(str_ts):
     return datetime.strptime(str_ts, "%Y-%m-%d" + sep + "%H:%M:%S" + dec + zone)
 
 
-def format_timedelta(td):
-    mm, ss = divmod(td.seconds, 60)
-    hh, mm = divmod(mm, 60)
-    s = "%02d:%02d:%02d" % (hh, mm, ss)
-    if td.days:
-        def plural(n):
-            return n, abs(n) != 1 and "s" or ""
-
-        s = ("%d day%s, " % plural(td.days)) + s
-    if td.microseconds:
-        s = s + (".%06d" % td.microseconds)[:-3]
-        # s = s + ("%f" % (td.microseconds / 1000000))[1:-3]
-    return s
-
-
-def str_to_seconds(val):
+def parse_duration_to_sec(val):
     value = float(val[:-1])
     unit = val[-1].lower()
 
@@ -82,7 +67,22 @@ def parse_iso8601_duration(duration):
                                        seconds=seconds).normalized()
 
 
-def datetime_to_str(td):
+def format_timedelta(td):
+    mm, ss = divmod(td.seconds, 60)
+    hh, mm = divmod(mm, 60)
+    s = "%02d:%02d:%02d" % (hh, mm, ss)
+    if td.days:
+        def plural(n):
+            return n, abs(n) != 1 and "s" or ""
+
+        s = ("%d day%s, " % plural(td.days)) + s
+    if td.microseconds:
+        s = s + (".%06d" % td.microseconds)[:-3]
+        # s = s + ("%f" % (td.microseconds / 1000000))[1:-3]
+    return s
+
+
+def format_dt_iso(td):
     if td is None:
         return None
     return td.isoformat()

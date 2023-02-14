@@ -13,7 +13,7 @@ from enum import Enum, auto, EnumMeta
 from typing import Tuple, List, Iterable, Set, Optional, Dict, Any
 
 from taro import util
-from taro.util import utc_now, datetime_to_str
+from taro.util import utc_now, format_dt_iso
 
 
 class ExecutionStateGroup(Enum):
@@ -271,13 +271,13 @@ class ExecutionLifecycle:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "state_changes": [{"state": state.name, "changed": datetime_to_str(change)} for state, change in
+            "state_changes": [{"state": state.name, "changed": format_dt_iso(change)} for state, change in
                               self.state_changes],
             "state": self.state.name,
-            "created": datetime_to_str(self.changed(ExecutionState.CREATED)),
-            "last_changed": datetime_to_str(self.last_changed),
-            "execution_started": datetime_to_str(self.execution_started),
-            "execution_finished": datetime_to_str(self.execution_finished),
+            "created": format_dt_iso(self.changed(ExecutionState.CREATED)),
+            "last_changed": format_dt_iso(self.last_changed),
+            "execution_started": format_dt_iso(self.execution_started),
+            "execution_finished": format_dt_iso(self.execution_finished),
             "execution_time": self.execution_time.total_seconds() if self.execution_started else None,
         }
 
