@@ -219,7 +219,7 @@ class ExecutionLifecycle:
 
     @classmethod
     def from_dict(cls, as_dict):
-        state_changes = ((ExecutionState[state_change['state']], util.str_to_datetime(state_change['changed']))
+        state_changes = ((ExecutionState[state_change['state']], util.parse_datetime(state_change['changed']))
                          for state_change in as_dict['state_changes'])
         return cls(*state_changes)
 

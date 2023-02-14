@@ -81,7 +81,7 @@ class ProgressInfo(Progress):
         completed = data.get("completed", None)
         total = data.get("total", None)
         unit = data.get("unit", '')
-        last_updated_at = util.str_to_datetime(data.get("last_updated_at", None))
+        last_updated_at = util.parse_datetime(data.get("last_updated_at", None))
         return cls(completed, total, unit, last_updated_at)
 
     @property
@@ -142,8 +142,8 @@ class OperationInfo(Operation):
             progress = ProgressInfo.from_dict(progress_data)
         else:
             progress = None
-        started_at = util.str_to_datetime(data.get("started_at", None))
-        ended_at = util.str_to_datetime(data.get("ended_at", None))
+        started_at = util.parse_datetime(data.get("started_at", None))
+        ended_at = util.parse_datetime(data.get("ended_at", None))
         return cls(name, progress, started_at, ended_at)
 
     @property
@@ -233,8 +233,8 @@ class TrackedTaskInfo(TrackedTask):
         events = data.get("events", ())
         operations = [OperationInfo.from_dict(op) for op in data.get("operations", ())]
         subtasks = [TrackedTaskInfo.from_dict(task) for task in data.get("subtasks", ())]
-        started_at = util.str_to_datetime(data.get("started_at", None))
-        ended_at = util.str_to_datetime(data.get("ended_at", None))
+        started_at = util.parse_datetime(data.get("started_at", None))
+        ended_at = util.parse_datetime(data.get("ended_at", None))
         return cls(name, events, operations, subtasks, started_at, ended_at)
 
     @property

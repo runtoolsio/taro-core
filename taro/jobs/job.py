@@ -525,7 +525,7 @@ class OutputTracker(ExecutionOutputObserver, JobOutputObserver):
 
         event = parsed.get(Fields.EVENT.value)
         task = parsed.get(Fields.TASK.value)
-        ts = util.str_to_datetime(parsed.get(Fields.TIMESTAMP.value))
+        ts = util.parse_datetime(parsed.get(Fields.TIMESTAMP.value))
         completed = convert_if_number(parsed.get(Fields.COMPLETED.value))
         increment = convert_if_number(parsed.get(Fields.INCREMENT.value))
         total = convert_if_number(parsed.get(Fields.TOTAL.value))

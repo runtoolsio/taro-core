@@ -19,7 +19,7 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def str_to_datetime(str_ts):
+def parse_datetime(str_ts):
     if not str_ts:
         return None
 

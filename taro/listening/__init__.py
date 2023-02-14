@@ -86,7 +86,7 @@ class StateReceiver(EventReceiver):
             return
 
         previous_state = ExecutionState[event['previous_state']]
-        changed = util.str_to_datetime(event["changed"])
+        changed = util.parse_datetime(event["changed"])
 
         for listener in self.listeners:
             if isinstance(listener, ExecutionStateEventObserver):
