@@ -229,13 +229,31 @@ class TrackedTask(TimePeriod, Activatable):
         }
 
     def __str__(self):
-        latest_op_dt = min((op.started_at for op in self.operations if op.started_at), default=None)
-        if self.current_event and (latest_op_dt is None or (self.current_event[1] > latest_op_dt)):
-            statuses = [f"{util.format_time_ms_local_tz(self.current_event[1])} {self.current_event[0]} "]
-        else:
+        parts = []
+
+        if self.active:
+            if self.name:
+                parts.append(f"{self.name}:")
+
             statuses = []
-        statuses += [op for op in self.operations if not op.progress.is_finished]
-        return " | ".join((str(s) for s in statuses))
+            if self.current_event:
+                if self.current_event[1]:
+                    event_str = f"{util.format_time_ms_local_tz(self.current_event[1])} {self.current_event[0]}"
+                else:
+                    event_str = self.current_event[0]
+                statuses.append(event_str)
+            statuses += [op for op in self.operations if op.active]
+            if statuses:
+                parts.append(" | ".join((str(s) for s in statuses)))
+
+        subtasks = ' '.join(task for task in self.subtasks if task.active)
+        if subtasks:
+            if self.active:
+                parts.append(f"[{subtasks}]")
+            else:
+                parts.append(subtasks)
+
+        return " ".join(parts)
 
 
 @dataclass(frozen=True)
