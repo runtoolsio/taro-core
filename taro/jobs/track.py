@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Optional, Any, Sequence, Tuple
 
 from taro import util
-from taro.util import TimePeriod, format_dt_iso
+from taro.util import TimePeriod, format_dt_iso, parse_datetime
 
 log = logging.getLogger(__name__)
 
@@ -125,7 +125,7 @@ class Operation(TimePeriod):
         }
 
     def __str__(self):
-        return f"{self.name}: {self.progress}"
+        return f"{self.name} {self.progress}"
 
 
 @dataclass(frozen=True)
@@ -202,7 +202,7 @@ class TrackedTask(TimePeriod):
     def to_dict(self):
         return {
             'name': self.name,
-            'events': self.events,
+            'events': [(event, format_dt_iso(ts)) for event, ts in self.events],
             'operations': [op.to_dict() for op in self.operations],
             'subtasks': [task.to_dict() for task in self.subtasks],
             'started_at': format_dt_iso(self.started_at),
@@ -210,8 +210,9 @@ class TrackedTask(TimePeriod):
         }
 
     def __str__(self):
-        if self.last_event:
-            statuses = [f"{util.format_dt_ms_local_tz(self.last_event[1])} {self.last_event[0]} "]
+        latest_op_dt = min((op.started_at for op in self.operations if op.started_at), default=None)
+        if self.last_event and (latest_op_dt is None or (self.last_event[1] > latest_op_dt)):
+            statuses = [f"{util.format_time_ms_local_tz(self.last_event[1])} {self.last_event[0]} "]
         else:
             statuses = []
         statuses += [op for op in self.operations if not op.progress.is_finished]
@@ -230,7 +231,7 @@ class TrackedTaskInfo(TrackedTask):
     @classmethod
     def from_dict(cls, data):
         name = data.get("name", None)
-        events = data.get("events", ())
+        events = [(event, parse_datetime(ts)) for event, ts in data.get("events", ())]
         operations = [OperationInfo.from_dict(op) for op in data.get("operations", ())]
         subtasks = [TrackedTaskInfo.from_dict(task) for task in data.get("subtasks", ())]
         started_at = util.parse_datetime(data.get("started_at", None))

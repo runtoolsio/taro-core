@@ -95,9 +95,9 @@ def format_dt_ms_local_tz(dt, null=''):
     return dt.astimezone().replace(tzinfo=None).isoformat(sep=' ', timespec='milliseconds')
 
 
-def format_time_ms_local_tz(dt):
+def format_time_ms_local_tz(dt, null=''):
     if not dt:
-        return 'N/A'
+        return null
 
     return dt.astimezone().strftime('%H:%M:%S.%f')[:-3]
 
@@ -122,3 +122,7 @@ class TimePeriod(ABC):
     @abstractmethod
     def ended_at(self):
         pass
+
+    @property
+    def is_finished(self):
+        return self.started_at and self.ended_at
