@@ -46,7 +46,7 @@ def test_subtask():
     task.subtask('s1').operation('01').update(2)
     task.subtask(2).add_event('e2')
 
-    assert task.last_event is None
-    assert task.subtasks[0].last_event[0] == 'e1'
+    assert task.current_event is None
+    assert task.subtasks[0].current_event[0] == 'e1'
     assert task.subtasks[0].operations[0].name == '01'
-    assert task.subtasks[1].last_event[0] == 'e2'
+    assert task.subtasks[1].current_event[0] == 'e2'

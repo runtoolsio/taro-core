@@ -10,13 +10,13 @@ def test_parse_event():
     tracker = OutputTracker(task, [KVParser()])
 
     tracker.new_output('no events here')
-    assert task.last_event is None
+    assert task.current_event is None
 
     tracker.new_output('event=[eventim_apollo] we have first event here')
-    assert task.last_event[0] == 'eventim_apollo'
+    assert task.current_event[0] == 'eventim_apollo'
 
     tracker.new_output('second follows: event=[event_horizon]')
-    assert task.last_event[0] == 'event_horizon'
+    assert task.current_event[0] == 'event_horizon'
 
 
 def test_parse_timestamps():
@@ -24,10 +24,10 @@ def test_parse_timestamps():
     tracker = OutputTracker(task, [KVParser(post_parsers=[(iso_date_time_parser(Fields.TIMESTAMP.value))])])
 
     tracker.new_output('2020-10-01 10:30:30 event=[e1]')
-    assert task.last_event[1] == datetime.strptime('2020-10-01 10:30:30', "%Y-%m-%d %H:%M:%S")
+    assert task.current_event[1] == datetime.strptime('2020-10-01 10:30:30', "%Y-%m-%d %H:%M:%S")
 
     tracker.new_output('2020-10-01T10:30:30.543 event=[e1]')
-    assert task.last_event[1] == datetime.strptime('2020-10-01 10:30:30.543', "%Y-%m-%d %H:%M:%S.%f")
+    assert task.current_event[1] == datetime.strptime('2020-10-01 10:30:30.543', "%Y-%m-%d %H:%M:%S.%f")
 
 
 def test_parse_progress():
@@ -53,6 +53,6 @@ def test_multiple_parsers_and_tasks():
     tracker.new_output('?time=2.3&task=task2&event=e1')
     assert task.subtasks[0].name == 'task1'
     assert task.subtasks[1].name == 'task2'
-    assert task.subtasks[1].last_event[0] == 'e1'
-    assert str(task.subtasks[1].last_event[1]) == '2020-10-01 10:30:30'
+    assert task.subtasks[1].current_event[0] == 'e1'
+    assert str(task.subtasks[1].current_event[1]) == '2020-10-01 10:30:30'
     assert not task.events

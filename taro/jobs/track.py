@@ -192,7 +192,7 @@ class TrackedTask(TimePeriod, Activatable):
 
     @property
     @abstractmethod
-    def last_event(self):
+    def current_event(self):
         pass
 
     @property
@@ -229,8 +229,8 @@ class TrackedTask(TimePeriod, Activatable):
 
     def __str__(self):
         latest_op_dt = min((op.started_at for op in self.operations if op.started_at), default=None)
-        if self.last_event and (latest_op_dt is None or (self.last_event[1] > latest_op_dt)):
-            statuses = [f"{util.format_time_ms_local_tz(self.last_event[1])} {self.last_event[0]} "]
+        if self.current_event and (latest_op_dt is None or (self.current_event[1] > latest_op_dt)):
+            statuses = [f"{util.format_time_ms_local_tz(self.current_event[1])} {self.current_event[0]} "]
         else:
             statuses = []
         statuses += [op for op in self.operations if not op.progress.is_finished]
@@ -267,7 +267,7 @@ class TrackedTaskInfo(TrackedTask):
         return self._events
 
     @property
-    def last_event(self):
+    def current_event(self):
         return self._events[-1] if self._events else None
 
     @property
@@ -413,7 +413,7 @@ class MutableTrackedTask(TrackedTask):
         self._events.append((name, timestamp))
 
     @property
-    def last_event(self) -> Optional[str]:
+    def current_event(self) -> Optional[str]:
         if not self._events:
             return None
         return self._events[-1]
