@@ -209,6 +209,7 @@ class TrackedTask(TimePeriod, Activatable):
         return TrackedTaskInfo(
             self.name,
             self.events,
+            self.current_event,
             [op.copy() for op in self.operations],
             [task.copy() for task in self.subtasks],
             self.started_at,
@@ -241,6 +242,7 @@ class TrackedTask(TimePeriod, Activatable):
 class TrackedTaskInfo(TrackedTask):
     _name: str
     _events: Sequence[Tuple[str, datetime]]
+    _current_event: Optional[Tuple[str, datetime]]
     _operations: Sequence[Operation]
     _subtasks: Sequence[TrackedTask]
     _started_at: datetime
@@ -251,12 +253,13 @@ class TrackedTaskInfo(TrackedTask):
     def from_dict(cls, data):
         name = data.get("name")
         events = [(event, parse_datetime(ts)) for event, ts in data.get("events", ())]
+        current_event = data.get("current_event")
         operations = [OperationInfo.from_dict(op) for op in data.get("operations", ())]
         subtasks = [TrackedTaskInfo.from_dict(task) for task in data.get("subtasks", ())]
         started_at = util.parse_datetime(data.get("started_at", None))
         ended_at = util.parse_datetime(data.get("ended_at", None))
         active = data.get("active")
-        return cls(name, events, operations, subtasks, started_at, ended_at, active)
+        return cls(name, events, current_event, operations, subtasks, started_at, ended_at, active)
 
     @property
     def name(self):
@@ -268,7 +271,7 @@ class TrackedTaskInfo(TrackedTask):
 
     @property
     def current_event(self):
-        return self._events[-1] if self._events else None
+        return self._current_event
 
     @property
     def operations(self):
@@ -285,6 +288,10 @@ class TrackedTaskInfo(TrackedTask):
     @property
     def ended_at(self):
         return self._ended_at
+
+    @property
+    def active(self):
+        return self._active
 
 
 class MutableTimePeriod(TimePeriod):
@@ -389,6 +396,7 @@ class MutableTrackedTask(TrackedTask):
         self._started_at = None
         self._ended_at = None
         self._events = deque(maxlen=max_events)
+        self._current_event = None
         self._operations = OrderedDict()
         self._subtasks = OrderedDict()
         self._active = True
@@ -410,13 +418,16 @@ class MutableTrackedTask(TrackedTask):
         return list(self._events)
 
     def add_event(self, name: str, timestamp=None):
-        self._events.append((name, timestamp))
+        event = (name, timestamp)
+        self._events.append(event)
+        self._current_event = event
 
     @property
     def current_event(self) -> Optional[str]:
-        if not self._events:
-            return None
-        return self._events[-1]
+        return self._current_event
+
+    def reset_current_event(self):
+        self._current_event = None
 
     def operation(self, name):
         op = self._operations.get(name)
