@@ -134,15 +134,21 @@ class Operation(TimePeriod, Activatable):
         }
 
     def __str__(self):
-        return f"{self.name} {self.progress}"
+        parts = []
+        if self.name:
+            parts.append(self.name)
+        if self.progress:
+            parts.append(str(self.progress))
+
+        return " ".join(parts)
 
 
 @dataclass(frozen=True)
 class OperationInfo(Operation):
-    _name: str
-    _progress: Progress
-    _started_at: datetime
-    _ended_at: datetime
+    _name: Optional[str]
+    _progress: Optional[Progress]
+    _started_at: Optional[datetime]
+    _ended_at: Optional[datetime]
     _active: bool
 
     @classmethod
@@ -238,7 +244,8 @@ class TrackedTask(TimePeriod, Activatable):
             statuses = []
             if self.current_event:
                 if self.current_event[1]:
-                    event_str = f"{util.format_time_ms_local_tz(self.current_event[1])} {self.current_event[0]}"
+                    ts = util.format_time_ms_local_tz(self.current_event[1], include_ms=False)
+                    event_str = f"{ts} {self.current_event[0]}"
                 else:
                     event_str = self.current_event[0]
                 statuses.append(event_str)
@@ -263,8 +270,8 @@ class TrackedTaskInfo(TrackedTask):
     _current_event: Optional[Tuple[str, datetime]]
     _operations: Sequence[Operation]
     _subtasks: Sequence[TrackedTask]
-    _started_at: datetime
-    _ended_at: datetime
+    _started_at: Optional[datetime]
+    _ended_at: Optional[datetime]
     _active: bool
 
     @classmethod

@@ -95,11 +95,14 @@ def format_dt_ms_local_tz(dt, null=''):
     return dt.astimezone().replace(tzinfo=None).isoformat(sep=' ', timespec='milliseconds')
 
 
-def format_time_ms_local_tz(dt, null=''):
+def format_time_ms_local_tz(dt, null='', include_ms=True):
     if not dt:
         return null
 
-    return dt.astimezone().strftime('%H:%M:%S.%f')[:-3]
+    if include_ms:
+        return dt.astimezone().strftime('%H:%M:%S.%f')[:-3]
+    else:
+        return dt.astimezone().strftime('%H:%M:%S')
 
 
 class DateTimeFormat(Enum):
