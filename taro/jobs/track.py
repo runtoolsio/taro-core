@@ -253,12 +253,10 @@ class TrackedTask(TimePeriod, Activatable):
             if statuses:
                 parts.append(" | ".join((str(s) for s in statuses)))
 
-        subtasks = ' '.join(task for task in self.subtasks if task.active)
-        if subtasks:
-            if self.active:
-                parts.append(f"[{subtasks}]")
-            else:
-                parts.append(subtasks)
+        if self.subtasks:
+            if parts:
+                parts.append('/')
+            parts.append(' / '.join(str(task) for task in self.subtasks if task.active))
 
         return " ".join(parts)
 

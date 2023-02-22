@@ -84,3 +84,17 @@ def test_task_str():
     task.operation('downloading')
     task.reset_current_event()
     assert str(task) == 'task1: downloading'
+    task.operation('downloading').update(None, None, 'files')
+    assert str(task) == 'task1: downloading ?/? files'
+    task.operation('uploading')
+    assert str(task) == 'task1: downloading ?/? files | uploading'
+    task.operation('downloading').active = False
+    assert str(task) == 'task1: uploading'
+    task.add_event('e3', parse_datetime('2023-01-01T02:00:00'))
+    assert str(task) == 'task1: 02:00:00 e3 | uploading'
+    task.subtask('sub-zero').operation('freezing')
+    assert str(task) == 'task1: 02:00:00 e3 | uploading / sub-zero: freezing'
+    task.active = False
+    assert str(task) == 'sub-zero: freezing'
+    task.subtask('scorpion').add_event('burning', parse_datetime('2023-01-01T05:00:00'))
+    assert str(task) == 'sub-zero: freezing / scorpion: 05:00:00 burning'
