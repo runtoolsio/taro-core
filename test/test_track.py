@@ -1,6 +1,6 @@
 import re
 
-from taro.jobs.track import MutableTrackedTask, OperationInfo, ProgressInfo, TrackedTaskInfo
+from taro.jobs.track import MutableTrackedTask, OperationInfo, ProgressInfo
 from taro.util import parse_datetime
 
 
@@ -75,7 +75,12 @@ def test_progress_str():
 
 
 def test_task_str():
-    events = [('e1', parse_datetime('2023-01-01T00:00:00')), ('e2', parse_datetime('2023-01-01T01:00:00'))]
-    task = TrackedTaskInfo('task1', events, events[1], (), (), None, None, True)
-
+    task = MutableTrackedTask('task1')
+    assert str(task) == 'task1:'
+    task.add_event('e1', parse_datetime('2023-01-01T00:00:00'))
+    assert str(task) == 'task1: 00:00:00 e1'
+    task.add_event('e2', parse_datetime('2023-01-01T01:00:00'))
     assert str(task) == 'task1: 01:00:00 e2'
+    task.operation('downloading')
+    task.reset_current_event()
+    assert str(task) == 'task1: downloading'

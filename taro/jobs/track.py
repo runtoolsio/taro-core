@@ -377,7 +377,7 @@ class MutableOperation(Operation):
         self._name = name
         self._started_at = None
         self._ended_at = None
-        self._progress = MutableProgress()
+        self._progress = None
         self._active = True
 
     @property
@@ -405,6 +405,9 @@ class MutableOperation(Operation):
         self._active = active
 
     def update(self, completed, total=None, unit: str = '', timestamp=None, *, increment=False):
+        if not self._progress:
+            self._progress = MutableProgress()
+
         if not self.started_at:
             self._started_at = timestamp
 
