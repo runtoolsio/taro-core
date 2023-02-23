@@ -18,10 +18,9 @@ from dataclasses import dataclass
 from fnmatch import fnmatch
 from typing import NamedTuple, Dict, Any, Optional, Sequence, Callable, Union
 
-from taro import util
-from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle, ExecutionOutputObserver
-from taro.jobs.track import TrackedTaskInfo, Fields
-from taro.util import and_, or_, MatchingStrategy, convert_if_number
+from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
+from taro.jobs.track import TrackedTaskInfo
+from taro.util import and_, or_, MatchingStrategy
 
 DEFAULT_OBSERVER_PRIORITY = 100
 
@@ -502,41 +501,10 @@ class JobOutputObserver(abc.ABC):
         """
 
 
-class OutputTracker(ExecutionOutputObserver, JobOutputObserver):
+class JobOutputTracker(JobOutputObserver):
 
-    def __init__(self, task, parsers):
-        self.task = task
-        self.parsers = parsers
+    def __init__(self, output_tracker):
+        self.output_tracker = output_tracker
 
-    def execution_output_update(self, output, is_error: bool):
-        self.new_output(output)
-
-    def job_output_update(self, job_info, output, is_error):
-        self.new_output(output)
-
-    def new_output(self, output):
-        parsed = {}
-        for parser in self.parsers:
-            if p := parser(output):
-                parsed.update(p)
-
-        if not parsed:
-            return
-
-        event = parsed.get(Fields.EVENT.value)
-        task = parsed.get(Fields.TASK.value)
-        ts = util.parse_datetime(parsed.get(Fields.TIMESTAMP.value))
-        completed = convert_if_number(parsed.get(Fields.COMPLETED.value))
-        increment = convert_if_number(parsed.get(Fields.INCREMENT.value))
-        total = convert_if_number(parsed.get(Fields.TOTAL.value))
-        unit = parsed.get(Fields.UNIT.value)
-
-        if task:
-            rel_task = self.task.subtask(task)
-        else:
-            rel_task = self.task
-
-        if completed or increment or total or unit:
-            rel_task.operation(event).update(completed or increment, total, unit, ts, increment=increment is not None)
-        elif event:
-            rel_task.add_event(event, ts)
+    def job_output_update(self, job_info: JobInfo, output, is_error):
+        self.output_tracker.new_output(output)

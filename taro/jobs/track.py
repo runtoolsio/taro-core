@@ -8,7 +8,7 @@ from enum import Enum
 from typing import Optional, Any, Sequence, Tuple
 
 from taro import util
-from taro.util import TimePeriod, format_dt_iso, parse_datetime
+from taro.util import TimePeriod, format_dt_iso, parse_datetime, convert_if_number
 
 log = logging.getLogger(__name__)
 
@@ -497,3 +497,40 @@ class Fields(Enum):
 
 
 DEFAULT_PATTERN = ''
+
+
+class OutputTracker:
+
+    def __init__(self, task, parsers):
+        self.task = task
+        self.parsers = parsers
+
+    def __call__(self, output):
+        self.new_output(output)
+
+    def new_output(self, output):
+        parsed = {}
+        for parser in self.parsers:
+            if p := parser(output):
+                parsed.update(p)
+
+        if not parsed:
+            return
+
+        event = parsed.get(Fields.EVENT.value)
+        task = parsed.get(Fields.TASK.value)
+        ts = util.parse_datetime(parsed.get(Fields.TIMESTAMP.value))
+        completed = convert_if_number(parsed.get(Fields.COMPLETED.value))
+        increment = convert_if_number(parsed.get(Fields.INCREMENT.value))
+        total = convert_if_number(parsed.get(Fields.TOTAL.value))
+        unit = parsed.get(Fields.UNIT.value)
+
+        if task:
+            rel_task = self.task.subtask(task)
+        else:
+            rel_task = self.task
+
+        if completed or increment or total or unit:
+            rel_task.operation(event).update(completed or increment, total, unit, ts, increment=increment is not None)
+        elif event:
+            rel_task.add_event(event, ts)
