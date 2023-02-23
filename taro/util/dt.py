@@ -127,5 +127,5 @@ class TimePeriod(ABC):
         pass
 
     @property
-    def is_finished(self):
+    def finished(self):
         return self.started_at and self.ended_at

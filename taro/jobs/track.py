@@ -51,7 +51,7 @@ class Progress(ABC):
             return None
 
     @property
-    def is_finished(self):
+    def finished(self):
         return self.completed and self.total and (self.completed == self.total)
 
     def copy(self):
@@ -64,7 +64,7 @@ class Progress(ABC):
             'unit': self.unit,
             'last_updated_at': format_dt_iso(self.last_updated_at),
             'pct_done': self.pct_done,
-            'is_finished': self.is_finished
+            'finished': self.finished
         }
 
     def __str__(self):
@@ -120,6 +120,10 @@ class Operation(TimePeriod, Activatable):
     @abstractmethod
     def progress(self):
         pass
+    
+    @property
+    def finished(self):
+        return super().finished or self.progress.finished
 
     def copy(self):
         return OperationInfo(self.name, self.progress.copy(), self.started_at, self.ended_at, self.active)
@@ -411,7 +415,7 @@ class MutableOperation(Operation):
 
         self._progress.update(completed, total, unit, timestamp, increment=increment)
 
-        if not self.ended_at and self.progress.is_finished:
+        if not self.ended_at and self.progress.finished:
             self._ended_at = timestamp
 
 
@@ -529,6 +533,10 @@ class OutputTracker:
             rel_task = self.task.subtask(task)
         else:
             rel_task = self.task
+
+        for op in rel_task.operations:
+            if op.finished:
+                op.active = False  # Deactivate finished operations on a new event
 
         if completed or increment or total or unit:
             is_new_op = not rel_task.operations or any(1 for op in rel_task.operations if op.name != event)

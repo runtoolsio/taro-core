@@ -161,3 +161,14 @@ def test_operation_resets_last_event():
     tracker.new_output("event=[decoding] completed=[10]")
 
     assert task.current_event is None
+
+
+def test_event_deactivate_completed_operation():
+    task = MutableTrackedTask()
+    tracker = OutputTracker(task, [KVParser()])
+
+    tracker.new_output("event=[encoding] completed=[10] total=[10]")
+    assert task.operations[0].active
+
+    tracker.new_output("event=[new_event]")
+    assert not task.operations[0].active
