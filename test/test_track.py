@@ -152,3 +152,12 @@ def test_multiple_parsers_and_tasks():
     assert task.subtasks[1].current_event[0] == 'e1'
     assert str(task.subtasks[1].current_event[1]) == '2020-10-01 10:30:30'
     assert not task.events
+
+
+def test_operation_resets_last_event():
+    task = MutableTrackedTask()
+    tracker = OutputTracker(task, [KVParser()])
+    tracker.new_output("event=[upload]")
+    tracker.new_output("event=[decoding] completed=[10]")
+
+    assert task.current_event is None

@@ -417,7 +417,7 @@ class MutableOperation(Operation):
 
 class MutableTrackedTask(TrackedTask):
 
-    def __init__(self, name, max_events=100):
+    def __init__(self, name=None, max_events=100):
         self._name = name
         self._started_at = None
         self._ended_at = None
@@ -501,8 +501,8 @@ DEFAULT_PATTERN = ''
 
 class OutputTracker:
 
-    def __init__(self, task, parsers):
-        self.task = task
+    def __init__(self, mutable_task, parsers):
+        self.task = mutable_task
         self.parsers = parsers
 
     def __call__(self, output):
@@ -531,6 +531,9 @@ class OutputTracker:
             rel_task = self.task
 
         if completed or increment or total or unit:
+            is_new_op = not rel_task.operations or any(1 for op in rel_task.operations if op.name != event)
+            if is_new_op:
+                rel_task.reset_current_event()
             rel_task.operation(event).update(completed or increment, total, unit, ts, increment=increment is not None)
         elif event:
             rel_task.add_event(event, ts)
