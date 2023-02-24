@@ -120,7 +120,7 @@ class Operation(TimePeriod, Activatable):
     @abstractmethod
     def progress(self):
         pass
-    
+
     @property
     def finished(self):
         return super().finished or self.progress.finished
@@ -470,6 +470,17 @@ class MutableTrackedTask(TrackedTask):
     def operations(self):
         return list(self._operations.values())
 
+    def has_operation(self, name):
+        if not self.operations:
+            return False
+
+        return any(1 for op in self.operations if op.name != name)
+
+    def deactivate_finished_operations(self):
+        for op in self.operations:
+            if op.finished:
+                op.active = False
+
     def subtask(self, name):
         task = self._subtasks.get(name)
         if not task:
@@ -480,6 +491,10 @@ class MutableTrackedTask(TrackedTask):
     @property
     def subtasks(self):
         return list(self._subtasks.values())
+
+    def deactivate_subtasks(self):
+        for subtask in self.subtasks:
+            subtask.active = False
 
     @property
     def active(self):
@@ -503,11 +518,24 @@ class Fields(Enum):
 DEFAULT_PATTERN = ''
 
 
+def field_conversion(parsed):
+    return {
+        Fields.EVENT: parsed.get(Fields.EVENT.value),
+        Fields.TASK: parsed.get(Fields.TASK.value),
+        Fields.TIMESTAMP: util.parse_datetime(parsed.get(Fields.TIMESTAMP.value)),
+        Fields.COMPLETED: convert_if_number(parsed.get(Fields.COMPLETED.value)),
+        Fields.INCREMENT: convert_if_number(parsed.get(Fields.INCREMENT.value)),
+        Fields.TOTAL: convert_if_number(parsed.get(Fields.TOTAL.value)),
+        Fields.UNIT: parsed.get(Fields.UNIT.value),
+    }
+
+
 class OutputTracker:
 
-    def __init__(self, mutable_task, parsers):
+    def __init__(self, mutable_task, parsers, conversion=field_conversion):
         self.task = mutable_task
         self.parsers = parsers
+        self.conversion = conversion
 
     def __call__(self, output):
         self.new_output(output)
@@ -521,32 +549,39 @@ class OutputTracker:
         if not parsed:
             return
 
-        event = parsed.get(Fields.EVENT.value)
-        task = parsed.get(Fields.TASK.value)
-        ts = util.parse_datetime(parsed.get(Fields.TIMESTAMP.value))
-        completed = convert_if_number(parsed.get(Fields.COMPLETED.value))
-        increment = convert_if_number(parsed.get(Fields.INCREMENT.value))
-        total = convert_if_number(parsed.get(Fields.TOTAL.value))
-        unit = parsed.get(Fields.UNIT.value)
+        fields = self.conversion(parsed)
 
+        task = self._update_task(fields)
+        if not self._update_operation(task, fields):
+            task.add_event(fields[Fields.EVENT], fields[Fields.TIMESTAMP])
+
+    def _update_task(self, fields):
+        task = fields[Fields.TASK]
         if task:
             rel_task = self.task.subtask(task)
             self.task.active = False
         else:
             rel_task = self.task
-            for subtask in self.task.subtasks:
-                subtask.active = False
 
         rel_task.active = True
+        rel_task.deactivate_subtasks()
+        rel_task.deactivate_finished_operations()
 
-        for op in rel_task.operations:
-            if op.finished:
-                op.active = False  # Deactivate finished operations on a new event
+        return rel_task
 
-        if completed or increment or total or unit:
-            is_new_op = not rel_task.operations or any(1 for op in rel_task.operations if op.name != event)
-            if is_new_op:
-                rel_task.reset_current_event()
-            rel_task.operation(event).update(completed or increment, total, unit, ts, increment=increment is not None)
-        elif event:
-            rel_task.add_event(event, ts)
+    def _update_operation(self, task, fields):
+        op_name = fields[Fields.EVENT]
+        ts = fields[Fields.TIMESTAMP]
+        completed = fields[Fields.COMPLETED]
+        increment = fields[Fields.INCREMENT]
+        total = fields[Fields.TOTAL]
+        unit = fields[Fields.UNIT]
+
+        if not completed and not increment and not total and not unit:
+            return False
+
+        if not task.has_operation(op_name):
+            task.reset_current_event()
+
+        task.operation(op_name).update(completed or increment, total, unit, ts, increment=increment is not None)
+        return True
