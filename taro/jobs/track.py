@@ -531,8 +531,13 @@ class OutputTracker:
 
         if task:
             rel_task = self.task.subtask(task)
+            self.task.active = False
         else:
             rel_task = self.task
+            for subtask in self.task.subtasks:
+                subtask.active = False
+
+        rel_task.active = True
 
         for op in rel_task.operations:
             if op.finished:

@@ -172,3 +172,19 @@ def test_event_deactivate_completed_operation():
 
     tracker.new_output("event=[new_event]")
     assert not task.operations[0].active
+
+
+def test_subtask_deactivate_current_task():
+    task = MutableTrackedTask()
+    tracker = OutputTracker(task, [KVParser()])
+
+    tracker.new_output("event=[event_in_main_task]")
+    assert task.active
+
+    tracker.new_output("event=[event_in_subtask] task=[subtask1]")
+    assert not task.active
+    assert task.subtasks[0].active
+
+    tracker.new_output("event=[another_event_in_main_task]")
+    assert task.active
+    assert not task.subtasks[0].active
