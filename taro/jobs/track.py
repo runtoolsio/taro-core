@@ -439,6 +439,10 @@ class MutableTrackedTask(TrackedTask):
     def started_at(self):
         return self._started_at
 
+    @started_at.setter
+    def started_at(self, ts):
+        self._started_at = ts
+
     @property
     def ended_at(self):
         return self._ended_at
@@ -563,6 +567,8 @@ class OutputTracker:
         else:
             rel_task = self.task
 
+        if not rel_task.started_at:
+            rel_task.started_at = fields[Fields.TIMESTAMP]
         rel_task.active = True
         rel_task.deactivate_subtasks()
         rel_task.deactivate_finished_operations()
