@@ -93,25 +93,28 @@ def test_subtask_deactivate_current_task():
     assert not task.subtasks[0].active
 
 
-def test_task_started_set_on_new_event():
+def test_task_started_and_update_on_event():
     task = MutableTrackedTask()
     tracker = OutputTracker(task, [KVParser(), iso_date_time_parser(Fields.TIMESTAMP.value)])
     tracker.new_output('2020-10-01 10:30:30 event=[e1]')
     tracker.new_output('2020-10-01 11:45:00 event=[e2]')
     assert task.started_at == datetime(2020, 10, 1, 10, 30, 30)
+    assert task.updated_at == datetime(2020, 10, 1, 11, 45, 0)
 
 
-def test_task_started_set_on_new_op():
+def test_task_started_and_updated_on_operation():
     task = MutableTrackedTask()
     tracker = OutputTracker(task, [KVParser(), iso_date_time_parser(Fields.TIMESTAMP.value)])
     tracker.new_output('2020-10-01 14:40:00 event=[op1] total=[200]')
-    tracker.new_output('2020-10-01 15:30:30 event=[e1]')
+    tracker.new_output('2020-10-01 15:30:30 event=[op1] total=[400]')
     assert task.started_at == datetime(2020, 10, 1, 14, 40, 0)
+    assert task.updated_at == datetime(2020, 10, 1, 15, 30, 30)
 
 
-def test_subtask_started_set():
+def test_subtask_started_and_updated_set():
     task = MutableTrackedTask()
     tracker = OutputTracker(task, [KVParser(), iso_date_time_parser(Fields.TIMESTAMP.value)])
     tracker.new_output('2020-10-01 12:30:00 task=[t1]')
     tracker.new_output('2020-10-01 13:50:00 task=[t1] event=[e1]')
     assert task.subtask('t1').started_at == datetime(2020, 10, 1, 12, 30, 0)
+    assert task.subtask('t1').updated_at == datetime(2020, 10, 1, 13, 50, 0)

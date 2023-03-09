@@ -601,6 +601,7 @@ class OutputTracker:
 
         if not rel_task.started_at:
             rel_task.started_at = fields[Fields.TIMESTAMP]
+        rel_task.updated_at = fields[Fields.TIMESTAMP]
         rel_task.active = True
         rel_task.deactivate_subtasks()
         rel_task.deactivate_finished_operations()
