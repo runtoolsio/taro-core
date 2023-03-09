@@ -1,6 +1,5 @@
 import re
 import secrets
-from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from enum import Enum
 
@@ -112,20 +111,3 @@ class DateTimeFormat(Enum):
 
     def __call__(self, *args, **kwargs):
         return self.value[0](*args, **kwargs)
-
-
-class TimePeriod(ABC):
-
-    @property
-    @abstractmethod
-    def started_at(self):
-        pass
-
-    @property
-    @abstractmethod
-    def ended_at(self):
-        pass
-
-    @property
-    def finished(self):
-        return self.started_at and self.ended_at

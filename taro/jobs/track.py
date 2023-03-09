@@ -1,6 +1,5 @@
 import logging
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections import deque, OrderedDict
 from dataclasses import dataclass
 from datetime import datetime
@@ -8,9 +7,63 @@ from enum import Enum
 from typing import Optional, Any, Sequence, Tuple
 
 from taro import util
-from taro.util import TimePeriod, format_dt_iso, parse_datetime, convert_if_number
+from taro.util import format_dt_iso, parse_datetime, convert_if_number
 
 log = logging.getLogger(__name__)
+
+
+class Temporal(ABC):
+
+    @property
+    @abstractmethod
+    def started_at(self):
+        pass
+
+    @property
+    @abstractmethod
+    def updated_at(self):
+        pass
+
+    @property
+    @abstractmethod
+    def ended_at(self):
+        pass
+
+    @property
+    def finished(self):
+        return self.started_at and self.ended_at
+
+
+class MutableTemporal(Temporal):
+
+    def __init__(self):
+        self._started_at = None
+        self._updated_at = None
+        self._ended_at = None
+
+    @property
+    def started_at(self):
+        return self._started_at
+
+    @started_at.setter
+    def started_at(self, started_at):
+        self._started_at = started_at
+
+    @property
+    def updated_at(self):
+        return self._updated_at
+
+    @updated_at.setter
+    def updated_at(self, updated_at):
+        self._updated_at = updated_at
+
+    @property
+    def ended_at(self):
+        return self._ended_at
+
+    @ended_at.setter
+    def ended_at(self, ended_at):
+        self._ended_at = ended_at
 
 
 class Activatable(ABC):
@@ -109,7 +162,7 @@ class ProgressInfo(Progress):
         return self._last_updated_at
 
 
-class Operation(TimePeriod, Activatable):
+class Operation(Temporal, Activatable):
 
     @property
     @abstractmethod
@@ -126,13 +179,15 @@ class Operation(TimePeriod, Activatable):
         return super().finished or self.progress.finished
 
     def copy(self):
-        return OperationInfo(self.name, self.progress.copy(), self.started_at, self.ended_at, self.active)
+        return OperationInfo(
+            self.name, self.progress.copy(), self.started_at, self.updated_at, self.ended_at, self.active)
 
     def to_dict(self):
         return {
             'name': self.name,
             'progress': self.progress.to_dict(),
             'started_at': format_dt_iso(self.started_at),
+            'updated_at': format_dt_iso(self.updated_at),
             'ended_at': format_dt_iso(self.ended_at),
             'active': self.active
         }
@@ -152,6 +207,7 @@ class OperationInfo(Operation):
     _name: Optional[str]
     _progress: Optional[Progress]
     _started_at: Optional[datetime]
+    _updated_at: Optional[datetime]
     _ended_at: Optional[datetime]
     _active: bool
 
@@ -163,9 +219,10 @@ class OperationInfo(Operation):
         else:
             progress = None
         started_at = util.parse_datetime(data.get("started_at", None))
+        updated_at = util.parse_datetime(data.get("updated_at", None))
         ended_at = util.parse_datetime(data.get("ended_at", None))
         active = data.get("active")
-        return cls(name, progress, started_at, ended_at, active)
+        return cls(name, progress, started_at, updated_at, ended_at, active)
 
     @property
     def name(self):
@@ -180,6 +237,10 @@ class OperationInfo(Operation):
         return self._started_at
 
     @property
+    def updated_at(self):
+        return self._updated_at
+
+    @property
     def ended_at(self):
         return self._ended_at
 
@@ -188,7 +249,7 @@ class OperationInfo(Operation):
         return self._active
 
 
-class TrackedTask(TimePeriod, Activatable):
+class TrackedTask(Temporal, Activatable):
 
     @property
     @abstractmethod
@@ -223,6 +284,7 @@ class TrackedTask(TimePeriod, Activatable):
             [op.copy() for op in self.operations],
             [task.copy() for task in self.subtasks],
             self.started_at,
+            self.updated_at,
             self.ended_at,
             self.active,
         )
@@ -234,6 +296,7 @@ class TrackedTask(TimePeriod, Activatable):
             'operations': [op.to_dict() for op in self.operations],
             'subtasks': [task.to_dict() for task in self.subtasks],
             'started_at': format_dt_iso(self.started_at),
+            'updated_at': format_dt_iso(self.updated_at),
             'ended_at': format_dt_iso(self.ended_at),
             'active': self.active,
         }
@@ -273,6 +336,7 @@ class TrackedTaskInfo(TrackedTask):
     _operations: Sequence[Operation]
     _subtasks: Sequence[TrackedTask]
     _started_at: Optional[datetime]
+    _updated_at: Optional[datetime]
     _ended_at: Optional[datetime]
     _active: bool
 
@@ -284,9 +348,10 @@ class TrackedTaskInfo(TrackedTask):
         operations = [OperationInfo.from_dict(op) for op in data.get("operations", ())]
         subtasks = [TrackedTaskInfo.from_dict(task) for task in data.get("subtasks", ())]
         started_at = util.parse_datetime(data.get("started_at", None))
+        updated_at = util.parse_datetime(data.get("updated_at", None))
         ended_at = util.parse_datetime(data.get("ended_at", None))
         active = data.get("active")
-        return cls(name, events, current_event, operations, subtasks, started_at, ended_at, active)
+        return cls(name, events, current_event, operations, subtasks, started_at, updated_at, ended_at, active)
 
     @property
     def name(self):
@@ -313,27 +378,16 @@ class TrackedTaskInfo(TrackedTask):
         return self._started_at
 
     @property
+    def updated_at(self):
+        return self._updated_at
+
+    @property
     def ended_at(self):
         return self._ended_at
 
     @property
     def active(self):
         return self._active
-
-
-class MutableTimePeriod(TimePeriod):
-
-    def __init__(self):
-        self._started_at = None
-        self._ended_at = None
-
-    @property
-    def started_at(self):
-        return self._started_at
-
-    @property
-    def ended_at(self):
-        return self._ended_at
 
 
 class MutableProgress(Progress):
@@ -373,26 +427,17 @@ class MutableProgress(Progress):
         self._last_updated_at = timestamp
 
 
-class MutableOperation(Operation):
+class MutableOperation(MutableTemporal, Operation):
 
     def __init__(self, name):
+        super().__init__()
         self._name = name
-        self._started_at = None
-        self._ended_at = None
         self._progress = None
         self._active = True
 
     @property
     def name(self):
         return self._name
-
-    @property
-    def started_at(self):
-        return self._started_at
-
-    @property
-    def ended_at(self):
-        return self._ended_at
 
     @property
     def progress(self):
@@ -411,7 +456,7 @@ class MutableOperation(Operation):
             self._progress = MutableProgress()
 
         if not self.started_at:
-            self._started_at = timestamp
+            self.started_at = timestamp
 
         self._progress.update(completed, total, unit, timestamp, increment=increment)
 
@@ -419,12 +464,11 @@ class MutableOperation(Operation):
             self._ended_at = timestamp
 
 
-class MutableTrackedTask(TrackedTask):
+class MutableTrackedTask(MutableTemporal, TrackedTask):
 
     def __init__(self, name=None, max_events=100):
+        super().__init__()
         self._name = name
-        self._started_at = None
-        self._ended_at = None
         self._events = deque(maxlen=max_events)
         self._current_event = None
         self._operations = OrderedDict()
@@ -434,18 +478,6 @@ class MutableTrackedTask(TrackedTask):
     @property
     def name(self):
         return self._name
-
-    @property
-    def started_at(self):
-        return self._started_at
-
-    @started_at.setter
-    def started_at(self, ts):
-        self._started_at = ts
-
-    @property
-    def ended_at(self):
-        return self._ended_at
 
     @property
     def events(self):

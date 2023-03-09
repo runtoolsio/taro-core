@@ -56,11 +56,11 @@ def test_subtask():
 
 
 def test_operation_str():
-    empty_op = OperationInfo('name', None, None, None, True)
+    empty_op = OperationInfo('name', None, None, None, None, True)
     assert str(empty_op) == 'name'
 
-    assert len(str(OperationInfo(None, ProgressInfo(25, 100, 'files'), None, None, True)).split()) > 1
-    assert re.search(r"name .*", str(OperationInfo('name', ProgressInfo(25, 100, 'files'), None, None, True)))
+    assert len(str(OperationInfo(None, ProgressInfo(25, 100, 'files'), None, None, None, True)).split()) > 1
+    assert re.search(r"name .*", str(OperationInfo('name', ProgressInfo(25, 100, 'files'), None, None, None, True)))
 
 
 def test_progress_str():
