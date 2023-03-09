@@ -115,6 +115,16 @@ def test_task_started_and_updated_on_operation():
     assert task.operation('op1').updated_at == updated_ts
 
 
+def test_op_end_date():
+    task = MutableTrackedTask()
+    tracker = OutputTracker(task, [KVParser(), iso_date_time_parser(Fields.TIMESTAMP.value)])
+    tracker.new_output('2020-10-01 14:40:00 event=[op1] completed=[5] total=[10]')
+    assert task.operation('op1').ended_at is None
+
+    tracker.new_output('2020-10-01 15:30:30 event=[op1] completed=[10] total=[10]')
+    assert task.operation('op1').ended_at == datetime(2020, 10, 1, 15, 30, 30)
+
+
 def test_subtask_started_and_updated_set():
     task = MutableTrackedTask()
     tracker = OutputTracker(task, [KVParser(), iso_date_time_parser(Fields.TIMESTAMP.value)])
