@@ -457,6 +457,7 @@ class MutableOperation(MutableTemporal, Operation):
 
         if not self.started_at:
             self.started_at = timestamp
+        self.updated_at = timestamp
 
         self._progress.update(completed, total, unit, timestamp, increment=increment)
 

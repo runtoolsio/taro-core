@@ -107,8 +107,12 @@ def test_task_started_and_updated_on_operation():
     tracker = OutputTracker(task, [KVParser(), iso_date_time_parser(Fields.TIMESTAMP.value)])
     tracker.new_output('2020-10-01 14:40:00 event=[op1] total=[200]')
     tracker.new_output('2020-10-01 15:30:30 event=[op1] total=[400]')
-    assert task.started_at == datetime(2020, 10, 1, 14, 40, 0)
-    assert task.updated_at == datetime(2020, 10, 1, 15, 30, 30)
+    started_ts = datetime(2020, 10, 1, 14, 40, 0)
+    updated_ts = datetime(2020, 10, 1, 15, 30, 30)
+    assert task.started_at == started_ts
+    assert task.operation('op1').started_at == started_ts
+    assert task.updated_at == updated_ts
+    assert task.operation('op1').updated_at == updated_ts
 
 
 def test_subtask_started_and_updated_set():
@@ -116,5 +120,9 @@ def test_subtask_started_and_updated_set():
     tracker = OutputTracker(task, [KVParser(), iso_date_time_parser(Fields.TIMESTAMP.value)])
     tracker.new_output('2020-10-01 12:30:00 task=[t1]')
     tracker.new_output('2020-10-01 13:50:00 task=[t1] event=[e1]')
-    assert task.subtask('t1').started_at == datetime(2020, 10, 1, 12, 30, 0)
-    assert task.subtask('t1').updated_at == datetime(2020, 10, 1, 13, 50, 0)
+
+    started_ts = datetime(2020, 10, 1, 12, 30, 0)
+    updated_ts = datetime(2020, 10, 1, 13, 50, 0)
+    assert task.subtask('t1').started_at == started_ts
+    assert task.subtask('t1').updated_at == updated_ts
+    assert task.started_at is None  # TODO should this be set too?
