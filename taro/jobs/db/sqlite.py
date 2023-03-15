@@ -108,7 +108,7 @@ class SQLite:
             state_changes = ((ExecutionState[state], datetime.datetime.fromtimestamp(changed, tz=timezone.utc))
                              for state, changed in json.loads(t[4]))
             lifecycle = ExecutionLifecycle(*state_changes)
-            tracking = TrackedTaskInfo.from_dict(json.loads(t[5])) if t[5] else None,
+            tracking = TrackedTaskInfo.from_dict(json.loads(t[5])) if t[5] else None
             error_output = json.loads(t[7]) if t[7] else tuple()
             warnings = json.loads(t[8]) if t[8] else dict()
             exec_error = ExecutionError.from_dict(json.loads(t[9])) if t[9] else None

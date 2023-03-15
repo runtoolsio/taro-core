@@ -5,12 +5,13 @@ from pygrok import Grok
 
 from taro import util
 from taro.jobs import sync, warning
-from taro.jobs.job import Warn, JobOutputTracker
+from taro.jobs.job import Warn
 from taro.jobs.managed import ManagedJobContext
 from taro.jobs.program import ProgramExecution
 from taro.jobs.runner import RunnerJobInstance
 from taro.jobs.sync import ExecutionsLimit
 from taro.jobs.track import MutableTrackedTask, Fields, OutputTracker
+from taro.jobs.execution import ExecutionOutputTracker
 from taro.test.execution import TestExecution
 from taro.util import KVParser, iso_date_time_parser
 
@@ -40,9 +41,9 @@ def run(args):
         output_parsers.append(KVParser(aliases=aliases, post_parsers=[(iso_date_time_parser(Fields.TIMESTAMP.value))]))
 
     if output_parsers:
-        task = MutableTrackedTask(job_id)
+        task = MutableTrackedTask()
         execution.tracking = task
-        tracker = JobOutputTracker(OutputTracker(task, output_parsers))
+        tracker = ExecutionOutputTracker(OutputTracker(task, output_parsers))
         execution.add_output_observer(tracker)
 
     job_instance = RunnerJobInstance(

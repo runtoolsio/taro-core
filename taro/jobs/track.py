@@ -556,7 +556,7 @@ DEFAULT_PATTERN = ''
 
 
 def field_conversion(parsed):
-    return {
+    converted = {
         Fields.EVENT: parsed.get(Fields.EVENT.value),
         Fields.TASK: parsed.get(Fields.TASK.value),
         Fields.TIMESTAMP: util.parse_datetime(parsed.get(Fields.TIMESTAMP.value)),
@@ -565,6 +565,8 @@ def field_conversion(parsed):
         Fields.TOTAL: convert_if_number(parsed.get(Fields.TOTAL.value)),
         Fields.UNIT: parsed.get(Fields.UNIT.value),
     }
+
+    return {key: value for key, value in converted.items() if value is not None}
 
 
 class OutputTracker:
@@ -587,13 +589,15 @@ class OutputTracker:
             return
 
         fields = self.conversion(parsed)
+        if not fields:
+            return
 
         task = self._update_task(fields)
         if not self._update_operation(task, fields):
-            task.add_event(fields[Fields.EVENT], fields[Fields.TIMESTAMP])
+            task.add_event(fields.get(Fields.EVENT), fields.get(Fields.TIMESTAMP))
 
     def _update_task(self, fields):
-        task = fields[Fields.TASK]
+        task = fields.get(Fields.TASK)
         if task:
             rel_task = self.task.subtask(task)
             self.task.active = False
@@ -601,8 +605,8 @@ class OutputTracker:
             rel_task = self.task
 
         if not rel_task.started_at:
-            rel_task.started_at = fields[Fields.TIMESTAMP]
-        rel_task.updated_at = fields[Fields.TIMESTAMP]
+            rel_task.started_at = fields.get(Fields.TIMESTAMP)
+        rel_task.updated_at = fields.get(Fields.TIMESTAMP)
         rel_task.active = True
         rel_task.deactivate_subtasks()
         rel_task.deactivate_finished_operations()
@@ -610,12 +614,12 @@ class OutputTracker:
         return rel_task
 
     def _update_operation(self, task, fields):
-        op_name = fields[Fields.EVENT]
-        ts = fields[Fields.TIMESTAMP]
-        completed = fields[Fields.COMPLETED]
-        increment = fields[Fields.INCREMENT]
-        total = fields[Fields.TOTAL]
-        unit = fields[Fields.UNIT]
+        op_name = fields.get(Fields.EVENT)
+        ts = fields.get(Fields.TIMESTAMP)
+        completed = fields.get(Fields.COMPLETED)
+        increment = fields.get(Fields.INCREMENT)
+        total = fields.get(Fields.TOTAL)
+        unit = fields.get(Fields.UNIT)
 
         if not completed and not increment and not total and not unit:
             return False

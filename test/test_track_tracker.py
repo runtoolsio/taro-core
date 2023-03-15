@@ -10,12 +10,26 @@ def test_parse_event():
 
     tracker.new_output('no events here')
     assert task.current_event is None
+    assert not task.events
+
+    tracker.new_output('non_existing_field=[huh]')
+    assert task.current_event is None
+    assert not task.events
 
     tracker.new_output('event=[eventim_apollo] we have first event here')
     assert task.current_event[0] == 'eventim_apollo'
 
     tracker.new_output('second follows: event=[event_horizon]')
     assert task.current_event[0] == 'event_horizon'
+
+
+def test_operation_without_name():
+    task = MutableTrackedTask('task')
+    tracker = OutputTracker(task, [KVParser()])
+
+    tracker.new_output('operation without name completed=[5]')
+    assert task.current_event is None
+    assert task.operations[0].progress.completed == 5
 
 
 def test_parse_timestamps():

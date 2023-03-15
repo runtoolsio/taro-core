@@ -316,3 +316,12 @@ class ExecutionOutputObserver(abc.ABC):
         :param output: output text
         :param is_error: True when the text represents error output
         """
+
+
+class ExecutionOutputTracker(ExecutionOutputObserver):
+
+    def __init__(self, output_tracker):
+        self.output_tracker = output_tracker
+
+    def execution_output_update(self, output, is_error: bool):
+        self.output_tracker.new_output(output)

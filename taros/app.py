@@ -4,11 +4,11 @@ from collections import Counter
 from bottle import route, run, response
 
 import taro.client
-import taro.jobs.repo as Jobs
+from taro.jobs import repo
 from taro import util
 from taro.jobs import persistence
 from taro.jobs.execution import ExecutionState
-from taro.jobs.job import InstanceMatchingCriteria, IDMatchingCriteria
+from taro.jobs.job import InstanceMatchingCriteria, IDMatchingCriteria, JobMatchingCriteria
 from taro.jobs.persistence import SortCriteria
 from taro.util import MatchingStrategy
 from taros.httputil import http_error, query_digit, query, query_multi
@@ -24,17 +24,19 @@ def instances():
     order = query('order', default='desc', allowed=('asc', 'desc'), aliases={'ascending': 'asc', 'descending': 'desc'})
     asc = (order == 'asc')
 
+    instance_match = _instance_match()
+
     jobs_info = []
     if 'finished' in include or 'all' in include:
         sort = query('sort', default='created', allowed=[c.name.lower() for c in SortCriteria])
         if not persistence.is_enabled():
             raise http_error(409, "Persistence is not enabled in the config file")
-        jobs_info = persistence.read_jobs(sort=SortCriteria[sort.upper()], asc=asc, limit=limit)
+        jobs_info = persistence.read_jobs(instance_match, SortCriteria[sort.upper()], asc=asc, limit=limit)
     if 'active' in include or 'all' in include:
         if query('sort'):
             raise http_error(412, "Query parameter 'sort' can be used only with query parameter 'finished'")
         jobs_info = list(util.sequence_view(
-            jobs_info + taro.client.read_jobs_info().responses,
+            jobs_info + taro.client.read_jobs_info(instance_match).responses,
             sort_key=lambda j: j.lifecycle.changed(ExecutionState.CREATED),
             asc=asc,
             limit=limit,
@@ -42,8 +44,27 @@ def instances():
 
     response.content_type = 'application/hal+json'
     embedded = {"instances": [resource_job_info(i) for i in jobs_info],
-                "jobs": [job_to_rescource(i) for i in jobs_filter(Jobs.get_all_jobs(), jobs_info)]}
+                "jobs": [job_to_resource(i) for i in jobs_filter(repo.get_all_jobs(), jobs_info)]}
     return to_json(resource({}, links={"self": "/instances", "jobs": "/jobs"}, embedded=embedded))
+
+
+def _instance_match():
+    job_prop_filters = query_multi('job_property')
+    if not job_prop_filters:
+        return None
+
+    properties = {}
+    for job_prop_filter in job_prop_filters:
+        try:
+            name, value = job_prop_filter.rsplit(':', maxsplit=1)
+            properties[name] = value
+        except ValueError:
+            raise http_error(412, "Query parameter 'job_property' must be in format name:value but was "
+                             + job_prop_filter)
+
+    job_criteria = JobMatchingCriteria(properties=properties, property_match_strategy=MatchingStrategy.PARTIAL)
+    matched_jobs = job_criteria.matched(repo.get_all_jobs())
+    return InstanceMatchingCriteria(IDMatchingCriteria([mj + "@" for mj in matched_jobs]))
 
 
 def job_limiter(limit):
@@ -72,28 +93,28 @@ def instance(inst):
 
 @route('/jobs')
 def jobs():
-    embedded = {"jobs": [job_to_rescource(i) for i in Jobs.get_all_jobs()]}
+    embedded = {"jobs": [job_to_resource(i) for i in repo.get_all_jobs()]}
     response.content_type = 'application/hal+json'
     return to_json(resource({}, links={"self": "/jobs", "instances": "/instances"}, embedded=embedded))
 
 
 @route('/jobs/<job_id>')
 def jobs(job_id):
-    job = Jobs.get_job(job_id)
+    job = repo.get_job(job_id)
     if not job:
         raise http_error(404, "Instance not found")
 
-    embedded = job_to_rescource(job)
+    embedded = job_to_resource(job)
     response.content_type = 'application/hal+json'
     return to_json(embedded)
 
 
-def job_to_rescource(job):
+def job_to_resource(job):
     return resource({"properties": job.properties}, links={"self": "/jobs/" + job.job_id})
 
 
-def jobs_filter(jobs, instances):
-    return [j for j in jobs if j.job_id in [i.job_id for i in instances]]
+def jobs_filter(jobs_, instances_):
+    return [j for j in jobs_ if j.job_id in [i.job_id for i in instances_]]  # TODO replace with criteria
 
 
 def resource(props, *, links=None, embedded=None):

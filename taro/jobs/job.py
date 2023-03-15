@@ -465,6 +465,29 @@ class Job:
         return self._properties
 
 
+class JobMatchingCriteria:
+
+    def __init__(self, *, properties=None, property_match_strategy=MatchingStrategy.EXACT):
+        self.properties = properties
+        self.property_match_strategy = property_match_strategy
+
+    def matches(self, job):
+        if not self.properties:
+            return True
+
+        for k, v in self.properties.items():
+            prop = job.properties.get(k)
+            if not prop:
+                return False
+            if not self.property_match_strategy(prop, v):
+                return False
+
+        return True
+
+    def matched(self, jobs):
+        return [job for job in jobs if self.matches(job)]
+
+
 class ExecutionStateObserver(abc.ABC):
 
     @abc.abstractmethod
