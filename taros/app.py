@@ -64,7 +64,10 @@ def _instance_match():
 
     job_criteria = JobMatchingCriteria(properties=properties, property_match_strategy=MatchingStrategy.PARTIAL)
     matched_jobs = job_criteria.matched(repo.get_all_jobs())
-    return InstanceMatchingCriteria(IDMatchingCriteria([mj + "@" for mj in matched_jobs]))
+    if not matched_jobs:
+        return InstanceMatchingCriteria(IDMatchingCriteria(['']))  # TODO Fix this workaround
+
+    return InstanceMatchingCriteria(IDMatchingCriteria([mj.job_id + "@" for mj in matched_jobs]))
 
 
 def job_limiter(limit):

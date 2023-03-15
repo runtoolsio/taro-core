@@ -43,8 +43,11 @@ def _build_where_clause(instance_match):
             conditions.append("job_id GLOB \"{jid}\" {op} instance_id GLOB \"{iid}\""
                               .format(jid=job_id, iid=instance_id, op=op))
         elif criteria.strategy == MatchingStrategy.EXACT:
-            conditions.append("job_id = \"{jid}\" {op} instance_id = \"{iid}\""
-                              .format(jid=job_id, iid=instance_id, op=op))
+            if not instance_id:
+                conditions.append(f"job_id = \"{job_id}\"")  # TODO proper impl
+            else:
+                conditions.append("job_id = \"{jid}\" {op} instance_id = \"{iid}\""
+                                  .format(jid=job_id, iid=instance_id, op=op))
         else:
             raise ValueError(f"Matching strategy {criteria.strategy} is not supported")
 
