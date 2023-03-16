@@ -32,7 +32,7 @@ setuptools.setup(
         "urllib3>=1.26.2",
         "portalocker>=2.6.0",
         "python-dateutil>=2.8.2",
-        "pygrok>=1.0.0"
+        "pygrok>=1.0.0",
         "python-daemon>=2.3.0",
     ],
     package_data={
