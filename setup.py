@@ -6,10 +6,10 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="taro",
-    version="0.8.0",
+    version="0.9.0",
     author="Stan Svec",
     author_email="dev@stansvec.com",
-    description="Tool for managing your (cron) jobs",
+    description="Tool for managing your jobs",
     license='MIT',
     long_description=long_description,
     long_description_content_type="text/markdown",
