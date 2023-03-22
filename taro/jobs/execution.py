@@ -119,11 +119,15 @@ class ExecutionError(Exception):
         self.unexpected_error = unexpected_error
         self.params = kwargs
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
+    def to_dict(self, include_nulls=True) -> Dict[str, Any]:
+        d = {
             "message": self.message,
             "state": self.exec_state.name,
         }
+        if include_nulls:
+            return d
+        else:
+            return {k: v for k, v in d.items() if v is not None}
 
 
 class Execution(abc.ABC):
@@ -269,8 +273,8 @@ class ExecutionLifecycle:
         finished = self.execution_finished or util.utc_now()
         return finished - started
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
+    def to_dict(self, include_nulls=True) -> Dict[str, Any]:
+        d = {
             "state_changes": [{"state": state.name, "changed": format_dt_iso(change)} for state, change in
                               self.state_changes],
             "state": self.state.name,
@@ -280,6 +284,10 @@ class ExecutionLifecycle:
             "execution_finished": format_dt_iso(self.execution_finished),
             "execution_time": self.execution_time.total_seconds() if self.execution_started else None,
         }
+        if include_nulls:
+            return d
+        else:
+            return {k: v for k, v in d.items() if v is not None}
 
     def __copy__(self):
         copied = ExecutionLifecycle()

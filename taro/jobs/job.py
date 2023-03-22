@@ -421,18 +421,22 @@ class JobInfo:
 
         return self.id.matches_any(instance_matching_criteria.id_matching_criteria)
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
+    def to_dict(self, include_nulls=True) -> Dict[str, Any]:
+        d = {
             "id": self.id.to_dict(),
-            "lifecycle": self.lifecycle.to_dict(),
-            "tracking": self.tracking.to_dict() if self.tracking else None,
+            "lifecycle": self.lifecycle.to_dict(include_nulls),
+            "tracking": self.tracking.to_dict(include_nulls) if self.tracking else None,
             "status": self.status,
             "error_output": self.error_output,
             "warnings": self.warnings,
-            "exec_error": self.exec_error.to_dict() if self.exec_error else None,
+            "exec_error": self.exec_error.to_dict(include_nulls) if self.exec_error else None,
             "parameters": self.parameters,
             "user_params": self.user_params
         }
+        if include_nulls:
+            return d
+        else:
+            return {k: v for k, v in d.items() if v is not None}
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r}, {!r}, {!r})".format(
