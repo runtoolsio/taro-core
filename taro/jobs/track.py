@@ -482,6 +482,7 @@ class MutableTrackedTask(MutableTemporal, TrackedTask):
     def __init__(self, name=None, max_events=100):
         super().__init__()
         self._name = name
+        self._max_events = max_events
         self._events = deque(maxlen=max_events)
         self._current_event = None
         self._operations = OrderedDict()
@@ -533,7 +534,7 @@ class MutableTrackedTask(MutableTemporal, TrackedTask):
     def subtask(self, name):
         task = self._subtasks.get(name)
         if not task:
-            self._subtasks[name] = (task := MutableTrackedTask(name))
+            self._subtasks[name] = (task := MutableTrackedTask(name, max_events=self._max_events))
 
         return task
 
