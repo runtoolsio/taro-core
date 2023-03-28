@@ -41,7 +41,7 @@ def run(args):
         output_parsers.append(KVParser(aliases=aliases, post_parsers=[(iso_date_time_parser(Fields.TIMESTAMP.value))]))
 
     if output_parsers:
-        task = MutableTrackedTask()
+        task = MutableTrackedTask(max_events=1)
         execution.tracking = task
         tracker = ExecutionOutputTracker(OutputTracker(task, output_parsers))
         execution.add_output_observer(tracker)

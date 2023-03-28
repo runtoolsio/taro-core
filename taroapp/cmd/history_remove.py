@@ -12,7 +12,7 @@ def run(args):
         print(str(count) + " records found for " + instance)
         total += count
 
-    if not (total and cliutil.user_confirmation(catch_interrupt=True)):
+    if not (total and cliutil.user_confirmation(yes_on_empty=True, catch_interrupt=True)):
         print('Skipped..')
         return
 

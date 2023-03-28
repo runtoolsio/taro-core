@@ -479,7 +479,7 @@ class MutableOperation(MutableTemporal, Operation):
 
 class MutableTrackedTask(MutableTemporal, TrackedTask):
 
-    def __init__(self, name=None, max_events=100):
+    def __init__(self, name=None, max_events=1000):
         super().__init__()
         self._name = name
         self._max_events = max_events
