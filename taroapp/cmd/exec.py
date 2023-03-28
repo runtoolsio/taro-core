@@ -1,8 +1,6 @@
 import logging
 import signal
 
-from pygrok import Grok
-
 from taro import util
 from taro.jobs import sync, warning
 from taro.jobs.job import Warn
@@ -34,8 +32,11 @@ def run(args):
         exec_limit = None
 
     output_parsers = []
-    for grok_pattern in args.grok_pattern:
-        output_parsers.append(Grok(grok_pattern).match)
+
+    if args.grok_pattern:
+        from pygrok import Grok  # Defer import until is needed
+        for grok_pattern in args.grok_pattern:
+            output_parsers.append(Grok(grok_pattern).match)
     if args.kv_filter:
         aliases = util.split_params(args.kv_alias)
         output_parsers.append(KVParser(aliases=aliases, post_parsers=[(iso_date_time_parser(Fields.TIMESTAMP.value))]))
