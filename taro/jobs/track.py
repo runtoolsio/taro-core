@@ -125,7 +125,9 @@ class Progress(ABC):
             return {k: v for k, v in d.items() if v is not None}
 
     def __str__(self):
-        val = f"{self.completed or '?'}/{self.total or '?'}"
+        val = f"{self.completed or '?'}"
+        if self.total:
+            val += f"/{self.total}"
         if self.unit:
             val += f" {self.unit}"
         if pct_done := self.pct_done:

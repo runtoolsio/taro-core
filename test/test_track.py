@@ -71,7 +71,7 @@ def test_progress_str():
     assert str(progress) == '?/100 files'
 
     progress = ProgressInfo(20, None, 'files')
-    assert str(progress) == '20/? files'
+    assert str(progress) == '20 files'
 
 
 def test_task_str():
@@ -85,9 +85,9 @@ def test_task_str():
     task.reset_current_event()
     assert str(task) == 'task1: downloading'
     task.operation('downloading').update(None, None, 'files')
-    assert str(task) == 'task1: downloading ?/? files'
+    assert str(task) == 'task1: downloading ? files'
     task.operation('uploading')
-    assert str(task) == 'task1: downloading ?/? files | uploading'
+    assert str(task) == 'task1: downloading ? files | uploading'
     task.operation('downloading').active = False
     assert str(task) == 'task1: uploading'
     task.add_event('e3', parse_datetime('2023-01-01T02:00:00'))
