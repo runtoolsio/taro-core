@@ -78,9 +78,9 @@ def test_task_str():
     task = MutableTrackedTask('task1')
     assert str(task) == 'task1:'
     task.add_event('e1', parse_datetime('2023-01-01T00:00:00'))
-    assert str(task) == 'task1: 00:00:00 e1'
+    assert str(task) == 'task1: e1'
     task.add_event('e2', parse_datetime('2023-01-01T01:00:00'))
-    assert str(task) == 'task1: 01:00:00 e2'
+    assert str(task) == 'task1: e2'
     task.operation('downloading')
     task.reset_current_event()
     assert str(task) == 'task1: downloading'
@@ -91,10 +91,10 @@ def test_task_str():
     task.operation('downloading').active = False
     assert str(task) == 'task1: uploading'
     task.add_event('e3', parse_datetime('2023-01-01T02:00:00'))
-    assert str(task) == 'task1: 02:00:00 e3 | uploading'
+    assert str(task) == 'task1: e3 | uploading'
     task.subtask('sub-zero').operation('freezing')
-    assert str(task) == 'task1: 02:00:00 e3 | uploading / sub-zero: freezing'
+    assert str(task) == 'task1: e3 | uploading / sub-zero: freezing'
     task.active = False
     assert str(task) == 'sub-zero: freezing'
     task.subtask('scorpion').add_event('burning', parse_datetime('2023-01-01T05:00:00'))
-    assert str(task) == 'sub-zero: freezing / scorpion: 05:00:00 burning'
+    assert str(task) == 'sub-zero: freezing / scorpion: burning'
