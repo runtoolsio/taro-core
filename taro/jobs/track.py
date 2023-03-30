@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Optional, Any, Sequence, Tuple
 
 from taro import util
-from taro.util import format_dt_iso, parse_datetime, convert_if_number
+from taro.util import format_dt_iso, parse_datetime, convert_if_number, is_empty
 
 log = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class Progress(ABC):
     def copy(self):
         return ProgressInfo(self.completed, self.total, self.unit, self.last_updated_at)
 
-    def to_dict(self, include_nulls=True):
+    def to_dict(self, include_empty=True):
         d = {
             'completed': self.completed,
             'total': self.total,
@@ -119,10 +119,10 @@ class Progress(ABC):
             'pct_done': self.pct_done,
             'finished': self.finished
         }
-        if include_nulls:
+        if include_empty:
             return d
         else:
-            return {k: v for k, v in d.items() if v is not None}
+            return {k: v for k, v in d.items() if not is_empty(v)}
 
     def __str__(self):
         val = f"{self.completed or '?'}"
@@ -188,19 +188,19 @@ class Operation(Temporal, Activatable):
         return OperationInfo(
             self.name, self.progress.copy(), self.started_at, self.updated_at, self.ended_at, self.active)
 
-    def to_dict(self, include_nulls=True):
+    def to_dict(self, include_empty=True):
         d = {
             'name': self.name,
-            'progress': self.progress.to_dict(include_nulls),
+            'progress': self.progress.to_dict(include_empty),
             'started_at': format_dt_iso(self.started_at),
             'updated_at': format_dt_iso(self.updated_at),
             'ended_at': format_dt_iso(self.ended_at),
             'active': self.active
         }
-        if include_nulls:
+        if include_empty:
             return d
         else:
-            return {k: v for k, v in d.items() if v is not None}
+            return {k: v for k, v in d.items() if not is_empty(v)}
 
     def __str__(self):
         parts = []
@@ -231,7 +231,7 @@ class OperationInfo(Operation):
         started_at = util.parse_datetime(data.get("started_at", None))
         updated_at = util.parse_datetime(data.get("updated_at", None))
         ended_at = util.parse_datetime(data.get("ended_at", None))
-        active = data.get("active")
+        active = data.get("active", False)
         return cls(name, progress, started_at, updated_at, ended_at, active)
 
     @property
@@ -299,21 +299,21 @@ class TrackedTask(Temporal, Activatable):
             self.active,
         )
 
-    def to_dict(self, include_nulls=True):
+    def to_dict(self, include_empty=True):
         d = {
             'name': self.name,
             'events': [(event, format_dt_iso(ts)) for event, ts in self.events],
-            'operations': [op.to_dict(include_nulls) for op in self.operations],
-            'subtasks': [task.to_dict(include_nulls) for task in self.subtasks],
+            'operations': [op.to_dict(include_empty) for op in self.operations],
+            'subtasks': [task.to_dict(include_empty) for task in self.subtasks],
             'started_at': format_dt_iso(self.started_at),
             'updated_at': format_dt_iso(self.updated_at),
             'ended_at': format_dt_iso(self.ended_at),
             'active': self.active,
         }
-        if include_nulls:
+        if include_empty:
             return d
         else:
-            return {k: v for k, v in d.items() if v is not None}
+            return {k: v for k, v in d.items() if not is_empty(v)}
 
     def __str__(self):
         parts = []

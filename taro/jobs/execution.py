@@ -13,7 +13,7 @@ from enum import Enum, auto, EnumMeta
 from typing import Tuple, List, Iterable, Set, Optional, Dict, Any
 
 from taro import util
-from taro.util import utc_now, format_dt_iso
+from taro.util import utc_now, format_dt_iso, is_empty
 
 
 class ExecutionStateGroup(Enum):
@@ -119,15 +119,15 @@ class ExecutionError(Exception):
         self.unexpected_error = unexpected_error
         self.params = kwargs
 
-    def to_dict(self, include_nulls=True) -> Dict[str, Any]:
+    def to_dict(self, include_empty=True) -> Dict[str, Any]:
         d = {
             "message": self.message,
             "state": self.exec_state.name,
         }
-        if include_nulls:
+        if include_empty:
             return d
         else:
-            return {k: v for k, v in d.items() if v is not None}
+            return {k: v for k, v in d.items() if not is_empty(v)}
 
 
 class Execution(abc.ABC):
@@ -273,7 +273,7 @@ class ExecutionLifecycle:
         finished = self.execution_finished or util.utc_now()
         return finished - started
 
-    def to_dict(self, include_nulls=True) -> Dict[str, Any]:
+    def to_dict(self, include_empty=True) -> Dict[str, Any]:
         d = {
             "state_changes": [{"state": state.name, "changed": format_dt_iso(change)} for state, change in
                               self.state_changes],
@@ -284,10 +284,10 @@ class ExecutionLifecycle:
             "execution_finished": format_dt_iso(self.execution_finished),
             "execution_time": self.execution_time.total_seconds() if self.execution_started else None,
         }
-        if include_nulls:
+        if include_empty:
             return d
         else:
-            return {k: v for k, v in d.items() if v is not None}
+            return {k: v for k, v in d.items() if not is_empty(v)}
 
     def __copy__(self):
         copied = ExecutionLifecycle()

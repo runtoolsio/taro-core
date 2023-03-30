@@ -20,7 +20,7 @@ from typing import NamedTuple, Dict, Any, Optional, Sequence, Callable, Union
 
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
 from taro.jobs.track import TrackedTaskInfo
-from taro.util import and_, or_, MatchingStrategy
+from taro.util import and_, or_, MatchingStrategy, is_empty
 
 DEFAULT_OBSERVER_PRIORITY = 100
 
@@ -421,22 +421,22 @@ class JobInfo:
 
         return self.id.matches_any(instance_matching_criteria.id_matching_criteria)
 
-    def to_dict(self, include_nulls=True) -> Dict[str, Any]:
+    def to_dict(self, include_empty=True) -> Dict[str, Any]:
         d = {
             "id": self.id.to_dict(),
-            "lifecycle": self.lifecycle.to_dict(include_nulls),
-            "tracking": self.tracking.to_dict(include_nulls) if self.tracking else None,
+            "lifecycle": self.lifecycle.to_dict(include_empty),
+            "tracking": self.tracking.to_dict(include_empty) if self.tracking else None,
             "status": self.status,
             "error_output": self.error_output,
             "warnings": self.warnings,
-            "exec_error": self.exec_error.to_dict(include_nulls) if self.exec_error else None,
+            "exec_error": self.exec_error.to_dict(include_empty) if self.exec_error else None,
             "parameters": self.parameters,
             "user_params": self.user_params
         }
-        if include_nulls:
+        if include_empty:
             return d
         else:
-            return {k: v for k, v in d.items() if v is not None}
+            return {k: v for k, v in d.items() if not is_empty(v)}
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r}, {!r}, {!r})".format(
