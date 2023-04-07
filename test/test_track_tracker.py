@@ -150,3 +150,12 @@ def test_subtask_started_and_updated_set():
     assert task.subtask('t1').started_at == started_ts
     assert task.subtask('t1').updated_at == updated_ts
     assert task.started_at is None  # TODO should this be set too?
+
+
+def test_parse_timestamps():
+    task = MutableTrackedTask('task')
+    tracker = OutputTracker(task, [KVParser()])
+
+    tracker.new_output('2020-10-01 10:30:30 event=[e1]')
+    tracker.new_output('result=[res]')
+    assert task.result == 'res'

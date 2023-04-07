@@ -98,3 +98,5 @@ def test_task_str():
     assert str(task) == 'sub-zero: freezing'
     task.subtask('scorpion').add_event('burning', parse_datetime('2023-01-01T05:00:00'))
     assert str(task) == 'sub-zero: freezing / scorpion: burning'
+    task.subtask('scorpion').result = 'fatality'
+    assert str(task) == 'sub-zero: freezing / scorpion: fatality'

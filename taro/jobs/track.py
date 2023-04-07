@@ -286,6 +286,11 @@ class TrackedTask(Temporal, Activatable):
     def subtasks(self):
         pass
 
+    @property
+    @abstractmethod
+    def result(self):
+        pass
+
     def copy(self):
         return TrackedTaskInfo(
             self.name,
@@ -321,6 +326,10 @@ class TrackedTask(Temporal, Activatable):
         if self.active:
             if self.name:
                 parts.append(f"{self.name}:")
+
+            if self.result:
+                parts.append(self.result)
+                return " ".join(parts)
 
             statuses = []
             if self.current_event:
@@ -489,6 +498,7 @@ class MutableTrackedTask(MutableTemporal, TrackedTask):
         self._current_event = None
         self._operations = OrderedDict()
         self._subtasks = OrderedDict()
+        self._result = None
         self._active = True
 
     @property
@@ -549,6 +559,14 @@ class MutableTrackedTask(MutableTemporal, TrackedTask):
             subtask.active = False
 
     @property
+    def result(self):
+        return self._result
+
+    @result.setter
+    def result(self, result):
+        self._result = result
+
+    @property
     def active(self):
         return self._active
 
@@ -565,6 +583,7 @@ class Fields(Enum):
     INCREMENT = 'increment'
     TOTAL = 'total'
     UNIT = 'unit'
+    RESULT = 'result'
 
 
 DEFAULT_PATTERN = ''
@@ -579,6 +598,7 @@ def field_conversion(parsed):
         Fields.INCREMENT: convert_if_number(parsed.get(Fields.INCREMENT.value)),
         Fields.TOTAL: convert_if_number(parsed.get(Fields.TOTAL.value)),
         Fields.UNIT: parsed.get(Fields.UNIT.value),
+        Fields.RESULT: parsed.get(Fields.RESULT.value),
     }
 
     return {key: value for key, value in converted.items() if value is not None}
@@ -625,6 +645,9 @@ class OutputTracker:
         rel_task.active = True
         rel_task.deactivate_subtasks()
         rel_task.deactivate_finished_operations()
+        result = fields.get(Fields.RESULT)
+        if result:
+            rel_task.result = result
 
         return rel_task
 
