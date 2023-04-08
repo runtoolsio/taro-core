@@ -66,7 +66,7 @@ def parse_iso8601_duration(duration):
                                        seconds=seconds).normalized()
 
 
-def format_timedelta(td):
+def format_timedelta(td, *, show_ms=True):
     mm, ss = divmod(td.seconds, 60)
     hh, mm = divmod(mm, 60)
     s = "%02d:%02d:%02d" % (hh, mm, ss)
@@ -75,7 +75,7 @@ def format_timedelta(td):
             return n, abs(n) != 1 and "s" or ""
 
         s = ("%d day%s, " % plural(td.days)) + s
-    if td.microseconds:
+    if show_ms and td.microseconds:
         s = s + (".%06d" % td.microseconds)[:-3]
         # s = s + ("%f" % (td.microseconds / 1000000))[1:-3]
     return s

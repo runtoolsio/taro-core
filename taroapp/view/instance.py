@@ -26,8 +26,4 @@ def execution_time_str(job_info):
     if not job_info.lifecycle.executed():
         return 'N/A'
 
-    if job_info.state.is_executing():
-        exec_time = util.utc_now() - job_info.lifecycle.execution_started
-    else:
-        exec_time = job_info.lifecycle.execution_time
-    return util.format_timedelta(exec_time)
+    return util.format_timedelta(job_info.lifecycle.execution_time, show_ms=False)
