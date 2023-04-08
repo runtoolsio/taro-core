@@ -81,7 +81,7 @@ class IDMatchingCriteria:
 
 def compound_id_filter(criteria_seq):
     def match(jid):
-        return any(criteria(jid) for criteria in criteria_seq)
+        return not criteria_seq or any(criteria(jid) for criteria in criteria_seq)
 
     return match
 
