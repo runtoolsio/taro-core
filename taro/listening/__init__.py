@@ -62,7 +62,7 @@ class EventReceiver(SocketServer):
             return
 
         if (self.event_types and event_type not in self.event_types) or\
-                (self.id_match and not job_instance_id.matches_any(self.id_match)):
+                (self.id_match and not self.id_match(job_instance_id)):
             return
 
         self.handle_event(event_type, job_instance_id, req_body_json.get('event'))

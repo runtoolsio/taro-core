@@ -4,8 +4,8 @@ from abc import ABC, abstractmethod
 from json import JSONDecodeError
 
 from taro import util
+from taro.jobs.job import InstanceMatchingCriteria
 from taro.socket import SocketServer
-from taro.util import MatchingStrategy
 
 log = logging.getLogger(__name__)
 
@@ -140,20 +140,15 @@ class Server(SocketServer):
         return resource
 
     def _matching_instances(self, req_body):
-        match = req_body.get('request_metadata', {}).get('instance_match', {})
-        match_ids = match.get('ids', None)
-        if not match_ids:
+        instance_match = req_body.get('request_metadata', {}).get('instance_match', None)
+        if not instance_match:
             return self._job_instances
 
-        if match_strategy_val := match.get('id_match_strategy'):
-            try:
-                match_strategy = MatchingStrategy[match_strategy_val.upper()]
-            except KeyError as e:
-                raise _ServerError(422, f"Invalid id_match_strategy value: {match_strategy_val}")
-        else:
-            match_strategy = MatchingStrategy.EXACT
-        return [job_instance for job_instance in self._job_instances
-                if any(1 for match_id in match_ids if job_instance.id.matches(match_id, match_strategy))]
+        try:
+            matching_criteria = InstanceMatchingCriteria.from_dict(instance_match)
+        except ValueError as e:
+            raise _ServerError(422, f"Invalid instance match: {instance_match}")
+        return [job_instance for job_instance in self._job_instances if matching_criteria.matches(job_instance)]
 
 
 def _missing_field_error(field) -> _ServerError:

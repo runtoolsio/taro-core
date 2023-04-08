@@ -196,7 +196,7 @@ class NoOverlap(Sync):
         job_instance = self._job_instance or job_info.job_id
 
         jobs, _ = taro.client.read_jobs_info()
-        if any(j for j in jobs if j.id != job_info.id and j.id.matches(job_instance)):
+        if any(j for j in jobs if j.id != job_info.id and j.id.matches_pattern(job_instance)):
             self._signal = Signal.TERMINATE
         else:
             self._signal = Signal.CONTINUE
@@ -231,7 +231,7 @@ class Dependency(Sync):
 
     def set_signal(self, job_info) -> Signal:
         jobs, _ = taro.client.read_jobs_info()
-        if any(j for j in jobs if any(j.id.matches(dependency) for dependency in self.dependencies)):
+        if any(j for j in jobs if any(j.id.matches_pattern(dependency) for dependency in self.dependencies)):
             self._signal = Signal.CONTINUE
         else:
             self._signal = Signal.TERMINATE

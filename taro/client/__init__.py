@@ -100,9 +100,7 @@ class JobsClient(SocketClient):
             req_body = {}
         req_body["request_metadata"] = {"api": api}
         if instance_match and instance_match.id_matching_criteria:
-            id_match = instance_match.id_matching_criteria
-            req_body["request_metadata"]["instance_match"] =\
-                {"ids": id_match.patterns, "id_match_strategy": id_match.strategy.name}
+            req_body["request_metadata"]["instance_match"] = instance_match.to_dict()
 
         server_responses: List[ServerResponse] = self.communicate(json.dumps(req_body))
         return _process_responses(server_responses)

@@ -28,26 +28,20 @@ def _build_where_clause(instance_match):
 
     criteria = instance_match.id_matching_criteria
     conditions = []
-    for id_pattern in criteria.patterns:
-        if "@" in id_pattern:
-            job_id, instance_id = id_pattern.split("@")
-            op = 'AND'
-        else:
-            job_id = instance_id = id_pattern
-            op = 'OR'
-
-        if criteria.strategy == MatchingStrategy.PARTIAL:
+    for c in criteria:
+        op = 'AND' if c.match_both_ids else 'OR'
+        if c.strategy == MatchingStrategy.PARTIAL:
             conditions.append("job_id GLOB \"*{jid}*\" {op} instance_id GLOB \"*{iid}*\""
-                              .format(jid=job_id, iid=instance_id, op=op))
-        elif criteria.strategy == MatchingStrategy.FN_MATCH:
+                              .format(jid=c.job_id, iid=c.instance_id, op=op))
+        elif c.strategy == MatchingStrategy.FN_MATCH:
             conditions.append("job_id GLOB \"{jid}\" {op} instance_id GLOB \"{iid}\""
-                              .format(jid=job_id, iid=instance_id, op=op))
-        elif criteria.strategy == MatchingStrategy.EXACT:
-            if not instance_id:
-                conditions.append(f"job_id = \"{job_id}\"")  # TODO proper impl
+                              .format(jid=c.job_id, iid=c.instance_id, op=op))
+        elif c.strategy == MatchingStrategy.EXACT:
+            if not c.instance_id:
+                conditions.append(f"job_id = \"{c.job_id}\"")  # TODO proper impl
             else:
                 conditions.append("job_id = \"{jid}\" {op} instance_id = \"{iid}\""
-                                  .format(jid=job_id, iid=instance_id, op=op))
+                                  .format(jid=c.job_id, iid=c.instance_id, op=op))
         else:
             raise ValueError(f"Matching strategy {criteria.strategy} is not supported")
 

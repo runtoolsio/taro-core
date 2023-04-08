@@ -14,9 +14,10 @@ There are two type of clients of the framework:
 import abc
 import textwrap
 from collections import namedtuple
+from collections.abc import Iterable
 from dataclasses import dataclass
 from fnmatch import fnmatch
-from typing import NamedTuple, Dict, Any, Optional, Sequence, Callable, Union
+from typing import NamedTuple, Dict, Any, Optional, Callable, Union
 
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
 from taro.jobs.track import TrackedTaskInfo
@@ -24,19 +25,89 @@ from taro.util import and_, or_, MatchingStrategy, is_empty
 
 DEFAULT_OBSERVER_PRIORITY = 100
 
+S = Union[Callable[[str, str], bool], MatchingStrategy]
 
-class IDMatchingCriteria(NamedTuple):
-    patterns: Sequence[str]
-    strategy: Union[Callable[[str, str], bool], MatchingStrategy] = MatchingStrategy.EXACT
 
-    def __bool__(self):
-        return bool(self.patterns) and bool(self.strategy)
+@dataclass
+class IDMatchingCriteria:
+    job_id: str
+    instance_id: str
+    match_both_ids: bool = True
+    strategy: S = MatchingStrategy.EXACT
+
+    @classmethod
+    def parse_pattern(cls, pattern, strategy: S = MatchingStrategy.EXACT):
+        if "@" in pattern:
+            job_id, instance_id = pattern.split("@")
+            match_both = True
+        else:
+            job_id = instance_id = pattern
+            match_both = False
+        return IDMatchingCriteria(job_id, instance_id, match_both, strategy)
+
+    @classmethod
+    def from_dict(cls, as_dict):
+        return cls(as_dict['job_id'],
+                   as_dict['instance_id'],
+                   as_dict['match_both_ids'],
+                   MatchingStrategy[as_dict['strategy'].upper()])
+
+    def _op(self):
+        return and_ if self.match_both_ids else or_
+
+    def matches(self, jid):
+        op = self._op()
+        return op(not self.job_id or self.strategy(jid.job_id, self.job_id),
+                  not self.instance_id or self.strategy(jid.instance_id, self.instance_id))
+
+    def __call__(self, jid):
+        return self.matches(jid)
+
+    def matches_instance(self, job_instance):
+        return self.matches(job_instance.id)
+
+    def to_dict(self, include_empty=True):
+        d = {
+            'job_id': self.job_id,
+            'instance_id': self.instance_id,
+            'match_both_ids': self.match_both_ids,
+            'strategy': self.strategy.name.lower(),
+        }
+        if include_empty:
+            return d
+        else:
+            return {k: v for k, v in d.items() if not is_empty(v)}
+
+
+def compound_id_filter(criteria_seq):
+    def match(jid):
+        return any(criteria(jid) for criteria in criteria_seq)
+
+    return match
 
 
 class InstanceMatchingCriteria:
 
     def __init__(self, id_matching_criteria):
-        self.id_matching_criteria = id_matching_criteria
+        self._id_matching_criteria = \
+            tuple(id_matching_criteria) if isinstance(id_matching_criteria, Iterable) else (id_matching_criteria,)
+
+    @classmethod
+    def from_dict(cls, as_dict):
+        return cls([IDMatchingCriteria.from_dict(c) for c in as_dict['id_matching_criteria']])
+
+    @property
+    def id_matching_criteria(self):
+        return self._id_matching_criteria
+
+    def matches(self, job_instance):
+        return compound_id_filter(self.id_matching_criteria)(job_instance)
+
+    def to_dict(self, include_empty=True):
+        return {'id_matching_criteria': [c.to_dict() for c in self.id_matching_criteria], }
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(id_matching_criteria={self._id_matching_criteria})"
 
 
 class JobInstanceID(NamedTuple):
@@ -47,21 +118,8 @@ class JobInstanceID(NamedTuple):
     def from_dict(cls, as_dict):
         return cls(as_dict['job_id'], as_dict['instance_id'])
 
-    def matches_any(self, matching_criteria):
-        return any(self.matches(pattern, matching_criteria.strategy) for pattern in matching_criteria.patterns)
-
-    def matches(self, id_pattern, matching_strategy=fnmatch):
-        if not id_pattern:
-            return False
-
-        if "@" in id_pattern:
-            job_id, instance_id = id_pattern.split("@")
-            op = and_
-        else:
-            job_id = instance_id = id_pattern
-            op = or_
-        return op(not job_id or matching_strategy(self.job_id, job_id),
-                  not instance_id or matching_strategy(self.instance_id, instance_id))
+    def matches_pattern(self, id_pattern, matching_strategy=fnmatch):
+        return IDMatchingCriteria.parse_pattern(id_pattern, strategy=matching_strategy).matches(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -412,14 +470,6 @@ class JobInfo:
     @property
     def user_params(self):
         return dict(self._user_params)
-
-    def matches(self, instance_matching_criteria):
-        if not instance_matching_criteria:
-            return ValueError('No instance matching criteria')
-        if not instance_matching_criteria.id_matching_criteria:
-            return ValueError('ID matching criteria must be set in instance matching criteria')
-
-        return self.id.matches_any(instance_matching_criteria.id_matching_criteria)
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         d = {
