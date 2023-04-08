@@ -261,7 +261,7 @@ def _init_listen_parser(common, subparsers):
     listen_parser.add_argument('-t', '--timestamp',
                                type=TimestampFormat.from_str,
                                choices=[f for f in TimestampFormat if f is not TimestampFormat.UNKNOWN],
-                               default=TimestampFormat.DATE_TIME,
+                               default=TimestampFormat.TIME,
                                help='Timestamp prefix format')
 
 
