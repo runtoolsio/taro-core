@@ -298,6 +298,7 @@ class TrackedTask(Temporal, Activatable):
             self.current_event,
             [op.copy() for op in self.operations],
             [task.copy() for task in self.subtasks],
+            self.result,
             self.started_at,
             self.updated_at,
             self.ended_at,
@@ -353,11 +354,13 @@ class TrackedTask(Temporal, Activatable):
 
 @dataclass(frozen=True)
 class TrackedTaskInfo(TrackedTask):
+
     _name: str
     _events: Sequence[Tuple[str, datetime]]
     _current_event: Optional[Tuple[str, datetime]]
     _operations: Sequence[Operation]
     _subtasks: Sequence[TrackedTask]
+    _result: str
     _started_at: Optional[datetime]
     _updated_at: Optional[datetime]
     _ended_at: Optional[datetime]
@@ -370,11 +373,12 @@ class TrackedTaskInfo(TrackedTask):
         current_event = data.get("current_event")
         operations = [OperationInfo.from_dict(op) for op in data.get("operations", ())]
         subtasks = [TrackedTaskInfo.from_dict(task) for task in data.get("subtasks", ())]
+        result = data.get("result")
         started_at = util.parse_datetime(data.get("started_at", None))
         updated_at = util.parse_datetime(data.get("updated_at", None))
         ended_at = util.parse_datetime(data.get("ended_at", None))
         active = data.get("active")
-        return cls(name, events, current_event, operations, subtasks, started_at, updated_at, ended_at, active)
+        return cls(name, events, current_event, operations, subtasks, result, started_at, updated_at, ended_at, active)
 
     @property
     def name(self):
@@ -395,6 +399,10 @@ class TrackedTaskInfo(TrackedTask):
     @property
     def subtasks(self):
         return self._subtasks
+
+    @property
+    def result(self):
+        pass
 
     @property
     def started_at(self):
