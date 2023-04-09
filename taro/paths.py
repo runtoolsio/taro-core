@@ -63,8 +63,7 @@ def lookup_file_in_config_path(file) -> Path:
         if config.exists():
             return config
 
-    raise ConfigFileNotFoundError(f'Config file {file} not found in the search path: '
-                                  + ", ".join([str(dir_) for dir_ in search_path]))
+    raise ConfigFileNotFoundError(file, search_path)
 
 
 def taro_config_file_search_path(*, exclude_cwd=False) -> List[Path]:

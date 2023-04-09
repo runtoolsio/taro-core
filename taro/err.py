@@ -3,7 +3,10 @@ class TaroException(Exception):
 
 
 class ConfigFileNotFoundError(TaroException, FileNotFoundError):
-    pass
+
+    def __init__(self, file, search_path):
+        message = f"Config file {file} not found in the search path: {', '.join([str(dir_) for dir_ in search_path])}"
+        super().__init__(message)
 
 
 class InvalidStateError(Exception):
