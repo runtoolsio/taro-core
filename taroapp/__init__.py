@@ -20,8 +20,6 @@ def main(args):
 
     :param args: CLI arguments
     """
-    if not args and not len(sys.argv) > 1:
-        args = taro.cfg.default_action.split(" ")  # TODO This won't work as config is not yet loaded!
     args_parsed = cli.parse_args(args)
 
     if args_parsed.no_color or 'NO_COLOR' in os.environ or 'TARO_NO_COLOR' in os.environ:

@@ -17,5 +17,3 @@ persistence:
 
 plugins: []
 #plugins: ['taro_sns']
-
-default_action: --help
