@@ -15,6 +15,8 @@ import re
 from pathlib import Path
 from typing import Generator, List
 
+from taro.err import ConfigFileNotFoundError
+
 CONFIG_DIR = 'taro'
 CONFIG_FILE = 'taro.yaml'
 JOBS_FILE = 'jobs.yaml'
@@ -61,8 +63,8 @@ def lookup_file_in_config_path(file) -> Path:
         if config.exists():
             return config
 
-    raise FileNotFoundError(f'Config file {file} not found in the search path: '
-                            + ", ".join([str(dir_) for dir_ in search_path]))
+    raise ConfigFileNotFoundError(f'Config file {file} not found in the search path: '
+                                  + ", ".join([str(dir_) for dir_ in search_path]))
 
 
 def taro_config_file_search_path(*, exclude_cwd=False) -> List[Path]:

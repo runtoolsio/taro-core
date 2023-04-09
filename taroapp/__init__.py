@@ -3,6 +3,7 @@ import sys
 
 import taro
 from taro import util, paths, cfgfile
+from taro.err import TaroException
 from taro.jobs.persistence import PersistenceDisabledError
 from taroapp import cmd, cli
 
@@ -20,6 +21,18 @@ def main(args):
 
     :param args: CLI arguments
     """
+    try:
+        run_app(args)
+    except PersistenceDisabledError:
+        print('This command cannot be executed with disabled persistence. Enable persistence in config file first.',
+              file=sys.stderr)
+        exit(1)
+    except TaroException as e:
+        print(f"User error: {e}", file=sys.stderr)
+        exit(1)
+
+
+def run_app(args):
     args_parsed = cli.parse_args(args)
 
     if args_parsed.no_color or 'NO_COLOR' in os.environ or 'TARO_NO_COLOR' in os.environ:
@@ -64,8 +77,5 @@ def init_taro(args):
 def run_command(args_ns):
     try:
         cmd.run(args_ns)
-    except PersistenceDisabledError:
-        print('This command cannot be executed with disabled persistence. Enable persistence in config file first.',
-              file=sys.stderr)
     finally:
         taro.close()
