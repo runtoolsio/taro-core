@@ -9,7 +9,7 @@ class ConfigFileNotFoundError(TaroException, FileNotFoundError):
         super().__init__(message)
 
 
-class InvalidStateError(Exception):
+class InvalidStateError(TaroException):
 
     def __init__(self, message: str):
         super().__init__(message)

@@ -4,7 +4,6 @@ import sys
 import taro
 from taro import util, paths, cfgfile
 from taro.err import TaroException
-from taro.jobs.persistence import PersistenceDisabledError
 from taroapp import cmd, cli
 
 
@@ -23,10 +22,6 @@ def main(args):
     """
     try:
         run_app(args)
-    except PersistenceDisabledError:
-        print('This command cannot be executed with disabled persistence. Enable persistence in config file first.',
-              file=sys.stderr)
-        exit(1)
     except TaroException as e:
         print(f"User error: {e}", file=sys.stderr)
         exit(1)

@@ -7,6 +7,7 @@ import taro.jobs.db
 from taro import cfg
 from taro import paths
 from taro import util
+from taro.err import TaroException
 from taro.jobs.execution import ExecutionState
 
 
@@ -116,7 +117,7 @@ class NoPersistence:
         pass
 
 
-class PersistenceError(Exception):
+class PersistenceError(TaroException):
     pass
 
 
@@ -130,4 +131,4 @@ class PersistenceNotFoundError(PersistenceError):
 class PersistenceDisabledError(PersistenceError):
 
     def __init__(self):
-        super().__init__('Executed logic depends on data persistence; however, persistence is disabled in the config.')
+        super().__init__("Logic execution relies on data persistence, but it's disabled in the config.")
