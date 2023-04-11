@@ -3,7 +3,7 @@ import sys
 
 import taro
 from taro import util, paths, cfgfile
-from taro.err import TaroException
+from taro.err import TaroException, ConfigFileNotFoundError
 from taroapp import cmd, cli
 
 
@@ -22,6 +22,11 @@ def main(args):
     """
     try:
         run_app(args)
+    except ConfigFileNotFoundError as e:
+        print(f"User error: {e}", file=sys.stderr)
+        print("Run `setup` command to create config file or see `-dc` and `-mc` options to execute without config file")
+        exit(1)
+
     except TaroException as e:
         print(f"User error: {e}", file=sys.stderr)
         exit(1)
