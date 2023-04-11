@@ -20,10 +20,10 @@ ACTION_STOP = 'stop'
 ACTION_TAIL = 'tail'
 ACTION_OUTPUT = 'output'
 ACTION_CLEAN = 'clean'
-ACTION_CONFIG = 'config'
-ACTION_CONFIG_SHOW = 'show'
+ACTION_SETUP = 'setup'
+ACTION_SETUP_CONFIG = 'config'
+ACTION_CONFIG_PRINT = 'print'
 ACTION_CONFIG_CREATE = 'create'
-ACTION_CONFIG_RESET = 'reset'
 ACTION_HOSTINFO = 'hostinfo'
 
 
@@ -34,21 +34,21 @@ def parse_args(args):
     common = argparse.ArgumentParser()  # parent parser for subparsers in case they need to share common options
     common.add_argument('--no-color', action='store_true', help='do not print colours in output')
     init_cfg_group(common)
-    subparsers = parser.add_subparsers(dest='action')  # command/action
+    subparser = parser.add_subparsers(dest='action')  # command/action
 
-    _init_exec_parser(common, subparsers)
-    _init_ps_parser(common, subparsers)
-    _init_history_parser(common, subparsers)
-    _init_release_parser(common, subparsers)
-    _init_listen_parser(common, subparsers)
-    _init_wait_parser(common, subparsers)
-    _init_stop_parser(common, subparsers)
-    _init_tail_parser(common, subparsers)
-    _init_output_parser(common, subparsers)
-    _init_clean_parser(common, subparsers)
-    _init_config_parser(subparsers)
-    _init_hostinfo_parser(common, subparsers)
-    _init_history_remove_parser(common, subparsers)
+    _init_exec_parser(common, subparser)
+    _init_ps_parser(common, subparser)
+    _init_history_parser(common, subparser)
+    _init_release_parser(common, subparser)
+    _init_listen_parser(common, subparser)
+    _init_wait_parser(common, subparser)
+    _init_stop_parser(common, subparser)
+    _init_tail_parser(common, subparser)
+    _init_output_parser(common, subparser)
+    _init_clean_parser(common, subparser)
+    _init_setup_parser(subparser)
+    _init_hostinfo_parser(common, subparser)
+    _init_history_remove_parser(common, subparser)
 
     parsed = parser.parse_args(args)
     _check_collisions(parser, parsed)
@@ -337,31 +337,27 @@ def _init_clean_parser(common, subparsers):
                                          add_help=False)
 
 
-def _init_config_parser(subparsers):
+def _init_setup_parser(subparser):
     """
-    Creates parsers for `config` command
+    Creates parsers for `setup` command
 
-    :param subparsers: sub-parser for config parser to be added to
+    :param subparser: sub-parser for setup parser to be added to
     """
 
-    config_parser = subparsers.add_parser(
-        ACTION_CONFIG, description='Config related actions', add_help=False)
-    config_parser.add_argument('--no-color', action='store_true', help='do not print colours in output')
+    setup_parser = subparser.add_parser(ACTION_SETUP, description='Setup related actions')
+    setup_parser.add_argument('--no-color', action='store_true', help='do not print colours in output')
 
-    # TODO Add required=True if migrated to >=3.7
-    config_subparsers = config_parser.add_subparsers(dest='config_action')
+    setup_subparser = setup_parser.add_subparsers(dest='setup_action')
+    config_parser = setup_subparser.add_parser(ACTION_SETUP_CONFIG, help='Config related commands')
+    config_subparser = config_parser.add_subparsers(dest='config_action')
 
-    show_config_parser = config_subparsers.add_parser(
-        ACTION_CONFIG_SHOW, description='Print config used by exec command or config specified by an option',
-        add_help=False)
-    show_config_parser.add_argument('-dc', '--def-config', action='store_true', help='show default config')
+    show_config_parser = config_subparser.add_parser(
+        ACTION_CONFIG_PRINT, help='Print content of the current configuration')
+    show_config_parser.add_argument('-dc', '--def-config', action='store_true', help='Show content of default config')
 
-    create__config_parser = config_subparsers.add_parser(ACTION_CONFIG_CREATE, description='create config file',
-                                                         add_help=False)
+    create__config_parser = config_subparser.add_parser(
+        ACTION_CONFIG_CREATE, help='Create configuration file', add_help=False)
     create__config_parser.add_argument("--overwrite", action="store_true", help="overwrite config file to default")
-
-    config_subparsers.add_parser(ACTION_CONFIG_RESET, description='reset config file',
-                                 add_help=False)
 
 
 def _init_hostinfo_parser(common, subparsers):

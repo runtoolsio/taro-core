@@ -5,6 +5,7 @@ import taro
 from taro import util, paths, cfgfile
 from taro.err import TaroException, ConfigFileNotFoundError
 from taroapp import cmd, cli
+from taroapp.cli import ACTION_SETUP
 
 
 def main_cli():
@@ -24,9 +25,9 @@ def main(args):
         run_app(args)
     except ConfigFileNotFoundError as e:
         print(f"User error: {e}", file=sys.stderr)
-        print("Run `setup` command to create config file or see `-dc` and `-mc` options to execute without config file")
+        print("Run `setup config create` command to create the configuration file "
+              "or see `-dc` and `-mc` options to execute without config file")
         exit(1)
-
     except TaroException as e:
         print(f"User error: {e}", file=sys.stderr)
         exit(1)
@@ -38,23 +39,26 @@ def run_app(args):
     if args_parsed.no_color or 'NO_COLOR' in os.environ or 'TARO_NO_COLOR' in os.environ:
         os.environ['PROMPT_TOOLKIT_COLOR_DEPTH'] = 'DEPTH_1_BIT'
 
-    if args_parsed.action == 'config':
-        run_config(args_parsed)
+    if args_parsed.action == ACTION_SETUP:
+        run_setup(args_parsed)
     else:
         init_taro(args_parsed)
         run_command(args_parsed)
 
 
+def run_setup(args):
+    if args.setup_action == cli.ACTION_SETUP_CONFIG:
+        run_config(args)
+
+
 def run_config(args):
-    if args.config_action == cli.ACTION_CONFIG_SHOW:
+    if args.config_action == cli.ACTION_CONFIG_PRINT:
         if getattr(args, 'def_config', False):
             util.print_file(paths.default_config_file_path())
         else:
             util.print_file(paths.lookup_config_file())
     elif args.config_action == cli.ACTION_CONFIG_CREATE:
         cfgfile.copy_default_file_to_search_path(args.overwrite)
-    elif args.config_action == cli.ACTION_CONFIG_RESET:
-        cfgfile.copy_default_file_to_search_path(True)
 
 
 def init_taro(args):
