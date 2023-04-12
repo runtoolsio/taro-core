@@ -49,6 +49,7 @@ def copy_default_file_to_search_path(overwrite: bool):
     copy_to = paths.taro_config_file_search_path(exclude_cwd=True)[0] / paths.CONFIG_FILE
     try:
         util.copy_resource(cfg_to_copy, copy_to, overwrite)
+        return copy_to
     except FileExistsError as e:
         raise ConfigFileAlreadyExists(str(e)) from e
 

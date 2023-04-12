@@ -37,9 +37,6 @@ def copy_resource(src: Path, dst: Path, overwrite=False):
         os.makedirs(dst.parent)
 
     if not dst.exists() or overwrite:
-        print("copying file to " + str(dst))
         copy(src, dst)
-        print("done!")
-        return
 
     raise FileExistsError('File already exists: ' + str(dst))

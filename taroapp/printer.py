@@ -15,20 +15,20 @@ from taro.util import iterates
 Column = namedtuple('Column', 'name max_width value_fnc colour_fnc')
 
 
-def _print_not_formatted(style_text):
-    print("".join(text for _, text in style_text))
+def _print_not_formatted(style_text, *, file=None):
+    print("".join(text for _, text in style_text), file=file)
 
 
-def print_styled(*style_and_text: Tuple[str, str]):
+def print_styled(*style_and_text: Tuple[str, str], file=None):
     """
     Print styled if printed to terminal.
 
     :param: style_and_text tuples of style and text to print
     """
     if sys.stdout.isatty():
-        print_formatted_text(FormattedText(list(style_and_text)))
+        print_formatted_text(FormattedText(list(style_and_text)), file=file)
     else:
-        _print_not_formatted(style_and_text)
+        _print_not_formatted(style_and_text, file=file)
 
 
 @iterates

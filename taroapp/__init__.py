@@ -4,8 +4,10 @@ import sys
 import taro
 from taro import util, paths, cfgfile
 from taro.err import TaroException, ConfigFileNotFoundError
+from taro.theme import Theme
 from taroapp import cmd, cli
 from taroapp.cli import ACTION_SETUP
+from taroapp.printer import print_styled
 
 
 def main_cli():
@@ -24,12 +26,12 @@ def main(args):
     try:
         run_app(args)
     except ConfigFileNotFoundError as e:
-        print(f"User error: {e}", file=sys.stderr)
-        print("Run `setup config create` command to create the configuration file "
-              "or see `-dc` and `-mc` options to execute without config file")
+        print_styled((Theme.warning, "User error: "), ('', str(e)), file=sys.stderr)
+        print_styled(('', "Run `setup config create` command to create the configuration file "
+                     "or see `-dc` and `-mc` options to execute without config file"), file=sys.stderr)
         exit(1)
     except TaroException as e:
-        print(f"User error: {e}", file=sys.stderr)
+        print_styled((Theme.warning, "User error: "), ('', str(e)), file=sys.stderr)
         exit(1)
 
 
@@ -58,7 +60,8 @@ def run_config(args):
         else:
             util.print_file(paths.lookup_config_file())
     elif args.config_action == cli.ACTION_CONFIG_CREATE:
-        cfgfile.copy_default_file_to_search_path(args.overwrite)
+        created_file = cfgfile.copy_default_file_to_search_path(args.overwrite)
+        print_styled((Theme.success, "Created "), ('', str(created_file)))
 
 
 def init_taro(args):
