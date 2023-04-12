@@ -3,6 +3,7 @@ from collections.abc import Iterable
 
 from taro import cfg, util, paths
 from taro.cfg import LogMode
+from taro.err import TaroException
 
 LOG_MODE = 'log.mode'
 LOG_STDOUT_LEVEL = 'log.stdout.level'
@@ -46,4 +47,11 @@ def copy_default_file_to_search_path(overwrite: bool):
     # Copy to first dir in search path
     # TODO Specify where to copy the file - do not use XDG search path
     copy_to = paths.taro_config_file_search_path(exclude_cwd=True)[0] / paths.CONFIG_FILE
-    util.copy_resource(cfg_to_copy, copy_to, overwrite)
+    try:
+        util.copy_resource(cfg_to_copy, copy_to, overwrite)
+    except FileExistsError as e:
+        raise ConfigFileAlreadyExists(str(e)) from e
+
+
+class ConfigFileAlreadyExists(TaroException, FileExistsError):
+    pass
