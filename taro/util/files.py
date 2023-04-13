@@ -4,8 +4,8 @@ from shutil import copy
 
 import yaml
 
-from taro import ns
-from taro.ns import NestedNamespace
+from taro.util import ns
+from taro.util.ns import NestedNamespace
 
 
 def expand_user(file):

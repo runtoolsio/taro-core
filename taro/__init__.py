@@ -18,7 +18,7 @@ from .jobs.plugins import PluginBase, PluginDisabledError
 from .jobs.process import ProcessExecution
 from .jobs.program import ProgramExecution
 from .jobs.runner import RunnerJobInstance
-from .ns import NestedNamespace
+from .util.ns import NestedNamespace
 from .paths import lookup_file_in_config_path
 from .util import format_timedelta, read_yaml_file
 
