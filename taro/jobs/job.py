@@ -404,8 +404,8 @@ class JobInfo:
             **as_dict['user_params']
         )
 
-    def __init__(self, job_instance_id, lifecycle, tracking, status, error_output, warnings, exec_error: ExecutionError,
-                 parameters, **user_params):
+    def __init__(self, job_instance_id, lifecycle, tracking, status, error_output, warnings, exec_error, parameters,
+                 **user_params):
         self._job_instance_id = job_instance_id
         self._lifecycle = lifecycle
         self._tracking = tracking
@@ -487,6 +487,19 @@ class JobInfo:
             return d
         else:
             return {k: v for k, v in d.items() if not is_empty(v)}
+
+    def __eq__(self, other):
+        if not isinstance(other, JobInfo):
+            return NotImplemented
+        return (self._job_instance_id, self._lifecycle, self._tracking, self._status, self._error_output,
+                self._warnings, self._exec_error, self._parameters, self._user_params) == \
+            (other._job_instance_id, other._lifecycle, other._tracking, other._status, other._error_output,
+             other._warnings, other._exec_error, other._parameters, other._user_params)
+
+    def __hash__(self):
+        return hash((self._job_instance_id, self._lifecycle, self._tracking, self._status, self._error_output,
+                     tuple(sorted(self._warnings.items())), self._exec_error, self._parameters,
+                     tuple(sorted(self._user_params.items()))))
 
     def __repr__(self) -> str:
         return "{}({!r}, {!r}, {!r}, {!r}, {!r})".format(

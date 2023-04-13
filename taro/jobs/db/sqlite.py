@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 def create_persistence():
     db_con = sqlite3.connect(cfg.persistence_database or str(paths.sqlite_db_path(True)))
     sqlite_ = SQLite(db_con)
-    sqlite_.check_tables_exist()  # TODO execute only in taro.auto_init() / setup
+    sqlite_.check_tables_exist()  # TODO execute only setup?
     return sqlite_
 
 
@@ -80,7 +80,8 @@ class SQLite:
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
-    def read_jobs(self, instance_match=None, sort=SortCriteria.CREATED, *, asc, limit, last) -> List[JobInfo]:
+    def read_jobs(self, instance_match=None, sort=SortCriteria.CREATED, *, asc=True, limit=-1, last=False)\
+            -> List[JobInfo]:
         def sort_exp():
             if sort == SortCriteria.CREATED:
                 return 'created'

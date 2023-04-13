@@ -297,6 +297,14 @@ class ExecutionLifecycle:
     def __deepcopy__(self, memo):
         return ExecutionLifecycle(*self.state_changes)
 
+    def __eq__(self, other):
+        if not isinstance(other, ExecutionLifecycle):
+            return NotImplemented
+        return self._state_changes == other._state_changes
+
+    def __hash__(self):
+        return hash(tuple(self._state_changes.items()))
+
     def __repr__(self) -> str:
         return "{}({!r})".format(
             self.__class__.__name__, self._state_changes)
