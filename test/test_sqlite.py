@@ -1,5 +1,4 @@
 import sqlite3
-from datetime import datetime
 
 import pytest
 
@@ -18,17 +17,14 @@ def sut():
     sqlite_.close()
 
 
-def test_storage(sut):
+def test_store_and_fetch(sut):
     jid = JobInstanceID('j1', 'i1')
     lifecycle = ExecutionLifecycle((ExecutionState.CREATED, utc_now()))
     tracking = MutableTrackedTask('task1')
     error = ExecutionError('e1', ExecutionState.ERROR)
-    j1 = JobInfo(jid, lifecycle, tracking, 's1', 'e1', {'w': 1}, error, [('p1', 'v1')], u1='v2')
+    j1 = JobInfo(jid, lifecycle, tracking, 's1', 'e1', {'w': 1}, error, (('p1', 'v1'),), u1='v2')
 
     sut.store_job(j1)
     jobs = sut.read_jobs()
 
-    j = jobs[0]
-    assert j1.id == j.id
-    assert j1.tracking == j.tracking
-    # assert j1 == j
+    assert j1 == jobs[0]

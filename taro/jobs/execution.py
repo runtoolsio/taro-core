@@ -129,6 +129,15 @@ class ExecutionError(Exception):
         else:
             return {k: v for k, v in d.items() if not is_empty(v)}
 
+    def __hash__(self):
+        return hash((self.message, self.exec_state, self.unexpected_error))
+
+    def __eq__(self, other):
+        if not isinstance(other, ExecutionError):
+            return NotImplemented
+        return (self.message, self.exec_state, self.unexpected_error) == (
+            other.message, other.exec_state, other.unexpected_error)
+
 
 class Execution(abc.ABC):
 

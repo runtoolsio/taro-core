@@ -111,7 +111,7 @@ class SQLite:
             warnings = json.loads(t[8]) if t[8] else dict()
             exec_error = ExecutionError.from_dict(json.loads(t[9])) if t[9] else None
             user_params = json.loads(t[10]) if t[10] else dict()
-            parameters = json.loads(t[11]) if t[11] else tuple()
+            parameters = tuple((tuple(x) for x in json.loads(t[11]))) if t[11] else tuple()
             return JobInfo(JobInstanceID(t[0], t[1]), lifecycle, tracking, t[6], error_output, warnings, exec_error,
                            parameters, **user_params)
 
