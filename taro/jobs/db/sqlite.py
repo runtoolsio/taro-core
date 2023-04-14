@@ -145,7 +145,7 @@ class SQLite:
              job_info.lifecycle.changed(ExecutionState.CREATED),
              job_info.lifecycle.last_changed,
              json.dumps(
-                 [(state.name, int(changed.timestamp())) for state, changed in job_info.lifecycle.state_changes]),
+                 [(state.name, float(changed.timestamp())) for state, changed in job_info.lifecycle.state_changes]),
              json.dumps(job_info.tracking.to_dict(include_empty=False)) if job_info.tracking else None,
              job_info.status,
              json.dumps(job_info.error_output) if job_info.error_output else None,
