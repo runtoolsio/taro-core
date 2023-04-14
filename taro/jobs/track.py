@@ -65,6 +65,14 @@ class MutableTemporal(Temporal):
     def ended_at(self, ended_at):
         self._ended_at = ended_at
 
+    def __hash__(self):
+        return hash((self.started_at, self.updated_at, self.ended_at))
+
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        return (self.started_at, self.updated_at, self.ended_at) == (other.started_at, other.updated_at, other.ended_at)
+
 
 class Activatable(ABC):
 
@@ -135,8 +143,17 @@ class Progress(ABC):
 
         return val
 
+    def __hash__(self):
+        return hash((self.completed, self.total, self.unit, self.last_updated_at))
 
-@dataclass(frozen=True)
+    def __eq__(self, other):
+        if not isinstance(other, Progress):
+            return NotImplemented
+        return (self.completed, self.total, self.unit, self.last_updated_at) == \
+            (other.completed, other.total, other.unit, other.last_updated_at)
+
+
+@dataclass(frozen=True, eq=False)
 class ProgressInfo(Progress):
     _completed: Any
     _total: Any
@@ -211,8 +228,17 @@ class Operation(Temporal, Activatable):
 
         return " ".join(parts)
 
+    def __hash__(self):
+        return hash((self.name, self.progress, self.started_at, self.updated_at, self.ended_at, self.active))
 
-@dataclass(frozen=True)
+    def __eq__(self, other):
+        if not isinstance(other, Operation):
+            return NotImplemented
+        return (self.name, self.progress, self.started_at, self.updated_at, self.ended_at, self.active) == \
+            (other.name, other.progress, other.started_at, other.updated_at, other.ended_at, other.active)
+
+
+@dataclass(frozen=True, eq=False)
 class OperationInfo(Operation):
     _name: Optional[str]
     _progress: Optional[Progress]
@@ -351,10 +377,23 @@ class TrackedTask(Temporal, Activatable):
 
         return " ".join(parts)
 
+    def __hash__(self):
+        return hash((self.name, tuple(self.events), self.current_event, tuple(self.operations), tuple(self.subtasks),
+                     self.result, self.started_at, self.updated_at, self.ended_at, self.active))
 
-@dataclass(frozen=True)
+    def __eq__(self, other):
+        if not isinstance(other, TrackedTask):
+            return NotImplemented
+        return (
+            self.name, tuple(self.events), self.current_event, tuple(self.operations), tuple(self.subtasks),
+            self.result,
+            self.started_at, self.updated_at, self.ended_at, self.active) == (
+            other.name, tuple(other.events), other.current_event, tuple(other.operations), tuple(other.subtasks),
+            other.result, other.started_at, other.updated_at, other.ended_at, other.active)
+
+
+@dataclass(frozen=True, eq=False)
 class TrackedTaskInfo(TrackedTask):
-
     _name: str
     _events: Sequence[Tuple[str, datetime]]
     _current_event: Optional[Tuple[str, datetime]]
@@ -402,7 +441,7 @@ class TrackedTaskInfo(TrackedTask):
 
     @property
     def result(self):
-        pass
+        return self._result
 
     @property
     def started_at(self):
