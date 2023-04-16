@@ -3,11 +3,10 @@ import json
 import logging
 import sqlite3
 from datetime import timezone
-from typing import List
 
 from taro import cfg, paths, JobInstanceID
 from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle
-from taro.jobs.job import JobInfo
+from taro.jobs.job import JobInfo, JobInfoList
 from taro.jobs.persistence import SortCriteria
 from taro.jobs.track import TrackedTaskInfo
 from taro.util import MatchingStrategy
@@ -81,7 +80,7 @@ class SQLite:
             self._conn.commit()
 
     def read_jobs(self, instance_match=None, sort=SortCriteria.CREATED, *, asc=True, limit=-1, last=False)\
-            -> List[JobInfo]:
+            -> JobInfoList:
         def sort_exp():
             if sort == SortCriteria.CREATED:
                 return 'created'
@@ -115,7 +114,7 @@ class SQLite:
             return JobInfo(JobInstanceID(t[0], t[1]), lifecycle, tracking, t[6], error_output, warnings, exec_error,
                            parameters, **user_params)
 
-        return [to_job_info(row) for row in c.fetchall()]
+        return JobInfoList((to_job_info(row) for row in c.fetchall()))
 
     def clean_up(self, max_records, max_age):
         if max_records >= 0:

@@ -507,14 +507,13 @@ class JobInfo:
             self._exec_error)
 
 
-class JobInfoCollection:
+class JobInfoList(list):
 
-    def __init__(self, *jobs):
-        self._jobs = jobs
+    def __init__(self, jobs):
+        super().__init__(jobs)
 
-    @property
-    def jobs(self):
-        return list(self._jobs)
+    def to_dict(self, include_empty=True) -> Dict[str, Any]:
+        return {"jobs": [job.to_dict(include_empty=include_empty) for job in self]}
 
 
 class Job:
