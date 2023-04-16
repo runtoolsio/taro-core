@@ -2,7 +2,7 @@ import sqlite3
 
 import pytest
 
-from taro import JobInfo, JobInstanceID, ExecutionLifecycle, ExecutionState, ExecutionError
+from taro import JobInfo, JobInstanceID, ExecutionLifecycle, ExecutionState, ExecutionError, util
 from taro.jobs.db.sqlite import SQLite
 from taro.jobs.track import MutableTrackedTask
 from taro.util import utc_now
@@ -28,3 +28,20 @@ def test_store_and_fetch(sut):
     jobs = sut.read_jobs()
 
     assert j1 == jobs[0]
+
+
+def j(c):
+    lifecycle = ExecutionLifecycle((ExecutionState.CREATED, utc_now()), (ExecutionState.COMPLETED, utc_now()))
+    return JobInfo(JobInstanceID(f"j{c}", util.unique_timestamp_hex()), lifecycle, None, None, None, None, None, None)
+
+
+def test_last(sut):
+    sut.store_job(j(1))
+    sut.store_job(j(2))
+    sut.store_job(j(1))
+    sut.store_job(j(3))
+    sut.store_job(j(2))
+
+    jobs = sut.read_jobs(last=True)
+    assert len(jobs) == 3
+    assert {'j1', 'j2', 'j3'} == {job.job_id for job in jobs}

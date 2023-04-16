@@ -76,7 +76,7 @@ class SQLite:
                          ''')
             c.execute('''CREATE INDEX job_id_index ON history (job_id)''')
             c.execute('''CREATE INDEX instance_id_index ON history (instance_id)''')
-            c.execute('''CREATE INDEX finished_index ON history (finished)''')
+            c.execute('''CREATE INDEX finished_index ON history (finished)''')  # TODO created idx too?
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
