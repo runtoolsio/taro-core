@@ -17,7 +17,7 @@ from collections import namedtuple
 from collections.abc import Iterable
 from dataclasses import dataclass
 from fnmatch import fnmatch
-from typing import NamedTuple, Dict, Any, Optional, Callable, Union
+from typing import NamedTuple, Dict, Any, Optional, Callable, Union, List
 
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
 from taro.jobs.track import TrackedTaskInfo
@@ -511,6 +511,10 @@ class JobInfoList(list):
 
     def __init__(self, jobs):
         super().__init__(jobs)
+
+    @property
+    def job_ids(self) -> List[str]:
+        return [j.id.job_id for j in self]
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         return {"jobs": [job.to_dict(include_empty=include_empty) for job in self]}

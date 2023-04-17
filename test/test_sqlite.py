@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import timedelta
 
 import pytest
 
@@ -30,8 +31,10 @@ def test_store_and_fetch(sut):
     assert j1 == jobs[0]
 
 
-def j(c):
-    lifecycle = ExecutionLifecycle((ExecutionState.CREATED, utc_now()), (ExecutionState.COMPLETED, utc_now()))
+def j(c, *, sec=0):
+    lifecycle = ExecutionLifecycle(
+        (ExecutionState.CREATED, utc_now() + timedelta(seconds=sec)),
+        (ExecutionState.COMPLETED, utc_now() + timedelta(seconds=sec)))
     return JobInfo(JobInstanceID(f"j{c}", util.unique_timestamp_hex()), lifecycle, None, None, None, None, None, None)
 
 
@@ -44,4 +47,16 @@ def test_last(sut):
 
     jobs = sut.read_jobs(last=True)
     assert len(jobs) == 3
-    assert {'j1', 'j2', 'j3'} == {job.job_id for job in jobs}
+    assert {job.job_id for job in jobs} == {'j1', 'j2', 'j3'}
+
+
+def test_sort(sut):
+    sut.store_job(j(1))
+    sut.store_job(j(2, sec=1))
+    sut.store_job(j(3, sec=-1))
+
+    jobs = sut.read_jobs()
+    assert jobs.job_ids == ['j3', 'j1', 'j2']
+
+    jobs = sut.read_jobs(asc=False)
+    assert jobs.job_ids == ['j2', 'j1', 'j3']
