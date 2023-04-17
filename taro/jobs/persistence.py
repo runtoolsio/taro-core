@@ -64,8 +64,8 @@ def num_of_job(instance_match):
                                      last=False))
 
 
-def store_job(job_info):
-    _instance().store_job(job_info)
+def store_job(*job_info):
+    _instance().store_job(*job_info)
     clean_up()
 
 

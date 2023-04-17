@@ -6,7 +6,7 @@ import pytest
 from taro import JobInfo, JobInstanceID, ExecutionLifecycle, ExecutionState, ExecutionError, util
 from taro.jobs.db.sqlite import SQLite
 from taro.jobs.track import MutableTrackedTask
-from taro.util import utc_now
+from taro.util import utc_now, parse_iso8601_duration
 
 
 @pytest.fixture
@@ -39,11 +39,7 @@ def j(c, *, sec=0):
 
 
 def test_last(sut):
-    sut.store_job(j(1))
-    sut.store_job(j(2))
-    sut.store_job(j(1))
-    sut.store_job(j(3))
-    sut.store_job(j(2))
+    sut.store_job(j(1), j(2), j(1), j(3), j(2))
 
     jobs = sut.read_jobs(last=True)
     assert len(jobs) == 3
@@ -51,12 +47,19 @@ def test_last(sut):
 
 
 def test_sort(sut):
-    sut.store_job(j(1))
-    sut.store_job(j(2, sec=1))
-    sut.store_job(j(3, sec=-1))
+    sut.store_job(j(1), j(2, sec=1), j(3, sec=-1))
 
     jobs = sut.read_jobs()
     assert jobs.job_ids == ['j3', 'j1', 'j2']
 
     jobs = sut.read_jobs(asc=False)
     assert jobs.job_ids == ['j2', 'j1', 'j3']
+
+
+def test_cleanup(sut):
+    sut.store_job(j(1, sec=-120), j(2), j(3, sec=-240), j(4, sec=-10), j(5, sec=-60))
+
+    sut.clean_up(1, parse_iso8601_duration('PT50S'))
+    jobs = sut.read_jobs()
+    assert len(jobs) == 1
+    assert jobs[0].id.job_id == 'j2'

@@ -79,7 +79,7 @@ class SQLite:
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
-    def read_jobs(self, instance_match=None, sort=SortCriteria.CREATED, *, asc=True, limit=-1, last=False)\
+    def read_jobs(self, instance_match=None, sort=SortCriteria.CREATED, *, asc=True, limit=-1, last=False) \
             -> JobInfoList:
         def sort_exp():
             if sort == SortCriteria.CREATED:
@@ -136,23 +136,27 @@ class SQLite:
                            ((datetime.datetime.now(tz=timezone.utc) - max_age),))
         self._conn.commit()
 
-    def store_job(self, job_info):
-        self._conn.execute(
+    def store_job(self, *job_info):
+        def to_tuple(j):
+            return (j.job_id,
+                    j.instance_id,
+                    j.lifecycle.changed(ExecutionState.CREATED),
+                    j.lifecycle.last_changed,
+                    json.dumps(
+                        [(state.name, float(changed.timestamp())) for state, changed in j.lifecycle.state_changes]),
+                    json.dumps(j.tracking.to_dict(include_empty=False)) if j.tracking else None,
+                    j.status,
+                    json.dumps(j.error_output) if j.error_output else None,
+                    json.dumps(j.warnings) if j.warnings else None,
+                    json.dumps(j.exec_error.to_dict(include_empty=False)) if j.exec_error else None,
+                    json.dumps(j.user_params) if j.user_params else None,
+                    json.dumps(j.parameters) if j.parameters else None,
+                    )
+
+        jobs = [to_tuple(j) for j in job_info]
+        self._conn.executemany(
             "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (job_info.job_id,
-             job_info.instance_id,
-             job_info.lifecycle.changed(ExecutionState.CREATED),
-             job_info.lifecycle.last_changed,
-             json.dumps(
-                 [(state.name, float(changed.timestamp())) for state, changed in job_info.lifecycle.state_changes]),
-             json.dumps(job_info.tracking.to_dict(include_empty=False)) if job_info.tracking else None,
-             job_info.status,
-             json.dumps(job_info.error_output) if job_info.error_output else None,
-             json.dumps(job_info.warnings) if job_info.warnings else None,
-             json.dumps(job_info.exec_error.to_dict(include_empty=False)) if job_info.exec_error else None,
-             json.dumps(job_info.user_params) if job_info.user_params else None,
-             json.dumps(job_info.parameters) if job_info.parameters else None
-             )
+            jobs
         )
         self._conn.commit()
 
