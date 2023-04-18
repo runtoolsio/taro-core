@@ -43,7 +43,7 @@ class IDMatchingCriteria:
         else:
             job_id = instance_id = pattern
             match_both = False
-        return IDMatchingCriteria(job_id, instance_id, match_both, strategy)
+        return cls(job_id, instance_id, match_both, strategy)
 
     @classmethod
     def from_dict(cls, as_dict):
@@ -93,6 +93,10 @@ class InstanceMatchingCriteria:
             tuple(id_matching_criteria) if isinstance(id_matching_criteria, Iterable) else (id_matching_criteria,)
 
     @classmethod
+    def parse_pattern(cls, pattern, strategy: S = MatchingStrategy.EXACT):
+        return cls(IDMatchingCriteria.parse_pattern(pattern, strategy))
+
+    @classmethod
     def from_dict(cls, as_dict):
         return cls([IDMatchingCriteria.from_dict(c) for c in as_dict['id_matching_criteria']])
 
@@ -108,6 +112,10 @@ class InstanceMatchingCriteria:
 
     def __repr__(self):
         return f"{self.__class__.__name__}(id_matching_criteria={self._id_matching_criteria})"
+
+
+def parse_criteria(pattern, strategy: S = MatchingStrategy.EXACT):
+    return InstanceMatchingCriteria.parse_pattern(pattern, strategy)
 
 
 class JobInstanceID(NamedTuple):

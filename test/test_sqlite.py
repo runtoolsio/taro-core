@@ -5,8 +5,9 @@ import pytest
 
 from taro import JobInfo, JobInstanceID, ExecutionLifecycle, ExecutionState, ExecutionError, util
 from taro.jobs.db.sqlite import SQLite
+from taro.jobs.job import parse_criteria
 from taro.jobs.track import MutableTrackedTask
-from taro.util import utc_now, parse_iso8601_duration
+from taro.util import utc_now, parse_iso8601_duration, MatchingStrategy
 
 
 @pytest.fixture
@@ -62,6 +63,14 @@ def test_limit(sut):
     jobs = sut.read_jobs(limit=1)
     assert len(jobs) == 1
     assert jobs[0].job_id == 'j3'
+
+
+def test_job_id_match(sut):
+    sut.store_job(j(1), j(12), j(11), j(111), j(121))
+
+    assert len(sut.read_jobs(parse_criteria('j1'))) == 1
+    assert len(sut.read_jobs(parse_criteria('j1', MatchingStrategy.PARTIAL))) == 5
+    assert len(sut.read_jobs(parse_criteria('j1?1', MatchingStrategy.FN_MATCH))) == 2
 
 
 def test_cleanup(sut):
