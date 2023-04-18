@@ -56,10 +56,18 @@ def test_sort(sut):
     assert jobs.job_ids == ['j2', 'j1', 'j3']
 
 
+def test_limit(sut):
+    sut.store_job(j(1), j(2, sec=1), j(3, sec=-1))
+
+    jobs = sut.read_jobs(limit=1)
+    assert len(jobs) == 1
+    assert jobs[0].job_id == 'j3'
+
+
 def test_cleanup(sut):
     sut.store_job(j(1, sec=-120), j(2), j(3, sec=-240), j(4, sec=-10), j(5, sec=-60))
 
     sut.clean_up(1, parse_iso8601_duration('PT50S'))
     jobs = sut.read_jobs()
     assert len(jobs) == 1
-    assert jobs[0].id.job_id == 'j2'
+    assert jobs[0].job_id == 'j2'
