@@ -361,7 +361,7 @@ class TrackedTask(Temporal, Activatable):
             statuses = []
             if self.current_event:
                 if self.current_event[1] and False:  # TODO configurable
-                    ts = util.format_time_ms_local_tz(self.current_event[1], include_ms=False)
+                    ts = util.format_time_local_tz(self.current_event[1], include_ms=False)
                     event_str = f"{ts} {self.current_event[0]}"
                 else:
                     event_str = self.current_event[0]

@@ -87,14 +87,15 @@ def format_dt_iso(td):
     return td.isoformat()
 
 
-def format_dt_ms_local_tz(dt, null=''):
+def format_dt_local_tz(dt, null='', *, include_ms=True):
     if not dt:
         return null
 
-    return dt.astimezone().replace(tzinfo=None).isoformat(sep=' ', timespec='milliseconds')
+    ts = 'milliseconds' if include_ms else 'seconds'
+    return dt.astimezone().replace(tzinfo=None).isoformat(sep=' ', timespec=ts)
 
 
-def format_time_ms_local_tz(dt, null='', include_ms=True):
+def format_time_local_tz(dt, null='', include_ms=True):
     if not dt:
         return null
 
@@ -105,8 +106,8 @@ def format_time_ms_local_tz(dt, null='', include_ms=True):
 
 
 class DateTimeFormat(Enum):
-    DATE_TIME_MS_LOCAL_ZONE = (format_dt_ms_local_tz,)
-    TIME_MS_LOCAL_ZONE = (format_time_ms_local_tz,)
+    DATE_TIME_MS_LOCAL_ZONE = (format_dt_local_tz,)
+    TIME_MS_LOCAL_ZONE = (format_time_local_tz,)
     NONE = (lambda dt: None,)
 
     def __call__(self, *args, **kwargs):
