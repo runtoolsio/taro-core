@@ -215,7 +215,7 @@ def _init_history_parser(common, subparsers):
 
     hist_parser.add_argument('-a', '--asc', '--ascending', action='store_true', help='Ascending sort')
     hist_parser.add_argument('-s', '--sort', type=str, choices=[s.name.lower() for s in SortCriteria],
-                             default=SortCriteria.FINISHED.name.lower(), help='Sorting criteria')
+                             default=SortCriteria.ENDED.name.lower(), help='Sorting criteria')
     hist_parser.add_argument('-P', '--no-pager', action='store_true', help='Do not use pager for output')
     hist_parser.add_argument('--show-params', action='store_true', help='')
 

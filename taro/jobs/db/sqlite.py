@@ -63,7 +63,7 @@ class SQLite:
                          (job_id text,
                          instance_id text,
                          created timestamp,
-                         finished timestamp,
+                         ended timestamp,
                          state_changed text,
                          tracking text,
                          result text,
@@ -75,19 +75,19 @@ class SQLite:
                          ''')
             c.execute('''CREATE INDEX job_id_index ON history (job_id)''')
             c.execute('''CREATE INDEX instance_id_index ON history (instance_id)''')
-            c.execute('''CREATE INDEX finished_index ON history (finished)''')  # TODO created idx too?
+            c.execute('''CREATE INDEX ended_index ON history (ended)''')  # TODO created idx too?
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
-    def read_jobs(self, instance_match=None, sort=SortCriteria.FINISHED, *, asc=True, limit=-1, last=False) \
+    def read_jobs(self, instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, last=False) \
             -> JobInfoList:
         def sort_exp():
             if sort == SortCriteria.CREATED:
                 return 'created'
-            if sort == SortCriteria.FINISHED:
-                return 'finished'
+            if sort == SortCriteria.ENDED:
+                return 'ended'
             if sort == SortCriteria.TIME:
-                return "julianday(finished) - julianday(created)"
+                return "julianday(ended) - julianday(created)"
             raise ValueError(sort)
 
         statement = "SELECT * FROM history"
@@ -127,12 +127,12 @@ class SQLite:
         count = c.fetchone()[0]
         if count > limit:
             self._conn.execute(
-                "DELETE FROM history WHERE rowid not in (SELECT rowid FROM history ORDER BY finished DESC LIMIT (?))",
+                "DELETE FROM history WHERE rowid not in (SELECT rowid FROM history ORDER BY ended DESC LIMIT (?))",
                 (limit,))
             self._conn.commit()
 
     def _delete_old_jobs(self, max_age):
-        self._conn.execute("DELETE FROM history WHERE finished < (?)",
+        self._conn.execute("DELETE FROM history WHERE ended < (?)",
                            ((datetime.datetime.now(tz=timezone.utc) - max_age),))
         self._conn.commit()
 
@@ -140,8 +140,8 @@ class SQLite:
         def to_tuple(j):
             return (j.job_id,
                     j.instance_id,
-                    j.lifecycle.changed(ExecutionState.CREATED),
-                    j.lifecycle.last_changed,
+                    j.lifecycle.changed_at(ExecutionState.CREATED),
+                    j.lifecycle.last_changed_at,
                     json.dumps(
                         [(state.name, float(changed.timestamp())) for state, changed in j.lifecycle.state_changes]),
                     json.dumps(j.tracking.to_dict(include_empty=False)) if j.tracking else None,

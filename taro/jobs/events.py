@@ -46,7 +46,7 @@ class StateDispatcher(EventDispatcher, ExecutionStateObserver):
         event = {
             "new_state": job_info.state.name,
             "previous_state": None,  # TODO previous_state
-            "changed": format_dt_iso(job_info.lifecycle.last_changed),
+            "changed": format_dt_iso(job_info.lifecycle.last_changed_at),
         }
         self._send_event("execution_state_change", job_info.id, event)
 

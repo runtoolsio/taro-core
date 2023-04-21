@@ -290,7 +290,7 @@ class ExecutionsLimitation(Sync, ExecutionStateObserver):
         jobs, _ = taro.client.read_jobs_info()
         parallel_group_jobs = sorted(
             (job for job in jobs if self._is_same_exec_group(job)),
-            key=lambda job: job.lifecycle.changed(ExecutionState.CREATED)
+            key=lambda job: job.lifecycle.changed_at(ExecutionState.CREATED)
         )
         executing = [job for job in parallel_group_jobs if job.lifecycle.state.is_executing()]
         max_allowed = self.max_executions - len(executing)
@@ -298,9 +298,9 @@ class ExecutionsLimitation(Sync, ExecutionStateObserver):
             return self._set_signal(Signal.WAIT)
 
         next_allowed = [job for job in parallel_group_jobs if job not in executing][0:max_allowed]
-        job_created = job_info.lifecycle.changed(ExecutionState.CREATED)
+        job_created = job_info.lifecycle.changed_at(ExecutionState.CREATED)
         for allowed in next_allowed:
-            if job_info.id == allowed.id or job_created <= allowed.lifecycle.changed(ExecutionState.CREATED):
+            if job_info.id == allowed.id or job_created <= allowed.lifecycle.changed_at(ExecutionState.CREATED):
                 # The second condition ensure this works even when the job is not contained in 'job' for any reasons
                 return self._set_signal(Signal.CONTINUE)
 

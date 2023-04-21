@@ -51,11 +51,11 @@ def _instance():
 
 class SortCriteria(Enum):
     CREATED = 1
-    FINISHED = 2
+    ENDED = 2
     TIME = 3
 
 
-def read_jobs(instance_match=None, sort=SortCriteria.FINISHED, *, asc=True, limit=-1, last=False):
+def read_jobs(instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, last=False):
     return _instance().read_jobs(instance_match=instance_match, sort=sort, asc=asc, limit=limit, last=last)
 
 
@@ -89,9 +89,9 @@ def close():
 def _sort_key(sort: SortCriteria):
     def key(j):
         if sort == SortCriteria.CREATED:
-            return j.lifecycle.changed(ExecutionState.CREATED)
-        if sort == SortCriteria.FINISHED:
-            return j.lifecycle.execution_finished
+            return j.lifecycle.changed_at(ExecutionState.CREATED)
+        if sort == SortCriteria.ENDED:
+            return j.lifecycle.execution_ended_at
         if sort == SortCriteria.TIME:
             return j.lifecycle.execution_time
         raise ValueError(sort)

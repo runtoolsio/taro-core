@@ -248,11 +248,11 @@ class ExecutionLifecycle:
     def state_changes(self) -> Iterable[Tuple[ExecutionState, datetime.datetime]]:
         return ((state, changed) for state, changed in self._state_changes.items())
 
-    def changed(self, state: ExecutionState) -> datetime.datetime:
+    def changed_at(self, state: ExecutionState) -> datetime.datetime:
         return self._state_changes[state]
 
     @property
-    def last_changed(self) -> Optional[datetime.datetime]:
+    def last_changed_at(self) -> Optional[datetime.datetime]:
         return next(reversed(self._state_changes.values()), None)
 
     @property
@@ -263,23 +263,23 @@ class ExecutionLifecycle:
         return self.first_executing_state is not None
 
     @property
-    def execution_started(self) -> Optional[datetime.datetime]:
+    def execution_started_at(self) -> Optional[datetime.datetime]:
         return self._state_changes.get(self.first_executing_state)
 
     @property
-    def execution_finished(self) -> Optional[datetime.datetime]:
+    def execution_ended_at(self) -> Optional[datetime.datetime]:
         state = self.state
         if not state.is_terminal():
             return None
-        return self.changed(state)
+        return self.changed_at(state)
 
     @property
     def execution_time(self) -> Optional[datetime.timedelta]:
-        started = self.execution_started
+        started = self.execution_started_at
         if not started:
             return None
 
-        finished = self.execution_finished or util.utc_now()
+        finished = self.execution_ended_at or util.utc_now()
         return finished - started
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
@@ -287,11 +287,11 @@ class ExecutionLifecycle:
             "state_changes": [{"state": state.name, "changed": format_dt_iso(change)} for state, change in
                               self.state_changes],
             "state": self.state.name,
-            "created": format_dt_iso(self.changed(ExecutionState.CREATED)),
-            "last_changed": format_dt_iso(self.last_changed),
-            "execution_started": format_dt_iso(self.execution_started),
-            "execution_finished": format_dt_iso(self.execution_finished),
-            "execution_time": self.execution_time.total_seconds() if self.execution_started else None,
+            "created": format_dt_iso(self.changed_at(ExecutionState.CREATED)),
+            "last_changed": format_dt_iso(self.last_changed_at),
+            "execution_started": format_dt_iso(self.execution_started_at),
+            "execution_finished": format_dt_iso(self.execution_ended_at),
+            "execution_time": self.execution_time.total_seconds() if self.execution_started_at else None,
         }
         if include_empty:
             return d

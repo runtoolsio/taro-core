@@ -16,7 +16,9 @@ import textwrap
 from collections import namedtuple
 from collections.abc import Iterable
 from dataclasses import dataclass
+from enum import Enum
 from fnmatch import fnmatch
+from functools import partial
 from typing import NamedTuple, Dict, Any, Optional, Callable, Union, List
 
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
@@ -84,6 +86,21 @@ def compound_id_filter(criteria_seq):
         return not criteria_seq or any(criteria(jid) for criteria in criteria_seq)
 
     return match
+
+
+class InstanceEvent(Enum):
+
+    CREATED = partial(lambda i: i.lifecycle.changed_at(ExecutionState.CREATED))
+
+    def __call__(self, instance):
+        return self.value(instance)
+
+
+class IntervalCriteria:
+
+    def __init__(self, from_dt, to_dt):
+        self.from_dt = from_dt
+        self.to_dt = to_dt
 
 
 class InstanceMatchingCriteria:
@@ -429,7 +446,7 @@ class JobInfo:
 
     @staticmethod
     def created(job_info):
-        return job_info.lifecycle.changed(ExecutionState.CREATED)
+        return job_info.lifecycle.changed_at(ExecutionState.CREATED)
 
     @property
     def job_id(self) -> str:

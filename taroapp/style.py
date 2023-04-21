@@ -60,7 +60,7 @@ def job_instance_id_styled(job_instance_id):
 
 def job_status_line_styled(job_instance, *, ts_prefix_format=DateTimeFormat.DATE_TIME_MS_LOCAL_ZONE):
     return job_instance_id_status_line_styled(
-        job_instance.id, job_instance.state, job_instance.lifecycle.last_changed, ts_prefix_format=ts_prefix_format)
+        job_instance.id, job_instance.state, job_instance.lifecycle.last_changed_at, ts_prefix_format=ts_prefix_format)
 
 
 def job_instance_id_status_line_styled(
