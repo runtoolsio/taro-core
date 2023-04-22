@@ -91,7 +91,7 @@ def _sort_key(sort: SortCriteria):
         if sort == SortCriteria.CREATED:
             return j.lifecycle.changed_at(ExecutionState.CREATED)
         if sort == SortCriteria.ENDED:
-            return j.lifecycle.execution_ended_at
+            return j.lifecycle.ended_at
         if sort == SortCriteria.TIME:
             return j.lifecycle.execution_time
         raise ValueError(sort)

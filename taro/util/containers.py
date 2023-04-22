@@ -1,5 +1,6 @@
 import functools
 import itertools
+from typing import Iterable
 
 
 def sequence_view(seq, *, sort_key, asc, limit, filter_=None):
@@ -18,3 +19,9 @@ def iterates(func):
             pass
 
     return catcher
+
+
+def to_list(e):
+    if e is None:
+        return []
+    return list(e) if isinstance(e, Iterable) else [e]

@@ -256,6 +256,10 @@ class ExecutionLifecycle:
         return next(reversed(self._state_changes.values()), None)
 
     @property
+    def created_at(self) -> datetime.datetime:
+        return self.changed_at(ExecutionState.CREATED)
+
+    @property
     def first_executing_state(self) -> Optional[ExecutionState]:
         return next((state for state in self._state_changes if state.is_executing()), None)
 
@@ -263,11 +267,11 @@ class ExecutionLifecycle:
         return self.first_executing_state is not None
 
     @property
-    def execution_started_at(self) -> Optional[datetime.datetime]:
+    def executed_at(self) -> Optional[datetime.datetime]:
         return self._state_changes.get(self.first_executing_state)
 
     @property
-    def execution_ended_at(self) -> Optional[datetime.datetime]:
+    def ended_at(self) -> Optional[datetime.datetime]:
         state = self.state
         if not state.is_terminal():
             return None
@@ -275,23 +279,23 @@ class ExecutionLifecycle:
 
     @property
     def execution_time(self) -> Optional[datetime.timedelta]:
-        started = self.execution_started_at
-        if not started:
+        start = self.executed_at
+        if not start:
             return None
 
-        finished = self.execution_ended_at or util.utc_now()
-        return finished - started
+        end = self.ended_at or util.utc_now()
+        return end - start
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         d = {
             "state_changes": [{"state": state.name, "changed": format_dt_iso(change)} for state, change in
                               self.state_changes],
             "state": self.state.name,
-            "created": format_dt_iso(self.changed_at(ExecutionState.CREATED)),
-            "last_changed": format_dt_iso(self.last_changed_at),
-            "execution_started": format_dt_iso(self.execution_started_at),
-            "execution_finished": format_dt_iso(self.execution_ended_at),
-            "execution_time": self.execution_time.total_seconds() if self.execution_started_at else None,
+            "last_changed_at": format_dt_iso(self.last_changed_at),
+            "created_at": format_dt_iso(self.created_at),
+            "executed_at": format_dt_iso(self.executed_at),
+            "ended_at": format_dt_iso(self.ended_at),
+            "execution_time": self.execution_time.total_seconds() if self.executed_at else None,
         }
         if include_empty:
             return d

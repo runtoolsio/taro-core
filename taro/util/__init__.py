@@ -27,3 +27,7 @@ def is_empty(value):
         return False
 
     return not bool(value)
+
+
+def remove_empty_values(d):
+    return {k: v for k, v in d.items() if not is_empty(v)}

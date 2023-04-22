@@ -12,9 +12,9 @@ There are two type of clients of the framework:
 """
 
 import abc
+import datetime
 import textwrap
 from collections import namedtuple
-from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from fnmatch import fnmatch
@@ -23,7 +23,7 @@ from typing import NamedTuple, Dict, Any, Optional, Callable, Union, List
 
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
 from taro.jobs.track import TrackedTaskInfo
-from taro.util import and_, or_, MatchingStrategy, is_empty
+from taro.util import and_, or_, MatchingStrategy, is_empty, to_list, format_dt_iso, remove_empty_values
 
 DEFAULT_OBSERVER_PRIORITY = 100
 
@@ -88,47 +88,121 @@ def compound_id_filter(criteria_seq):
     return match
 
 
-class InstanceEvent(Enum):
+class LifecycleEvent(Enum):
 
-    CREATED = partial(lambda i: i.lifecycle.changed_at(ExecutionState.CREATED))
+    CREATED = partial(lambda l: l.created_at)
+    EXECUTED = partial(lambda l: l.executed_at)
+    ENDED = partial(lambda l: l.ended_at)
 
-    def __call__(self, instance):
+    def __call__(self, instance) -> Optional[datetime.datetime]:
         return self.value(instance)
+
+    @classmethod
+    def decode(cls, value):
+        return cls[value]
+
+    def encode(self):
+        return self.name
 
 
 class IntervalCriteria:
 
-    def __init__(self, from_dt, to_dt):
-        self.from_dt = from_dt
-        self.to_dt = to_dt
+    def __init__(self, event, from_dt, to_dt, *, include_to=True):
+        if not event:
+            raise ValueError('Interval criteria event must be provided')
+        if not from_dt and not to_dt:
+            raise ValueError('Interval cannot be empty')
+        
+        self._event = event
+        self._from_dt = from_dt
+        self._to_dt = to_dt
+        self._include_to = include_to
+
+    @classmethod
+    def from_dict(cls, data):
+        event = LifecycleEvent.decode(data['event'])
+        from_dt = data.get("from_dt", None)
+        to_dt = data.get("to_dt", '')
+        include_to = data['include_to']
+        return cls(event, from_dt, to_dt, include_to=include_to)
+
+    @property
+    def event(self):
+        return self._event
+
+    @property
+    def from_dt(self):
+        return self._from_dt
+
+    @property
+    def to_dt(self):
+        return self._to_dt
+
+    @property
+    def include_to(self):
+        return self._include_to
+
+    def to_dict(self, include_empty=True) -> Dict[str, Any]:
+        d = {
+            "event": self.event.encode(),
+            "from_dt": format_dt_iso(self.from_dt),
+            "to_dt": format_dt_iso(self.to_dt),
+            "include_to": self.include_to,
+        }
+        return remove_empty_values(d) if include_empty else d
 
 
 class InstanceMatchingCriteria:
 
-    def __init__(self, id_matching_criteria):
-        self._id_matching_criteria = \
-            tuple(id_matching_criteria) if isinstance(id_matching_criteria, Iterable) else (id_matching_criteria,)
-
+    def __init__(self, id_matching_criteria=None, interval_criteria=None):
+        self._id_matching_criteria = to_list(id_matching_criteria)
+        self._interval_criteria = to_list(interval_criteria)
+        
     @classmethod
     def parse_pattern(cls, pattern, strategy: S = MatchingStrategy.EXACT):
         return cls(IDMatchingCriteria.parse_pattern(pattern, strategy))
 
     @classmethod
     def from_dict(cls, as_dict):
-        return cls([IDMatchingCriteria.from_dict(c) for c in as_dict['id_matching_criteria']])
+        id_criteria = [IDMatchingCriteria.from_dict(c) for c in as_dict.get('id_matching_criteria', ())]
+        interval_criteria = [IntervalCriteria.from_dict(c) for c in as_dict.get('interval_criteria', ())]
+        return cls(id_criteria, interval_criteria)
 
     @property
     def id_matching_criteria(self):
         return self._id_matching_criteria
 
+    @id_matching_criteria.setter
+    def id_matching_criteria(self, criteria):
+        self._id_matching_criteria = to_list(criteria)
+
+    @property
+    def interval_criteria(self):
+        return self._interval_criteria
+
+    @interval_criteria.setter
+    def interval_criteria(self, criteria):
+        self._interval_criteria = to_list(criteria)
+
+    def matches_id(self, job_instance):
+        return not self.id_matching_criteria or compound_id_filter(self.id_matching_criteria)(job_instance)
+
+    def matches_interval(self, job_instance):
+        return not self.interval_criteria or any(c(job_instance.lifecycle) for c in self.interval_criteria)
+
     def matches(self, job_instance):
-        return compound_id_filter(self.id_matching_criteria)(job_instance)
+        return self.matches_id(job_instance) and self.matches_interval(job_instance)
 
     def to_dict(self, include_empty=True):
-        return {'id_matching_criteria': [c.to_dict() for c in self.id_matching_criteria], }
+        d = {
+            'id_matching_criteria': [c.to_dict() for c in self.id_matching_criteria],
+            'interval_criteria': [c.to_dict() for c in self.interval_criteria],
+        }
+        return remove_empty_values(d) if include_empty else d
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(id_matching_criteria={self._id_matching_criteria})"
+        return f"{self.__class__.__name__}(" \
+               f"id_matching_criteria={self._id_matching_criteria}, interval_criteria={self._interval_criteria})"
 
 
 def parse_criteria(pattern, strategy: S = MatchingStrategy.EXACT):
