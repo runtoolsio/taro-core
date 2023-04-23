@@ -107,7 +107,7 @@ class LifecycleEvent(Enum):
 
 class IntervalCriteria:
 
-    def __init__(self, event, from_dt, to_dt, *, include_to=True):
+    def __init__(self, event, from_dt=None, to_dt=None, *, include_to=True):
         if not event:
             raise ValueError('Interval criteria event must be provided')
         if not from_dt and not to_dt:
@@ -142,6 +142,25 @@ class IntervalCriteria:
     def include_to(self):
         return self._include_to
 
+    def __call__(self, lifecycle):
+        return self.matches(lifecycle)
+
+    def matches(self, lifecycle):
+        event_dt = self.event(lifecycle)
+        if not event_dt:
+            return False
+        if self.from_dt and event_dt < self.from_dt:
+            return False
+        if self.to_dt:
+            if self.include_to:
+                if event_dt > self.to_dt:
+                    return False
+            else:
+                if event_dt >= self.to_dt:
+                    return False
+
+        return True
+
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         d = {
             "event": self.event.encode(),
@@ -154,8 +173,8 @@ class IntervalCriteria:
 
 class InstanceMatchingCriteria:
 
-    def __init__(self, id_matching_criteria=None, interval_criteria=None):
-        self._id_matching_criteria = to_list(id_matching_criteria)
+    def __init__(self, id_criteria=None, interval_criteria=None):
+        self._id_criteria = to_list(id_criteria)
         self._interval_criteria = to_list(interval_criteria)
         
     @classmethod
@@ -164,17 +183,17 @@ class InstanceMatchingCriteria:
 
     @classmethod
     def from_dict(cls, as_dict):
-        id_criteria = [IDMatchingCriteria.from_dict(c) for c in as_dict.get('id_matching_criteria', ())]
+        id_criteria = [IDMatchingCriteria.from_dict(c) for c in as_dict.get('id_criteria', ())]
         interval_criteria = [IntervalCriteria.from_dict(c) for c in as_dict.get('interval_criteria', ())]
         return cls(id_criteria, interval_criteria)
 
     @property
-    def id_matching_criteria(self):
-        return self._id_matching_criteria
+    def id_criteria(self):
+        return self._id_criteria
 
-    @id_matching_criteria.setter
-    def id_matching_criteria(self, criteria):
-        self._id_matching_criteria = to_list(criteria)
+    @id_criteria.setter
+    def id_criteria(self, criteria):
+        self._id_criteria = to_list(criteria)
 
     @property
     def interval_criteria(self):
@@ -185,7 +204,7 @@ class InstanceMatchingCriteria:
         self._interval_criteria = to_list(criteria)
 
     def matches_id(self, job_instance):
-        return not self.id_matching_criteria or compound_id_filter(self.id_matching_criteria)(job_instance)
+        return not self.id_criteria or compound_id_filter(self.id_criteria)(job_instance)
 
     def matches_interval(self, job_instance):
         return not self.interval_criteria or any(c(job_instance.lifecycle) for c in self.interval_criteria)
@@ -195,14 +214,17 @@ class InstanceMatchingCriteria:
 
     def to_dict(self, include_empty=True):
         d = {
-            'id_matching_criteria': [c.to_dict() for c in self.id_matching_criteria],
+            'id_criteria': [c.to_dict() for c in self.id_criteria],
             'interval_criteria': [c.to_dict() for c in self.interval_criteria],
         }
         return remove_empty_values(d) if include_empty else d
 
+    def __bool__(self):
+        return bool(self.id_criteria) or bool(self.interval_criteria)
+
     def __repr__(self):
         return f"{self.__class__.__name__}(" \
-               f"id_matching_criteria={self._id_matching_criteria}, interval_criteria={self._interval_criteria})"
+               f"id_criteria={self._id_criteria}, interval_criteria={self._interval_criteria})"
 
 
 def parse_criteria(pattern, strategy: S = MatchingStrategy.EXACT):

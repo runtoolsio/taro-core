@@ -105,6 +105,10 @@ def format_time_local_tz(dt, null='', include_ms=True):
         return dt.astimezone().strftime('%H:%M:%S')
 
 
+def format_dt_sql(dt):
+    return dt.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+
+
 class DateTimeFormat(Enum):
     DATE_TIME_MS_LOCAL_ZONE = (format_dt_local_tz,)
     TIME_MS_LOCAL_ZONE = (format_time_local_tz,)

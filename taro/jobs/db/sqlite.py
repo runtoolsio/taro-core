@@ -6,10 +6,10 @@ from datetime import timezone
 
 from taro import cfg, paths, JobInstanceID
 from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle
-from taro.jobs.job import JobInfo, JobInfoList
+from taro.jobs.job import JobInfo, JobInfoList, LifecycleEvent
 from taro.jobs.persistence import SortCriteria
 from taro.jobs.track import TrackedTaskInfo
-from taro.util import MatchingStrategy
+from taro.util import MatchingStrategy, format_dt_sql
 
 log = logging.getLogger(__name__)
 
@@ -22,29 +22,52 @@ def create_persistence():
 
 
 def _build_where_clause(instance_match):
-    if not instance_match or not instance_match.id_matching_criteria:
+    if not instance_match:
         return ""
 
-    criteria = instance_match.id_matching_criteria
-    conditions = []
-    for c in criteria:
+    id_criteria = instance_match.id_criteria
+    id_conditions = []
+    for c in id_criteria:
         op = 'AND' if c.match_both_ids else 'OR'
         if c.strategy == MatchingStrategy.PARTIAL:
-            conditions.append("job_id GLOB \"*{jid}*\" {op} instance_id GLOB \"*{iid}*\""
-                              .format(jid=c.job_id, iid=c.instance_id, op=op))
+            id_conditions.append("job_id GLOB \"*{jid}*\" {op} instance_id GLOB \"*{iid}*\""
+                                 .format(jid=c.job_id, iid=c.instance_id, op=op))
         elif c.strategy == MatchingStrategy.FN_MATCH:
-            conditions.append("job_id GLOB \"{jid}\" {op} instance_id GLOB \"{iid}\""
-                              .format(jid=c.job_id, iid=c.instance_id, op=op))
+            id_conditions.append("job_id GLOB \"{jid}\" {op} instance_id GLOB \"{iid}\""
+                                 .format(jid=c.job_id, iid=c.instance_id, op=op))
         elif c.strategy == MatchingStrategy.EXACT:
             if not c.instance_id:
-                conditions.append(f"job_id = \"{c.job_id}\"")  # TODO proper impl
+                id_conditions.append(f"job_id = \"{c.job_id}\"")  # TODO proper impl
             else:
-                conditions.append("job_id = \"{jid}\" {op} instance_id = \"{iid}\""
-                                  .format(jid=c.job_id, iid=c.instance_id, op=op))
+                id_conditions.append("job_id = \"{jid}\" {op} instance_id = \"{iid}\""
+                                     .format(jid=c.job_id, iid=c.instance_id, op=op))
         else:
-            raise ValueError(f"Matching strategy {criteria.strategy} is not supported")
+            raise ValueError(f"Matching strategy {id_criteria.strategy} is not supported")
 
-    return " WHERE ({conditions})".format(conditions=" OR ".join(conditions))
+    int_criteria = instance_match.interval_criteria
+    int_conditions = []
+    for c in int_criteria:
+        if c.event == LifecycleEvent.CREATED:
+            e = 'created'
+        elif c.event == LifecycleEvent.ENDED:
+            e = 'ended'
+        else:
+            continue
+
+        conditions = []
+        if c.from_dt:
+            conditions.append(f"{e} >= '{format_dt_sql(c.from_dt)}'")
+        if c.to_dt:
+            if c.include_to:
+                conditions.append(f"{e} <= '{format_dt_sql(c.to_dt)}'")
+            else:
+                conditions.append(f"{e} < '{format_dt_sql(c.to_dt)}'")
+
+        int_conditions.append("(" + " AND ".join(conditions) + ")")
+
+    all_conditions = ["(" + " OR ".join(c_list) + ")" for c_list in (id_conditions, int_conditions) if c_list]
+
+    return " WHERE ({conditions})".format(conditions=" AND ".join(all_conditions))
 
 
 class SQLite:
@@ -96,6 +119,8 @@ class SQLite:
         if last:
             statement += " GROUP BY job_id HAVING ROWID = max(ROWID) "
 
+        print(statement)
+
         c = self._conn.execute(statement
                                + " ORDER BY " + sort_exp() + (" ASC" if asc else " DESC")
                                + " LIMIT ?",
@@ -140,8 +165,8 @@ class SQLite:
         def to_tuple(j):
             return (j.job_id,
                     j.instance_id,
-                    j.lifecycle.changed_at(ExecutionState.CREATED),
-                    j.lifecycle.last_changed_at,
+                    format_dt_sql(j.lifecycle.created_at),
+                    format_dt_sql(j.lifecycle.last_changed_at),
                     json.dumps(
                         [(state.name, float(changed.timestamp())) for state, changed in j.lifecycle.state_changes]),
                     json.dumps(j.tracking.to_dict(include_empty=False)) if j.tracking else None,
