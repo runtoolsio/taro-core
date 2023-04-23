@@ -83,11 +83,23 @@ def test_cleanup(sut):
     assert jobs[0].job_id == 'j2'
 
 
-def test_interval_left(sut):
+def test_interval(sut):
     sut.store_job(j(1, created=dt(2023, 4, 23), completed=dt(2023, 4, 23)))
     sut.store_job(j(2, created=dt(2023, 4, 22), completed=dt(2023, 4, 22, 23, 59, 59)))
+    sut.store_job(j(3, created=dt(2023, 4, 22), completed=dt(2023, 4, 22, 23, 59, 58)))
 
     ic = IntervalCriteria(event=LifecycleEvent.ENDED, from_dt=dt(2023, 4, 23))
     jobs = sut.read_jobs(InstanceMatchingCriteria(interval_criteria=ic))
-    assert len(jobs) == 1
-    assert jobs[0].job_id == 'j1'
+    assert jobs.job_ids == ['j1']
+
+    ic = IntervalCriteria(event=LifecycleEvent.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59))
+    jobs = sut.read_jobs(InstanceMatchingCriteria(interval_criteria=ic))
+    assert sorted(jobs.job_ids) == ['j2', 'j3']
+
+    ic = IntervalCriteria(event=LifecycleEvent.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59), include_to=False)
+    jobs = sut.read_jobs(InstanceMatchingCriteria(interval_criteria=ic))
+    assert jobs.job_ids == ['j3']
+
+    ic = IntervalCriteria(event=LifecycleEvent.ENDED, from_dt=dt(2023, 4, 22, 23, 59, 59), to_dt=dt(2023, 4, 23))
+    jobs = sut.read_jobs(InstanceMatchingCriteria(interval_criteria=ic))
+    assert sorted(jobs.job_ids) == ['j1', 'j2']
