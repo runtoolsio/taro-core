@@ -1,8 +1,11 @@
+import datetime
+from datetime import timedelta
 from enum import Enum
-from typing import Optional, List, Callable
+from typing import List, Callable
 
 from taro import JobInstanceID
-from taro.jobs.job import IDMatchingCriteria, InstanceMatchingCriteria, compound_id_filter
+from taro.jobs.job import IDMatchingCriteria, InstanceMatchingCriteria, compound_id_filter, IntervalCriteria, \
+    LifecycleEvent
 from taro.util import DateTimeFormat
 
 
@@ -22,11 +25,29 @@ def id_match(args, def_id_match_strategy) -> Callable[[JobInstanceID], bool]:
     return compound_id_filter(id_matching_criteria(args, def_id_match_strategy))
 
 
-def instance_matching_criteria(args, def_id_match_strategy) -> Optional[InstanceMatchingCriteria]:
-    if args.instances:
-        return InstanceMatchingCriteria(id_matching_criteria(args, def_id_match_strategy))
+def interval_criteria(args, interval_event=LifecycleEvent.CREATED):
+    from_dt = None
+    to_dt = None
+    include_to = True
+
+    if getattr(args, 'until', None):
+        if isinstance(args.until, datetime.datetime):
+            to_dt = args.until
+        else:  # Assuming it is datetime.date
+            to_dt = args.until + timedelta(days=1)
+            include_to = False
+
+    if from_dt or to_dt:
+        return IntervalCriteria(interval_event, from_dt, to_dt, include_to=include_to)
     else:
         return None
+
+
+def instance_matching_criteria(args, def_id_match_strategy, interval_event=LifecycleEvent.CREATED) ->\
+        InstanceMatchingCriteria:
+    return InstanceMatchingCriteria(
+        id_matching_criteria(args, def_id_match_strategy),
+        interval_criteria(args, interval_event))
 
 
 class TimestampFormat(Enum):

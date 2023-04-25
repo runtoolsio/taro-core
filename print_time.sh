@@ -5,5 +5,5 @@ do
  date=$(date +%N) ;
  echo "$date stdout completed=[$((RANDOM % 100 + 1))]"
  echo "$date stderr" >&2;
- sleep  1 ;
+ sleep  $((RANDOM % 5)) ;
 done

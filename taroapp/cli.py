@@ -379,7 +379,7 @@ def _str2dt(v):
         try:
             return datetime.strptime(v, "%Y-%m-%d %H:%M")
         except ValueError:
-            return datetime.strptime(v, "%Y-%m-%d")
+            return datetime.strptime(v, "%Y-%m-%d").date()
 
 
 # TODO Consider: change to str (like SortCriteria case) and remove this function

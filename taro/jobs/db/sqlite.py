@@ -67,7 +67,7 @@ def _build_where_clause(instance_match):
 
     all_conditions = ["(" + " OR ".join(c_list) + ")" for c_list in (id_conditions, int_conditions) if c_list]
 
-    return " WHERE ({conditions})".format(conditions=" AND ".join(all_conditions))
+    return " WHERE {conditions}".format(conditions=" AND ".join(all_conditions))
 
 
 class SQLite:
