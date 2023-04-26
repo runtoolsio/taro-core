@@ -24,7 +24,7 @@ def id_match(args, def_id_match_strategy) -> Callable[[JobInstanceID], bool]:
     return compound_id_filter(id_matching_criteria(args, def_id_match_strategy))
 
 
-def interval_criteria(args, interval_event=LifecycleEvent.CREATED):
+def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED):
     from_dt = None
     to_dt = None
     include_to = True
@@ -52,7 +52,7 @@ def instance_matching_criteria(args, def_id_match_strategy, interval_event=Lifec
         InstanceMatchingCriteria:
     return InstanceMatchingCriteria(
         id_matching_criteria(args, def_id_match_strategy),
-        interval_criteria(args, interval_event))
+        interval_criteria_converted_utc(args, interval_event))
 
 
 class TimestampFormat(Enum):
