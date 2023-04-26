@@ -1,6 +1,5 @@
 from taro import util
 from taro.jobs.execution import ExecutionState
-from taro.jobs.job import LifecycleEvent
 from taro.util import format_dt_local_tz
 from taroapp.printer import Column
 from taroapp.style import general_style, job_style, instance_style, warn_style, job_state_style

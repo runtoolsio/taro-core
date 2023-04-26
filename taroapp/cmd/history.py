@@ -28,7 +28,5 @@ def _build_job_filter(args):
         job_filter <<= jfilter.today_filter
     if args.yesterday:
         job_filter <<= jfilter.yesterday_filter
-    if args.since:
-        job_filter <<= jfilter.create_since_filter(args.since)
 
     return job_filter

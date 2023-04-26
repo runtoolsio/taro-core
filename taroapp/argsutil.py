@@ -1,5 +1,4 @@
-import datetime
-from datetime import timedelta
+from datetime import timedelta, timezone, datetime, time
 from enum import Enum
 from typing import List, Callable
 
@@ -30,11 +29,17 @@ def interval_criteria(args, interval_event=LifecycleEvent.CREATED):
     to_dt = None
     include_to = True
 
-    if getattr(args, 'until', None):
-        if isinstance(args.until, datetime.datetime):
-            to_dt = args.until
+    if getattr(args, 'since', None):
+        if isinstance(args.since, datetime):
+            from_dt = args.since.astimezone(timezone.utc)
         else:  # Assuming it is datetime.date
-            to_dt = args.until + timedelta(days=1)
+            from_dt = datetime.combine(args.since, time.min).astimezone(timezone.utc)
+
+    if getattr(args, 'until', None):
+        if isinstance(args.until, datetime):
+            to_dt = args.until.astimezone(timezone.utc)
+        else:  # Assuming it is datetime.date
+            to_dt = datetime.combine(args.until + timedelta(days=1), time.min).astimezone(timezone.utc)
             include_to = False
 
     if from_dt or to_dt:
