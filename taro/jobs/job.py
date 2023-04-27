@@ -23,7 +23,7 @@ from typing import NamedTuple, Dict, Any, Optional, Callable, Union, List
 
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
 from taro.jobs.track import TrackedTaskInfo
-from taro.util import and_, or_, MatchingStrategy, is_empty, to_list, format_dt_iso, remove_empty_values
+from taro.util import and_, or_, MatchingStrategy, is_empty, to_list, format_dt_iso, remove_empty_values, day_range
 
 DEFAULT_OBSERVER_PRIORITY = 100
 
@@ -125,6 +125,19 @@ class IntervalCriteria:
         to_dt = data.get("to_dt", '')
         include_to = data['include_to']
         return cls(event, from_dt, to_dt, include_to=include_to)
+
+    @classmethod
+    def day_interval(cls, event, days, *, local_tz=False):
+        range_ = day_range(days, local_tz=local_tz)
+        return cls(event, *range_, include_to=False)
+
+    @classmethod
+    def today_interval(cls, event, *, local_tz=False):
+        return cls.day_interval(event, 0, local_tz=local_tz)
+
+    @classmethod
+    def yesterday_interval(cls, event, *, local_tz=False):
+        return cls.day_interval(event, -1, local_tz=local_tz)
 
     @property
     def event(self):

@@ -1,6 +1,6 @@
 import re
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, time, timedelta
 from enum import Enum
 
 from dateutil import relativedelta
@@ -16,6 +16,20 @@ def unique_timestamp_hex(random_suffix_length=4):
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def day_range(days=0, *, local_tz=False):
+    today = date.today()
+    start_day = today + timedelta(days=days)
+    end_day = today + timedelta(days=days + 1)
+    start = datetime.combine(start_day, time.min)
+    end = datetime.combine(end_day, time.min)
+
+    if local_tz:  # TODO better timezone aware?
+        start_day = start.astimezone().astimezone(timezone.utc).replace(tzinfo=None)
+        end_day = end.astimezone().astimezone(timezone.utc).replace(tzinfo=None)
+
+    return start_day, end_day
 
 
 def parse_datetime(str_ts):

@@ -25,6 +25,8 @@ def id_match(args, def_id_match_strategy) -> Callable[[JobInstanceID], bool]:
 
 
 def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED):
+    criteria = []
+
     from_dt = None
     to_dt = None
     include_to = True
@@ -43,9 +45,15 @@ def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED)
             include_to = False
 
     if from_dt or to_dt:
-        return IntervalCriteria(interval_event, from_dt, to_dt, include_to=include_to)
-    else:
-        return None
+        criteria.append(IntervalCriteria(interval_event, from_dt, to_dt, include_to=include_to))
+
+    if getattr(args, 'today', None):
+        criteria.append(IntervalCriteria.today_interval(interval_event, local_tz=True))
+
+    if getattr(args, 'yesterday', None):
+        criteria.append(IntervalCriteria.yesterday_interval(interval_event, local_tz=True))
+
+    return criteria
 
 
 def instance_matching_criteria(args, def_id_match_strategy, interval_event=LifecycleEvent.CREATED) ->\
