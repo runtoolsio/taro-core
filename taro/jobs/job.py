@@ -184,12 +184,51 @@ class IntervalCriteria:
         return remove_empty_values(d) if include_empty else d
 
 
+class StateCriteria:
+    def __init__(self, failed=False, warning=False):
+        self._failed = failed
+        self._warning = warning
+
+    @classmethod
+    def from_dict(cls, data):
+        failed = data.get('failed', False)
+        warning = data.get('warning', False)
+        return cls(failed=failed, warning=warning)
+
+    @property
+    def failed(self):
+        return self._failed
+
+    @property
+    def warning(self):
+        return self._warning
+
+    def __call__(self, instance):
+        return self.matches(instance)
+
+    def matches(self, instance):
+        if self.failed and instance.state.is_failure():
+            return True
+        if self.warning and instance.warnings:
+            return True
+
+        return False
+
+    def to_dict(self, include_empty=True):
+        d = {
+            "failed": self.failed,
+            "warning": self.warning
+        }
+        return remove_empty_values(d) if include_empty else d
+
+
 class InstanceMatchingCriteria:
 
-    def __init__(self, id_criteria=None, interval_criteria=None):
+    def __init__(self, id_criteria=None, interval_criteria=None, state_criteria=None):
         self._id_criteria = to_list(id_criteria)
         self._interval_criteria = to_list(interval_criteria)
-        
+        self._state_criteria = state_criteria
+
     @classmethod
     def parse_pattern(cls, pattern, strategy: S = MatchingStrategy.EXACT):
         return cls(IDMatchingCriteria.parse_pattern(pattern, strategy))
@@ -216,14 +255,26 @@ class InstanceMatchingCriteria:
     def interval_criteria(self, criteria):
         self._interval_criteria = to_list(criteria)
 
+    @property
+    def state_criteria(self):
+        return self._state_criteria
+
+    @state_criteria.setter
+    def state_criteria(self, criteria):
+        self._state_criteria = criteria
+
     def matches_id(self, job_instance):
         return not self.id_criteria or compound_id_filter(self.id_criteria)(job_instance)
 
     def matches_interval(self, job_instance):
         return not self.interval_criteria or any(c(job_instance.lifecycle) for c in self.interval_criteria)
 
+    def matches_state(self, job_instance):
+        return self.state_criteria is None or self.state_criteria(job_instance)
+
     def matches(self, job_instance):
-        return self.matches_id(job_instance) and self.matches_interval(job_instance)
+        return self.matches_id(job_instance) and self.matches_interval(job_instance)\
+            and self.matches_state(job_instance)
 
     def to_dict(self, include_empty=True):
         d = {

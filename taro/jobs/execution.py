@@ -90,7 +90,7 @@ class ExecutionState(Enum, metaclass=ExecutionStateMeta):
         return ExecutionStateGroup.TERMINAL in self.groups
 
     def is_failure(self) -> bool:
-        return ExecutionStateGroup.FAILURE in self.groups
+        return ExecutionStateGroup.FAILURE in self.groups  # TODO convert to `failure` property?
 
 
 class UnexpectedStateError(Exception):
