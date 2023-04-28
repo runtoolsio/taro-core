@@ -185,7 +185,7 @@ class IntervalCriteria:
 
 
 class StateCriteria:
-    def __init__(self, failed=False, warning=False):
+    def __init__(self, *, failed=False, warning=False):
         self._failed = failed
         self._warning = warning
 

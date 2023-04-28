@@ -4,7 +4,7 @@ from typing import List, Callable
 
 from taro import JobInstanceID
 from taro.jobs.job import IDMatchingCriteria, InstanceMatchingCriteria, compound_id_filter, IntervalCriteria, \
-    LifecycleEvent
+    LifecycleEvent, StateCriteria
 from taro.util import DateTimeFormat
 
 
@@ -56,11 +56,19 @@ def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED)
     return criteria
 
 
-def instance_matching_criteria(args, def_id_match_strategy, interval_event=LifecycleEvent.CREATED) ->\
+def instance_state_criteria(args):
+    failed = getattr(args, 'failed', False)
+    warning = getattr(args, 'warning', False)
+
+    return StateCriteria(failed=failed, warning=warning)
+
+
+def instance_matching_criteria(args, def_id_match_strategy, interval_event=LifecycleEvent.CREATED) -> \
         InstanceMatchingCriteria:
     return InstanceMatchingCriteria(
         id_matching_criteria(args, def_id_match_strategy),
-        interval_criteria_converted_utc(args, interval_event))
+        interval_criteria_converted_utc(args, interval_event),
+        instance_state_criteria(args))
 
 
 class TimestampFormat(Enum):

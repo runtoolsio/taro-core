@@ -211,6 +211,7 @@ def _init_history_parser(common, subparsers):
     filter_group.add_argument('-S', '--since', type=_str2dt, help='Show entries not older than the specified date')
     filter_group.add_argument('-U', '--until', type=_str2dt, help='Show entries not newer than the specified date')
     filter_group.add_argument('-F', '--failed', action='store_true', help='Show only failed jobs')
+    filter_group.add_argument('-W', '--warning', action='store_true', help='Show only jobs with warnings')
     filter_group.add_argument('-n', '--lines', type=int, help='Number of history entries to show')
     filter_group.add_argument('-L', '--last', action='store_true', help='Show last execution of each job')
 
