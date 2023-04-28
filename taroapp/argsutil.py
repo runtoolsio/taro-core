@@ -48,10 +48,10 @@ def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED)
         criteria.append(IntervalCriteria(interval_event, from_dt, to_dt, include_to=include_to))
 
     if getattr(args, 'today', None):
-        criteria.append(IntervalCriteria.today_interval(interval_event, local_tz=True))
+        criteria.append(IntervalCriteria.today(interval_event, local_tz=True))
 
     if getattr(args, 'yesterday', None):
-        criteria.append(IntervalCriteria.yesterday_interval(interval_event, local_tz=True))
+        criteria.append(IntervalCriteria.yesterday(interval_event, local_tz=True))
 
     return criteria
 

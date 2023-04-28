@@ -132,11 +132,11 @@ class IntervalCriteria:
         return cls(event, *range_, include_to=False)
 
     @classmethod
-    def today_interval(cls, event, *, local_tz=False):
+    def today(cls, event, *, local_tz=False):
         return cls.day_interval(event, 0, local_tz=local_tz)
 
     @classmethod
-    def yesterday_interval(cls, event, *, local_tz=False):
+    def yesterday(cls, event, *, local_tz=False):
         return cls.day_interval(event, -1, local_tz=local_tz)
 
     @property
