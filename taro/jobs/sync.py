@@ -59,7 +59,7 @@ class Sync(ABC):
 
     @property
     def parameters(self):
-        """Dictionary of arbitrary immutable execution parameters"""
+        """Sequence of tuples representing arbitrary immutable sync parameters"""
         return None
 
     def release(self):

@@ -19,9 +19,9 @@ from dataclasses import dataclass
 from enum import Enum
 from fnmatch import fnmatch
 from functools import partial
-from typing import NamedTuple, Dict, Any, Optional, Callable, Union, List
+from typing import NamedTuple, Dict, Any, Optional, Callable, Union, List, Tuple
 
-from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycle
+from taro.jobs.execution import ExecutionError, ExecutionLifecycle
 from taro.jobs.track import TrackedTaskInfo
 from taro.util import and_, or_, MatchingStrategy, is_empty, to_list, format_dt_iso, remove_empty_values, day_range
 
@@ -112,7 +112,7 @@ class IntervalCriteria:
             raise ValueError('Interval criteria event must be provided')
         if not from_dt and not to_dt:
             raise ValueError('Interval cannot be empty')
-        
+
         self._event = event
         self._from_dt = from_dt
         self._to_dt = to_dt
@@ -273,7 +273,7 @@ class InstanceMatchingCriteria:
         return self.state_criteria is None or self.state_criteria(job_instance)
 
     def matches(self, job_instance):
-        return self.matches_id(job_instance) and self.matches_interval(job_instance)\
+        return self.matches_id(job_instance) and self.matches_interval(job_instance) \
             and self.matches_state(job_instance)
 
     def to_dict(self, include_empty=True):
@@ -325,6 +325,27 @@ class JobInstanceID(NamedTuple):
         return "{}@{}".format(self.job_id, self.instance_id)
 
 
+@dataclass
+class JobInstanceMetadata:
+
+    job_id: str
+    instance_id: str
+    parameters: Tuple[Tuple[str, str]]
+    user_params: Dict[str, Any]
+
+    def to_dict(self, include_empty=True) -> Dict[str, Any]:
+        d = {
+            "job_id": self.job_id,
+            "instance_id": self.instance_id,
+            "parameters": self.parameters,
+            "user_params": self.user_params
+        }
+        if include_empty:
+            return d
+        else:
+            return {k: v for k, v in d.items() if not is_empty(v)}
+
+
 class JobInstance(abc.ABC):
 
     @property
@@ -341,6 +362,10 @@ class JobInstance(abc.ABC):
     @abc.abstractmethod
     def id(self):
         """Identifier of this instance"""
+
+    @property
+    def metadata(self):
+        return JobInstanceMetadata(self.job_id, self.instance_id, self.parameters, self.user_params)
 
     @abc.abstractmethod
     def run(self):
@@ -406,7 +431,7 @@ class JobInstance(abc.ABC):
     @property
     @abc.abstractmethod
     def user_params(self):
-        """Dictionary of arbitrary use parameters"""
+        """Dictionary of arbitrary user parameters"""
 
     @abc.abstractmethod
     def create_info(self):
@@ -492,6 +517,10 @@ class DelegatingJobInstance(JobInstance):
     @property
     def id(self):
         return self.delegated.id
+
+    @property
+    def metadata(self):
+        return self.metadata
 
     @abc.abstractmethod
     def run(self):
@@ -606,7 +635,7 @@ class JobInfo:
 
     @staticmethod
     def created(job_info):
-        return job_info.lifecycle.changed_at(ExecutionState.CREATED)
+        return job_info.lifecycle.created_at
 
     @property
     def job_id(self) -> str:
@@ -619,6 +648,10 @@ class JobInfo:
     @property
     def id(self):
         return self._job_instance_id
+
+    @property
+    def metadata(self):
+        return JobInstanceMetadata(self.job_id, self.instance_id, self.parameters, self.user_params)
 
     @property
     def lifecycle(self):
