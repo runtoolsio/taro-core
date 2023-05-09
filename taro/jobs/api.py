@@ -123,7 +123,7 @@ class Server(SocketServer):
         instance_responses = []
         for job_instance in job_instances:
             instance_response = resource.handle(job_instance, req_body)
-            instance_response['instance_metadata'] = _inst_metadata(job_instance)
+            instance_response['instance_metadata'] = job_instance.metadata.to_dict()
             instance_responses.append(instance_response)
 
         return _resp_ok(instance_responses)
