@@ -5,14 +5,14 @@ from enum import Enum, auto
 from typing import List, Tuple, Any, Dict, NamedTuple, Optional, TypeVar, Generic
 
 from taro.jobs.api import API_FILE_EXTENSION
-from taro.jobs.job import JobInfo, JobInstanceID
+from taro.jobs.job import JobInfo, JobInstanceMetadata
 from taro.socket import SocketClient, ServerResponse, Error
 
 log = logging.getLogger(__name__)
 
 
 class APIInstanceResponse(NamedTuple):
-    id: JobInstanceID
+    instance_meta: JobInstanceMetadata
     body: Dict[str, Any]
 
 
@@ -45,7 +45,7 @@ class MultiResponse(Generic[T]):
 
 @dataclass
 class JobInstanceResponse:
-    id: JobInstanceID
+    instance_metadata: JobInstanceMetadata
 
 
 @dataclass
@@ -112,7 +112,7 @@ class JobsClient(SocketClient):
     def release_jobs(self, pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
         instance_responses, api_errors =\
             self._send_request('/jobs/release', instance_match, {"pending_group": pending_group})
-        return MultiResponse([ReleaseResponse(jid) for jid, body in instance_responses if body["released"]],
+        return MultiResponse([ReleaseResponse(meta) for meta, body in instance_responses if body["released"]],
                              api_errors)
 
     def stop_jobs(self, instance_match) -> MultiResponse[StopResponse]:
@@ -125,11 +125,11 @@ class JobsClient(SocketClient):
             raise ValueError('Id matching criteria is mandatory for the stop operation')
 
         instance_responses, api_errors = self._send_request('/jobs/stop', instance_match)
-        return MultiResponse([StopResponse(jid, body["result"]) for jid, body in instance_responses], api_errors)
+        return MultiResponse([StopResponse(meta, body["result"]) for meta, body in instance_responses], api_errors)
 
     def read_tail(self, instance_match) -> MultiResponse[TailResponse]:
         instance_responses, api_errors = self._send_request('/jobs/tail', instance_match)
-        return MultiResponse([TailResponse(jid, body["tail"]) for jid, body in instance_responses], api_errors)
+        return MultiResponse([TailResponse(meta, body["tail"]) for meta, body in instance_responses], api_errors)
 
 
 def _process_responses(responses) -> Tuple[List[APIInstanceResponse], List[APIError]]:
@@ -154,8 +154,7 @@ def _process_responses(responses) -> Tuple[List[APIInstanceResponse], List[APIEr
             continue
 
         for instance_resp in resp_body['instances']:
-            inst_metadata = instance_resp['instance_metadata']
-            jid = JobInstanceID(inst_metadata["job_id"], inst_metadata["instance_id"])
-            instance_responses.append(APIInstanceResponse(jid, instance_resp))
+            instance_metadata = JobInstanceMetadata.from_dict(instance_resp['instance_metadata'])
+            instance_responses.append(APIInstanceResponse(instance_metadata, instance_resp))
 
     return instance_responses, api_errors

@@ -21,4 +21,4 @@ def run(args):
                 return
 
         for stop_resp in client.stop_jobs(instance_match).responses:
-            print_styled(*style.job_instance_id_styled(stop_resp.id) + [('', ' -> '), ('', stop_resp.result_str)])
+            print_styled(*style.job_instance_id_styled(stop_resp.instance_metadata.id) + [('', ' -> '), ('', stop_resp.result_str)])

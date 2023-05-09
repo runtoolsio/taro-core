@@ -333,6 +333,17 @@ class JobInstanceMetadata:
     parameters: Tuple[Tuple[str, str]]
     user_params: Dict[str, Any]
 
+    @classmethod
+    def from_dict(cls, as_dict):
+        return cls(as_dict['job_id'],
+                   as_dict['instance_id'],
+                   as_dict['parameters'],
+                   as_dict['user_params'])
+
+    @property
+    def id(self):
+        return JobInstanceID(self.job_id, self.instance_id)
+
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         d = {
             "job_id": self.job_id,

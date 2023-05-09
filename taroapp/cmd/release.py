@@ -6,4 +6,4 @@ def run(args):
     if responses:
         print('Released:')
         for released_resp in responses:
-            print(released_resp.id)
+            print(released_resp.instance_metadata.id)
