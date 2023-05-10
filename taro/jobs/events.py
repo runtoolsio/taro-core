@@ -19,13 +19,12 @@ class EventDispatcher(abc.ABC):
     def __init__(self, client):
         self._client = client
 
-    def _send_event(self, event_type, job_instance_id, event):
+    def _send_event(self, event_type, instance_meta, event):
         event_body = {
             "event_metadata": {
-                "event_type": event_type,
-                "job_id": job_instance_id.job_id,
-                "instance_id": job_instance_id.instance_id
+                "event_type": event_type
             },
+            "instance_metadata": instance_meta.to_dict(),
             "event": event
         }
         try:
@@ -48,7 +47,7 @@ class StateDispatcher(EventDispatcher, ExecutionStateObserver):
             "previous_state": None,  # TODO previous_state
             "changed": format_dt_iso(job_info.lifecycle.last_changed_at),
         }
-        self._send_event("execution_state_change", job_info.id, event)
+        self._send_event("execution_state_change", job_info.metadata, event)
 
 
 class OutputDispatcher(EventDispatcher, JobOutputObserver):
@@ -61,4 +60,4 @@ class OutputDispatcher(EventDispatcher, JobOutputObserver):
             "output": util.truncate(output, 10000, truncated_suffix=".. (truncated)"),
             "is_error": is_error,
         }
-        self._send_event("new_output", job_info.id, event)
+        self._send_event("new_output", job_info.metadata, event)

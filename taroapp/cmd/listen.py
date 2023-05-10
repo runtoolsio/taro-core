@@ -20,10 +20,10 @@ class EventPrint(ExecutionStateEventObserver):
         self._receiver = receiver
         self.ts_format = ts_format
 
-    def state_update(self, job_instance_id, previous_state, new_state, changed):
+    def state_update(self, instance_meta, previous_state, new_state, changed):
         try:
             printer.print_styled(*style.job_instance_id_status_line_styled(
-                job_instance_id, new_state, changed, ts_prefix_format=self.ts_format))
+                instance_meta.id, new_state, changed, ts_prefix_format=self.ts_format))
             sys.stdout.flush()
         except BrokenPipeError:
             self._receiver.close_and_wait()

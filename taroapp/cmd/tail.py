@@ -33,12 +33,12 @@ class TailPrint(OutputEventObserver):
         self._receiver = receiver
         self.last_printed_job_instance = None
 
-    def output_event_update(self, job_instance_id, output, is_error):
+    def output_event_update(self, instance_meta, output, is_error):
         # TODO It seems that this needs locking
         try:
-            if self.last_printed_job_instance != job_instance_id:
-                printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_id_styled(job_instance_id))
-            self.last_printed_job_instance = job_instance_id
+            if self.last_printed_job_instance != instance_meta.id:
+                printer.print_styled(HIGHLIGHT_TOKEN, *style.job_instance_id_styled(instance_meta.id))
+            self.last_printed_job_instance = instance_meta.id
             print(output, flush=True, file=sys.stderr if is_error else sys.stdout)
         except BrokenPipeError:
             self._receiver.close_and_wait()

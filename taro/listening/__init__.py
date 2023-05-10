@@ -8,7 +8,7 @@ from json import JSONDecodeError
 from taro import util
 from taro.jobs.events import STATE_LISTENER_FILE_EXTENSION, OUTPUT_LISTENER_FILE_EXTENSION
 from taro.jobs.execution import ExecutionState
-from taro.jobs.job import JobInstanceID
+from taro.jobs.job import JobInstanceMetadata
 from taro.socket import SocketServer
 
 log = logging.getLogger(__name__)
@@ -23,22 +23,19 @@ def _missing_field_txt(obj, missing):
 
 
 def _read_metadata(req_body_json):
-    metadata = req_body_json.get('event_metadata')
-    if not metadata:
+    event_metadata = req_body_json.get('event_metadata')
+    if not event_metadata:
         raise ValueError(_missing_field_txt('root', 'event_metadata'))
 
-    event_type = metadata.get('event_type')
+    event_type = event_metadata.get('event_type')
     if not event_type:
         raise ValueError(_missing_field_txt('event_metadata', 'event_type'))
 
-    job_id = metadata.get('job_id')
-    if not job_id:
-        raise ValueError(_missing_field_txt('event_metadata', 'job_id'))
-    instance_id = metadata.get('instance_id')
-    if not instance_id:
-        raise ValueError(_missing_field_txt('event_metadata', 'instance_id'))
+    instance_metadata = req_body_json.get('instance_metadata')
+    if not instance_metadata:
+        raise ValueError(_missing_field_txt('root', 'instance_metadata'))
 
-    return event_type, JobInstanceID(job_id, instance_id)
+    return event_type, JobInstanceMetadata.from_dict(instance_metadata)
 
 
 class EventReceiver(SocketServer):
@@ -56,19 +53,19 @@ class EventReceiver(SocketServer):
             return
 
         try:
-            event_type, job_instance_id = _read_metadata(req_body_json)
+            event_type, instance_meta = _read_metadata(req_body_json)
         except ValueError as e:
             log.warning(e)
             return
 
         if (self.event_types and event_type not in self.event_types) or\
-                (self.id_match and not self.id_match(job_instance_id)):
+                (self.id_match and not self.id_match(instance_meta.id)):
             return
 
-        self.handle_event(event_type, job_instance_id, req_body_json.get('event'))
+        self.handle_event(event_type, instance_meta, req_body_json.get('event'))
 
     @abstractmethod
-    def handle_event(self, event_type, job_instance_id, event):
+    def handle_event(self, event_type, instance_meta, event):
         pass
 
 
@@ -79,7 +76,7 @@ class StateReceiver(EventReceiver):
         self.states = states
         self.listeners = []
 
-    def handle_event(self, _, job_instance_id, event):
+    def handle_event(self, _, instance_meta, event):
         new_state = ExecutionState[event["new_state"]]
 
         if self.states and new_state not in self.states:
@@ -90,20 +87,21 @@ class StateReceiver(EventReceiver):
 
         for listener in self.listeners:
             if isinstance(listener, ExecutionStateEventObserver):
-                listener.state_update(job_instance_id, previous_state, new_state, changed)
+                listener.state_update(instance_meta, previous_state, new_state, changed)
             elif callable(listener):
-                listener(job_instance_id, previous_state, new_state, changed)
+                listener(instance_meta, previous_state, new_state, changed)
             else:
                 log.warning("event=[unsupported_state_observer] observer=[%s]", listener)
 
 
 class ExecutionStateEventObserver(abc.ABC):
-    @abc.abstractmethod
-    def state_update(self, job_instance_id, previous_state, new_state, changed):
-        """
-        This method is called when the execution state of the job instance has changed.
 
-        :param job_instance_id: ID of the job instance
+    @abc.abstractmethod
+    def state_update(self, instance_meta, previous_state, new_state, changed):
+        """
+        This method is called when a job instance's state has changed.
+
+        :param instance_meta: job instance metadata
         :param previous_state: state before
         :param new_state: new state
         :param changed: timestamp of the change
@@ -116,21 +114,21 @@ class OutputReceiver(EventReceiver):
         super().__init__(_listener_socket_name(OUTPUT_LISTENER_FILE_EXTENSION), id_match)
         self.listeners = []
 
-    def handle_event(self, _, job_instance_id, event):
+    def handle_event(self, _, instance_meta, event):
         output = event['output']
         is_error = event['is_error']
         for listener in self.listeners:
-            listener.output_event_update(job_instance_id, output, is_error)
+            listener.output_event_update(instance_meta, output, is_error)
 
 
 class OutputEventObserver(abc.ABC):
 
     @abc.abstractmethod
-    def output_event_update(self, job_instance_id, output, is_error):
+    def output_event_update(self, instance_meta, output, is_error):
         """
         Executed when new output line is available.
 
-        :param job_instance_id: ID of the job instance producing the output
+        :param instance_meta: data about the job instance producing the output
         :param output: job instance output text
         :param is_error: True when it is an error output
         """
