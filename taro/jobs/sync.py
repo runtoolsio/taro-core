@@ -7,8 +7,8 @@ from typing import Sequence
 import taro.client
 from taro.err import InvalidStateError
 from taro.jobs.execution import ExecutionState
-from taro.jobs.job import ExecutionStateObserver, JobInfo
-from taro.listening import StateReceiver
+from taro.jobs.job import JobInstanceMetadata
+from taro.listening import StateReceiver, ExecutionStateEventObserver
 
 
 class Signal(Enum):
@@ -246,7 +246,7 @@ class Dependency(Sync):
         return self._parameters
 
 
-class ExecutionsLimitation(Sync, ExecutionStateObserver):
+class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
 
     def __init__(self, execution_group, max_executions):
         if not execution_group:
@@ -306,9 +306,9 @@ class ExecutionsLimitation(Sync, ExecutionStateObserver):
 
         return self._set_signal(Signal.WAIT)
 
-    def _is_same_exec_group(self, job):
-        return job.job_id == self._group or \
-               any(1 for name, value in job.parameters if name == 'execution_group' and value == self._group)
+    def _is_same_exec_group(self, instance_meta):
+        return instance_meta.job_id == self._group or \
+               any(1 for name, value in instance_meta.parameters if name == 'execution_group' and value == self._group)
 
     def wait_and_unlock(self, global_state_lock):
         self._event.clear()
@@ -322,8 +322,8 @@ class ExecutionsLimitation(Sync, ExecutionStateObserver):
     def release(self):
         self._event.set()
 
-    def state_update(self, job_info: JobInfo):
-        if job_info.lifecycle.state.is_terminal() and self._is_same_exec_group(job_info):
+    def state_update(self, instance_meta: JobInstanceMetadata, previous_state, new_state, changed):
+        if new_state.is_terminal() and self._is_same_exec_group(instance_meta):
             self._event.set()
 
 
