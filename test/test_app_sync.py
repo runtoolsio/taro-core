@@ -3,7 +3,7 @@ from test.taro_test_util import run_app_as_process_and_wait, run_app_as_process,
 
 
 def test_serial():
-    run_app_as_process_and_wait('exec -mc --id j1 --pending p --serial sleep 3',
+    run_app_as_process_and_wait('exec -mc --id j1 --pending p echo me first',
                                 wait_for=ExecutionState.PENDING, daemon=True)
     waiter = StateWaiter()
     run_app_as_process('exec -mc --id j1 --serial echo waiting is over', state_queue=waiter.state_queue)
