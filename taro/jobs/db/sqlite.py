@@ -65,9 +65,14 @@ def _build_where_clause(instance_match):
 
         int_conditions.append("(" + " AND ".join(conditions) + ")")
 
-    all_conditions = ["(" + " OR ".join(c_list) + ")" for c_list in (id_conditions, int_conditions) if c_list]
+    state_conditions = []
+    if instance_match.state_criteria and instance_match.state_criteria.warning:
+        state_conditions.append("warnings IS NOT NULL")
 
-    return " WHERE {conditions}".format(conditions=" AND ".join(all_conditions))
+    all_conditions_list = (id_conditions, int_conditions, state_conditions)
+    all_conditions_str = ["(" + " OR ".join(c_list) + ")" for c_list in all_conditions_list if c_list]
+
+    return " WHERE {conditions}".format(conditions=" AND ".join(all_conditions_str))
 
 
 class SQLite:

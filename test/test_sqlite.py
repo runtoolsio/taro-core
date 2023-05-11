@@ -6,7 +6,7 @@ import pytest
 
 from taro import JobInfo, JobInstanceID, ExecutionLifecycle, ExecutionState, ExecutionError, util
 from taro.jobs.db.sqlite import SQLite
-from taro.jobs.job import parse_criteria, InstanceMatchingCriteria, IntervalCriteria, LifecycleEvent
+from taro.jobs.job import parse_criteria, InstanceMatchingCriteria, IntervalCriteria, LifecycleEvent, StateCriteria
 from taro.jobs.track import MutableTrackedTask
 from taro.util import utc_now, parse_iso8601_duration, MatchingStrategy
 
@@ -33,11 +33,12 @@ def test_store_and_fetch(sut):
     assert j1 == jobs[0]
 
 
-def j(c, *, sec=0, created=utc_now(), completed=utc_now()):
+def j(c, *, sec=0, created=utc_now(), completed=utc_now(), warnings=None):
     lifecycle = ExecutionLifecycle(
         (ExecutionState.CREATED, created + timedelta(seconds=sec)),
         (ExecutionState.COMPLETED, completed + timedelta(seconds=sec)))
-    return JobInfo(JobInstanceID(f"j{c}", util.unique_timestamp_hex()), lifecycle, None, None, None, None, None, None)
+    return JobInfo(JobInstanceID(f"j{c}", util.unique_timestamp_hex()), lifecycle, None, None, None, warnings, None,
+                   None)
 
 
 def test_last(sut):
@@ -103,3 +104,10 @@ def test_interval(sut):
     ic = IntervalCriteria(event=LifecycleEvent.ENDED, from_dt=dt(2023, 4, 22, 23, 59, 59), to_dt=dt(2023, 4, 23))
     jobs = sut.read_jobs(InstanceMatchingCriteria(interval_criteria=ic))
     assert sorted(jobs.job_ids) == ['j1', 'j2']
+
+
+def test_warning(sut):
+    sut.store_job(j(1), j(2, warnings={'w1': 1}), j(3))
+    jobs = sut.read_jobs(InstanceMatchingCriteria(state_criteria=StateCriteria(warning=True)))
+
+    assert jobs.job_ids == ['j2']

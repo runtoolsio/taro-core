@@ -185,6 +185,7 @@ class IntervalCriteria:
 
 
 class StateCriteria:
+
     def __init__(self, *, failed=False, warning=False):
         self._failed = failed
         self._warning = warning
@@ -213,6 +214,9 @@ class StateCriteria:
             return True
 
         return False
+
+    def __bool__(self):
+        return self.failed or self.warning
 
     def to_dict(self, include_empty=True):
         d = {
@@ -278,13 +282,14 @@ class InstanceMatchingCriteria:
 
     def to_dict(self, include_empty=True):
         d = {
-            'id_criteria': [c.to_dict() for c in self.id_criteria],
-            'interval_criteria': [c.to_dict() for c in self.interval_criteria],
+            'id_criteria': [c.to_dict(include_empty) for c in self.id_criteria],
+            'interval_criteria': [c.to_dict(include_empty) for c in self.interval_criteria],
+            'state_criteria': self.state_criteria.to_dict(include_empty)
         }
         return remove_empty_values(d) if include_empty else d
 
     def __bool__(self):
-        return bool(self.id_criteria) or bool(self.interval_criteria)
+        return bool(self.id_criteria) or bool(self.interval_criteria) or bool(self.state_criteria)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(" \
