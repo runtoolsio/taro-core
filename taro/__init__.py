@@ -18,9 +18,9 @@ from .jobs.plugins import PluginBase, PluginDisabledError
 from .jobs.process import ProcessExecution
 from .jobs.program import ProgramExecution
 from .jobs.runner import RunnerJobInstance
-from .util.ns import NestedNamespace
 from .paths import lookup_file_in_config_path
 from .util import format_timedelta, read_yaml_file
+from .util.ns import NestedNamespace
 
 
 def load_defaults(**kwargs):
@@ -38,17 +38,18 @@ def setup(**kwargs):
     log.init_by_config()
 
 
-def execute(job_id, job_execution, no_overlap=False, depends_on=None, pending_group=None):
+def execute(job_id, job_execution, instance_id=None, *, no_overlap=False, depends_on=None, pending_group=None):
     with ManagedJobContext() as ctx:
         job_instance = ctx.add(RunnerJobInstance(
             job_id,
             job_execution,
             sync.create_composite(no_overlap=no_overlap, depends_on=depends_on),
+            instance_id=instance_id,
             pending_group=pending_group))
         job_instance.run()
 
 
-def execute_no_wait(job_id, job_execution, no_overlap=False, depends_on=None, pending_group=None):
+def execute_in_new_thread(job_id, job_execution, no_overlap=False, depends_on=None, pending_group=None):
     Thread(target=execute, args=(job_id, job_execution, no_overlap, depends_on, pending_group)).start()
 
 

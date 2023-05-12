@@ -5,8 +5,8 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="taro",
-    version="0.9.5",
+    name="tarolib",
+    version="0.9.6",
     author="Stan Svec",
     author_email="dev@stansvec.com",
     description="Tool for managing your jobs",
