@@ -57,8 +57,8 @@ def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED)
 
 
 def instance_state_criteria(args):
-    failed = getattr(args, 'failed', False)
-    warning = getattr(args, 'warning', False)
+    failed = getattr(args, 'failed', None)
+    warning = getattr(args, 'warning', None)
 
     return StateCriteria(failed=failed, warning=warning)
 

@@ -186,14 +186,14 @@ class IntervalCriteria:
 
 class StateCriteria:
 
-    def __init__(self, *, failed=False, warning=False):
+    def __init__(self, *, failed=None, warning=None):
         self._failed = failed
         self._warning = warning
 
     @classmethod
     def from_dict(cls, data):
-        failed = data.get('failed', False)
-        warning = data.get('warning', False)
+        failed = data.get('failed', None)
+        warning = data.get('warning', None)
         return cls(failed=failed, warning=warning)
 
     @property
@@ -208,15 +208,16 @@ class StateCriteria:
         return self.matches(instance)
 
     def matches(self, instance):
-        if self.failed and instance.state.is_failure():
-            return True
-        if self.warning and instance.warnings:
-            return True
+        if self.failed is not None and self.failed != instance.lifecycle.state.is_failure():
+            return False
 
-        return False
+        if self.warning is not None and self.warning != bool(instance.warnings):
+            return False
+
+        return True
 
     def __bool__(self):
-        return self.failed or self.warning
+        return self.failed is not None or self.warning is not None
 
     def to_dict(self, include_empty=True):
         d = {
@@ -241,7 +242,7 @@ class InstanceMatchingCriteria:
     def from_dict(cls, as_dict):
         id_criteria = [IDMatchingCriteria.from_dict(c) for c in as_dict.get('id_criteria', ())]
         interval_criteria = [IntervalCriteria.from_dict(c) for c in as_dict.get('interval_criteria', ())]
-        state_criteria = as_dict.get('state_criteria', None)
+        state_criteria = StateCriteria.from_dict(as_dict.get('state_criteria')) if 'state_criteria' in as_dict else None
         return cls(id_criteria, interval_criteria, state_criteria)
 
     @property
