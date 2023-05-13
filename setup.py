@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="tarolib",
+    name="taro-cli",
     version="0.9.6",
     author="Stan Svec",
     author_email="dev@stansvec.com",
