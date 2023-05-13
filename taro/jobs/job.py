@@ -241,7 +241,8 @@ class InstanceMatchingCriteria:
     def from_dict(cls, as_dict):
         id_criteria = [IDMatchingCriteria.from_dict(c) for c in as_dict.get('id_criteria', ())]
         interval_criteria = [IntervalCriteria.from_dict(c) for c in as_dict.get('interval_criteria', ())]
-        return cls(id_criteria, interval_criteria)
+        state_criteria = as_dict.get('state_criteria', None)
+        return cls(id_criteria, interval_criteria, state_criteria)
 
     @property
     def id_criteria(self):
@@ -293,7 +294,9 @@ class InstanceMatchingCriteria:
 
     def __repr__(self):
         return f"{self.__class__.__name__}(" \
-               f"id_criteria={self._id_criteria}, interval_criteria={self._interval_criteria})"
+               f"id_criteria={self._id_criteria}," \
+               f"interval_criteria={self._interval_criteria}, " \
+               f"state_criteria={self.state_criteria})"
 
 
 def parse_criteria(pattern, strategy: S = MatchingStrategy.EXACT):
