@@ -7,7 +7,7 @@ from typing import Sequence
 import taro.client
 from taro.err import InvalidStateError
 from taro.jobs.execution import ExecutionState
-from taro.jobs.job import JobInstanceMetadata
+from taro.jobs.job import JobInstanceMetadata, JobInfoList
 from taro.listening import StateReceiver, ExecutionStateEventObserver
 
 
@@ -288,16 +288,16 @@ class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
 
     def set_signal(self, job_info) -> Signal:
         jobs, _ = taro.client.read_jobs_info()
-        parallel_group_jobs = sorted(
+
+        exec_group_jobs_sorted = JobInfoList(sorted(
             (job for job in jobs if self._is_same_exec_group(job)),
             key=lambda job: job.lifecycle.changed_at(ExecutionState.CREATED)
-        )
-        executing = [job for job in parallel_group_jobs if job.lifecycle.state.is_executing()]
-        max_allowed = self.max_executions - len(executing)
-        if max_allowed <= 0:
+        ))
+        more_allowed = self.max_executions - len(exec_group_jobs_sorted.executing)
+        if more_allowed <= 0:
             return self._set_signal(Signal.WAIT)
 
-        next_allowed = [job for job in parallel_group_jobs if job not in executing][0:max_allowed]
+        next_allowed = exec_group_jobs_sorted.before_execution[0:more_allowed]
         job_created = job_info.lifecycle.changed_at(ExecutionState.CREATED)
         for allowed in next_allowed:
             if job_info.id == allowed.id or job_created <= allowed.lifecycle.changed_at(ExecutionState.CREATED):

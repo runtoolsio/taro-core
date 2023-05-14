@@ -305,6 +305,9 @@ def parse_criteria(pattern, strategy: S = MatchingStrategy.EXACT):
 
 
 class JobInstanceID(NamedTuple):
+    """
+    TODO Create a method returning a no-match of this ID
+    """
     job_id: str
     instance_id: str
 
@@ -753,6 +756,17 @@ class JobInfoList(list):
     @property
     def job_ids(self) -> List[str]:
         return [j.id.job_id for j in self]
+
+    def filtered_by_state(self, state_predicate):
+        return [j for j in self if state_predicate(j.lifecycle.state)]
+
+    @property
+    def before_execution(self):
+        return self.filtered_by_state(lambda state: state.is_before_execution())
+
+    @property
+    def executing(self):
+        return self.filtered_by_state(lambda state: state.is_executing())
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         return {"jobs": [job.to_dict(include_empty=include_empty) for job in self]}
