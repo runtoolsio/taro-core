@@ -1,23 +1,25 @@
 import logging
 import signal
 
-from taro import util
+from taro import util, cfgfile
 from taro.jobs import sync, warning
+from taro.jobs.execution import ExecutionOutputTracker
 from taro.jobs.job import Warn
 from taro.jobs.managed import ManagedJobContext
 from taro.jobs.program import ProgramExecution
 from taro.jobs.runner import RunnerJobInstance
 from taro.jobs.sync import ExecutionsLimit
 from taro.jobs.track import MutableTrackedTask, Fields, OutputTracker
-from taro.jobs.execution import ExecutionOutputTracker
 from taro.test.execution import TestExecution
 from taro.util import KVParser, iso_date_time_parser
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 # TODO refactor -> extract methods
 def run(args):
+    log.debug("event=[exec_cmd_started] loaded_config=[%s]", cfgfile.loaded_config_path)
+
     if args.dry_run:
         execution = TestExecution(args.dry_run)
     else:
@@ -54,6 +56,7 @@ def run(args):
         instance_id=args.instance,
         pending_group=args.pending,
         **(dict(args.param) if args.param else dict()))
+    logging.debug("event=[job_instance_created] id=[%s]", job_instance.id)
 
     warning.register(job_instance, warn_times=args.warn_time, warn_outputs=args.warn_output)
 
@@ -95,15 +98,15 @@ class Term:
         self.job_instance = job_instance
 
     def terminate(self, _, __):
-        logger.warning('event=[terminated_by_signal]')
+        log.warning('event=[terminated_by_signal]')
         self.job_instance.stop()
 
     def interrupt(self, _, __):
-        logger.warning('event=[interrupted_by_keyboard]')
+        log.warning('event=[interrupted_by_keyboard]')
         self.job_instance.interrupted()
 
     def timeout(self, _, __):
-        logger.warning('event=[terminated_by_timeout_signal]')
+        log.warning('event=[terminated_by_timeout_signal]')
         self.job_instance.add_warning(Warn('timeout'))
         self.job_instance.stop()
 

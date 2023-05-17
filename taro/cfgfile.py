@@ -1,4 +1,3 @@
-import logging
 from collections.abc import Iterable
 
 from taro import cfg, util, paths
@@ -16,13 +15,12 @@ PERSISTENCE_MAX_RECORDS = 'persistence.max_records'
 PERSISTENCE_DATABASE = 'persistence.database'
 PLUGINS = 'plugins'
 
-log = logging.getLogger(__name__)
+loaded_config_path = None
 
 
 def load(config=None):
     config_path = util.expand_user(config) if config else paths.lookup_config_file()
     cns = util.read_yaml_file(config_path)
-    log.debug("event=[config_file_loaded] path=[%s] content=[%s]", config_path, cns)
 
     cfg.log_mode = LogMode.from_value(cns.get(LOG_MODE, default=cfg.log_mode))
     cfg.log_stdout_level = cns.get(LOG_STDOUT_LEVEL, default=cfg.log_stdout_level, type_=str).lower()
@@ -40,6 +38,9 @@ def load(config=None):
         cfg.plugins = (plugins,)
     elif isinstance(plugins, Iterable):
         cfg.plugins = tuple(plugins)
+
+    global loaded_config_path
+    loaded_config_path = config_path
 
 
 def copy_default_file_to_search_path(overwrite: bool):
