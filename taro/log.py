@@ -16,7 +16,7 @@ FILE_HANDLER = 'file-handler'
 
 
 def init(log_mode=LogMode.ENABLED, log_stdout_level='warn', log_file_level='info', log_file_path=None):
-    # Resetting (required for tests)
+    # Resetting (required for tests) TODO make private and remove handlers?
     config_logger(enable=True, propagate=False)
 
     if log_mode == LogMode.PROPAGATE:
