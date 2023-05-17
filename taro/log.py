@@ -6,8 +6,8 @@ from taro import paths, cfg
 from taro.cfg import LogMode
 from taro.util import expand_user
 
-_root_logger = logging.getLogger('taro')
-_root_logger.setLevel(logging.DEBUG)
+_logger = logging.getLogger('taro')
+_logger.setLevel(logging.DEBUG)
 _formatter = logging.Formatter('%(asctime)s - %(levelname)-5s - %(name)s - %(message)s')
 
 STDOUT_HANDLER = 'stdout-handler'
@@ -40,12 +40,12 @@ def init_by_config():
 
 
 def config_logger(*, enable, propagate):
-    _root_logger.disabled = not enable
-    _root_logger.propagate = propagate
+    _logger.disabled = not enable
+    _logger.propagate = propagate
 
 
 def is_disabled():
-    return _root_logger.disabled
+    return _logger.disabled
 
 
 def setup_console(level):
@@ -89,7 +89,7 @@ def get_file_path():
 
 
 def _find_handler(name):
-    for handler in _root_logger.handlers:
+    for handler in _logger.handlers:
         if handler.name == name:
             return handler
 
@@ -99,9 +99,9 @@ def _find_handler(name):
 def _register_handler(handler):
     previous = _find_handler(handler.name)
     if previous:
-        _root_logger.removeHandler(previous)
+        _logger.removeHandler(previous)
 
-    _root_logger.addHandler(handler)
+    _logger.addHandler(handler)
 
 
 def _get_handler_level(name):
