@@ -39,6 +39,7 @@ DEF_LOG = LogMode.DISABLED
 DEF_LOG_STDOUT_LEVEL = 'off'
 DEF_LOG_FILE_LEVEL = 'off'
 DEF_LOG_FILE_PATH = None
+DEF_LOG_TIMING = False
 
 DEF_PERSISTENCE_ENABLED = False
 DEF_PERSISTENCE_TYPE = 'sqlite'
@@ -57,6 +58,7 @@ log_mode = DEF_LOG
 log_stdout_level = DEF_LOG_STDOUT_LEVEL
 log_file_level = DEF_LOG_FILE_LEVEL
 log_file_path = DEF_LOG_FILE_PATH
+log_timing = DEF_LOG_TIMING
 
 persistence_enabled = DEF_PERSISTENCE_ENABLED
 persistence_type = DEF_PERSISTENCE_TYPE

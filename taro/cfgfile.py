@@ -8,6 +8,7 @@ LOG_MODE = 'log.mode'
 LOG_STDOUT_LEVEL = 'log.stdout.level'
 LOG_FILE_LEVEL = 'log.file.level'
 LOG_FILE_PATH = 'log.file.path'
+LOG_TIMING = 'log.timing'
 PERSISTENCE_ENABLED = 'persistence.enabled'
 PERSISTENCE_TYPE = 'persistence.type'
 PERSISTENCE_MAX_AGE = 'persistence.max_age'
@@ -26,6 +27,7 @@ def load(config=None):
     cfg.log_stdout_level = cns.get(LOG_STDOUT_LEVEL, default=cfg.log_stdout_level, type_=str).lower()
     cfg.log_file_level = cns.get(LOG_FILE_LEVEL, default=cfg.log_file_level, type_=str).lower()
     cfg.log_file_path = cns.get(LOG_FILE_PATH, default=cfg.log_file_path, type_=str)
+    cfg.log_timing = cns.get(LOG_TIMING, default=cfg.log_timing, type_=bool)
 
     cfg.persistence_enabled = cns.get(PERSISTENCE_ENABLED, default=cfg.persistence_enabled, type_=bool)
     cfg.persistence_type = cns.get(PERSISTENCE_TYPE, default=cfg.persistence_type, type_=str)

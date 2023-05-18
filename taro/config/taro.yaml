@@ -1,5 +1,6 @@
 log:
   mode: on
+
   stdout:
     level: warn
   file:
@@ -7,6 +8,8 @@ log:
 #    path: ~/.cache/taro/taro.log
   syslog:
     level: off # Not yet implemented
+
+  timing: False
 
 persistence:
   enabled: true

@@ -1,5 +1,7 @@
 import logging
 import sys
+import time
+from functools import wraps
 from logging import handlers
 
 from taro import paths, cfg
@@ -107,3 +109,23 @@ def _register_handler(handler):
 def _get_handler_level(name):
     handler = _find_handler(name)
     return handler.level if handler else None
+
+
+def timing(operation):
+    timer_logger = logging.getLogger('taro.timer')
+
+    def decorator(func):
+        if not cfg.log_timing:
+            return func
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = time.time()
+            result = func(*args, **kwargs)
+            elapsed_time_ms = (time.time() - start_time) * 1000
+            timer_logger.info(f'event=[timing] op=[{operation}] time=[{elapsed_time_ms:.2f} ms]')
+            return result
+
+        return wrapper
+
+    return decorator
