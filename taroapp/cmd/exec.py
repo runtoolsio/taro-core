@@ -12,8 +12,9 @@ from taro.jobs.sync import ExecutionsLimit
 from taro.jobs.track import MutableTrackedTask, Fields, OutputTracker
 from taro.test.execution import TestExecution
 from taro.util import KVParser, iso_date_time_parser
+from taroapp.logutil import logger_name
 
-log = logging.getLogger(__name__)
+log = logging.getLogger(logger_name(__name__))
 
 
 # TODO refactor -> extract methods
@@ -56,7 +57,6 @@ def run(args):
         instance_id=args.instance,
         pending_group=args.pending,
         **(dict(args.param) if args.param else dict()))
-    logging.debug("event=[job_instance_created] id=[%s]", job_instance.id)
 
     warning.register(job_instance, warn_times=args.warn_time, warn_outputs=args.warn_output)
 
