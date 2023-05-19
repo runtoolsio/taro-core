@@ -242,7 +242,8 @@ class InstanceMatchingCriteria:
     def from_dict(cls, as_dict):
         id_criteria = [IDMatchingCriteria.from_dict(c) for c in as_dict.get('id_criteria', ())]
         interval_criteria = [IntervalCriteria.from_dict(c) for c in as_dict.get('interval_criteria', ())]
-        state_criteria = StateCriteria.from_dict(as_dict.get('state_criteria')) if 'state_criteria' in as_dict else None
+        sc = as_dict.get('state_criteria')
+        state_criteria = StateCriteria.from_dict(sc) if sc else None
         return cls(id_criteria, interval_criteria, state_criteria)
 
     @property
@@ -286,7 +287,7 @@ class InstanceMatchingCriteria:
         d = {
             'id_criteria': [c.to_dict(include_empty) for c in self.id_criteria],
             'interval_criteria': [c.to_dict(include_empty) for c in self.interval_criteria],
-            'state_criteria': self.state_criteria.to_dict(include_empty)
+            'state_criteria': self.state_criteria.to_dict(include_empty) if self.state_criteria else None
         }
         return remove_empty_values(d) if include_empty else d
 
