@@ -9,6 +9,7 @@ from taro.err import InvalidStateError
 from taro.jobs.execution import ExecutionState
 from taro.jobs.job import JobInstanceMetadata, JobInfoList
 from taro.listening import StateReceiver, ExecutionStateEventObserver
+from taro.log import timing
 
 
 class Signal(Enum):
@@ -286,6 +287,7 @@ class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
 
         return ExecutionState.NONE
 
+    @timing('exec_limit_set_signal', args_idx=[1])
     def set_signal(self, job_info) -> Signal:
         jobs, _ = taro.client.read_jobs_info()
 

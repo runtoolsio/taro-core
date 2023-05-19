@@ -368,6 +368,15 @@ class JobInstanceMetadata:
         else:
             return {k: v for k, v in d.items() if not is_empty(v)}
 
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}("
+            f"job_id={self.job_id!r}, "
+            f"instance_id={self.instance_id!r}, "
+            f"parameters={self.parameters!r}, "
+            f"user_params={self.user_params!r})"
+        )
+
 
 class JobInstance(abc.ABC):
 
@@ -742,11 +751,8 @@ class JobInfo:
                      tuple(sorted(self._warnings.items())), self._exec_error, self._parameters,
                      tuple(sorted(self._user_params.items()))))
 
-    def __repr__(self) -> str:
-        return "{}({!r}, {!r}, {!r}, {!r}, {!r})".format(
-            self.__class__.__name__, self._job_instance_id, self._lifecycle, self._status, self._warnings,
-            self._exec_error)
-
+    def __repr__(self):
+        return f"{self.__class__.__name__}("f"metadata={self.metadata!r}"
 
 class JobInfoList(list):
 

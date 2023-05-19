@@ -111,19 +111,22 @@ def _get_handler_level(name):
     return handler.level if handler else None
 
 
-def timing(operation):
+def timing(operation, *, args_idx=()):
     timer_logger = logging.getLogger('taro.timer')
 
     def decorator(func):
-        if not cfg.log_timing:
-            return func
 
         @wraps(func)
         def wrapper(*args, **kwargs):
             start_time = time.time()
             result = func(*args, **kwargs)
-            elapsed_time_ms = (time.time() - start_time) * 1000
-            timer_logger.info(f'event=[timing] op=[{operation}] time=[{elapsed_time_ms:.2f} ms]')
+            if cfg.log_timing:
+                log_args = []
+                for i in args_idx:
+                    log_args.append(args[i])
+                elapsed_time_ms = (time.time() - start_time) * 1000
+                timer_logger.info(f'event=[timing] op=[{operation}] args={log_args} time=[{elapsed_time_ms:.2f} ms]')
+
             return result
 
         return wrapper
