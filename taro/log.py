@@ -123,6 +123,8 @@ def timing(operation, *, args_idx=()):
             if cfg.log_timing:
                 log_args = []
                 for i in args_idx:
+                    if i >= len(args):
+                        break
                     log_args.append(args[i])
                 elapsed_time_ms = (time.time() - start_time) * 1000
                 timer_logger.info(f'event=[timing] op=[{operation}] args={log_args} time=[{elapsed_time_ms:.2f} ms]')
