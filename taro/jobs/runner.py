@@ -259,8 +259,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         job_info = None
         # It is not necessary to lock all this code, but it would be if this method is not confined to one thread
         # However locking is still needed for correct creation of job info when job_info method is called (anywhere)
-        with self._state_lock:
-            with global_state_lock:
+        with global_state_lock:
+            with self._state_lock:
                 prev_state = self._lifecycle.state
                 if self._lifecycle.set_state(new_state):
                     level = logging.WARN if new_state.is_failure() or new_state.is_unexecuted() else logging.INFO
