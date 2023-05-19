@@ -8,7 +8,7 @@ from collections import deque, Counter
 from itertools import chain
 from operator import itemgetter
 from threading import RLock
-from typing import List, Union, Callable, Tuple
+from typing import List, Union, Callable, Tuple, Optional
 
 from taro import util, cfg
 from taro.jobs import persistence
@@ -68,7 +68,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._warning_observers = []
         self._output_observers = []
 
-        self._state_change(ExecutionState.CREATED)
+        self._change_state(ExecutionState.CREATED)  # TODO How to notify observers about the created state?
 
     @property
     def id(self):
@@ -184,7 +184,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             synchronized = self._synchronize()
         except Exception as e:
             log.error('event=[sync_error]', exc_info=e)
-            self._state_change(ExecutionState.ERROR)
+            self._change_state_and_notify(ExecutionState.ERROR)
             return
 
         if synchronized:
@@ -197,19 +197,19 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
         try:
             new_state = self._execution.execute()
-            self._state_change(new_state)
+            self._change_state_and_notify(new_state)
         except Exception as e:
             exec_error = e if isinstance(e, ExecutionError) else ExecutionError.from_unexpected_error(e)
-            self._state_change(exec_error.exec_state, exec_error)
+            self._change_state_and_notify(exec_error.exec_state, exec_error)
         except KeyboardInterrupt:
             log.warning("event=[keyboard_interruption]")
             # Assuming child processes received SIGINT, TODO different state on other platforms?
-            self._state_change(ExecutionState.INTERRUPTED)
+            self._change_state_and_notify(ExecutionState.INTERRUPTED)
             raise
         except SystemExit as e:
             # Consider UNKNOWN (or new state DETACHED?) if there is possibility the execution is not completed
             state = ExecutionState.COMPLETED if e.code == 0 else ExecutionState.FAILED
-            self._state_change(state)
+            self._change_state_and_notify(state)
             raise
         finally:
             self._execution.remove_output_observer(self)
@@ -233,21 +233,28 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                         if not (state.is_waiting() or state.is_terminal()):
                             raise UnexpectedStateError(f"Unsupported state returned from sync: {state}")
 
-                self._state_change(state, use_global_lock=False)
+                # If wait and not the same state then the state must be changed first, then -> release the lock + notify observers and repeat
+                if signal is Signal.WAIT and self.lifecycle.state == state:
+                    self._sync.wait_and_unlock(state_lock)  # Waiting state already set, now we can wait
+                    job_info = None
+                else:
+                    job_info = self._change_state(state, use_global_lock=False)
 
-                if signal is Signal.WAIT:
-                    self._sync.wait_and_unlock(state_lock)
-                    continue  # Repeat as waiting can be still needed or another waiting condition must be evaluated
-                if signal is Signal.TERMINATE:
-                    return False
+            # Lock released -> do not hold lock when executing observers
+            if job_info:
+                self._notify_state_observers(job_info)
+            if signal is Signal.WAIT:
+                continue
+            if signal is Signal.TERMINATE:
+                return False
 
-                return True
+            return True
 
     # Inline?
     def _log(self, event: str, msg: str):
         return "event=[{}] instance=[{}] {}".format(event, self._id, msg)
 
-    def _state_change(self, new_state, exec_error: ExecutionError = None, *, use_global_lock=True):
+    def _change_state(self, new_state, exec_error: ExecutionError = None, *, use_global_lock=True) -> Optional[JobInfo]:
         if exec_error:
             self._exec_error = exec_error
             if exec_error.exec_state == ExecutionState.ERROR or exec_error.unexpected_error:
@@ -256,22 +263,27 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 log.warning(self._log('job_not_completed', "reason=[{}]".format(exec_error)))
 
         global_state_lock = self._global_state_locker() if use_global_lock else contextlib.nullcontext()
-        job_info = None
         # It is not necessary to lock all this code, but it would be if this method is not confined to one thread
         # However locking is still needed for correct creation of job info when job_info method is called (anywhere)
-        with global_state_lock:
+        with global_state_lock:  # Always keep order 1. Global state lock 2. Local state lock
             with self._state_lock:
                 prev_state = self._lifecycle.state
-                if self._lifecycle.set_state(new_state):
-                    level = logging.WARN if new_state.is_failure() or new_state.is_unexecuted() else logging.INFO
-                    log.log(level, self._log('job_state_changed', "prev_state=[{}] new_state=[{}]".format(
-                        prev_state.name, new_state.name)))
-                    job_info = self.create_info()  # Be sure both new_state and exec_error are already set
+                if not self._lifecycle.set_state(new_state):
+                    return None
 
+                level = logging.WARN if new_state.is_failure() or new_state.is_unexecuted() else logging.INFO
+                log.log(level, self._log('job_state_changed', "prev_state=[{}] new_state=[{}]".format(
+                    prev_state.name, new_state.name)))
+                job_info = self.create_info() # Be sure both new_state and exec_error are already set
+                if new_state.is_terminal() and persistence.is_enabled():
+                    persistence.store_job(job_info)  # TODO Consider move (managed _close_job() or listener?)
+                return job_info
+
+
+    def _change_state_and_notify(self, new_state, exec_error: ExecutionError = None, *, use_global_lock=True):
+        job_info = self._change_state(new_state, exec_error, use_global_lock=use_global_lock)
         if job_info:
             self._notify_state_observers(job_info)
-            if new_state.is_terminal() and persistence.is_enabled():
-                persistence.store_job(job_info)  # TODO Consider move (managed _close_job()?)
 
     def _notify_state_observers(self, job_info: JobInfo):
         for observer in _gen_prioritized(self._state_observers, _state_observers):
