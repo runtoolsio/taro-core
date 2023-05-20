@@ -10,8 +10,8 @@ from operator import itemgetter
 from threading import RLock
 from typing import List, Union, Callable, Tuple, Optional
 
-from taro import util, cfg
-from taro.jobs import persistence
+from taro import util
+from taro.jobs import persistence, lock
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver, \
     UnexpectedStateError
 from taro.jobs.job import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, Warn, \
@@ -42,7 +42,7 @@ def _gen_prioritized(*prioritized_seq):
 # TODO Consider rename as `runner` may create impression that the job is executed in background
 class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, sync=NoSync(), state_locker=None,
+    def __init__(self, job_id, execution, sync=NoSync(), state_locker=lock.default_state_locker(),
                  *, instance_id=None, pending_group=None, **user_params):
         self._id = JobInstanceID(job_id, instance_id or util.unique_timestamp_hex())
         self._execution = execution
@@ -52,7 +52,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             self._sync = CompositeSync(self._latch, sync)
         else:
             self._sync = sync
-        self._global_state_locker = state_locker or cfg.state_locker
+        self._global_state_locker = state_locker
         self._pending_group = pending_group
         self._parameters = (execution.parameters or ()) + (sync.parameters or ())
         self._user_params = user_params
