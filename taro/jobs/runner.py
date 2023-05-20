@@ -68,7 +68,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._warning_observers = []
         self._output_observers = []
 
-        self._change_state(ExecutionState.CREATED)  # TODO How to notify observers about the created state?
+        self._change_state_and_notify(ExecutionState.CREATED)  # TODO Move somewhere post-init?
 
     @property
     def id(self):
