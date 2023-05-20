@@ -46,6 +46,9 @@ DEF_PERSISTENCE_MAX_AGE = ''
 DEF_PERSISTENCE_MAX_RECORDS = -1
 DEF_PERSISTENCE_DATABASE = ''
 
+DEF_LOCK_TIMEOUT = 10000
+DEF_LOCK_MAX_CHECK_TIME = 50
+
 DEF_PLUGINS = ()
 
 # ------------ CONFIG VALUES ------------ #
@@ -62,6 +65,9 @@ persistence_type = DEF_PERSISTENCE_TYPE
 persistence_max_age = DEF_PERSISTENCE_MAX_AGE
 persistence_max_records = DEF_PERSISTENCE_MAX_RECORDS
 persistence_database = DEF_PERSISTENCE_DATABASE
+
+lock_timeout_ms = DEF_LOCK_TIMEOUT
+lock_max_check_time_ms = DEF_LOCK_MAX_CHECK_TIME
 
 plugins = DEF_PLUGINS
 

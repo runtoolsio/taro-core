@@ -1,11 +1,12 @@
 import contextlib
 import logging
+import random
 import time
 from abc import ABC, abstractmethod
 
 import portalocker
 
-from taro import paths
+from taro import paths, cfg
 
 log = logging.getLogger(__name__)
 
@@ -30,14 +31,24 @@ class StateLock(ABC):
 
 class PortalockerStateLocker(StateLocker):
 
-    def __init__(self, lock_file, timeout=None):
+    def __init__(self, lock_file, *, timeout=cfg.lock_timeout_ms, max_check_time_ms=cfg.lock_max_check_time_ms):
         self.lock_file = lock_file
         self.timeout = timeout
+        self.max_check_time_ms = max_check_time_ms
+
+    def _check_interval(self):
+        """
+        Never use a constant value for the interval, as it can lead to lock starvation in scenarios
+        where multiple instances attempt to acquire the lock simultaneously.
+
+        :return: random value between 10 and max check time param
+        """
+        return random.randint(10, self.max_check_time_ms) / 1000
 
     @contextlib.contextmanager
     def __call__(self):
         start_time = time.time()
-        with portalocker.Lock(self.lock_file, timeout=self.timeout) as lf:
+        with portalocker.Lock(self.lock_file, timeout=self.timeout, check_interval=self._check_interval()) as lf:
             elapsed_time_ms = (time.time() - start_time) * 1000
             log.debug(f'event=[state_lock_acquired] wait=[{elapsed_time_ms:.2f} ms]')
 
