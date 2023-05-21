@@ -186,19 +186,19 @@ class IntervalCriteria:
 
 class StateCriteria:
 
-    def __init__(self, *, failed=None, warning=None):
-        self._failed = failed
+    def __init__(self, *, failure=None, warning=None):
+        self._failure = failure
         self._warning = warning
 
     @classmethod
     def from_dict(cls, data):
-        failed = data.get('failed', None)
+        failure = data.get('failure', None)
         warning = data.get('warning', None)
-        return cls(failed=failed, warning=warning)
+        return cls(failure=failure, warning=warning)
 
     @property
-    def failed(self):
-        return self._failed
+    def failure(self):
+        return self._failure
 
     @property
     def warning(self):
@@ -208,7 +208,7 @@ class StateCriteria:
         return self.matches(instance)
 
     def matches(self, instance):
-        if self.failed is not None and self.failed != instance.lifecycle.state.is_failure():
+        if self.failure is not None and self.failure != instance.lifecycle.state.is_failure():
             return False
 
         if self.warning is not None and self.warning != bool(instance.warnings):
@@ -217,12 +217,12 @@ class StateCriteria:
         return True
 
     def __bool__(self):
-        return self.failed is not None or self.warning is not None
+        return self.failure is not None or self.warning is not None
 
     def to_dict(self, include_empty=True):
         d = {
-            "failed": self.failed,
-            "warning": self.warning
+            "failed": self.failure,
+            "warning": self.warning,
         }
         return remove_empty_values(d) if include_empty else d
 

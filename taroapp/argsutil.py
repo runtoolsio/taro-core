@@ -60,7 +60,7 @@ def instance_state_criteria(args):
     failed = getattr(args, 'failed', None)
     warning = getattr(args, 'warning', None)
 
-    return StateCriteria(failed=failed, warning=warning)
+    return StateCriteria(failure=failed, warning=warning)
 
 
 def instance_matching_criteria(args, def_id_match_strategy, interval_event=LifecycleEvent.CREATED) -> \

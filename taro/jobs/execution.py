@@ -68,6 +68,10 @@ class ExecutionState(Enum, metaclass=ExecutionStateMeta):
         obj._value_ = value
         return obj
 
+    @classmethod
+    def get_states_by_group(cls, exec_group):
+        return [state for state in cls if exec_group in state.groups]
+
     def __init__(self, groups: Set[ExecutionStateGroup]):
         self.groups = groups
 

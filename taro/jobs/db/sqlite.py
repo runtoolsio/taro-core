@@ -4,7 +4,7 @@ import logging
 import sqlite3
 from datetime import timezone
 
-from taro import cfg, paths, JobInstanceID
+from taro import cfg, paths, JobInstanceID, ExecutionStateGroup
 from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle
 from taro.jobs.job import JobInfo, JobInfoList, LifecycleEvent
 from taro.jobs.persistence import SortCriteria
@@ -69,6 +69,9 @@ def _build_where_clause(instance_match):
     if instance_match.state_criteria:
         if instance_match.state_criteria.warning:
             state_conditions.append("warnings IS NOT NULL")
+        if instance_match.state_criteria.failure:
+            states = ",".join(f"'{s.name}'" for s in ExecutionState.get_states_by_group(ExecutionStateGroup.FAILURE))
+            state_conditions.append(f"terminal_state IN ({states})")
 
     all_conditions_list = (id_conditions, int_conditions, state_conditions)
     all_conditions_str = ["(" + " OR ".join(c_list) + ")" for c_list in all_conditions_list if c_list]
