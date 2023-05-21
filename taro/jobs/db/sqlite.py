@@ -82,9 +82,7 @@ class SQLite:
         self._conn = connection
 
     def check_tables_exist(self):
-        # Old versions:
-        # `ALTER TABLE history RENAME COLUMN parameters TO user_params;`
-        # `ALTER TABLE history ADD COLUMN parameters text;`
+        # Version 2
         c = self._conn.cursor()
         c.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='history' ''')
         if c.fetchone()[0] != 1:
@@ -94,6 +92,7 @@ class SQLite:
                          created timestamp,
                          ended timestamp,
                          state_changes text,
+                         terminal_state text,
                          tracking text,
                          result text,
                          error_output text,
@@ -136,13 +135,13 @@ class SQLite:
             state_changes = ((ExecutionState[state], datetime.datetime.fromtimestamp(changed, tz=timezone.utc))
                              for state, changed in json.loads(t[4]))
             lifecycle = ExecutionLifecycle(*state_changes)
-            tracking = TrackedTaskInfo.from_dict(json.loads(t[5])) if t[5] else None
-            error_output = json.loads(t[7]) if t[7] else tuple()
-            warnings = json.loads(t[8]) if t[8] else dict()
-            exec_error = ExecutionError.from_dict(json.loads(t[9])) if t[9] else None
-            user_params = json.loads(t[10]) if t[10] else dict()
-            parameters = tuple((tuple(x) for x in json.loads(t[11]))) if t[11] else tuple()
-            return JobInfo(JobInstanceID(t[0], t[1]), lifecycle, tracking, t[6], error_output, warnings, exec_error,
+            tracking = TrackedTaskInfo.from_dict(json.loads(t[6])) if t[6] else None
+            error_output = json.loads(t[8]) if t[8] else tuple()
+            warnings = json.loads(t[9]) if t[9] else dict()
+            exec_error = ExecutionError.from_dict(json.loads(t[10])) if t[10] else None
+            user_params = json.loads(t[11]) if t[11] else dict()
+            parameters = tuple((tuple(x) for x in json.loads(t[12]))) if t[12] else tuple()
+            return JobInfo(JobInstanceID(t[0], t[1]), lifecycle, tracking, t[7], error_output, warnings, exec_error,
                            parameters, **user_params)
 
         return JobInfoList((to_job_info(row) for row in c.fetchall()))
@@ -175,6 +174,7 @@ class SQLite:
                     format_dt_sql(j.lifecycle.last_changed_at),
                     json.dumps(
                         [(state.name, float(changed.timestamp())) for state, changed in j.lifecycle.state_changes]),
+                    j.lifecycle.state.name if j.lifecycle.state.is_terminal() else ExecutionState.UNKNOWN.name,
                     json.dumps(j.tracking.to_dict(include_empty=False)) if j.tracking else None,
                     j.status,
                     json.dumps(j.error_output) if j.error_output else None,
@@ -186,7 +186,7 @@ class SQLite:
 
         jobs = [to_tuple(j) for j in job_info]
         self._conn.executemany(
-            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             jobs
         )
         self._conn.commit()
