@@ -186,19 +186,19 @@ class IntervalCriteria:
 
 class StateCriteria:
 
-    def __init__(self, *, failure=None, warning=None):
-        self._failure = failure
+    def __init__(self, *, execution_state_group=None, warning=None):
+        self._exec_state_group = execution_state_group
         self._warning = warning
 
     @classmethod
     def from_dict(cls, data):
-        failure = data.get('failure', None)
+        exec_state_group = data.get('execution_state_group', None)
         warning = data.get('warning', None)
-        return cls(failure=failure, warning=warning)
+        return cls(execution_state_group=exec_state_group, warning=warning)
 
     @property
-    def failure(self):
-        return self._failure
+    def execution_state_group(self):
+        return self._exec_state_group
 
     @property
     def warning(self):
@@ -208,7 +208,7 @@ class StateCriteria:
         return self.matches(instance)
 
     def matches(self, instance):
-        if self.failure is not None and self.failure != instance.lifecycle.state.is_failure():
+        if self.execution_state_group and self.execution_state_group not in instance.lifecycle.state.groups:
             return False
 
         if self.warning is not None and self.warning != bool(instance.warnings):
@@ -217,11 +217,11 @@ class StateCriteria:
         return True
 
     def __bool__(self):
-        return self.failure is not None or self.warning is not None
+        return self.execution_state_group is not None or self.warning is not None
 
     def to_dict(self, include_empty=True):
         d = {
-            "failed": self.failure,
+            "failed": self.execution_state_group,
             "warning": self.warning,
         }
         return remove_empty_values(d) if include_empty else d
