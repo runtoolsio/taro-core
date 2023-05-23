@@ -21,6 +21,7 @@ class ExecutionStateGroup(Enum):
     WAITING = auto()
     EXECUTING = auto()
     TERMINAL = auto()
+    SUCCESS = auto()
     NOT_COMPLETED = auto()
     NOT_EXECUTED = auto()
     FAILURE = auto()
@@ -47,7 +48,7 @@ class ExecutionState(Enum, metaclass=ExecutionStateMeta):
     STARTED = {ExecutionStateGroup.EXECUTING}
     RUNNING = {ExecutionStateGroup.EXECUTING}
 
-    COMPLETED = {ExecutionStateGroup.TERMINAL}
+    COMPLETED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.SUCCESS}
 
     STOPPED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_COMPLETED}
     INTERRUPTED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_COMPLETED}

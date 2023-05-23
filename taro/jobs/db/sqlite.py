@@ -69,8 +69,9 @@ def _build_where_clause(instance_match):
     if instance_match.state_criteria:
         if instance_match.state_criteria.warning:
             state_conditions.append("warnings IS NOT NULL")
-        if exec_state_group := instance_match.state_criteria.execution_state_group:
-            states = ",".join(f"'{s.name}'" for s in ExecutionState.get_states_by_group(exec_state_group))
+        if exec_state_groups := instance_match.state_criteria.execution_state_groups:
+            states = ",".join(f"'{s.name}'" for exec_state_group in exec_state_groups
+                                            for s in ExecutionState.get_states_by_group(exec_state_group))
             state_conditions.append(f"terminal_state IN ({states})")
 
     all_conditions_list = (id_conditions, int_conditions, state_conditions)

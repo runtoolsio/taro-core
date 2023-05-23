@@ -57,10 +57,14 @@ def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED)
 
 
 def instance_state_criteria(args):
-    exec_state_group = ExecutionStateGroup.FAILURE if getattr(args, 'failed', False) else None
+    exec_state_groups = []
+    if getattr(args, 'success', False):
+        exec_state_groups.append(ExecutionStateGroup.SUCCESS)
+    if getattr(args, 'failed', False):
+        exec_state_groups.append(ExecutionStateGroup.FAILURE)
     warning = getattr(args, 'warning', None)
 
-    return StateCriteria(execution_state_group=exec_state_group, warning=warning)
+    return StateCriteria(execution_state_groups=exec_state_groups, warning=warning)
 
 
 def instance_matching_criteria(args, def_id_match_strategy, interval_event=LifecycleEvent.CREATED) -> \

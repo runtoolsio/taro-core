@@ -186,19 +186,19 @@ class IntervalCriteria:
 
 class StateCriteria:
 
-    def __init__(self, *, execution_state_group=None, warning=None):
-        self._exec_state_group = execution_state_group
+    def __init__(self, *, execution_state_groups=(), warning=None):
+        self._exec_state_groups = execution_state_groups
         self._warning = warning
 
     @classmethod
     def from_dict(cls, data):
-        exec_state_group = data.get('execution_state_group', None)
+        exec_state_groups = data.get('execution_state_groups', ())
         warning = data.get('warning', None)
-        return cls(execution_state_group=exec_state_group, warning=warning)
+        return cls(execution_state_groups=exec_state_groups, warning=warning)
 
     @property
-    def execution_state_group(self):
-        return self._exec_state_group
+    def execution_state_groups(self):
+        return self._exec_state_groups
 
     @property
     def warning(self):
@@ -208,7 +208,8 @@ class StateCriteria:
         return self.matches(instance)
 
     def matches(self, instance):
-        if self.execution_state_group and self.execution_state_group not in instance.lifecycle.state.groups:
+        if self.execution_state_groups and \
+                not any(1 for g in self.execution_state_groups if g in instance.lifecycle.state.groups):
             return False
 
         if self.warning is not None and self.warning != bool(instance.warnings):
@@ -217,11 +218,11 @@ class StateCriteria:
         return True
 
     def __bool__(self):
-        return self.execution_state_group is not None or self.warning is not None
+        return bool(self.execution_state_groups) or self.warning is not None
 
     def to_dict(self, include_empty=True):
         d = {
-            "failed": self.execution_state_group,
+            "execution_state_groups": self.execution_state_groups,
             "warning": self.warning,
         }
         return remove_empty_values(d) if include_empty else d
