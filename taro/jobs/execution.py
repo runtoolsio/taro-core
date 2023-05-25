@@ -80,8 +80,8 @@ class ExecutionState(Enum, metaclass=ExecutionStateMeta):
         return obj
 
     @classmethod
-    def get_states_by_flags(cls, exec_group):
-        return [state for state in cls if exec_group in state.flags]
+    def get_states_by_flags(cls, *flags):
+        return [state for state in cls if all(flag in state.flags for flag in flags)]
 
     def __init__(self, phase: ExecutionPhase, groups: Set[ExecutionStateFlag]):
         self.phase = phase
