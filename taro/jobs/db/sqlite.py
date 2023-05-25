@@ -5,7 +5,7 @@ import sqlite3
 from datetime import timezone
 
 from taro import cfg, paths, JobInstanceID
-from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle
+from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle, ExecutionPhase
 from taro.jobs.job import JobInfo, JobInfoList, LifecycleEvent
 from taro.jobs.persistence import SortCriteria
 from taro.jobs.track import TrackedTaskInfo
@@ -69,9 +69,9 @@ def _build_where_clause(instance_match):
     if instance_match.state_criteria:
         if instance_match.state_criteria.warning:
             state_conditions.append("warnings IS NOT NULL")
-        if exec_state_groups := instance_match.state_criteria.execution_state_groups:
-            states = ",".join(f"'{s.name}'" for exec_state_group in exec_state_groups
-                                            for s in ExecutionState.get_states_by_group(exec_state_group))
+        if flags := instance_match.state_criteria.flags:
+            states = ",".join(f"'{s.name}'" for flag in flags
+                                            for s in ExecutionState.get_states_by_flags(flag))
             state_conditions.append(f"terminal_state IN ({states})")
 
     all_conditions_list = (id_conditions, int_conditions, state_conditions)
@@ -178,7 +178,7 @@ class SQLite:
                     format_dt_sql(j.lifecycle.last_changed_at),
                     json.dumps(
                         [(state.name, float(changed.timestamp())) for state, changed in j.lifecycle.state_changes]),
-                    j.lifecycle.state.name if j.lifecycle.state.is_terminal() else ExecutionState.UNKNOWN.name,
+                    j.lifecycle.state.name if j.lifecycle.state.in_phase(ExecutionPhase.TERMINAL) else ExecutionState.UNKNOWN.name,
                     json.dumps(j.tracking.to_dict(include_empty=False)) if j.tracking else None,
                     j.status,
                     json.dumps(j.error_output) if j.error_output else None,

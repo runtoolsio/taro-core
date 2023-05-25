@@ -3,6 +3,7 @@ from threading import Timer
 from typing import Sequence
 
 from taro import util
+from taro.jobs.execution import ExecutionPhase
 from taro.jobs.job import JobInstance, JobInfo, ExecutionStateObserver, Warn, JobOutputObserver
 
 
@@ -32,15 +33,15 @@ class _ExecTimeWarning(ExecutionStateObserver):
         self.timer = None
 
     def state_update(self, job_info: JobInfo):
-        if job_info.state.is_executing():
+        if job_info.state.in_phase(ExecutionPhase.EXECUTING):
             assert self.timer is None
             self.timer = Timer(self.time, self._check)
             self.timer.start()
-        elif job_info.state.is_terminal() and self.timer is not None:
+        elif job_info.state.in_phase(ExecutionPhase.TERMINAL) and self.timer is not None:
             self.timer.cancel()
 
     def _check(self):
-        if not self.job_instance.lifecycle.state.is_terminal():
+        if not self.job_instance.lifecycle.state.in_phase(ExecutionPhase.TERMINAL):
             warn = Warn(self.name, {'exceeded_sec': self.time})
             self.job_instance.add_warning(warn)
 

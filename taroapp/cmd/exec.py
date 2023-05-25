@@ -3,7 +3,7 @@ import signal
 
 from taro import util, cfgfile
 from taro.jobs import sync, warning
-from taro.jobs.execution import ExecutionOutputTracker
+from taro.jobs.execution import ExecutionOutputTracker, Flag
 from taro.jobs.job import Warn
 from taro.jobs.managed import ManagedJobContext
 from taro.jobs.program import ProgramExecution
@@ -73,7 +73,7 @@ def run(args):
             raise ProgramExecutionError(abs(execution.ret_code) + 128)
 
     term_state = job_instance.lifecycle.state
-    if term_state.is_failure():
+    if term_state.has_flag(Flag.FAILURE):
         raise ProgramExecutionError(1)
 
 

@@ -210,7 +210,7 @@ def _init_history_parser(common, subparsers):
     filter_group.add_argument('-t', '--to', type=_str2dt, help='Show entries not newer than the specified date')
     filter_group.add_argument('-T', '--today', action='store_true', help='Show only jobs created today (local)')
     filter_group.add_argument('-Y', '--yesterday', action='store_true', help='Show only jobs created yesterday (local)')
-    filter_group.add_argument('-S', '--succeeded', action='store_true', default=None, help='Show only completed jobs')
+    filter_group.add_argument('-S', '--success', action='store_true', default=None, help='Show only completed jobs')
     filter_group.add_argument('-F', '--failed', action='store_true', default=None, help='Show only failed jobs')
     filter_group.add_argument('-W', '--warning', action='store_true', default=None, help='Show only jobs with warnings')
     filter_group.add_argument('-n', '--lines', type=int, help='Number of history entries to show')

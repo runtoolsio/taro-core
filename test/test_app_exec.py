@@ -73,7 +73,7 @@ def test_no_overlap(observer: TestStateObserver):
 
 def test_skipped_when_dependency_not_running(observer: TestStateObserver):
     run_app('exec -mc --depends-on another_job --id j1 echo Something is missing..')
-    assert observer.last_state('j1') == ExecutionState.DEPENDENCY_NOT_RUNNING
+    assert observer.last_state('j1') == ExecutionState.UNSATISFIED
 
 
 def test_executed_when_dependency_is_running(observer: TestStateObserver):

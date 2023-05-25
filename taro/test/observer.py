@@ -11,7 +11,7 @@ from datetime import datetime
 from threading import Condition
 from typing import Tuple, List, Callable
 
-from taro.jobs.execution import ExecutionState, ExecutionError
+from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionPhase
 from taro.jobs.job import JobInfo, Warn, WarningObserver, JobOutputObserver, WarnEventCtx
 from taro.jobs.runner import ExecutionStateObserver
 
@@ -79,7 +79,8 @@ class TestStateObserver(ExecutionStateObserver):
         :param timeout: Waiting interval in seconds
         :return: True when terminal state received False when timed out
         """
-        return self._wait_for_state_condition(lambda: any((e for e in self._events if e[2].is_terminal())), timeout)
+        terminal_condition = lambda: any((e for e in self._events if e[2].in_phase(ExecutionPhase.TERMINAL)))
+        return self._wait_for_state_condition(terminal_condition, timeout)
 
     def _wait_for_state_condition(self, state_condition: Callable[[], bool], timeout: float):
         with self.completion_lock:

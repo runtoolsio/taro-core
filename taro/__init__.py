@@ -11,7 +11,7 @@ from threading import Thread
 from . import cfg, cfgfile, log
 from .hostinfo import read_hostinfo, HostinfoError
 from .jobs import warning, persistence, repo, sync
-from .jobs.execution import ExecutionStateGroup, ExecutionState, ExecutionError, ExecutionLifecycle
+from .jobs.execution import Flag, ExecutionState, ExecutionError, ExecutionLifecycle
 from .jobs.job import JobInstanceID, JobInstance, JobInfo, ExecutionStateObserver, Warn, WarningObserver, WarnEventCtx
 from .jobs.managed import ManagedJobContext
 from .jobs.plugins import PluginBase, PluginDisabledError

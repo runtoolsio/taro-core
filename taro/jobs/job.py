@@ -21,7 +21,7 @@ from fnmatch import fnmatch
 from functools import partial
 from typing import NamedTuple, Dict, Any, Optional, Callable, Union, List, Tuple
 
-from taro.jobs.execution import ExecutionError, ExecutionLifecycle
+from taro.jobs.execution import ExecutionError, ExecutionLifecycle, ExecutionPhase
 from taro.jobs.track import TrackedTaskInfo
 from taro.util import and_, or_, MatchingStrategy, is_empty, to_list, format_dt_iso, remove_empty_values, day_range
 
@@ -186,19 +186,19 @@ class IntervalCriteria:
 
 class StateCriteria:
 
-    def __init__(self, *, execution_state_groups=(), warning=None):
-        self._exec_state_groups = execution_state_groups
+    def __init__(self, *, flags=(), warning=None):
+        self._flags = flags
         self._warning = warning
 
     @classmethod
     def from_dict(cls, data):
-        exec_state_groups = data.get('execution_state_groups', ())
+        flags = data.get('flags', ())
         warning = data.get('warning', None)
-        return cls(execution_state_groups=exec_state_groups, warning=warning)
+        return cls(flags=flags, warning=warning)
 
     @property
-    def execution_state_groups(self):
-        return self._exec_state_groups
+    def flags(self):
+        return self._flags
 
     @property
     def warning(self):
@@ -208,8 +208,8 @@ class StateCriteria:
         return self.matches(instance)
 
     def matches(self, instance):
-        if self.execution_state_groups and \
-                not any(1 for g in self.execution_state_groups if g in instance.lifecycle.state.groups):
+        if self.flags and \
+                not any(1 for g in self.flags if g in instance.lifecycle.state.flags):
             return False
 
         if self.warning is not None and self.warning != bool(instance.warnings):
@@ -218,11 +218,11 @@ class StateCriteria:
         return True
 
     def __bool__(self):
-        return bool(self.execution_state_groups) or self.warning is not None
+        return bool(self.flags) or self.warning is not None
 
     def to_dict(self, include_empty=True):
         d = {
-            "execution_state_groups": self.execution_state_groups,
+            "flags": self.flags,
             "warning": self.warning,
         }
         return remove_empty_values(d) if include_empty else d
@@ -765,16 +765,20 @@ class JobInfoList(list):
     def job_ids(self) -> List[str]:
         return [j.id.job_id for j in self]
 
-    def filtered_by_state(self, state_predicate):
-        return [j for j in self if state_predicate(j.lifecycle.state)]
+    def filtered_by_phase(self, execution_phase):
+        return [j for j in self if j.lifecycle.state.phase is execution_phase]
 
     @property
-    def before_execution(self):
-        return self.filtered_by_state(lambda state: state.is_before_execution())
+    def scheduled(self):
+        return self.filtered_by_phase(ExecutionPhase.SCHEDULED)
 
     @property
     def executing(self):
-        return self.filtered_by_state(lambda state: state.is_executing())
+        return self.filtered_by_phase(ExecutionPhase.EXECUTING)
+
+    @property
+    def terminal(self):
+        return self.filtered_by_phase(ExecutionPhase.TERMINAL)
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         return {"jobs": [job.to_dict(include_empty=include_empty) for job in self]}

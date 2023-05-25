@@ -1,7 +1,7 @@
 import datetime
 import re
 
-from taro.jobs.execution import ExecutionState
+from taro.jobs.execution import ExecutionState, ExecutionPhase
 
 
 class AllFilter:
@@ -27,7 +27,7 @@ def create_id_filter(text):
 
 
 def finished_filter(job_info):
-    return job_info.state.is_terminal()
+    return job_info.state.in_phase(ExecutionPhase.TERMINAL)
 
 
 def today_filter(job_info):

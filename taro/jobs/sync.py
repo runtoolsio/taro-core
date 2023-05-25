@@ -6,7 +6,7 @@ from typing import Sequence
 
 import taro.client
 from taro.err import InvalidStateError
-from taro.jobs.execution import ExecutionState
+from taro.jobs.execution import ExecutionState, ExecutionPhase, Flag
 from taro.jobs.job import JobInstanceMetadata, JobInfoList
 from taro.listening import StateReceiver, ExecutionStateEventObserver
 from taro.log import timing
@@ -129,7 +129,7 @@ class CompositeSync(Sync):
 class Latch(Sync):
 
     def __init__(self, waiting_state: ExecutionState):
-        if not waiting_state.is_waiting():
+        if not waiting_state.has_flag(Flag.WAITING):
             raise ValueError(f"Invalid execution state for latch: {waiting_state}. Latch requires waiting state.")
         self._signal = Signal.NONE
         self._event = Event()
@@ -226,7 +226,7 @@ class Dependency(Sync):
     @property
     def exec_state(self) -> ExecutionState:
         if self._signal is Signal.TERMINATE:
-            return ExecutionState.DEPENDENCY_NOT_RUNNING
+            return ExecutionState.UNSATISFIED
 
         return ExecutionState.NONE
 
@@ -283,7 +283,7 @@ class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
     @property
     def exec_state(self) -> ExecutionState:
         if self._signal is Signal.WAIT:
-            return ExecutionState.WAITING
+            return ExecutionState.QUEUED
 
         return ExecutionState.NONE
 
@@ -299,7 +299,7 @@ class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
         if more_allowed <= 0:
             return self._set_signal(Signal.WAIT)
 
-        next_allowed = exec_group_jobs_sorted.before_execution[0:more_allowed]
+        next_allowed = exec_group_jobs_sorted.scheduled[0:more_allowed] # TODO Important This doesn't look correct - should iterate only thru queued
         job_created = job_info.lifecycle.changed_at(ExecutionState.CREATED)
         for allowed in next_allowed:
             if job_info.id == allowed.id or job_created <= allowed.lifecycle.changed_at(ExecutionState.CREATED):
@@ -325,7 +325,7 @@ class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
         self._event.set()
 
     def state_update(self, instance_meta: JobInstanceMetadata, previous_state, new_state, changed):
-        if new_state.is_terminal() and self._is_same_exec_group(instance_meta):
+        if new_state.in_phase(ExecutionPhase.TERMINAL) and self._is_same_exec_group(instance_meta):
             self._event.set()
 
 

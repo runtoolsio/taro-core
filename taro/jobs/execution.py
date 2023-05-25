@@ -16,15 +16,27 @@ from taro import util
 from taro.util import utc_now, format_dt_iso, is_empty
 
 
-class ExecutionStateGroup(Enum):
-    BEFORE_EXECUTION = auto()
-    WAITING = auto()
+class ExecutionPhase(Enum):
+    NONE = auto()
+    SCHEDULED = auto()
     EXECUTING = auto()
     TERMINAL = auto()
+
+Phase = ExecutionPhase
+
+class ExecutionStateFlag(Enum):
+    UNEXECUTED = auto()
+    WAITING = auto()
+    DISCARDED = auto()
+    REJECTED = auto()
+    EXECUTED = auto()
     SUCCESS = auto()
-    NOT_COMPLETED = auto()
-    NOT_EXECUTED = auto()
+    NONSUCCESS = auto()
+    INCOMPLETE = auto()
     FAILURE = auto()
+    ABORTED = auto()
+
+Flag = ExecutionStateFlag
 
 
 class ExecutionStateMeta(EnumMeta):
@@ -36,32 +48,30 @@ class ExecutionStateMeta(EnumMeta):
 
 
 class ExecutionState(Enum, metaclass=ExecutionStateMeta):
-    NONE = {}
-    UNKNOWN = {}
-    CREATED = {ExecutionStateGroup.BEFORE_EXECUTION}
+    NONE =    Phase.NONE, {}
+    UNKNOWN = Phase.NONE, {}
 
-    PENDING = {ExecutionStateGroup.WAITING, ExecutionStateGroup.BEFORE_EXECUTION}  # Until released
-    WAITING = {ExecutionStateGroup.WAITING, ExecutionStateGroup.BEFORE_EXECUTION}  # Wait for another job
-    # ON_HOLD or same as pending?
+    CREATED = Phase.SCHEDULED, {Flag.UNEXECUTED}
 
-    TRIGGERED = {ExecutionStateGroup.EXECUTING}  # Start request sent, start confirmation not (yet) received
-    STARTED = {ExecutionStateGroup.EXECUTING}
-    RUNNING = {ExecutionStateGroup.EXECUTING}
+    PENDING = Phase.SCHEDULED, {Flag.UNEXECUTED, Flag.WAITING}  # Until released
+    QUEUED =  Phase.SCHEDULED, {Flag.UNEXECUTED, Flag.WAITING}  # Wait for another job
 
-    COMPLETED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.SUCCESS}
+    CANCELLED =   Phase.TERMINAL, {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.ABORTED}
+    SKIPPED =     Phase.TERMINAL, {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.REJECTED}
+    UNSATISFIED = Phase.TERMINAL, {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.REJECTED}
+    # More possible discarded states: DISABLED, SUSPENDED
 
-    STOPPED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_COMPLETED}
-    INTERRUPTED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_COMPLETED}
+    # START_FAILED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.UNEXECUTED, ExecutionStateGroup.FAILURE}
+    TRIGGERED = Phase.EXECUTING, {Flag.EXECUTED}  # Start request sent, start confirmation not (yet) received
+    # STARTED =   {ExecutionStateGroup.EXECUTED, ExecutionStateGroup.EXECUTING}
+    RUNNING = Phase.EXECUTING, {Flag.EXECUTED}
 
-    DISABLED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}
-    CANCELLED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}
-    SKIPPED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}
-    DEPENDENCY_NOT_RUNNING = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}
-    SUSPENDED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.NOT_EXECUTED}  # Temporarily disabled
+    COMPLETED =   Phase.TERMINAL, {Flag.EXECUTED, Flag.SUCCESS}
 
-    START_FAILED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.FAILURE}
-    FAILED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.FAILURE}
-    ERROR = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.FAILURE}
+    STOPPED =     Phase.TERMINAL, {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.ABORTED}
+    INTERRUPTED = Phase.TERMINAL, {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.ABORTED}
+    FAILED =      Phase.TERMINAL, {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.FAILURE}
+    ERROR =       Phase.TERMINAL, {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.FAILURE}
 
     def __new__(cls, *args, **kwds):
         value = len(cls.__members__) + 1
@@ -70,32 +80,18 @@ class ExecutionState(Enum, metaclass=ExecutionStateMeta):
         return obj
 
     @classmethod
-    def get_states_by_group(cls, exec_group):
-        return [state for state in cls if exec_group in state.groups]
+    def get_states_by_flags(cls, exec_group):
+        return [state for state in cls if exec_group in state.flags]
 
-    def __init__(self, groups: Set[ExecutionStateGroup]):
-        self.groups = groups
+    def __init__(self, phase: ExecutionPhase, groups: Set[ExecutionStateFlag]):
+        self.phase = phase
+        self.flags = groups
 
-    def is_before_execution(self):
-        return ExecutionStateGroup.BEFORE_EXECUTION in self.groups
+    def in_phase(self, phase: ExecutionPhase) -> bool:
+        return self.phase == phase
 
-    def is_waiting(self):
-        return ExecutionStateGroup.WAITING in self.groups
-
-    def is_executing(self):
-        return ExecutionStateGroup.EXECUTING in self.groups
-
-    def is_incomplete(self):
-        return ExecutionStateGroup.NOT_COMPLETED in self.groups
-
-    def is_unexecuted(self):
-        return ExecutionStateGroup.NOT_EXECUTED in self.groups
-
-    def is_terminal(self) -> bool:
-        return ExecutionStateGroup.TERMINAL in self.groups
-
-    def is_failure(self) -> bool:
-        return ExecutionStateGroup.FAILURE in self.groups  # TODO convert to `failure` property?
+    def has_flag(self, flag: ExecutionStateFlag):
+        return flag in self.flags
 
 
 class UnexpectedStateError(Exception):
@@ -116,8 +112,8 @@ class ExecutionError(Exception):
         return cls(as_dict['message'], ExecutionState[as_dict['state']])
 
     def __init__(self, message: str, exec_state: ExecutionState, unexpected_error: Exception = None, **kwargs):
-        if not exec_state.is_failure():
-            raise ValueError('exec_state must be a failure', exec_state)
+        if not exec_state.has_flag(Flag.FAILURE):
+            raise ValueError('exec_state must be flagged as failure', exec_state)
         super().__init__(message)
         self.message = message
         self.exec_state = exec_state
@@ -266,7 +262,7 @@ class ExecutionLifecycle:
 
     @property
     def first_executing_state(self) -> Optional[ExecutionState]:
-        return next((state for state in self._state_changes if state.is_executing()), None)
+        return next((state for state in self._state_changes if state.in_phase(ExecutionPhase.EXECUTING)), None)
 
     def executed(self) -> bool:
         return self.first_executing_state is not None
@@ -278,7 +274,7 @@ class ExecutionLifecycle:
     @property
     def ended_at(self) -> Optional[datetime.datetime]:
         state = self.state
-        if not state.is_terminal():
+        if not state.in_phase(ExecutionPhase.TERMINAL):
             return None
         return self.changed_at(state)
 

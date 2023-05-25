@@ -13,7 +13,7 @@ from typing import List, Union, Callable, Tuple, Optional
 from taro import util
 from taro.jobs import persistence, lock
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver, \
-    UnexpectedStateError
+    Phase, Flag, UnexpectedStateError
 from taro.jobs.job import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, Warn, \
     WarnEventCtx, JobInstanceID, DEFAULT_OBSERVER_PRIORITY
 from taro.jobs.sync import NoSync, CompositeSync, Latch, Signal
@@ -230,7 +230,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                         state = ExecutionState.TRIGGERED if self._execution.is_async else ExecutionState.RUNNING
                     else:
                         state = self._sync.exec_state
-                        if not (state.is_waiting() or state.is_terminal()):
+                        if not (state.has_flag(Flag.WAITING) or state.in_phase(Phase.TERMINAL)):
                             raise UnexpectedStateError(f"Unsupported state returned from sync: {state}")
 
                 # If wait and not the same state then the state must be changed first, then -> release the lock + notify observers and repeat
@@ -271,11 +271,11 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 if not self._lifecycle.set_state(new_state):
                     return None
 
-                level = logging.WARN if new_state.is_failure() or new_state.is_unexecuted() else logging.INFO
+                level = logging.WARN if new_state.has_flag(Flag.NONSUCCESS) else logging.INFO
                 log.log(level, self._log('job_state_changed', "prev_state=[{}] new_state=[{}]".format(
                     prev_state.name, new_state.name)))
                 job_info = self.create_info() # Be sure both new_state and exec_error are already set
-                if new_state.is_terminal() and persistence.is_enabled():
+                if new_state.in_phase(Phase.TERMINAL) and persistence.is_enabled():
                     persistence.store_job(job_info)  # TODO Consider move (managed _close_job() or listener?)
                 return job_info
 

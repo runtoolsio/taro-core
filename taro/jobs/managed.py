@@ -7,6 +7,7 @@ from taro.err import InvalidStateError
 from taro.jobs import plugins
 from taro.jobs.api import Server
 from taro.jobs.events import StateDispatcher, OutputDispatcher
+from taro.jobs.execution import ExecutionPhase
 
 log = logging.getLogger(__name__)
 
@@ -78,7 +79,7 @@ class ManagedJobContext(ExecutionStateObserver):
         return job_instance
 
     def state_update(self, job_info: JobInfo):
-        if job_info.lifecycle.state.is_terminal():
+        if job_info.lifecycle.state.in_phase(ExecutionPhase.TERMINAL):
             self._close_job(job_info.id)
 
     def _close_job(self, job_instance_id):

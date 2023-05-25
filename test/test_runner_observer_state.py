@@ -36,14 +36,6 @@ def test_execution_completed(observer: TestStateObserver):
     assert observer.exec_state(2) == ExecutionState.COMPLETED
 
 
-def test_execution_started(observer: TestStateObserver):
-    runner.run('j1', TestExecution(ExecutionState.STARTED), lock.NullStateLocker())
-
-    assert observer.exec_state(0) == ExecutionState.CREATED
-    assert observer.exec_state(1) == ExecutionState.RUNNING
-    assert observer.exec_state(2) == ExecutionState.STARTED
-
-
 def test_execution_raises_exc(observer: TestStateObserver):
     exc_to_raise = Exception()
     runner.run('j1', TestExecution(raise_exc=exc_to_raise), lock.NullStateLocker())
