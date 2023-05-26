@@ -224,6 +224,7 @@ def _init_history_parser(common, subparsers):
     filter_group.add_argument('-W', '--warning', action='store_true', default=None, help='Show only jobs with warnings')
     filter_group.add_argument('-n', '--lines', type=int, help='Number of history entries to show')
     filter_group.add_argument('-L', '--last', action='store_true', help='Show last execution of each job')
+    filter_group.add_argument('--slowest', action='store_true', help='Show slowest instance from each job')
 
     hist_parser.add_argument('-a', '--asc', '--ascending', action='store_true', help='Ascending sort')
     hist_parser.add_argument('-s', '--sort', type=str, choices=[s.name.lower() for s in SortCriteria],

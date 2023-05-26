@@ -7,6 +7,11 @@ from taroapp.view import instance as view_inst
 
 def run(args):
     instance_match = argsutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL)
+    if args.slowest:
+        args.last = True
+        args.sort = SortCriteria.TIME.name
+        args.asc = False
+
     jobs = persistence.read_jobs(
         instance_match, SortCriteria[args.sort.upper()], asc=args.asc, limit=args.lines or -1, last=args.last)
 

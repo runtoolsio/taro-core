@@ -32,17 +32,18 @@ def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED)
     to_dt = None
     include_to = True
 
-    if getattr(args, 'since', None):
-        if isinstance(args.since, datetime):
-            from_dt = args.since.astimezone(timezone.utc)
+    if getattr(args, 'from', None):
+        from_ = getattr(args, 'from')
+        if isinstance(from_, datetime):
+            from_dt = from_.astimezone(timezone.utc)
         else:  # Assuming it is datetime.date
-            from_dt = datetime.combine(args.since, time.min).astimezone(timezone.utc)
+            from_dt = datetime.combine(from_, time.min).astimezone(timezone.utc)
 
-    if getattr(args, 'until', None):
-        if isinstance(args.until, datetime):
-            to_dt = args.until.astimezone(timezone.utc)
+    if getattr(args, 'to', None):
+        if isinstance(args.to, datetime):
+            to_dt = args.to.astimezone(timezone.utc)
         else:  # Assuming it is datetime.date
-            to_dt = datetime.combine(args.until + timedelta(days=1), time.min).astimezone(timezone.utc)
+            to_dt = datetime.combine(args.to + timedelta(days=1), time.min).astimezone(timezone.utc)
             include_to = False
 
     if from_dt or to_dt:
