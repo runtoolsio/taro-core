@@ -61,6 +61,14 @@ def instance_state_criteria(args):
     flag_groups: List[Set[ExecutionStateFlag]] = []
     if getattr(args, 'success', False):
         flag_groups.append({Flag.SUCCESS})
+    if getattr(args, 'nonsuccess', False):
+        flag_groups.append({Flag.NONSUCCESS})
+    if getattr(args, 'aborted', False):
+        flag_groups.append({Flag.ABORTED})
+    if getattr(args, 'incomplete', False):
+        flag_groups.append({Flag.INCOMPLETE})
+    if getattr(args, 'discarded', False):
+        flag_groups.append({Flag.DISCARDED})
     if getattr(args, 'failed', False):
         flag_groups.append({Flag.FAILURE})
     warning = getattr(args, 'warning', None)
