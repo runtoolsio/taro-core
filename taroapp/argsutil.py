@@ -1,9 +1,9 @@
 from datetime import timedelta, timezone, datetime, time
 from enum import Enum
-from typing import List, Callable
+from typing import List, Callable, Set
 
 from taro import JobInstanceID
-from taro.jobs.execution import Flag
+from taro.jobs.execution import Flag, ExecutionStateFlag
 from taro.jobs.job import IDMatchingCriteria, InstanceMatchingCriteria, compound_id_filter, IntervalCriteria, \
     LifecycleEvent, StateCriteria
 from taro.util import DateTimeFormat
@@ -58,14 +58,14 @@ def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED)
 
 
 def instance_state_criteria(args):
-    exec_state_groups = []
+    flag_groups: List[Set[ExecutionStateFlag]] = []
     if getattr(args, 'success', False):
-        exec_state_groups.append(Flag.SUCCESS)
+        flag_groups.append({Flag.SUCCESS})
     if getattr(args, 'failed', False):
-        exec_state_groups.append(Flag.FAILURE)
+        flag_groups.append({Flag.FAILURE})
     warning = getattr(args, 'warning', None)
 
-    return StateCriteria(flags=exec_state_groups, warning=warning)
+    return StateCriteria(flag_groups=flag_groups, warning=warning)
 
 
 def instance_matching_criteria(args, def_id_match_strategy, interval_event=LifecycleEvent.CREATED) -> \

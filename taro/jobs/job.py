@@ -19,9 +19,9 @@ from dataclasses import dataclass
 from enum import Enum
 from fnmatch import fnmatch
 from functools import partial
-from typing import NamedTuple, Dict, Any, Optional, Callable, Union, List, Tuple
+from typing import NamedTuple, Dict, Any, Optional, Callable, Union, List, Tuple, Iterable, Set
 
-from taro.jobs.execution import ExecutionError, ExecutionLifecycle, ExecutionPhase
+from taro.jobs.execution import ExecutionError, ExecutionLifecycle, ExecutionPhase, ExecutionStateFlag
 from taro.jobs.track import TrackedTaskInfo
 from taro.util import and_, or_, MatchingStrategy, is_empty, to_list, format_dt_iso, remove_empty_values, day_range
 
@@ -186,18 +186,18 @@ class IntervalCriteria:
 
 class StateCriteria:
 
-    def __init__(self, *, flags=(), warning=None):
-        self._flags = flags
+    def __init__(self, *, flag_groups: Iterable[Set[ExecutionStateFlag]] = (), warning: Optional[bool] = None):
+        self._flags = flag_groups
         self._warning = warning
 
     @classmethod
     def from_dict(cls, data):
-        flags = data.get('flags', ())
+        flag_groups = data.get('flag_groups', ())
         warning = data.get('warning', None)
-        return cls(flags=flags, warning=warning)
+        return cls(flag_groups=flag_groups, warning=warning)
 
     @property
-    def flags(self):
+    def flag_groups(self):
         return self._flags
 
     @property
@@ -208,8 +208,8 @@ class StateCriteria:
         return self.matches(instance)
 
     def matches(self, instance):
-        if self.flags and \
-                not any(1 for g in self.flags if g in instance.lifecycle.state.flags):
+        if self.flag_groups and \
+                not any(all(f in instance.lifecycle.state.flags for f in g) for g in self.flag_groups):
             return False
 
         if self.warning is not None and self.warning != bool(instance.warnings):
@@ -218,11 +218,11 @@ class StateCriteria:
         return True
 
     def __bool__(self):
-        return bool(self.flags) or self.warning is not None
+        return bool(self.flag_groups) or self.warning is not None
 
     def to_dict(self, include_empty=True):
         d = {
-            "flags": self.flags,
+            "flag_groups": self.flag_groups,
             "warning": self.warning,
         }
         return remove_empty_values(d) if include_empty else d
