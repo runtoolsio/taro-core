@@ -33,12 +33,12 @@ def test_store_and_fetch(sut):
     assert j1 == jobs[0]
 
 
-def j(c, *, sec=0, created=utc_now(), completed=utc_now(), warnings=None):
+def j(c, instance=None, *, sec=0, created=utc_now(), completed=utc_now(), warnings=None):
     lifecycle = ExecutionLifecycle(
         (ExecutionState.CREATED, created + timedelta(seconds=sec)),
         (ExecutionState.COMPLETED, completed + timedelta(seconds=sec)))
-    return JobInfo(JobInstanceID(f"j{c}", util.unique_timestamp_hex()), lifecycle, None, None, None, warnings, None,
-                   None)
+    return JobInfo(JobInstanceID(
+                    f"j{c}", instance or util.unique_timestamp_hex()), lifecycle, None, None, None, warnings, None,None)
 
 
 def test_last(sut):
@@ -68,11 +68,25 @@ def test_limit(sut):
 
 
 def test_job_id_match(sut):
-    sut.store_job(j(1), j(12), j(11), j(111), j(121))
+    sut.store_job(j(1, 'i1'), j(12, 'i12'), j(11, 'i11'), j(111, 'i111'), j(121, 'i121'))
 
     assert len(sut.read_jobs(parse_criteria('j1'))) == 1
+    assert len(sut.read_jobs(parse_criteria('j1@'))) == 1
+    assert len(sut.read_jobs(parse_criteria('j1@i1'))) == 1
+    assert len(sut.read_jobs(parse_criteria('@i1'))) == 1
+    assert len(sut.read_jobs(parse_criteria('i1'))) == 1
+
     assert len(sut.read_jobs(parse_criteria('j1', MatchingStrategy.PARTIAL))) == 5
+    assert len(sut.read_jobs(parse_criteria('j1@', MatchingStrategy.PARTIAL))) == 5
+    assert len(sut.read_jobs(parse_criteria('j1@i1', MatchingStrategy.PARTIAL))) == 5
+    assert len(sut.read_jobs(parse_criteria('@i1', MatchingStrategy.PARTIAL))) == 5
+    assert len(sut.read_jobs(parse_criteria('i1', MatchingStrategy.PARTIAL))) == 5
+
     assert len(sut.read_jobs(parse_criteria('j1?1', MatchingStrategy.FN_MATCH))) == 2
+    assert len(sut.read_jobs(parse_criteria('j1?1@', MatchingStrategy.FN_MATCH))) == 2
+    assert len(sut.read_jobs(parse_criteria('j1?1@i1?1', MatchingStrategy.FN_MATCH))) == 2
+    assert len(sut.read_jobs(parse_criteria('@i1?1', MatchingStrategy.FN_MATCH))) == 2
+    assert len(sut.read_jobs(parse_criteria('i1?1', MatchingStrategy.FN_MATCH))) == 2
 
 
 def test_cleanup(sut):

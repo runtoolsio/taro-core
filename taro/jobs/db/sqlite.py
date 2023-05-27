@@ -28,25 +28,28 @@ def _build_where_clause(instance_match):
     id_criteria = instance_match.id_criteria
     id_conditions = []
     for c in id_criteria:
-        op = 'AND' if c.match_both_ids else 'OR'
-        if c.strategy == MatchingStrategy.PARTIAL:
-            id_conditions.append("job_id GLOB \"*{jid}*\" {op} instance_id GLOB \"*{iid}*\""
-                                 .format(jid=c.job_id, iid=c.instance_id, op=op))
-        elif c.strategy == MatchingStrategy.FN_MATCH:
-            match_conditions = []
-            if c.job_id:
-                match_conditions.append("job_id GLOB \"{jid}\"".format(jid=c.job_id))
-            if c.instance_id:
-                match_conditions.append("instance_id GLOB \"{iid}\"".format(iid=c.instance_id))
-            id_conditions.append(f" {op} ".join(match_conditions))
-        elif c.strategy == MatchingStrategy.EXACT:
-            if not c.instance_id:
-                id_conditions.append(f"job_id = \"{c.job_id}\"")  # TODO proper impl
+        conditions = []
+        op = ' AND ' if c.match_both_ids else ' OR '
+        if c.job_id:
+            if c.strategy == MatchingStrategy.PARTIAL:
+                conditions.append(f'job_id GLOB "*{c.job_id}*"')
+            elif c.strategy == MatchingStrategy.FN_MATCH:
+                conditions.append(f'job_id GLOB "{c.job_id}"')
+            elif c.strategy == MatchingStrategy.EXACT:
+                conditions.append(f'job_id = "{c.job_id}"')
             else:
-                id_conditions.append("job_id = \"{jid}\" {op} instance_id = \"{iid}\""
-                                     .format(jid=c.job_id, iid=c.instance_id, op=op))
-        else:
-            raise ValueError(f"Matching strategy {id_criteria.strategy} is not supported")
+                raise ValueError(f"Matching strategy {id_criteria.strategy} is not supported")
+        if c.instance_id:
+            if c.strategy == MatchingStrategy.PARTIAL:
+                conditions.append(f'instance_id GLOB "*{c.instance_id}*"')
+            elif c.strategy == MatchingStrategy.FN_MATCH:
+                conditions.append(f'instance_id GLOB "{c.instance_id}"')
+            elif c.strategy == MatchingStrategy.EXACT:
+                conditions.append(f'instance_id = "{c.instance_id}"')
+            else:
+                raise ValueError(f"Matching strategy {id_criteria.strategy} is not supported")
+
+        id_conditions.append(op.join(conditions))
 
     int_criteria = instance_match.interval_criteria
     int_conditions = []
