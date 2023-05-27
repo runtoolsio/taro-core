@@ -33,8 +33,12 @@ def _build_where_clause(instance_match):
             id_conditions.append("job_id GLOB \"*{jid}*\" {op} instance_id GLOB \"*{iid}*\""
                                  .format(jid=c.job_id, iid=c.instance_id, op=op))
         elif c.strategy == MatchingStrategy.FN_MATCH:
-            id_conditions.append("job_id GLOB \"{jid}\" {op} instance_id GLOB \"{iid}\""
-                                 .format(jid=c.job_id, iid=c.instance_id, op=op))
+            match_conditions = []
+            if c.job_id:
+                match_conditions.append("job_id GLOB \"{jid}\"".format(jid=c.job_id))
+            if c.instance_id:
+                match_conditions.append("instance_id GLOB \"{iid}\"".format(iid=c.instance_id))
+            id_conditions.append(f" {op} ".join(match_conditions))
         elif c.strategy == MatchingStrategy.EXACT:
             if not c.instance_id:
                 id_conditions.append(f"job_id = \"{c.job_id}\"")  # TODO proper impl
