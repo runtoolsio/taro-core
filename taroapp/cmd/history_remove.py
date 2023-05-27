@@ -1,5 +1,5 @@
 from taro.jobs import persistence
-from taro.jobs.job import InstanceMatchingCriteria, IDMatchingCriteria
+from taro.jobs.job import InstanceMatchingCriteria
 from taro.util import MatchingStrategy
 from taroapp import cliutil
 
@@ -7,7 +7,7 @@ from taroapp import cliutil
 def run(args):
     total = 0
     for instance in args.instances:
-        instance_match = InstanceMatchingCriteria(IDMatchingCriteria([instance], MatchingStrategy.FN_MATCH))
+        instance_match = InstanceMatchingCriteria.parse_pattern(instance, MatchingStrategy.FN_MATCH)
         count = persistence.num_of_job(instance_match=instance_match)
         print(str(count) + " records found for " + instance)
         total += count
@@ -17,5 +17,5 @@ def run(args):
         return
 
     for instance in args.instances:
-        instance_match = InstanceMatchingCriteria(IDMatchingCriteria([instance], MatchingStrategy.FN_MATCH))
+        instance_match = InstanceMatchingCriteria.parse_pattern(instance, MatchingStrategy.FN_MATCH)
         persistence.remove_jobs(instance_match)
