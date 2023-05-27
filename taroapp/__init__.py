@@ -27,8 +27,9 @@ def main(args):
         run_app(args)
     except ConfigFileNotFoundError as e:
         print_styled((Theme.warning, "User error: "), ('', str(e)), file=sys.stderr)
-        print_styled(('', "Run `setup config create` command to create the configuration file "
-                     "or see `-dc` and `-mc` options to execute without config file"), file=sys.stderr)
+        if e.search_path:
+            print_styled(('', "Run `setup config create` command to create the configuration file "
+                              "or see `-dc` and `-mc` options to execute without config file"), file=sys.stderr)
         exit(1)
     except TaroException as e:
         print_styled((Theme.warning, "User error: "), ('', str(e)), file=sys.stderr)

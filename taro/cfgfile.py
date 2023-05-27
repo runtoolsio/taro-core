@@ -2,7 +2,7 @@ from collections.abc import Iterable
 
 from taro import cfg, util, paths
 from taro.cfg import LogMode
-from taro.err import TaroException
+from taro.err import TaroException, ConfigFileNotFoundError
 
 LOG_MODE = 'log.mode'
 LOG_STDOUT_LEVEL = 'log.stdout.level'
@@ -21,7 +21,10 @@ loaded_config_path = None
 
 def load(config=None):
     config_path = util.expand_user(config) if config else paths.lookup_config_file()
-    cns = util.read_yaml_file(config_path)
+    try:
+        cns = util.read_yaml_file(config_path)
+    except FileNotFoundError:
+        raise ConfigFileNotFoundError(config) # Must be `config` as `lookup_config_file` already raises this exception
 
     cfg.log_mode = LogMode.from_value(cns.get(LOG_MODE, default=cfg.log_mode))
     cfg.log_stdout_level = cns.get(LOG_STDOUT_LEVEL, default=cfg.log_stdout_level, type_=str).lower()
