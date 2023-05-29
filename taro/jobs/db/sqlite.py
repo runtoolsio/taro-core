@@ -6,7 +6,7 @@ from datetime import timezone
 
 from taro import cfg, paths, JobInstanceID
 from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle, ExecutionPhase
-from taro.jobs.job import JobInfo, JobInfoList, LifecycleEvent
+from taro.jobs.job import JobInfo, JobInfoList, LifecycleEvent, JobInstanceMetadata
 from taro.jobs.persistence import SortCriteria
 from taro.jobs.track import TrackedTaskInfo
 from taro.util import MatchingStrategy, format_dt_sql
@@ -28,6 +28,10 @@ def _build_where_clause(instance_match):
     id_criteria = instance_match.id_criteria
     id_conditions = []
     for c in id_criteria:
+        if c.strategy == MatchingStrategy.ALWAYS_TRUE:
+            id_conditions.clear()
+            break
+
         conditions = []
         op = ' AND ' if c.match_both_ids else ' OR '
         if c.job_id:
@@ -152,8 +156,8 @@ class SQLite:
             exec_error = ExecutionError.from_dict(json.loads(t[10])) if t[10] else None
             user_params = json.loads(t[11]) if t[11] else dict()
             parameters = tuple((tuple(x) for x in json.loads(t[12]))) if t[12] else tuple()
-            return JobInfo(JobInstanceID(t[0], t[1]), lifecycle, tracking, t[7], error_output, warnings, exec_error,
-                           parameters, **user_params)
+            metadata = JobInstanceMetadata(JobInstanceID(t[0], t[1]), parameters, user_params, None) # TODO
+            return JobInfo(metadata, lifecycle, tracking, t[7], error_output, warnings, exec_error)
 
         return JobInfoList((to_job_info(row) for row in c.fetchall()))
 
@@ -191,8 +195,8 @@ class SQLite:
                     json.dumps(j.error_output) if j.error_output else None,
                     json.dumps(j.warnings) if j.warnings else None,
                     json.dumps(j.exec_error.to_dict(include_empty=False)) if j.exec_error else None,
-                    json.dumps(j.user_params) if j.user_params else None,
-                    json.dumps(j.parameters) if j.parameters else None,
+                    json.dumps(j.metadata.user_params) if j.metadata.user_params else None,
+                    json.dumps(j.metadata.parameters) if j.metadata.parameters else None,
                     )
 
         jobs = [to_tuple(j) for j in job_info]

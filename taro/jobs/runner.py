@@ -15,7 +15,7 @@ from taro.jobs import persistence, lock
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver, \
     Phase, Flag, UnexpectedStateError
 from taro.jobs.job import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, Warn, \
-    WarnEventCtx, JobInstanceID, DEFAULT_OBSERVER_PRIORITY
+    WarnEventCtx, JobInstanceID, DEFAULT_OBSERVER_PRIORITY, JobInstanceMetadata
 from taro.jobs.sync import NoSync, CompositeSync, Latch, Signal
 
 log = logging.getLogger(__name__)
@@ -52,10 +52,9 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             self._sync = CompositeSync(self._latch, sync)
         else:
             self._sync = sync
+        parameters = (execution.parameters or ()) + (sync.parameters or ())
+        self._metadata = JobInstanceMetadata(self._id, parameters, user_params, pending_group)
         self._global_state_locker = state_locker
-        self._pending_group = pending_group
-        self._parameters = (execution.parameters or ()) + (sync.parameters or ())
-        self._user_params = user_params
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
         self._last_output = deque(maxlen=10)  # TODO Max len configurable
         self._error_output = deque(maxlen=1000)  # TODO Max len configurable
@@ -73,6 +72,10 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     @property
     def id(self):
         return self._id
+
+    @property
+    def metadata(self):
+        return self._metadata
 
     @property
     def lifecycle(self):
@@ -102,26 +105,16 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def exec_error(self) -> Union[ExecutionError, None]:
         return self._exec_error
 
-    @property
-    def parameters(self):
-        return self._parameters
-
-    @property
-    def user_params(self):
-        return dict(self._user_params)
-
     def create_info(self):
         with self._state_lock:
             return JobInfo(
-                self._id,
+                self.metadata,
                 copy.deepcopy(self._lifecycle),
                 self.tracking.copy() if self.tracking else None,
                 self.status,
                 self.error_output,
                 self.warnings,
-                self.exec_error,
-                self.parameters,
-                **self._user_params)
+                self.exec_error)
 
     def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self._state_observers = _add_prioritized(self._state_observers, priority, observer)
@@ -142,7 +135,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._output_observers = _remove_prioritized(self._output_observers, observer)
 
     def release(self, pending_group=None):
-        if not self._pending_group or (pending_group and pending_group != self._pending_group):
+        if not self.metadata.pending_group or (pending_group and pending_group != self.metadata.pending_group):
             return False
 
         self._latch.release()

@@ -32,6 +32,16 @@ S = Union[Callable[[str, str], bool], MatchingStrategy]
 
 @dataclass
 class IDMatchingCriteria:
+    """
+    This class specifies criteria for matching :class:`JobInstanceID` instances.
+    If both job_id and instance_id are empty, the matching strategy defaults to :class:`MatchingStrategy.ALWAYS_TRUE`.
+
+    Attributes:
+    job_id (str): The pattern for job ID matching. If empty, it is ignored.
+    instance_id (str): The pattern for instance ID matching. If empty, it is ignored.
+    match_both_ids (bool): If False, a match with either job_id or instance_id is sufficient. Default is True.
+    strategy (S): The strategy to use for matching. Default is :class:`MatchingStrategy.EXACT`.
+    """
     job_id: str
     instance_id: str
     match_both_ids: bool = True
@@ -58,6 +68,9 @@ class IDMatchingCriteria:
         return and_ if self.match_both_ids else or_
 
     def matches(self, jid):
+        if self.strategy == MatchingStrategy.ALWAYS_TRUE:
+            return True
+
         op = self._op()
         return op(not self.job_id or self.strategy(jid.job_id, self.job_id),
                   not self.instance_id or self.strategy(jid.instance_id, self.instance_id))
@@ -342,28 +355,24 @@ class JobInstanceID(NamedTuple):
 @dataclass
 class JobInstanceMetadata:
 
-    job_id: str
-    instance_id: str
+    id: JobInstanceID
     parameters: Tuple[Tuple[str, str]]
     user_params: Dict[str, Any]
+    pending_group: Optional[str] = None
 
     @classmethod
     def from_dict(cls, as_dict):
-        return cls(as_dict['job_id'],
-                   as_dict['instance_id'],
+        return cls(JobInstanceID.from_dict(as_dict['id']),
                    as_dict['parameters'],
-                   as_dict['user_params'])
-
-    @property
-    def id(self):
-        return JobInstanceID(self.job_id, self.instance_id)
+                   as_dict['user_params'],
+                   as_dict['pending_group'])
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         d = {
-            "job_id": self.job_id,
-            "instance_id": self.instance_id,
+            "id": self.id.to_dict(),
             "parameters": self.parameters,
-            "user_params": self.user_params
+            "user_params": self.user_params,
+            "pending_group": self.pending_group,
         }
         if include_empty:
             return d
@@ -373,10 +382,10 @@ class JobInstanceMetadata:
     def __repr__(self):
         return (
             f"{self.__class__.__name__}("
-            f"job_id={self.job_id!r}, "
-            f"instance_id={self.instance_id!r}, "
+            f"job_id={self.id!r}, "
             f"parameters={self.parameters!r}, "
-            f"user_params={self.user_params!r})"
+            f"user_params={self.user_params!r},"
+            f"pending_group={self.pending_group!r})"
         )
 
 
@@ -398,8 +407,9 @@ class JobInstance(abc.ABC):
         """Identifier of this instance"""
 
     @property
+    @abc.abstractmethod
     def metadata(self):
-        return JobInstanceMetadata(self.job_id, self.instance_id, self.parameters, self.user_params)
+        """Descriptive information of this instance"""
 
     @abc.abstractmethod
     def run(self):
@@ -449,7 +459,7 @@ class JobInstance(abc.ABC):
         """
         Add warning to the instance
 
-        :param warning warning to add
+        :param warning: warning to add
         """
 
     @property
@@ -457,22 +467,12 @@ class JobInstance(abc.ABC):
     def exec_error(self) -> ExecutionError:
         """Job execution error if occurred otherwise None"""
 
-    @property
-    @abc.abstractmethod
-    def parameters(self):
-        """List of job parameters"""
-
-    @property
-    @abc.abstractmethod
-    def user_params(self):
-        """Dictionary of arbitrary user parameters"""
-
     @abc.abstractmethod
     def create_info(self):
         """
         Create consistent (thread-safe) snapshot of job instance state
 
-        :return job (instance) info
+        :return: job (instance) info
         """
 
     @abc.abstractmethod
@@ -587,14 +587,6 @@ class DelegatingJobInstance(JobInstance):
     def exec_error(self) -> ExecutionError:
         return self.delegated.exec_error
 
-    @property
-    def parameters(self):
-        return self.delegated.parameters
-
-    @property
-    def user_params(self):
-        return self.delegated.user_params
-
     def create_info(self):
         return self.delegated.create_info()
 
@@ -641,20 +633,17 @@ class JobInfo:
             exec_error = None
 
         return cls(
-            JobInstanceID.from_dict(as_dict['id']),
+            JobInstanceMetadata.from_dict(as_dict['metadata']),
             ExecutionLifecycle.from_dict(as_dict['lifecycle']),
             tracking,
             as_dict['status'],
             as_dict['error_output'],
             as_dict['warnings'],
             exec_error,
-            as_dict['parameters'],
-            **as_dict['user_params']
         )
 
-    def __init__(self, job_instance_id, lifecycle, tracking, status, error_output, warnings, exec_error, parameters,
-                 **user_params):
-        self._job_instance_id = job_instance_id
+    def __init__(self, metadata, lifecycle, tracking, status, error_output, warnings, exec_error):
+        self._metadata = metadata
         self._lifecycle = lifecycle
         self._tracking = tracking
         if status:
@@ -664,8 +653,6 @@ class JobInfo:
         self._error_output = error_output or ()
         self._warnings = warnings or {}
         self._exec_error = exec_error
-        self._parameters = parameters or ()
-        self._user_params = user_params or {}
 
     @staticmethod
     def created(job_info):
@@ -673,19 +660,19 @@ class JobInfo:
 
     @property
     def job_id(self) -> str:
-        return self._job_instance_id.job_id
+        return self.metadata.id.job_id
 
     @property
     def instance_id(self) -> str:
-        return self._job_instance_id.instance_id
+        return self.metadata.id.instance_id
 
     @property
     def id(self):
-        return self._job_instance_id
+        return self.metadata.id
 
     @property
     def metadata(self):
-        return JobInstanceMetadata(self.job_id, self.instance_id, self.parameters, self.user_params)
+        return self._metadata
 
     @property
     def lifecycle(self):
@@ -715,25 +702,15 @@ class JobInfo:
     def exec_error(self) -> ExecutionError:
         return self._exec_error
 
-    @property
-    def parameters(self):
-        return self._parameters
-
-    @property
-    def user_params(self):
-        return dict(self._user_params)
-
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         d = {
-            "id": self.id.to_dict(),
+            "metadata": self.metadata.to_dict(include_empty),
             "lifecycle": self.lifecycle.to_dict(include_empty),
             "tracking": self.tracking.to_dict(include_empty) if self.tracking else None,
             "status": self.status,
             "error_output": self.error_output,
             "warnings": self.warnings,
-            "exec_error": self.exec_error.to_dict(include_empty) if self.exec_error else None,
-            "parameters": self.parameters,
-            "user_params": self.user_params
+            "exec_error": self.exec_error.to_dict(include_empty) if self.exec_error else None
         }
         if include_empty:
             return d
@@ -743,15 +720,14 @@ class JobInfo:
     def __eq__(self, other):
         if not isinstance(other, JobInfo):
             return NotImplemented
-        return (self._job_instance_id, self._lifecycle, self._tracking, self._status, self._error_output,
-                self._warnings, self._exec_error, self._parameters, self._user_params) == \
-            (other._job_instance_id, other._lifecycle, other._tracking, other._status, other._error_output,
-             other._warnings, other._exec_error, other._parameters, other._user_params)
+        return (self.metadata, self._lifecycle, self._tracking, self._status, self._error_output,
+                self._warnings, self._exec_error) == \
+            (other.metadata, other._lifecycle, other._tracking, other._status, other._error_output,
+             other._warnings, other._exec_error) # TODO
 
     def __hash__(self):
-        return hash((self._job_instance_id, self._lifecycle, self._tracking, self._status, self._error_output,
-                     tuple(sorted(self._warnings.items())), self._exec_error, self._parameters,
-                     tuple(sorted(self._user_params.items()))))
+        return hash((self.metadata, self._lifecycle, self._tracking, self._status, self._error_output,
+                     tuple(sorted(self._warnings.items())), self._exec_error))  # TODO
 
     def __repr__(self):
         return f"{self.__class__.__name__}("f"metadata={self.metadata!r}"

@@ -6,7 +6,8 @@ import pytest
 
 from taro import JobInfo, JobInstanceID, ExecutionLifecycle, ExecutionState, ExecutionError, util
 from taro.jobs.db.sqlite import SQLite
-from taro.jobs.job import parse_criteria, InstanceMatchingCriteria, IntervalCriteria, LifecycleEvent, StateCriteria
+from taro.jobs.job import parse_criteria, InstanceMatchingCriteria, IntervalCriteria, LifecycleEvent, StateCriteria, \
+    JobInstanceMetadata
 from taro.jobs.track import MutableTrackedTask
 from taro.util import utc_now, parse_iso8601_duration, MatchingStrategy
 
@@ -21,11 +22,11 @@ def sut():
 
 
 def test_store_and_fetch(sut):
-    jid = JobInstanceID('j1', 'i1')
+    metadata = JobInstanceMetadata(JobInstanceID('j1', 'i1'), (('p1', 'v1'),), {'u1': 'v2'})
     lifecycle = ExecutionLifecycle((ExecutionState.CREATED, utc_now()))
     tracking = MutableTrackedTask('task1')
     error = ExecutionError('e1', ExecutionState.ERROR)
-    j1 = JobInfo(jid, lifecycle, tracking, 's1', 'e1', {'w': 1}, error, (('p1', 'v1'),), u1='v2')
+    j1 = JobInfo(metadata, lifecycle, tracking, 's1', 'e1', {'w': 1}, error)
 
     sut.store_job(j1)
     jobs = sut.read_jobs()
@@ -34,11 +35,11 @@ def test_store_and_fetch(sut):
 
 
 def j(c, instance=None, *, sec=0, created=utc_now(), completed=utc_now(), warnings=None):
+    metadata = JobInstanceMetadata(JobInstanceID(f"j{c}", instance or util.unique_timestamp_hex()), (), {}, None)
     lifecycle = ExecutionLifecycle(
         (ExecutionState.CREATED, created + timedelta(seconds=sec)),
         (ExecutionState.COMPLETED, completed + timedelta(seconds=sec)))
-    return JobInfo(JobInstanceID(
-                    f"j{c}", instance or util.unique_timestamp_hex()), lifecycle, None, None, None, warnings, None,None)
+    return JobInfo(metadata, lifecycle, None, None, None, warnings, None)
 
 
 def test_last(sut):

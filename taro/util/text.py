@@ -36,6 +36,9 @@ def truncate(text, max_len, truncated_suffix=''):
 def partial_match(string, pattern):
     return bool(re.search(pattern, string))
 
+def always_true(*_):
+    return True
+
 
 class MatchingStrategy(Enum):
     """
@@ -45,6 +48,7 @@ class MatchingStrategy(Enum):
     EXACT = (eq,)
     FN_MATCH = (fnmatch,)
     PARTIAL = (partial_match,)
+    ALWAYS_TRUE = (always_true,)
 
     def __call__(self, *args, **kwargs):
         return self.value[0](*args, **kwargs)

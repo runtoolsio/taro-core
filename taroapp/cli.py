@@ -29,8 +29,8 @@ ACTION_HOSTINFO = 'hostinfo'
 
 def parse_args(args):
     # TODO destination required
-    parser = argparse.ArgumentParser(description='Manage your jobs with Taro')
-    parser.add_argument("-V", "--version", action='version', help="Show version and exit.", version=version.get())
+    parser = argparse.ArgumentParser(prog='taro', description='Manage your jobs with Taro')
+    parser.add_argument("-V", "--version", action='version', help="show taro version and exit", version=version.get())
     common = argparse.ArgumentParser()  # parent parser for subparsers in case they need to share common options
     common.add_argument('--no-color', action='store_true', help='do not print colours in output')
     init_cfg_group(common)
@@ -51,7 +51,7 @@ def parse_args(args):
     _init_history_remove_parser(common, subparser)
 
     parsed = parser.parse_args(args)
-    _check_collisions(parser, parsed)
+    _check_conditions(parser, parsed)
     return parsed
 
 
@@ -257,7 +257,12 @@ def _init_release_parser(common, subparsers):
 
     release_parser = subparsers.add_parser(ACTION_RELEASE, parents=[common],
                                            description='Release jobs in pending state', add_help=False)
-    release_parser.add_argument('pending', type=str, metavar='WAIT', help='Pending condition value')
+    opt_group = release_parser.add_mutually_exclusive_group(required=True)
+    opt_group.add_argument('-p', '--pending', type=str, action='append', default=[], metavar='VALUE',
+                           help='Pending condition value')
+    opt_group.add_argument('-q', '--queued', action='store_true', default=None,
+                           help='Release queued instances specified by the instance argument')
+    release_parser.add_argument('instances', nargs='*', default=None, type=str, help='Instance matching pattern')
 
 
 def _init_listen_parser(common, subparsers):
@@ -415,8 +420,14 @@ def _warn_time_type(arg_value):
 def _build_warn_validation_regex(*warn_regex):
     return "^(" + "|".join(warn_regex) + ")$"
 
+def _check_conditions(parser, parsed):
+    _check_config_option_conflicts(parser, parsed)
 
-def _check_collisions(parser, parsed):
+    if parsed.action == ACTION_RELEASE:
+        if parsed.queued and not parsed.instances:
+            parser.error('Missing argument `instance`: Min one arg must be specified when releasing queued instances')
+
+def _check_config_option_conflicts(parser, parsed):
     """
     Check that incompatible combinations of options were not used
 
@@ -432,4 +443,4 @@ def _check_collisions(parser, parsed):
         config_options.append('config')
 
     if len(config_options) > 1:
-        parser.error('Conflicting options: ' + str(config_options))
+        parser.error('Conflicting config options: ' + str(config_options))
