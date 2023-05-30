@@ -62,8 +62,12 @@ class ReleaseResource(APIResource):
             raise _missing_field_error('pending_group')
 
     def handle(self, job_instance, req_body):
-        released = job_instance.release(req_body['pending_group'])
-        return {"released": released}
+        pending_group = req_body['pending_group']
+        if pending_group and job_instance.metadata.pending_group == pending_group:
+            job_instance.release()
+            return {"released": True}
+        else:
+            return {"released": False}
 
 
 class StopResource(APIResource):
@@ -146,7 +150,7 @@ class Server(SocketServer):
 
         try:
             matching_criteria = InstanceMatchingCriteria.from_dict(instance_match)
-        except ValueError as e:
+        except ValueError:
             raise _ServerError(422, f"Invalid instance match: {instance_match}")
         return [job_instance for job_instance in self._job_instances if matching_criteria.matches(job_instance)]
 

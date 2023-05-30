@@ -292,7 +292,7 @@ class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
         jobs, _ = taro.client.read_jobs_info()
 
         exec_group_jobs_sorted = JobInfoList(sorted(
-            (job for job in jobs if self._is_same_exec_group(job)),
+            (job for job in jobs if self._is_same_exec_group(job.metadata)),
             key=lambda job: job.lifecycle.changed_at(ExecutionState.CREATED)
         ))
         more_allowed = self.max_executions - len(exec_group_jobs_sorted.executing)
@@ -309,7 +309,7 @@ class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
         return self._set_signal(Signal.WAIT)
 
     def _is_same_exec_group(self, instance_meta):
-        return instance_meta.job_id == self._group or \
+        return instance_meta.id.job_id == self._group or \
                any(1 for name, value in instance_meta.parameters if name == 'execution_group' and value == self._group)
 
     def wait_and_unlock(self, global_state_lock):

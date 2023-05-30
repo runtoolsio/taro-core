@@ -48,8 +48,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._execution = execution
         sync = sync or NoSync()
         if pending_group:
-            self._latch = Latch(ExecutionState.PENDING)
-            self._sync = CompositeSync(self._latch, sync)
+            self._sync = CompositeSync(Latch(ExecutionState.PENDING), sync)
         else:
             self._sync = sync
         parameters = (execution.parameters or ()) + (sync.parameters or ())
@@ -134,12 +133,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def remove_output_observer(self, observer):
         self._output_observers = _remove_prioritized(self._output_observers, observer)
 
-    def release(self, pending_group=None):
-        if not self.metadata.pending_group or (pending_group and pending_group != self.metadata.pending_group):
-            return False
-
-        self._latch.release()
-        return True
+    def release(self):
+        self._sync.release()
 
     def stop(self):
         """

@@ -8,5 +8,5 @@ def test_serial():
     waiter = StateWaiter()
     run_app_as_process('exec -mc --id j1 --serial echo waiting is over', state_queue=waiter.state_queue)
     waiter.wait_for_state(ExecutionState.QUEUED, timeout=1)
-    run_app('release p')
+    run_app('release --pending p')
     waiter.wait_for_state(ExecutionState.COMPLETED, timeout=1)
