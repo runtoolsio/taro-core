@@ -68,9 +68,13 @@ def read_jobs_info(instance_match=None) -> MultiResponse[JobInfo]:
         return client.read_jobs_info(instance_match)
 
 
-def release_jobs(pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
+def release_waiting_jobs(instance_match, waiting_state) -> MultiResponse[ReleaseResponse]:
     with JobsClient() as client:
-        return client.release_jobs(pending_group, instance_match)
+        return client.release_waiting_jobs(instance_match, waiting_state)
+
+def release_pending_jobs(pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
+    with JobsClient() as client:
+        return client.release_pending_jobs(pending_group, instance_match)
 
 
 def stop_jobs(instance_match) -> MultiResponse[StopResponse]:
@@ -109,9 +113,23 @@ class JobsClient(SocketClient):
         instance_responses, api_errors = self._send_request('/jobs', instance_match)
         return MultiResponse([JobInfo.from_dict(body["job_info"]) for _, body in instance_responses], api_errors)
 
-    def release_jobs(self, pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
+    def release_waiting_jobs(self, instance_match, waiting_state) -> MultiResponse[ReleaseResponse]:
+        if not instance_match or not waiting_state:
+            raise ValueError("Arguments cannot be empty")
+
+        req_body = {"waiting_state": waiting_state.name}
         instance_responses, api_errors =\
-            self._send_request('/jobs/release', instance_match, {"pending_group": pending_group})
+            self._send_request('/jobs/release/waiting', instance_match, req_body)
+        return MultiResponse([ReleaseResponse(meta) for meta, body in instance_responses if body["released"]],
+                             api_errors)
+
+    def release_pending_jobs(self, pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
+        if not pending_group:
+            raise ValueError("Missing pending group")
+
+        req_body = {"pending_group": pending_group}
+        instance_responses, api_errors =\
+            self._send_request('/jobs/release/pending', instance_match, req_body)
         return MultiResponse([ReleaseResponse(meta) for meta, body in instance_responses if body["released"]],
                              api_errors)
 

@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from json import JSONDecodeError
 
 from taro import util
+from taro.jobs.execution import ExecutionState, Flag
 from taro.jobs.job import InstanceMatchingCriteria
 from taro.socket import SocketServer
 
@@ -16,7 +17,7 @@ def _create_socket_name():
     return util.unique_timestamp_hex() + API_FILE_EXTENSION
 
 
-class _ServerError(Exception):
+class _ApiError(Exception):
 
     def __init__(self, code, error):
         self.code = code
@@ -50,12 +51,31 @@ class JobsResource(APIResource):
     def handle(self, job_instance, req_body):
         return {"job_info": job_instance.create_info().to_dict()}
 
-
-class ReleaseResource(APIResource):
+class ReleaseWaitingResource(APIResource):
 
     @property
     def path(self):
-        return '/jobs/release'
+        return '/jobs/release/waiting'
+
+    def validate(self, req_body):
+        if 'waiting_state' not in req_body:
+            raise _missing_field_error('waiting_state')
+
+    def handle(self, job_instance, req_body):
+        waiting_state = ExecutionState[req_body['waiting_state'].upper()]
+        if not waiting_state.has_flag(Flag.WAITING):
+            raise _ApiError(422, f"Invalid waiting state: {waiting_state}")
+        if job_instance.lifecycle.state == waiting_state:
+            job_instance.release()
+            return {"released": True}
+        else:
+            return {"released": False}
+
+class ReleasePendingResource(APIResource):
+
+    @property
+    def path(self):
+        return '/jobs/release/pending'
 
     def validate(self, req_body):
         if 'pending_group' not in req_body:
@@ -91,7 +111,7 @@ class TailResource(APIResource):
         return {"tail": job_instance.last_output}
 
 
-DEFAULT_RESOURCES = JobsResource(), ReleaseResource(), StopResource(), TailResource()
+DEFAULT_RESOURCES = JobsResource(), ReleaseWaitingResource(), ReleasePendingResource(), StopResource(), TailResource()
 
 
 class Server(SocketServer):
@@ -121,7 +141,7 @@ class Server(SocketServer):
             resource = self._resolve_resource(req_body)
             resource.validate(req_body)
             job_instances = self._matching_instances(req_body)
-        except _ServerError as e:
+        except _ApiError as e:
             return e.create_response()
 
         instance_responses = []
@@ -139,7 +159,7 @@ class Server(SocketServer):
         api = req_body['request_metadata']['api']
         resource = self._resources.get(api)
         if not resource:
-            raise _ServerError(404, f"{api} API not found")
+            raise _ApiError(404, f"{api} API not found")
 
         return resource
 
@@ -151,12 +171,12 @@ class Server(SocketServer):
         try:
             matching_criteria = InstanceMatchingCriteria.from_dict(instance_match)
         except ValueError:
-            raise _ServerError(422, f"Invalid instance match: {instance_match}")
+            raise _ApiError(422, f"Invalid instance match: {instance_match}")
         return [job_instance for job_instance in self._job_instances if matching_criteria.matches(job_instance)]
 
 
-def _missing_field_error(field) -> _ServerError:
-    return _ServerError(422, f"Missing field {field}")
+def _missing_field_error(field) -> _ApiError:
+    return _ApiError(422, f"Missing field {field}")
 
 
 def _inst_metadata(job_instance):

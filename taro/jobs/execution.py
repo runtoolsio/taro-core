@@ -41,8 +41,10 @@ Flag = ExecutionStateFlag
 
 class ExecutionStateMeta(EnumMeta):
     def __getitem__(self, name):
+        if not name:
+            return ExecutionState.NONE
         try:
-            return super().__getitem__(name)
+            return super().__getitem__(name.upper())
         except KeyError:
             return ExecutionState.UNKNOWN
 

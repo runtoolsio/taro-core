@@ -258,8 +258,8 @@ def _init_release_parser(common, subparsers):
     release_parser = subparsers.add_parser(ACTION_RELEASE, parents=[common],
                                            description='Release jobs in pending state', add_help=False)
     opt_group = release_parser.add_mutually_exclusive_group(required=True)
-    opt_group.add_argument('-p', '--pending', type=str, action='append', default=[], metavar='VALUE',
-                           help='Pending condition value')
+    opt_group.add_argument('-p', '--pending', type=str, default=None, metavar='GROUP',
+                           help='Release instances from pending group')
     opt_group.add_argument('-q', '--queued', action='store_true', default=None,
                            help='Release queued instances specified by the instance argument')
     release_parser.add_argument('instances', nargs='*', default=None, type=str, help='Instance matching pattern')
