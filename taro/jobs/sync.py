@@ -36,7 +36,7 @@ class Sync(ABC):
     @abstractmethod
     def exec_state(self) -> ExecutionState:
         """
-
+        TODO return in tuple in set_signal?
         :return: execution state for the current signal or NONE state
         """
 
@@ -335,6 +335,7 @@ class WaitForStateWrapper(CompositeSync):
         self._state_receiver_factory = state_receiver_factory
 
     def wait_and_unlock(self, global_state_lock):
+        """TODO Create sync.close() to be able to re-use single state receiver?"""
         receiver = self._state_receiver_factory()
         receiver.listeners.append(self._current)
         receiver.start()
@@ -355,8 +356,8 @@ def create_composite(executions_limit: ExecutionsLimit = None, no_overlap: bool 
     syncs = []
 
     if executions_limit:
-        syncs.append(WaitForStateWrapper(
-            ExecutionsLimitation(executions_limit.execution_group, executions_limit.max_executions)))
+        limitation = ExecutionsLimitation(executions_limit.execution_group, executions_limit.max_executions)
+        syncs.append(WaitForStateWrapper(limitation))
     if no_overlap:
         syncs.append(NoOverlap())
     if depends_on:

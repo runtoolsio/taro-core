@@ -127,7 +127,7 @@ def timing(operation, *, args_idx=()):
                         break
                     log_args.append(args[i])
                 elapsed_time_ms = (time.time() - start_time) * 1000
-                timer_logger.info(f'event=[timing] op=[{operation}] args={log_args} time=[{elapsed_time_ms:.2f} ms]')
+                timer_logger.info(f'event=[timing] time=[{elapsed_time_ms:.2f} ms] op=[{operation}] args={log_args}')
 
             return result
 

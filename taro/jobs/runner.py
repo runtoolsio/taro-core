@@ -55,6 +55,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._metadata = JobInstanceMetadata(self._id, parameters, user_params, pending_group)
         self._global_state_locker = state_locker
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
+        self._released = False
         self._last_output = deque(maxlen=10)  # TODO Max len configurable
         self._error_output = deque(maxlen=1000)  # TODO Max len configurable
         self._exec_error = None
@@ -134,6 +135,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._output_observers = _remove_prioritized(self._output_observers, observer)
 
     def release(self):
+        self._released = True
         self._sync.release()
 
     def stop(self):
@@ -212,6 +214,9 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                     signal = self._sync.set_signal(self.create_info())
                     if signal is Signal.NONE:
                         assert False  # TODO raise exception
+
+                    if signal is Signal.WAIT and self._released:
+                        signal = Signal.CONTINUE
 
                     if signal is Signal.CONTINUE:
                         # TODO remove the async condition
