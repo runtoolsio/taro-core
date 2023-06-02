@@ -105,8 +105,8 @@ class SQLite:
                          (job_id text,
                          instance_id text,
                          created timestamp,
-                         
                          ended timestamp,
+                         exec_time real,
                          state_changes text,
                          terminal_state text,
                          tracking text,
@@ -120,7 +120,7 @@ class SQLite:
                          ''')
             c.execute('''CREATE INDEX job_id_index ON history (job_id)''')
             c.execute('''CREATE INDEX instance_id_index ON history (instance_id)''')
-            c.execute('''CREATE INDEX ended_index ON history (ended)''')  # TODO created idx too?
+            c.execute('''CREATE INDEX ended_index ON history (ended)''')  # TODO created + exec_time idx too
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
@@ -150,18 +150,19 @@ class SQLite:
 
         def to_job_info(t):
             state_changes = ((ExecutionState[state], datetime.datetime.fromtimestamp(changed, tz=timezone.utc))
-                             for state, changed in json.loads(t[4]))
+                             for state, changed in json.loads(t[5]))
             lifecycle = ExecutionLifecycle(*state_changes)
-            tracking = TrackedTaskInfo.from_dict(json.loads(t[6])) if t[6] else None
-            error_output = json.loads(t[8]) if t[8] else tuple()
-            warnings = json.loads(t[9]) if t[9] else dict()
-            exec_error = ExecutionError.from_dict(json.loads(t[10])) if t[10] else None
-            user_params = json.loads(t[11]) if t[11] else dict()
-            parameters = tuple((tuple(x) for x in json.loads(t[12]))) if t[12] else tuple()
-            pending_group = json.loads(t[13]).get("pending_group") if t[13] else None
+            tracking = TrackedTaskInfo.from_dict(json.loads(t[7])) if t[7] else None
+            status = t[8]
+            error_output = json.loads(t[9]) if t[9] else tuple()
+            warnings = json.loads(t[10]) if t[10] else dict()
+            exec_error = ExecutionError.from_dict(json.loads(t[11])) if t[11] else None
+            user_params = json.loads(t[12]) if t[12] else dict()
+            parameters = tuple((tuple(x) for x in json.loads(t[13]))) if t[13] else tuple()
+            pending_group = json.loads(t[14]).get("pending_group") if t[14] else None
             metadata = JobInstanceMetadata(JobInstanceID(t[0], t[1]), parameters, user_params, pending_group)
 
-            return JobInfo(metadata, lifecycle, tracking, t[7], error_output, warnings, exec_error)
+            return JobInfo(metadata, lifecycle, tracking, status, error_output, warnings, exec_error)
 
         return JobInfoList((to_job_info(row) for row in c.fetchall()))
 
@@ -191,6 +192,7 @@ class SQLite:
                     j.instance_id,
                     format_dt_sql(j.lifecycle.created_at),
                     format_dt_sql(j.lifecycle.last_changed_at),
+                    round(j.lifecycle.execution_time.total_seconds(), 3) if j.lifecycle.execution_time else None,
                     json.dumps(
                         [(state.name, float(changed.timestamp())) for state, changed in j.lifecycle.state_changes]),
                     j.lifecycle.state.name if j.lifecycle.state.in_phase(ExecutionPhase.TERMINAL) else ExecutionState.UNKNOWN.name,
@@ -206,7 +208,7 @@ class SQLite:
 
         jobs = [to_tuple(j) for j in job_info]
         self._conn.executemany(
-            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             jobs
         )
         self._conn.commit()

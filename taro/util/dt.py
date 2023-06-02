@@ -80,7 +80,10 @@ def parse_iso8601_duration(duration):
                                        seconds=seconds).normalized()
 
 
-def format_timedelta(td, *, show_ms=True):
+def format_timedelta(td, *, show_ms=True, null=''):
+    if not td:
+        return null
+
     mm, ss = divmod(td.seconds, 60)
     hh, mm = divmod(mm, 60)
     s = "%02d:%02d:%02d" % (hh, mm, ss)

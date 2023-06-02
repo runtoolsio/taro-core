@@ -1,0 +1,5 @@
+BEGIN TRANSACTION;
+
+ALTER TABLE your_table_name ADD COLUMN misc TEXT;
+
+COMMIT;
