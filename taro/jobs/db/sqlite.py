@@ -105,6 +105,7 @@ class SQLite:
                          (job_id text,
                          instance_id text,
                          created timestamp,
+                         
                          ended timestamp,
                          state_changes text,
                          terminal_state text,
@@ -114,7 +115,8 @@ class SQLite:
                          warnings text,
                          error text,
                          user_params text,
-                         parameters text)
+                         parameters text,
+                         misc text)
                          ''')
             c.execute('''CREATE INDEX job_id_index ON history (job_id)''')
             c.execute('''CREATE INDEX instance_id_index ON history (instance_id)''')
@@ -156,7 +158,9 @@ class SQLite:
             exec_error = ExecutionError.from_dict(json.loads(t[10])) if t[10] else None
             user_params = json.loads(t[11]) if t[11] else dict()
             parameters = tuple((tuple(x) for x in json.loads(t[12]))) if t[12] else tuple()
-            metadata = JobInstanceMetadata(JobInstanceID(t[0], t[1]), parameters, user_params, None) # TODO
+            pending_group = json.loads(t[13]).get("pending_group") if t[13] else None
+            metadata = JobInstanceMetadata(JobInstanceID(t[0], t[1]), parameters, user_params, pending_group)
+
             return JobInfo(metadata, lifecycle, tracking, t[7], error_output, warnings, exec_error)
 
         return JobInfoList((to_job_info(row) for row in c.fetchall()))
@@ -197,11 +201,12 @@ class SQLite:
                     json.dumps(j.exec_error.to_dict(include_empty=False)) if j.exec_error else None,
                     json.dumps(j.metadata.user_params) if j.metadata.user_params else None,
                     json.dumps(j.metadata.parameters) if j.metadata.parameters else None,
+                    json.dumps({"pending_group": j.metadata.pending_group}) if j.metadata.pending_group else None
                     )
 
         jobs = [to_tuple(j) for j in job_info]
         self._conn.executemany(
-            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             jobs
         )
         self._conn.commit()
