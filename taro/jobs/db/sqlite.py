@@ -186,6 +186,28 @@ class SQLite:
                            ((datetime.datetime.now(tz=timezone.utc) - max_age),))
         self._conn.commit()
 
+    def read_stats(self):
+        sql = '''
+            SELECT
+                h.job_id,
+                count(h.job_id) AS "count",
+                min(created) AS "first_at",
+                max(created) AS "last_at",
+                min(h.exec_time) AS "fastest",
+                avg(h.exec_time) AS "average",
+                max(h.exec_time) AS "slowest",
+                last.exec_time AS "last_time",
+                last.terminal_state AS "last_state"
+            FROM
+                history h
+            INNER JOIN
+                (SELECT job_id, exec_time, terminal_state FROM history GROUP BY job_id HAVING ROWID = max(ROWID)) AS last
+                ON h.job_id = last.job_id
+            GROUP BY
+                h.job_id
+        '''
+        c = self._conn.execute(sql)
+
     def store_instances(self, *job_info):
         def to_tuple(j):
             return (j.job_id,

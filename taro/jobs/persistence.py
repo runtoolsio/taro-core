@@ -58,6 +58,8 @@ class SortCriteria(Enum):
 def read_instances(instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, last=False):
     return _instance().read_instances(instance_match=instance_match, sort=sort, asc=asc, limit=limit, last=last)
 
+def read_stats():
+    return _instance().read_stats()
 
 def count_instances(instance_match):
     return len(_instance().count_instances(
@@ -102,6 +104,9 @@ def _sort_key(sort: SortCriteria):
 class NoPersistence:
 
     def read_instances(self, instance_match=None, sort=SortCriteria.CREATED, *, asc, limit):
+        raise PersistenceDisabledError()
+
+    def read_stats(self):
         raise PersistenceDisabledError()
 
     def store_instances(self, job_info):
