@@ -4,9 +4,9 @@ from collections import Counter
 from bottle import route, run, response
 
 import taro.client
-from taro.jobs import repo
 from taro import util
 from taro.jobs import persistence
+from taro.jobs import repo
 from taro.jobs.execution import ExecutionState
 from taro.jobs.job import InstanceMatchingCriteria, IDMatchingCriteria, JobMatchingCriteria
 from taro.jobs.persistence import SortCriteria
@@ -31,7 +31,7 @@ def instances():
         sort = query('sort', default='created', allowed=[c.name.lower() for c in SortCriteria])
         if not persistence.is_enabled():
             raise http_error(409, "Persistence is not enabled in the config file")
-        jobs_info = persistence.read_jobs(instance_match, SortCriteria[sort.upper()], asc=asc, limit=limit)
+        jobs_info = persistence.read_instances(instance_match, SortCriteria[sort.upper()], asc=asc, limit=limit)
     if 'active' in include or 'all' in include:
         if query('sort'):
             raise http_error(412, "Query parameter 'sort' can be used only with query parameter 'finished'")

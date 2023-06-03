@@ -8,7 +8,7 @@ def run(args):
     total = 0
     for instance in args.instances:
         instance_match = InstanceMatchingCriteria.parse_pattern(instance, MatchingStrategy.FN_MATCH)
-        count = persistence.num_of_job(instance_match=instance_match)
+        count = persistence.count_instances(instance_match=instance_match)
         print(str(count) + " records found for " + instance)
         total += count
 
@@ -18,4 +18,4 @@ def run(args):
 
     for instance in args.instances:
         instance_match = InstanceMatchingCriteria.parse_pattern(instance, MatchingStrategy.FN_MATCH)
-        persistence.remove_jobs(instance_match)
+        persistence.remove_instances(instance_match)

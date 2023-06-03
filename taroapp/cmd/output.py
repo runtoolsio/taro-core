@@ -2,19 +2,18 @@ import itertools
 
 from taro import client, JobInfo
 from taro.jobs import persistence
-from taro.jobs.job import InstanceMatchingCriteria, IDMatchingCriteria
 from taro.theme import Theme
 from taro.util import MatchingStrategy
-from taroapp import printer
+from taroapp import printer, argsutil
 from taroapp.view.instance import JOB_ID, INSTANCE_ID, CREATED, ENDED, STATE
 
 
 def run(args):
-    instance_match = InstanceMatchingCriteria(IDMatchingCriteria([args.instance], MatchingStrategy.PARTIAL))
+    instance_match = argsutil.instance_matching_criteria(args, MatchingStrategy.PARTIAL)
     instances, _ = client.read_jobs_info(instance_match)
 
     if not instances:
-        instances = persistence.read_jobs(instance_match)
+        instances = persistence.read_instances(instance_match)
 
     if not instances:
         print('No matching instance found')

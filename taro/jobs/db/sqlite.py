@@ -124,7 +124,7 @@ class SQLite:
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
-    def read_jobs(self, instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, last=False) \
+    def read_instances(self, instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, last=False) \
             -> JobInfoList:
         def sort_exp():
             if sort == SortCriteria.CREATED:
@@ -186,7 +186,7 @@ class SQLite:
                            ((datetime.datetime.now(tz=timezone.utc) - max_age),))
         self._conn.commit()
 
-    def store_job(self, *job_info):
+    def store_instances(self, *job_info):
         def to_tuple(j):
             return (j.job_id,
                     j.instance_id,
@@ -213,7 +213,7 @@ class SQLite:
         )
         self._conn.commit()
 
-    def remove_jobs(self, instance_match):
+    def remove_instances(self, instance_match):
         where_clause = _build_where_clause(instance_match)
         if not where_clause:
             raise ValueError("No rows to remove")

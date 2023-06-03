@@ -55,22 +55,22 @@ class SortCriteria(Enum):
     TIME = 3
 
 
-def read_jobs(instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, last=False):
-    return _instance().read_jobs(instance_match=instance_match, sort=sort, asc=asc, limit=limit, last=last)
+def read_instances(instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, last=False):
+    return _instance().read_instances(instance_match=instance_match, sort=sort, asc=asc, limit=limit, last=last)
 
 
-def num_of_job(instance_match):
-    return len(_instance().read_jobs(instance_match=instance_match, sort=SortCriteria.CREATED, asc=False, limit=-1,
-                                     last=False))
+def count_instances(instance_match):
+    return len(_instance().count_instances(
+        instance_match=instance_match, sort=SortCriteria.CREATED, asc=False, limit=-1, last=False))
 
 
-def store_job(*job_info):
-    _instance().store_job(*job_info)
+def store_instances(*job_info):
+    _instance().store_instances(*job_info)
     clean_up()
 
 
-def remove_jobs(instance_match):
-    _instance().remove_jobs(instance_match)
+def remove_instances(instance_match):
+    _instance().remove_instances(instance_match)
 
 
 def clean_up():
@@ -101,13 +101,13 @@ def _sort_key(sort: SortCriteria):
 
 class NoPersistence:
 
-    def read_jobs(self, instance_match=None, sort=SortCriteria.CREATED, *, asc, limit):
+    def read_instances(self, instance_match=None, sort=SortCriteria.CREATED, *, asc, limit):
         raise PersistenceDisabledError()
 
-    def store_job(self, job_info):
+    def store_instances(self, job_info):
         raise PersistenceDisabledError()
 
-    def remove_jobs(self, instance_match):
+    def remove_instances(self, instance_match):
         raise PersistenceDisabledError()
 
     def clean_up(self):

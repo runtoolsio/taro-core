@@ -90,7 +90,7 @@ def test_job_persisted():
 
     try:
         run_app('exec --id persisted_job echo')
-        assert next(iter(persistence.read_jobs(asc=True))).job_id == 'persisted_job'
+        assert next(iter(persistence.read_instances(asc=True))).job_id == 'persisted_job'
     finally:
         remove_test_db()
 

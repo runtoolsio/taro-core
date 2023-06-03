@@ -16,12 +16,13 @@ import datetime
 import textwrap
 from collections import namedtuple
 from dataclasses import dataclass
+from datetime import timedelta
 from enum import Enum
 from fnmatch import fnmatch
 from functools import partial
 from typing import NamedTuple, Dict, Any, Optional, Callable, Union, List, Tuple, Iterable, Set
 
-from taro.jobs.execution import ExecutionError, ExecutionLifecycle, ExecutionPhase, ExecutionStateFlag
+from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle, ExecutionPhase, ExecutionStateFlag
 from taro.jobs.track import TrackedTaskInfo
 from taro.util import and_, or_, MatchingStrategy, is_empty, to_list, format_dt_iso, remove_empty_values, day_range
 
@@ -796,6 +797,19 @@ class JobMatchingCriteria:
 
     def matched(self, jobs):
         return [job for job in jobs if self.matches(job)]
+
+@dataclass
+class JobStats:
+
+    job_id: str
+    count: int = 0
+    first_at: datetime = None
+    last_at: datetime = None
+    fastest: timedelta = None
+    average: timedelta = None
+    slowest: timedelta = None
+    last_time: timedelta = None
+    last_state: ExecutionState = ExecutionState.NONE
 
 
 class ExecutionStateObserver(abc.ABC):

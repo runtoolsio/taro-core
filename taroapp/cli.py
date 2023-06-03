@@ -339,7 +339,7 @@ def _init_output_parser(common, subparsers):
     """
 
     output_parser = subparsers.add_parser(ACTION_OUTPUT, parents=[common], description='TBS', add_help=False)
-    output_parser.add_argument('instance', type=str, help='instance filter')
+    output_parser.add_argument('instances', nargs='*', default=None, type=str, help='instance filter')
     output_parser.add_argument('-P', '--no-pager', action='store_true', help='Do not use pager for output')
 
 

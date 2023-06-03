@@ -269,7 +269,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                     prev_state.name, new_state.name)))
                 job_info = self.create_info() # Be sure both new_state and exec_error are already set
                 if new_state.in_phase(Phase.TERMINAL) and persistence.is_enabled():
-                    persistence.store_job(job_info)  # TODO Consider move (managed _close_job() or listener?)
+                    persistence.store_instances(job_info)  # TODO Consider move (managed _close_job() or listener?)
                 return job_info
 
 
