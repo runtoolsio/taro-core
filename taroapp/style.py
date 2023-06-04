@@ -3,8 +3,13 @@ from taro.theme import Theme
 from taro.util import DateTimeFormat
 
 
-def job_style(job):
+def job_id_style(job):
     if job.state.has_flag(Flag.FAILURE):
+        return Theme.job + " " + Theme.state_failure
+    return Theme.job
+
+def job_id_stats_style(job_stats):
+    if job_stats.last_state.has_flag(Flag.FAILURE):
         return Theme.job + " " + Theme.state_failure
     return Theme.job
 
@@ -20,6 +25,11 @@ def general_style(job):
         return Theme.state_failure
     return ""
 
+def stats_style(stats):
+    if stats.last_state.has_flag(Flag.FAILURE):
+        return Theme.state_failure
+    return ""
+
 
 def warn_style(_):
     return Theme.warning
@@ -27,6 +37,9 @@ def warn_style(_):
 
 def job_state_style(job):
     return state_style(job.state)
+
+def stats_state_style(stats):
+    return state_style(stats.last_state)
 
 
 def state_style(state):
@@ -45,7 +58,7 @@ def state_style(state):
 
 def job_instance_styled(job_instance):
     return [
-        (job_style(job_instance), job_instance.job_id),
+        (job_id_style(job_instance), job_instance.job_id),
         (Theme.id_separator, "@"),
         (instance_style(job_instance), job_instance.instance_id)
     ]

@@ -3,13 +3,14 @@ import json
 import logging
 import sqlite3
 from datetime import timezone
+from typing import List
 
 from taro import cfg, paths, JobInstanceID
 from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle, ExecutionPhase
-from taro.jobs.job import JobInfo, JobInfoList, LifecycleEvent, JobInstanceMetadata
+from taro.jobs.job import JobInfo, JobInfoList, LifecycleEvent, JobInstanceMetadata, JobStats
 from taro.jobs.persistence import SortCriteria
 from taro.jobs.track import TrackedTaskInfo
-from taro.util import MatchingStrategy, format_dt_sql
+from taro.util import MatchingStrategy, format_dt_sql, parse_dt_sql
 
 log = logging.getLogger(__name__)
 
@@ -186,7 +187,7 @@ class SQLite:
                            ((datetime.datetime.now(tz=timezone.utc) - max_age),))
         self._conn.commit()
 
-    def read_stats(self):
+    def read_stats(self) -> List[JobStats]:
         sql = '''
             SELECT
                 h.job_id,
@@ -207,6 +208,23 @@ class SQLite:
                 h.job_id
         '''
         c = self._conn.execute(sql)
+
+        def to_job_stats(t):
+            job_id = t[0]
+            count = t[1]
+            first_at = parse_dt_sql(t[2])
+            last_at = parse_dt_sql(t[3])
+            fastest = datetime.timedelta(seconds=t[4]) if t[4] else None
+            average = datetime.timedelta(seconds=t[5]) if t[5] else None
+            slowest = datetime.timedelta(seconds=t[6]) if t[6] else None
+            last_time = datetime.timedelta(seconds=t[7]) if t[7] else None
+            last_state = ExecutionState[t[8]] if t[8] else ExecutionState.UNKNOWN
+
+            return JobStats(
+                job_id, count, first_at, last_at, fastest, average, slowest, last_time, last_state
+            )
+
+        return [to_job_stats(row) for row in c.fetchall()]
 
     def store_instances(self, *job_info):
         def to_tuple(j):

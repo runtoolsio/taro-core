@@ -13,6 +13,7 @@ ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
 ACTION_HISTORY = 'history'
 ACTION_HISTORY_REMOVE = 'history-remove'
+ACTION_JOBS = 'jobs'
 ACTION_RELEASE = 'release'
 ACTION_LISTEN = 'listen'
 ACTION_WAIT = 'wait'
@@ -39,6 +40,8 @@ def parse_args(args):
     _init_exec_parser(common, subparser)
     _init_ps_parser(common, subparser)
     _init_history_parser(common, subparser)
+    _init_history_remove_parser(common, subparser)
+    _init_jobs_parser(common, subparser)
     _init_release_parser(common, subparser)
     _init_listen_parser(common, subparser)
     _init_wait_parser(common, subparser)
@@ -48,7 +51,6 @@ def parse_args(args):
     _init_clean_parser(common, subparser)
     _init_setup_parser(subparser)
     _init_hostinfo_parser(common, subparser)
-    _init_history_remove_parser(common, subparser)
 
     parsed = parser.parse_args(args)
     _check_conditions(parser, parsed)
@@ -245,6 +247,20 @@ def _init_history_remove_parser(common, subparsers):
         ACTION_HISTORY_REMOVE, parents=[common], description="Remove job from history", add_help=False)
 
     hist_rm_parser.add_argument('instances', nargs='+', type=str, help='instance filter')
+
+def _init_jobs_parser(common, subparsers):
+    """
+    Creates parsers for `jobs` command
+
+    :param common: parent parser
+    :param subparsers: sub-parser for jobs parser to be added to
+    """
+
+    jobs_parser = subparsers.add_parser(
+        ACTION_JOBS, parents=[common], description="Show jobs statistics", add_help=False)
+
+    jobs_parser.add_argument('instances', nargs='*', default=None, type=str, help='instance filter')
+
 
 
 def _init_release_parser(common, subparsers):

@@ -126,6 +126,10 @@ def format_dt_sql(dt):
     return dt.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
 
 
+def parse_dt_sql(dt_str):
+    return datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S.%f')
+
+
 class DateTimeFormat(Enum):
     DATE_TIME_MS_LOCAL_ZONE = (format_dt_local_tz,)
     TIME_MS_LOCAL_ZONE = (format_time_local_tz,)

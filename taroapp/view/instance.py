@@ -2,9 +2,9 @@ from taro import util
 from taro.jobs.execution import ExecutionState
 from taro.util import format_dt_local_tz
 from taroapp.printer import Column
-from taroapp.style import general_style, job_style, instance_style, warn_style, job_state_style
+from taroapp.style import general_style, job_id_style, instance_style, warn_style, job_state_style
 
-JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_style)
+JOB_ID = Column('JOB ID', 30, lambda j: j.job_id, job_id_style)
 INSTANCE_ID = Column('INSTANCE ID', 23, lambda j: j.instance_id, instance_style)
 PARAMETERS = Column('PARAMETERS', 23,
                     lambda j: ', '.join("{}={}".format(k, v) for k, v in j.metadata.user_params.items()), general_style)
