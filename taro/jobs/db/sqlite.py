@@ -37,20 +37,20 @@ def _build_where_clause(instance_match):
         op = ' AND ' if c.match_both_ids else ' OR '
         if c.job_id:
             if c.strategy == MatchingStrategy.PARTIAL:
-                conditions.append(f'job_id GLOB "*{c.job_id}*"')
+                conditions.append(f'h.job_id GLOB "*{c.job_id}*"')
             elif c.strategy == MatchingStrategy.FN_MATCH:
-                conditions.append(f'job_id GLOB "{c.job_id}"')
+                conditions.append(f'h.job_id GLOB "{c.job_id}"')
             elif c.strategy == MatchingStrategy.EXACT:
-                conditions.append(f'job_id = "{c.job_id}"')
+                conditions.append(f'h.job_id = "{c.job_id}"')
             else:
                 raise ValueError(f"Matching strategy {id_criteria.strategy} is not supported")
         if c.instance_id:
             if c.strategy == MatchingStrategy.PARTIAL:
-                conditions.append(f'instance_id GLOB "*{c.instance_id}*"')
+                conditions.append(f'h.instance_id GLOB "*{c.instance_id}*"')
             elif c.strategy == MatchingStrategy.FN_MATCH:
-                conditions.append(f'instance_id GLOB "{c.instance_id}"')
+                conditions.append(f'h.instance_id GLOB "{c.instance_id}"')
             elif c.strategy == MatchingStrategy.EXACT:
-                conditions.append(f'instance_id = "{c.instance_id}"')
+                conditions.append(f'h.instance_id = "{c.instance_id}"')
             else:
                 raise ValueError(f"Matching strategy {id_criteria.strategy} is not supported")
 
@@ -60,9 +60,9 @@ def _build_where_clause(instance_match):
     int_conditions = []
     for c in int_criteria:
         if c.event == LifecycleEvent.CREATED:
-            e = 'created'
+            e = 'h.created'
         elif c.event == LifecycleEvent.ENDED:
-            e = 'ended'
+            e = 'h.ended'
         else:
             continue
 
@@ -80,11 +80,11 @@ def _build_where_clause(instance_match):
     state_conditions = []
     if instance_match.state_criteria:
         if instance_match.state_criteria.warning:
-            state_conditions.append("warnings IS NOT NULL")
+            state_conditions.append("h.warnings IS NOT NULL")
         if flag_groups := instance_match.state_criteria.flag_groups:
             states = ",".join(f"'{s.name}'" for group in flag_groups
                                             for s in ExecutionState.get_states_by_flags(*group))
-            state_conditions.append(f"terminal_state IN ({states})")
+            state_conditions.append(f"h.terminal_state IN ({states})")
 
     all_conditions_list = (id_conditions, int_conditions, state_conditions)
     all_conditions_str = ["(" + " OR ".join(c_list) + ")" for c_list in all_conditions_list if c_list]
@@ -129,18 +129,18 @@ class SQLite:
             -> JobInfoList:
         def sort_exp():
             if sort == SortCriteria.CREATED:
-                return 'created'
+                return 'h.created'
             if sort == SortCriteria.ENDED:
-                return 'ended'
+                return 'h.ended'
             if sort == SortCriteria.TIME:
-                return "julianday(ended) - julianday(created)"
+                return "julianday(h.ended) - julianday(h.created)"
             raise ValueError(sort)
 
-        statement = "SELECT * FROM history"
+        statement = "SELECT * FROM history h"
         statement += _build_where_clause(instance_match)
 
         if last:
-            statement += " GROUP BY job_id HAVING ROWID = max(ROWID) "
+            statement += " GROUP BY h.job_id HAVING ROWID = max(ROWID) "
 
         print(statement)
 
@@ -206,7 +206,7 @@ class SQLite:
             FROM
                 history h
             INNER JOIN
-                (SELECT job_id, exec_time, terminal_state FROM history {where} GROUP BY job_id HAVING ROWID = max(ROWID)) AS last
+                (SELECT job_id, exec_time, terminal_state FROM history h {where} GROUP BY job_id HAVING ROWID = max(ROWID)) AS last
                 ON h.job_id = last.job_id
             {where}
             GROUP BY
