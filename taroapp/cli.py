@@ -13,7 +13,7 @@ ACTION_EXEC = 'exec'
 ACTION_PS = 'ps'
 ACTION_HISTORY = 'history'
 ACTION_HISTORY_REMOVE = 'history-remove'
-ACTION_JOBS = 'jobs'
+ACTION_STATS = 'stats'
 ACTION_RELEASE = 'release'
 ACTION_LISTEN = 'listen'
 ACTION_WAIT = 'wait'
@@ -41,7 +41,7 @@ def parse_args(args):
     _init_ps_parser(common, subparser)
     _init_history_parser(common, subparser)
     _init_history_remove_parser(common, subparser)
-    _init_jobs_parser(common, subparser)
+    _init_stats_parser(common, subparser)
     _init_release_parser(common, subparser)
     _init_listen_parser(common, subparser)
     _init_wait_parser(common, subparser)
@@ -206,6 +206,19 @@ def _init_history_parser(common, subparsers):
         ACTION_HISTORY, aliases=['hist'], parents=[common], description='Show jobs history', add_help=False)
 
     filter_group = hist_parser.add_argument_group('filtering', 'These options allows to filter returned jobs')
+    init_filter_group(filter_group)
+    filter_group.add_argument('-n', '--lines', type=int, help='Number of history entries to show')
+    filter_group.add_argument('-L', '--last', action='store_true', help='Show last execution of each job')
+    filter_group.add_argument('--slowest', action='store_true', help='Show slowest instance from each job')
+
+    hist_parser.add_argument('-a', '--asc', '--ascending', action='store_true', help='Ascending sort')
+    hist_parser.add_argument('-s', '--sort', type=str, choices=[s.name.lower() for s in SortCriteria],
+                             default=SortCriteria.ENDED.name.lower(), help='Sorting criteria')
+    hist_parser.add_argument('-P', '--no-pager', action='store_true', help='Do not use pager for output')
+    hist_parser.add_argument('--show-params', action='store_true', help='')
+
+
+def init_filter_group(filter_group):
     filter_group.add_argument('instances', nargs='*', type=str,
                               help='Identifiers of job or instance matching pattern for result filtering')
     filter_group.add_argument('-f', '--from', type=_str2dt, help='Show entries not older than the specified date')
@@ -224,15 +237,6 @@ def _init_history_parser(common, subparsers):
     filter_group.add_argument('-D', '--discarded', action='store_true', default=None,
                               help='Show only terminated jobs which never executed')
     filter_group.add_argument('-W', '--warning', action='store_true', default=None, help='Show only jobs with warnings')
-    filter_group.add_argument('-n', '--lines', type=int, help='Number of history entries to show')
-    filter_group.add_argument('-L', '--last', action='store_true', help='Show last execution of each job')
-    filter_group.add_argument('--slowest', action='store_true', help='Show slowest instance from each job')
-
-    hist_parser.add_argument('-a', '--asc', '--ascending', action='store_true', help='Ascending sort')
-    hist_parser.add_argument('-s', '--sort', type=str, choices=[s.name.lower() for s in SortCriteria],
-                             default=SortCriteria.ENDED.name.lower(), help='Sorting criteria')
-    hist_parser.add_argument('-P', '--no-pager', action='store_true', help='Do not use pager for output')
-    hist_parser.add_argument('--show-params', action='store_true', help='')
 
 
 def _init_history_remove_parser(common, subparsers):
@@ -248,18 +252,19 @@ def _init_history_remove_parser(common, subparsers):
 
     hist_rm_parser.add_argument('instances', nargs='+', type=str, help='instance filter')
 
-def _init_jobs_parser(common, subparsers):
+def _init_stats_parser(common, subparsers):
     """
-    Creates parsers for `jobs` command
+    Creates parsers for `stats` command
 
     :param common: parent parser
-    :param subparsers: sub-parser for jobs parser to be added to
+    :param subparsers: sub-parser for stats parser to be added to
     """
 
-    jobs_parser = subparsers.add_parser(
-        ACTION_JOBS, parents=[common], description="Show jobs statistics", add_help=False)
+    stats_parser = subparsers.add_parser(
+        ACTION_STATS, parents=[common], description="Show jobs statistics", add_help=False)
 
-    jobs_parser.add_argument('instances', nargs='*', default=None, type=str, help='instance filter')
+    filter_group = stats_parser.add_argument_group('filtering', 'These options allows to filter returned jobs')
+    init_filter_group(filter_group)
 
 
 

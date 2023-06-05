@@ -187,7 +187,8 @@ class SQLite:
                            ((datetime.datetime.now(tz=timezone.utc) - max_age),))
         self._conn.commit()
 
-    def read_stats(self) -> List[JobStats]:
+    def read_stats(self, instance_match=None) -> List[JobStats]:
+        where = _build_where_clause(instance_match)
         failure_states = ",".join([f"'{s.name}'" for s in ExecutionState.get_states_by_flags(Flag.FAILURE)])
         sql = f'''
             SELECT
@@ -205,8 +206,9 @@ class SQLite:
             FROM
                 history h
             INNER JOIN
-                (SELECT job_id, exec_time, terminal_state FROM history GROUP BY job_id HAVING ROWID = max(ROWID)) AS last
+                (SELECT job_id, exec_time, terminal_state FROM history {where} GROUP BY job_id HAVING ROWID = max(ROWID)) AS last
                 ON h.job_id = last.job_id
+            {where}
             GROUP BY
                 h.job_id
         '''
