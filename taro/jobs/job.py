@@ -803,13 +803,15 @@ class JobStats:
 
     job_id: str
     count: int = 0
-    first_at: datetime = None
-    last_at: datetime = None
-    fastest: timedelta = None
-    average: timedelta = None
-    slowest: timedelta = None
+    first_created: datetime = None
+    last_created: datetime = None
+    fastest_time: timedelta = None
+    average_time: timedelta = None
+    slowest_time: timedelta = None
     last_time: timedelta = None
     last_state: ExecutionState = ExecutionState.NONE
+    failed_count: int = 0
+    warning_count: int = 0
 
 
 class ExecutionStateObserver(abc.ABC):

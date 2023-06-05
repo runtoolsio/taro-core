@@ -5,9 +5,9 @@ import sqlite3
 from datetime import timezone
 from typing import List
 
-from taro import cfg, paths, JobInstanceID
-from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle, ExecutionPhase
-from taro.jobs.job import JobInfo, JobInfoList, LifecycleEvent, JobInstanceMetadata, JobStats
+from taro import cfg, paths
+from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle, ExecutionPhase, Flag
+from taro.jobs.job import JobInfo, JobInfoList, JobInstanceID, LifecycleEvent, JobInstanceMetadata, JobStats
 from taro.jobs.persistence import SortCriteria
 from taro.jobs.track import TrackedTaskInfo
 from taro.util import MatchingStrategy, format_dt_sql, parse_dt_sql
@@ -188,17 +188,20 @@ class SQLite:
         self._conn.commit()
 
     def read_stats(self) -> List[JobStats]:
-        sql = '''
+        failure_states = ",".join([f"'{s.name}'" for s in ExecutionState.get_states_by_flags(Flag.FAILURE)])
+        sql = f'''
             SELECT
                 h.job_id,
                 count(h.job_id) AS "count",
-                min(created) AS "first_at",
-                max(created) AS "last_at",
-                min(h.exec_time) AS "fastest",
-                avg(h.exec_time) AS "average",
-                max(h.exec_time) AS "slowest",
+                min(created) AS "first_created",
+                max(created) AS "last_created",
+                min(h.exec_time) AS "fastest_time",
+                avg(h.exec_time) AS "average_time",
+                max(h.exec_time) AS "slowest_time",
                 last.exec_time AS "last_time",
-                last.terminal_state AS "last_state"
+                last.terminal_state AS "last_state",
+                COUNT(CASE WHEN h.terminal_state IN ({failure_states}) THEN 1 ELSE NULL END) AS failed,
+                COUNT(h.warnings) AS warnings
             FROM
                 history h
             INNER JOIN
@@ -219,9 +222,12 @@ class SQLite:
             slowest = datetime.timedelta(seconds=t[6]) if t[6] else None
             last_time = datetime.timedelta(seconds=t[7]) if t[7] else None
             last_state = ExecutionState[t[8]] if t[8] else ExecutionState.UNKNOWN
+            failed_count = t[9]
+            warn_count = t[10]
 
             return JobStats(
-                job_id, count, first_at, last_at, fastest, average, slowest, last_time, last_state
+                job_id, count, first_at, last_at, fastest, average, slowest, last_time, last_state, failed_count,
+                warn_count
             )
 
         return [to_job_stats(row) for row in c.fetchall()]
