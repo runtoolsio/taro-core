@@ -55,6 +55,17 @@ def state_style(state):
         return Theme.state_incomplete
     return ""
 
+def stats_failed_style(stats):
+    if stats.failed_count:
+        return Theme.highlight + " " + Theme.state_failure
+    return stats_style(stats)
+
+
+def stats_warn_style(stats):
+    if stats.warning_count:
+        return Theme.warning
+    return stats_style(stats)
+
 
 def job_instance_styled(job_instance):
     return [

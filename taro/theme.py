@@ -23,6 +23,7 @@ BASE 16 COLOURS:
 
 
 class Theme:
+    highlight = 'bold'
     job = 'bold'
     instance = 'ansibrightblack'
     id_separator = ''
