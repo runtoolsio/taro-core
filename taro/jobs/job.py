@@ -24,7 +24,9 @@ from typing import NamedTuple, Dict, Any, Optional, Callable, Union, List, Tuple
 
 from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle, ExecutionPhase, ExecutionStateFlag
 from taro.jobs.track import TrackedTaskInfo
-from taro.util import and_, or_, MatchingStrategy, is_empty, to_list, format_dt_iso, remove_empty_values, day_range
+from taro.util import and_, or_, MatchingStrategy, is_empty, to_list, format_dt_iso, remove_empty_values, \
+    single_day_range, \
+    days_range
 
 DEFAULT_OBSERVER_PRIORITY = 100
 
@@ -141,17 +143,26 @@ class IntervalCriteria:
         return cls(event, from_dt, to_dt, include_to=include_to)
 
     @classmethod
-    def day_interval(cls, event, days, *, local_tz=False):
-        range_ = day_range(days, local_tz=local_tz)
+    def single_day_period(cls, event, day, *, local_tz=False):
+        range_ = single_day_range(day, local_tz=local_tz)
         return cls(event, *range_, include_to=False)
 
     @classmethod
     def today(cls, event, *, local_tz=False):
-        return cls.day_interval(event, 0, local_tz=local_tz)
+        return cls.single_day_period(event, 0, local_tz=local_tz)
 
     @classmethod
     def yesterday(cls, event, *, local_tz=False):
-        return cls.day_interval(event, -1, local_tz=local_tz)
+        return cls.single_day_period(event, -1, local_tz=local_tz)
+
+    @classmethod
+    def days_interval(cls, event, days, *, local_tz=False):
+        range_ = days_range(days, local_tz=local_tz)
+        return cls(event, *range_, include_to=False)
+
+    @classmethod
+    def week_back(cls, event, *, local_tz=False):
+        return cls.days_interval(event, -7, local_tz=local_tz)
 
     @property
     def event(self):

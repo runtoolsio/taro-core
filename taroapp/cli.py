@@ -225,6 +225,9 @@ def init_filter_group(filter_group):
     filter_group.add_argument('-t', '--to', type=_str2dt, help='Show entries not newer than the specified date')
     filter_group.add_argument('-T', '--today', action='store_true', help='Show only jobs created today (local)')
     filter_group.add_argument('-Y', '--yesterday', action='store_true', help='Show only jobs created yesterday (local)')
+    filter_group.add_argument('-1', '--week', action='store_true', help='Show only jobs created from now 7 days back')
+    filter_group.add_argument('-2', '--fortnight', action='store_true', help='Show only jobs created from now 2 weeks back')
+    filter_group.add_argument('-3', '--month', action='store_true', help='Show only jobs created from now 31 days back')
     filter_group.add_argument('-S', '--success', action='store_true', default=None,
                               help='Show only successfully completed jobs')
     filter_group.add_argument('-N', '--nonsuccess', action='store_true', default=None,

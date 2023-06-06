@@ -18,18 +18,23 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def day_range(days=0, *, local_tz=False):
+def single_day_range(day=0, *, local_tz=False):
     today = date.today()
-    start_day = today + timedelta(days=days)
-    end_day = today + timedelta(days=days + 1)
+    start_day = today + timedelta(days=day)
+    end_day = today + timedelta(days=day + 1)
     start = datetime.combine(start_day, time.min)
     end = datetime.combine(end_day, time.min)
 
-    if local_tz:  # TODO better timezone aware?
-        start_day = start.astimezone().astimezone(timezone.utc).replace(tzinfo=None)
-        end_day = end.astimezone().astimezone(timezone.utc).replace(tzinfo=None)
+    return (to_local(start), to_local(end)) if local_tz else (start, end)
 
-    return start_day, end_day
+def days_range(days=0, *, local_tz=False):
+    end = datetime.now()
+    start = end + timedelta(days=days)
+
+    return (to_local(start), to_local(end)) if local_tz else (start, end)
+
+def to_local(dt):
+    return dt.astimezone().astimezone(timezone.utc).replace(tzinfo=None) # TODO better timezone aware?
 
 
 def parse_datetime(str_ts):

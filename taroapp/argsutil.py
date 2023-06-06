@@ -55,6 +55,15 @@ def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED)
     if getattr(args, 'yesterday', None):
         criteria.append(IntervalCriteria.yesterday(interval_event, local_tz=True))
 
+    if getattr(args, 'week', None):
+        criteria.append(IntervalCriteria.week_back(interval_event, local_tz=True))
+
+    if getattr(args, 'fortnight', None):
+        criteria.append(IntervalCriteria.days_interval(interval_event, -14, local_tz=True))
+
+    if getattr(args, 'month', None):
+        criteria.append(IntervalCriteria.days_interval(interval_event, -31, local_tz=True))
+
     return criteria
 
 
