@@ -1,7 +1,7 @@
 from taro.jobs import persistence
 from taro.jobs.persistence import SortCriteria
 from taro.util import MatchingStrategy
-from taroapp import printer, argsutil
+from taroapp import printer, argsutil, cliutil
 from taroapp.view import instance as view_inst
 
 
@@ -20,4 +20,7 @@ def run(args):
     if args.show_params:
         columns.insert(2, view_inst.PARAMETERS)
 
-    printer.print_table(jobs, columns, show_header=True, pager=not args.no_pager)
+    try:
+        printer.print_table(jobs, columns, show_header=True, pager=not args.no_pager)
+    except BrokenPipeError:
+        cliutil.handle_broken_pipe(exit_code=1)
