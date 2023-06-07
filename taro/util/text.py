@@ -39,6 +39,9 @@ def partial_match(string, pattern):
 def always_true(*_):
     return True
 
+def always_false(*_):
+    return False
+
 
 class MatchingStrategy(Enum):
     """
@@ -49,6 +52,7 @@ class MatchingStrategy(Enum):
     FN_MATCH = (fnmatch,)
     PARTIAL = (partial_match,)
     ALWAYS_TRUE = (always_true,)
+    ALWAYS_FALSE = (always_false,)
 
     def __call__(self, *args, **kwargs):
         return self.value[0](*args, **kwargs)

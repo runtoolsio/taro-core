@@ -65,9 +65,9 @@ def _instance_match():
     job_criteria = JobMatchingCriteria(properties=properties, property_match_strategy=MatchingStrategy.PARTIAL)
     matched_jobs = job_criteria.matched(repo.get_all_jobs())
     if not matched_jobs:
-        return InstanceMatchingCriteria(IDMatchingCriteria(['']))  # TODO Fix this workaround
+        return InstanceMatchingCriteria(IDMatchingCriteria.none_match())
 
-    return InstanceMatchingCriteria(IDMatchingCriteria([mj.job_id + "@" for mj in matched_jobs]))
+    return InstanceMatchingCriteria([IDMatchingCriteria(mj.job_id, '') for mj in matched_jobs])
 
 
 def job_limiter(limit):
@@ -85,13 +85,16 @@ def job_limiter(limit):
 
 @route('/instances/<inst>')
 def instance(inst):
-    match_criteria = InstanceMatchingCriteria(IDMatchingCriteria([inst], MatchingStrategy.PARTIAL))
+    if "@" not in inst:
+        raise http_error(404, "Instance not found")
+
+    match_criteria = InstanceMatchingCriteria.parse_pattern(inst, MatchingStrategy.EXACT)
     jobs_info, _ = taro.client.read_jobs_info(match_criteria)
     if not jobs_info:
         raise http_error(404, "Instance not found")
 
     response.content_type = 'application/hal+json'
-    return to_json(resource_job_info(jobs_info[0]))
+    return to_json(resource_job_info(jobs_info[0])) # TODO Ensure always only 1
 
 
 @route('/jobs')

@@ -46,9 +46,13 @@ class IDMatchingCriteria:
     strategy (S): The strategy to use for matching. Default is :class:`MatchingStrategy.EXACT`.
     """
     job_id: str
-    instance_id: str
+    instance_id: str  # TODO consider default value too
     match_both_ids: bool = True
     strategy: S = MatchingStrategy.EXACT
+
+    @classmethod
+    def none_match(cls):
+        return cls('', '', True, MatchingStrategy.ALWAYS_FALSE)
 
     @classmethod
     def parse_pattern(cls, pattern, strategy: S = MatchingStrategy.EXACT):
@@ -71,9 +75,6 @@ class IDMatchingCriteria:
         return and_ if self.match_both_ids else or_
 
     def matches(self, jid):
-        if self.strategy == MatchingStrategy.ALWAYS_TRUE:
-            return True
-
         op = self._op()
         return op(not self.job_id or self.strategy(jid.job_id, self.job_id),
                   not self.instance_id or self.strategy(jid.instance_id, self.instance_id))

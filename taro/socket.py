@@ -11,7 +11,8 @@ from typing import List, NamedTuple, Optional
 
 from taro import paths
 
-RECV_BUFFER_LENGTH = 65536
+# Default=32768, Max= 262142, https://docstore.mik.ua/manuals/hp-ux/en/B2355-60130/UNIX.7P.html
+RECV_BUFFER_LENGTH = 65536 # Can be increased to 163840?
 
 log = logging.getLogger(__name__)
 

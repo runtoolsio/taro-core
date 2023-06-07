@@ -32,6 +32,9 @@ def _build_where_clause(instance_match):
         if c.strategy == MatchingStrategy.ALWAYS_TRUE:
             id_conditions.clear()
             break
+        if c.strategy == MatchingStrategy.ALWAYS_FALSE:
+            id_conditions = ['1=0']
+            break
 
         conditions = []
         op = ' AND ' if c.match_both_ids else ' OR '
