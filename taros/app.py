@@ -1,7 +1,7 @@
 import json
 from collections import Counter
 
-from bottle import route, run, response
+from bottle import response, Bottle
 
 import taro.client
 from taro import util
@@ -13,8 +13,9 @@ from taro.jobs.persistence import SortCriteria
 from taro.util import MatchingStrategy
 from taros.httputil import http_error, query_digit, query, query_multi
 
+api = Bottle()
 
-@route('/instances')
+@api.route('/instances')
 def instances():
     include = query_multi('include', default='active', allowed=('active', 'finished', 'all'))
     limit = query_digit('limit', default=-1)
@@ -83,7 +84,7 @@ def job_limiter(limit):
     return filter_
 
 
-@route('/instances/<inst>')
+@api.route('/instances/<inst>')
 def instance(inst):
     if "@" not in inst:
         raise http_error(404, "Instance not found")
@@ -97,14 +98,14 @@ def instance(inst):
     return to_json(resource_job_info(jobs_info[0])) # TODO Ensure always only 1
 
 
-@route('/jobs')
+@api.route('/jobs')
 def jobs():
     embedded = {"jobs": [job_to_resource(i) for i in repo.get_all_jobs()]}
     response.content_type = 'application/hal+json'
     return to_json(resource({}, links={"self": "/jobs", "instances": "/instances"}, embedded=embedded))
 
 
-@route('/jobs/<job_id>')
+@api.route('/jobs/<job_id>')
 def jobs(job_id):
     job = repo.get_job(job_id)
     if not job:
@@ -143,7 +144,7 @@ def to_json(d):
 
 
 def start(host, port, reload=False):
-    run(host=host, port=port, debug=True, reloader=reload)
+    api.run(host=host, port=port, debug=True, reloader=reload)
 
 
 if __name__ == '__main__':
