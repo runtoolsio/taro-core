@@ -8,7 +8,7 @@ import pytest
 import taro.jobs.runner as runner
 from taro.jobs import lock
 from taro.jobs.execution import ExecutionState
-from taro.jobs.job import ExecutionStateObserver, JobInfo
+from taro.jobs.inst import ExecutionStateObserver, JobInfo
 from taro.jobs.runner import RunnerJobInstance
 from taro.test.execution import TestExecution  # TODO package import
 from taro.test.observer import TestStateObserver

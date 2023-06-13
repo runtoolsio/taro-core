@@ -1,5 +1,5 @@
 from taro.jobs import persistence
-from taro.jobs.job import InstanceMatchingCriteria
+from taro.jobs.inst import InstanceMatchingCriteria
 from taro.util import MatchingStrategy
 from taroapp import cliutil
 

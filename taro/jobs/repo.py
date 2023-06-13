@@ -2,7 +2,7 @@ import os
 from typing import List
 
 from taro import util, paths
-from taro.jobs.job import Job
+from taro.jobs.inst import Job
 
 JOBS_FILE_CONTENT =\
     {

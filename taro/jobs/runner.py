@@ -14,7 +14,7 @@ from taro import util
 from taro.jobs import persistence, lock
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver, \
     Phase, Flag, UnexpectedStateError
-from taro.jobs.job import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, Warn, \
+from taro.jobs.inst import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, Warn, \
     WarnEventCtx, JobInstanceID, DEFAULT_OBSERVER_PRIORITY, JobInstanceMetadata
 from taro.jobs.sync import NoSync, CompositeSync, Latch, Signal
 

@@ -1,7 +1,7 @@
 import sys
 
 import taro.client
-from taro.jobs.job import InstanceMatchingCriteria, compound_id_filter
+from taro.jobs.inst import InstanceMatchingCriteria, compound_id_filter
 from taro.listening import OutputReceiver, OutputEventObserver
 from taro.theme import Theme
 from taro.util import MatchingStrategy

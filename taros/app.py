@@ -8,7 +8,7 @@ from taro import util
 from taro.jobs import persistence
 from taro.jobs import repo
 from taro.jobs.execution import ExecutionState
-from taro.jobs.job import InstanceMatchingCriteria, IDMatchingCriteria, JobMatchingCriteria
+from taro.jobs.inst import InstanceMatchingCriteria, IDMatchingCriteria, JobMatchingCriteria
 from taro.jobs.persistence import SortCriteria
 from taro.util import MatchingStrategy
 from taros.httputil import http_error, query_digit, query, query_multi

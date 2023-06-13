@@ -4,7 +4,7 @@ from typing import List, Callable, Set
 
 from taro import JobInstanceID
 from taro.jobs.execution import Flag, ExecutionStateFlag
-from taro.jobs.job import IDMatchingCriteria, InstanceMatchingCriteria, compound_id_filter, IntervalCriteria, \
+from taro.jobs.inst import IDMatchingCriteria, InstanceMatchingCriteria, compound_id_filter, IntervalCriteria, \
     LifecycleEvent, StateCriteria
 from taro.util import DateTimeFormat
 

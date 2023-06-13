@@ -7,7 +7,7 @@ from typing import Sequence
 import taro.client
 from taro.err import InvalidStateError
 from taro.jobs.execution import ExecutionState, ExecutionPhase, Flag
-from taro.jobs.job import JobInstanceMetadata, JobInfoList
+from taro.jobs.inst import JobInstanceMetadata, JobInfoList
 from taro.listening import StateReceiver, ExecutionStateEventObserver
 from taro.log import timing
 

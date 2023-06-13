@@ -12,7 +12,7 @@ from threading import Condition
 from typing import Tuple, List, Callable
 
 from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionPhase
-from taro.jobs.job import JobInfo, Warn, WarningObserver, JobOutputObserver, WarnEventCtx
+from taro.jobs.inst import JobInfo, Warn, WarningObserver, JobOutputObserver, WarnEventCtx
 from taro.jobs.runner import ExecutionStateObserver
 
 log = logging.getLogger(__name__)

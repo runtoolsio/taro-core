@@ -6,7 +6,7 @@ import pytest
 
 from taro import JobInfo, JobInstanceID, ExecutionLifecycle, ExecutionState, ExecutionError, util
 from taro.jobs.db.sqlite import SQLite
-from taro.jobs.job import parse_criteria, InstanceMatchingCriteria, IntervalCriteria, LifecycleEvent, StateCriteria, \
+from taro.jobs.inst import parse_criteria, InstanceMatchingCriteria, IntervalCriteria, LifecycleEvent, StateCriteria, \
     JobInstanceMetadata
 from taro.jobs.track import MutableTrackedTask
 from taro.util import utc_now, parse_iso8601_duration, MatchingStrategy

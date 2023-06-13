@@ -4,7 +4,7 @@ from typing import Sequence
 
 from taro import util
 from taro.jobs.execution import ExecutionPhase
-from taro.jobs.job import JobInstance, JobInfo, ExecutionStateObserver, Warn, JobOutputObserver
+from taro.jobs.inst import JobInstance, JobInfo, ExecutionStateObserver, Warn, JobOutputObserver
 
 
 def exec_time_exceeded(job_instance: JobInstance, warning_name: str, time: float):

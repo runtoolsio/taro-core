@@ -5,7 +5,7 @@ from pygments.formatters.terminal import TerminalFormatter
 from pygments.lexers.data import JsonLexer
 
 import taro.client
-from taro.jobs.job import JobInfoList
+from taro.jobs.inst import JobInfoList
 from taro.util import MatchingStrategy
 from taroapp import printer, argsutil
 from taroapp.view import instance as view_inst

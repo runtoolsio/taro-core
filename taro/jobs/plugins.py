@@ -5,7 +5,7 @@ import pkgutil
 from types import ModuleType
 from typing import Dict
 
-from taro.jobs.job import JobInstance
+from taro.jobs.inst import JobInstance
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class PluginBase(abc.ABC):
 
         new_plugins = [name for name in names if name not in cls.name2plugin]
         if not new_plugins and not reload:
-            return  # All plugins already loaded
+            return  # All plugins already loaded TODO do not return None
 
         not_discovered = [name for name in new_plugins if name not in cls.name2subclass]
         if not_discovered:

@@ -3,7 +3,7 @@ import json
 import logging
 
 from taro import util
-from taro.jobs.job import ExecutionStateObserver, JobInfo, JobOutputObserver
+from taro.jobs.inst import ExecutionStateObserver, JobInfo, JobOutputObserver
 from taro.socket import SocketClient, PayloadTooLarge
 from taro.util import format_dt_iso
 

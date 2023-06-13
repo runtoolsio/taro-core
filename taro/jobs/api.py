@@ -5,7 +5,7 @@ from json import JSONDecodeError
 
 from taro import util
 from taro.jobs.execution import ExecutionState, Flag
-from taro.jobs.job import InstanceMatchingCriteria
+from taro.jobs.inst import InstanceMatchingCriteria
 from taro.socket import SocketServer
 
 log = logging.getLogger(__name__)

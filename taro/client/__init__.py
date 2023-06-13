@@ -5,7 +5,7 @@ from enum import Enum, auto
 from typing import List, Tuple, Any, Dict, NamedTuple, Optional, TypeVar, Generic
 
 from taro.jobs.api import API_FILE_EXTENSION
-from taro.jobs.job import JobInfo, JobInstanceMetadata
+from taro.jobs.inst import JobInfo, JobInstanceMetadata
 from taro.socket import SocketClient, ServerResponse, Error
 
 log = logging.getLogger(__name__)

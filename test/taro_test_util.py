@@ -9,7 +9,7 @@ from prompt_toolkit.output import DummyOutput
 
 from taro import paths, JobInfo, Warn, WarningObserver, cfg, ExecutionStateObserver
 from taro.jobs import program, runner
-from taro.jobs.job import WarnEventCtx
+from taro.jobs.inst import WarnEventCtx
 from taroapp import main
 
 
