@@ -668,7 +668,7 @@ class JobInfo:
         self._exec_error = exec_error
 
     @staticmethod
-    def created(job_info):
+    def created_at(job_info):
         return job_info.lifecycle.created_at
 
     @property

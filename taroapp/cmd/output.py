@@ -20,7 +20,7 @@ def run(args):
         return
 
     columns = [JOB_ID, INSTANCE_ID, CREATED, ENDED, STATE]
-    instance = sorted(instances, key=JobInfo.created, reverse=True)[0]
+    instance = sorted(instances, key=JobInfo.created_at, reverse=True)[0]
     footer_gen = itertools.chain(
         (('', ''), (Theme.warning, 'Error output:')),
         (['', err] for err in instance.error_output)
