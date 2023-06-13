@@ -16,13 +16,12 @@ import datetime
 import textwrap
 from collections import namedtuple
 from dataclasses import dataclass
-from datetime import timedelta
 from enum import Enum
 from fnmatch import fnmatch
 from functools import partial
 from typing import NamedTuple, Dict, Any, Optional, Callable, Union, List, Tuple, Iterable, Set
 
-from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle, ExecutionPhase, ExecutionStateFlag
+from taro.jobs.execution import ExecutionError, ExecutionLifecycle, ExecutionPhase, ExecutionStateFlag
 from taro.jobs.track import TrackedTaskInfo
 from taro.util import and_, or_, MatchingStrategy, is_empty, to_list, format_dt_iso, remove_empty_values, \
     single_day_range, \
@@ -771,59 +770,6 @@ class JobInfoList(list):
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         return {"jobs": [job.to_dict(include_empty=include_empty) for job in self]}
-
-
-class Job:
-
-    def __init__(self, job_id, properties: dict):
-        self._job_id = job_id
-        self._properties = properties
-
-    @property
-    def job_id(self):
-        return self._job_id
-
-    @property
-    def properties(self):
-        return self._properties
-
-
-class JobMatchingCriteria:
-
-    def __init__(self, *, properties=None, property_match_strategy=MatchingStrategy.EXACT):
-        self.properties = properties
-        self.property_match_strategy = property_match_strategy
-
-    def matches(self, job):
-        if not self.properties:
-            return True
-
-        for k, v in self.properties.items():
-            prop = job.properties.get(k)
-            if not prop:
-                return False
-            if not self.property_match_strategy(prop, v):
-                return False
-
-        return True
-
-    def matched(self, jobs):
-        return [job for job in jobs if self.matches(job)]
-
-@dataclass
-class JobStats:
-
-    job_id: str
-    count: int = 0
-    first_created: datetime = None
-    last_created: datetime = None
-    fastest_time: timedelta = None
-    average_time: timedelta = None
-    slowest_time: timedelta = None
-    last_time: timedelta = None
-    last_state: ExecutionState = ExecutionState.NONE
-    failed_count: int = 0
-    warning_count: int = 0
 
 
 class ExecutionStateObserver(abc.ABC):

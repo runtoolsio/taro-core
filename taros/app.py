@@ -8,7 +8,8 @@ from taro import util
 from taro.jobs import persistence
 from taro.jobs import repo
 from taro.jobs.execution import ExecutionState
-from taro.jobs.inst import InstanceMatchingCriteria, IDMatchingCriteria, JobMatchingCriteria
+from taro.jobs.inst import InstanceMatchingCriteria, IDMatchingCriteria
+from taro.jobs.job import JobMatchingCriteria
 from taro.jobs.persistence import SortCriteria
 from taro.util import MatchingStrategy
 from taros.httputil import http_error, query_digit, query, query_multi
@@ -45,7 +46,7 @@ def instances():
 
     response.content_type = 'application/hal+json'
     embedded = {"instances": [resource_job_info(i) for i in jobs_info],
-                "jobs": [job_to_resource(i) for i in jobs_filter(repo.get_all_jobs(), jobs_info)]}
+                "jobs": [job_to_resource(i) for i in jobs_filter(repo.read_jobs(), jobs_info)]}
     return to_json(resource({}, links={"self": "/instances", "jobs": "/jobs"}, embedded=embedded))
 
 
@@ -64,7 +65,7 @@ def _instance_match():
                              + job_prop_filter)
 
     job_criteria = JobMatchingCriteria(properties=properties, property_match_strategy=MatchingStrategy.PARTIAL)
-    matched_jobs = job_criteria.matched(repo.get_all_jobs())
+    matched_jobs = job_criteria.matched(repo.read_jobs())
     if not matched_jobs:
         return InstanceMatchingCriteria(IDMatchingCriteria.none_match())
 
@@ -100,14 +101,14 @@ def instance(inst):
 
 @api.route('/jobs')
 def jobs():
-    embedded = {"jobs": [job_to_resource(i) for i in repo.get_all_jobs()]}
+    embedded = {"jobs": [job_to_resource(i) for i in repo.read_jobs()]}
     response.content_type = 'application/hal+json'
     return to_json(resource({}, links={"self": "/jobs", "instances": "/instances"}, embedded=embedded))
 
 
 @api.route('/jobs/<job_id>')
 def jobs(job_id):
-    job = repo.get_job(job_id)
+    job = repo.read_job(job_id)
     if not job:
         raise http_error(404, "Instance not found")
 
@@ -117,7 +118,7 @@ def jobs(job_id):
 
 
 def job_to_resource(job):
-    return resource({"properties": job.properties}, links={"self": "/jobs/" + job.job_id})
+    return resource({"properties": job.properties}, links={"self": "/jobs/" + job.id})
 
 
 def jobs_filter(jobs_, instances_):

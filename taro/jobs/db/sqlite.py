@@ -7,7 +7,8 @@ from typing import List
 
 from taro import cfg, paths
 from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle, ExecutionPhase, Flag
-from taro.jobs.inst import JobInfo, JobInfoList, JobInstanceID, LifecycleEvent, JobInstanceMetadata, JobStats
+from taro.jobs.inst import JobInfo, JobInfoList, JobInstanceID, LifecycleEvent, JobInstanceMetadata
+from taro.jobs.job import JobStats
 from taro.jobs.persistence import SortCriteria
 from taro.jobs.track import TrackedTaskInfo
 from taro.util import MatchingStrategy, format_dt_sql, parse_dt_sql
