@@ -1,5 +1,6 @@
 import json
 from collections import Counter
+from urllib.parse import quote
 
 from bottle import response, Bottle
 
@@ -118,7 +119,7 @@ def jobs(job_id):
 
 
 def job_to_resource(job):
-    return resource({"properties": job.properties}, links={"self": "/jobs/" + job.id})
+    return resource({"properties": job.properties}, links={"self": "/jobs/" + quote(job.id)})
 
 
 def jobs_filter(jobs_, instances_):
@@ -137,7 +138,9 @@ def resource(props, *, links=None, embedded=None):
 
 def resource_job_info(job_info):
     return resource(job_info.to_dict(),
-                    links={"self": "/instances/" + job_info.instance_id, "jobs": "/jobs/" + job_info.job_id})
+                    links={"self": "/instances/" + quote(job_info.instance_id),
+                           "jobs": "/jobs/" + quote(job_info.job_id)}
+                    )
 
 
 def to_json(d):

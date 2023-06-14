@@ -8,9 +8,9 @@ from taro.util import MatchingStrategy
 
 class Job:
 
-    def __init__(self, job_id, properties: dict[str, str]):
+    def __init__(self, job_id, properties: dict[str, str] = None):
         self._id = job_id
-        self._properties = properties
+        self._properties = properties or {}
 
     @property
     def id(self):

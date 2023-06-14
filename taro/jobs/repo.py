@@ -2,7 +2,8 @@ import os
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from taro import util, paths
+from taro import util, paths, client
+from taro.jobs import persistence
 from taro.jobs.job import Job
 
 
@@ -26,7 +27,6 @@ class JobRepository(ABC):
 
 
 class JobRepositoryFile(JobRepository):
-
     DEF_FILE_CONTENT = \
         {
             'jobs': [
@@ -59,12 +59,29 @@ class JobRepositoryFile(JobRepository):
             util.write_yaml_file(JobRepositoryFile.DEF_FILE_CONTENT, path)
 
 
+class JobRepositoryActiveInstances(JobRepository):
+
+    @property
+    def id(self):
+        return 'active'
+
+    def read_jobs(self):
+        return {Job(i.job_id) for i in client.read_jobs_info().responses}
+
+
+class JobRepositoryHistory(JobRepository):
+
+    @property
+    def id(self):
+        return 'history'
+
+    def read_jobs(self):
+        return {Job(s.job_id) for s in persistence.read_stats()}
+
+
 def _init_repos():
-    file = JobRepositoryFile()
-    job_repos = {
-        file.id: file
-    }
-    return job_repos
+    repos = [JobRepositoryActiveInstances(), JobRepositoryHistory(), JobRepositoryFile()]  # Keep the correct order
+    return {repo.id: repo for repo in repos}
 
 
 _job_repos = _init_repos()
