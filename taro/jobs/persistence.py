@@ -106,7 +106,7 @@ class NoPersistence:
     def read_instances(self, instance_match=None, sort=SortCriteria.CREATED, *, asc, limit):
         raise PersistenceDisabledError()
 
-    def read_stats(self):
+    def read_stats(self, instance_match=None):
         raise PersistenceDisabledError()
 
     def store_instances(self, job_info):

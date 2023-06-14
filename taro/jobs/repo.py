@@ -5,6 +5,7 @@ from typing import List, Optional
 from taro import util, paths, client
 from taro.jobs import persistence
 from taro.jobs.job import Job
+from taro.jobs.persistence import PersistenceDisabledError
 
 
 class JobRepository(ABC):
@@ -76,7 +77,10 @@ class JobRepositoryHistory(JobRepository):
         return 'history'
 
     def read_jobs(self):
-        return {Job(s.job_id) for s in persistence.read_stats()}
+        try:
+            return {Job(s.job_id) for s in persistence.read_stats()}
+        except PersistenceDisabledError:
+            return set()
 
 
 def _init_repos():

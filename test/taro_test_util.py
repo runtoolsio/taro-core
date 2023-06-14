@@ -79,8 +79,10 @@ def create_test_config(config):
 
 
 def create_custom_test_config(filename, config):
-    with open(_custom_test_config_path(filename), 'w') as outfile:
+    path = _custom_test_config_path(filename)
+    with open(path, 'w') as outfile:
         yaml.dump(config, outfile, default_flow_style=False)
+    return path
 
 
 def remove_test_config():
