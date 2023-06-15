@@ -119,7 +119,7 @@ def jobs(job_id):
 
 
 def job_to_resource(job):
-    return resource({"properties": job.properties}, links={"self": "/jobs/" + quote(job.id)})
+    return resource({"id": job.id, "properties": job.properties}, links={"self": "/jobs/" + quote(job.id)})
 
 
 def jobs_filter(jobs_, instances_):
