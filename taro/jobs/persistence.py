@@ -62,8 +62,7 @@ def read_stats(instance_match=None):
     return _instance().read_stats(instance_match)
 
 def count_instances(instance_match):
-    return len(_instance().count_instances(
-        instance_match=instance_match, sort=SortCriteria.CREATED, asc=False, limit=-1, last=False))
+    return sum(s.count for s in (_instance().read_stats(instance_match)))
 
 
 def store_instances(*job_info):

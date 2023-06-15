@@ -43,7 +43,8 @@ def test_no_such_job(test_app):
 
 
 def test_empty_jobs(test_app):
-    create_custom_test_config('jobs.yaml', {})
+    test_file_jobs_path = create_custom_test_config('jobs.yaml', {})
+    repo.add_repo(JobRepositoryFile(test_file_jobs_path))
 
     resp = test_app.get('/jobs')
     assert resp.status_int == 200
