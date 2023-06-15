@@ -1,6 +1,7 @@
 import datetime
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Dict
 
 from taro.jobs.execution import ExecutionState
 from taro.util import MatchingStrategy
@@ -8,7 +9,7 @@ from taro.util import MatchingStrategy
 
 class Job:
 
-    def __init__(self, job_id, properties: dict[str, str] = None):
+    def __init__(self, job_id, properties: Dict[str, str] = None):
         self._id = job_id
         self._properties = properties or {}
 

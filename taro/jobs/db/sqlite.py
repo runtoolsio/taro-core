@@ -23,9 +23,12 @@ def create_persistence():
     return sqlite_
 
 
-def _build_where_clause(instance_match):
+def _build_where_clause(instance_match, alias=''):
     if not instance_match:
         return ""
+
+    if alias and not alias.endswith('.'):
+        alias = alias + "."
 
     id_criteria = instance_match.id_criteria
     id_conditions = []
@@ -41,20 +44,20 @@ def _build_where_clause(instance_match):
         op = ' AND ' if c.match_both_ids else ' OR '
         if c.job_id:
             if c.strategy == MatchingStrategy.PARTIAL:
-                conditions.append(f'h.job_id GLOB "*{c.job_id}*"')
+                conditions.append(f'{alias}job_id GLOB "*{c.job_id}*"')
             elif c.strategy == MatchingStrategy.FN_MATCH:
-                conditions.append(f'h.job_id GLOB "{c.job_id}"')
+                conditions.append(f'{alias}job_id GLOB "{c.job_id}"')
             elif c.strategy == MatchingStrategy.EXACT:
-                conditions.append(f'h.job_id = "{c.job_id}"')
+                conditions.append(f'{alias}job_id = "{c.job_id}"')
             else:
                 raise ValueError(f"Matching strategy {id_criteria.strategy} is not supported")
         if c.instance_id:
             if c.strategy == MatchingStrategy.PARTIAL:
-                conditions.append(f'h.instance_id GLOB "*{c.instance_id}*"')
+                conditions.append(f'{alias}instance_id GLOB "*{c.instance_id}*"')
             elif c.strategy == MatchingStrategy.FN_MATCH:
-                conditions.append(f'h.instance_id GLOB "{c.instance_id}"')
+                conditions.append(f'{alias}instance_id GLOB "{c.instance_id}"')
             elif c.strategy == MatchingStrategy.EXACT:
-                conditions.append(f'h.instance_id = "{c.instance_id}"')
+                conditions.append(f'{alias}instance_id = "{c.instance_id}"')
             else:
                 raise ValueError(f"Matching strategy {id_criteria.strategy} is not supported")
 
@@ -64,9 +67,9 @@ def _build_where_clause(instance_match):
     int_conditions = []
     for c in int_criteria:
         if c.event == LifecycleEvent.CREATED:
-            e = 'h.created'
+            e = f'{alias}created'
         elif c.event == LifecycleEvent.ENDED:
-            e = 'h.ended'
+            e = f'{alias}ended'
         else:
             continue
 
@@ -84,11 +87,11 @@ def _build_where_clause(instance_match):
     state_conditions = []
     if instance_match.state_criteria:
         if instance_match.state_criteria.warning:
-            state_conditions.append("h.warnings IS NOT NULL")
+            state_conditions.append(f"{alias}warnings IS NOT NULL")
         if flag_groups := instance_match.state_criteria.flag_groups:
             states = ",".join(f"'{s.name}'" for group in flag_groups
                                             for s in ExecutionState.get_states_by_flags(*group))
-            state_conditions.append(f"h.terminal_state IN ({states})")
+            state_conditions.append(f"{alias}terminal_state IN ({states})")
 
     all_conditions_list = (id_conditions, int_conditions, state_conditions)
     all_conditions_str = ["(" + " OR ".join(c_list) + ")" for c_list in all_conditions_list if c_list]
@@ -141,7 +144,7 @@ class SQLite:
             raise ValueError(sort)
 
         statement = "SELECT * FROM history h"
-        statement += _build_where_clause(instance_match)
+        statement += _build_where_clause(instance_match, alias='h')
 
         if last:
             statement += " GROUP BY h.job_id HAVING ROWID = max(ROWID) "
@@ -192,7 +195,7 @@ class SQLite:
         self._conn.commit()
 
     def read_stats(self, instance_match=None) -> List[JobStats]:
-        where = _build_where_clause(instance_match)
+        where = _build_where_clause(instance_match, alias='h')
         failure_states = ",".join([f"'{s.name}'" for s in ExecutionState.get_states_by_flags(Flag.FAILURE)])
         sql = f'''
             SELECT
