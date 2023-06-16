@@ -123,7 +123,7 @@ def job_to_resource(job):
 
 
 def jobs_filter(jobs_, instances_):
-    return [j for j in jobs_ if j.job_id in [i.job_id for i in instances_]]  # TODO replace with criteria
+    return [j for j in jobs_ if j.id in [i.job_id for i in instances_]]  # TODO replace with criteria
 
 
 def resource(props, *, links=None, embedded=None):

@@ -65,3 +65,8 @@ def test_jobs_all_default_repos(_, __, test_app):
     assert 'ended_job_1' in id_2_job
     assert id_2_job["j2"]["properties"]["prop"] == 'value2'
     assert id_2_job["j3"]["properties"]["prop"] == 'value3'
+
+def test_empty_instances(test_app):
+    resp = test_app.get('/instances')
+    assert resp.status_int == 200
+    assert len(resp.json["_embedded"]["instances"]) == 0
