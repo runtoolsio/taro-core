@@ -11,7 +11,7 @@ from taro.jobs import repo
 from taro.jobs.execution import ExecutionState
 from taro.jobs.inst import InstanceMatchingCriteria, IDMatchingCriteria
 from taro.jobs.job import JobMatchingCriteria
-from taro.jobs.persistence import SortCriteria
+from taro.jobs.persistence import SortCriteria, PersistenceDisabledError
 from taro.util import MatchingStrategy
 from taros.httputil import http_error, query_digit, query, query_multi
 
@@ -32,9 +32,10 @@ def instances():
     jobs_info = []
     if 'finished' in include or 'all' in include:
         sort = query('sort', default='created', allowed=[c.name.lower() for c in SortCriteria])
-        if not persistence.is_enabled():
-            raise http_error(409, "Persistence is not enabled in the config file")
-        jobs_info = persistence.read_instances(instance_match, SortCriteria[sort.upper()], asc=asc, limit=limit)
+        try:
+            jobs_info = persistence.read_instances(instance_match, SortCriteria[sort.upper()], asc=asc, limit=limit)
+        except PersistenceDisabledError:
+            raise http_error(409, "Persistence is not enabled")
     if 'active' in include or 'all' in include:
         if query('sort'):
             raise http_error(412, "Query parameter 'sort' can be used only with query parameter 'finished'")

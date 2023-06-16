@@ -7,18 +7,19 @@ Alternatively the execution can raise an exception set to raise_exc: :func:`Test
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from threading import Event
 from typing import List
 
+from taro import ExecutionLifecycle
 from taro.err import InvalidStateError
-from taro.jobs.execution import ExecutionState, OutputExecution
+from taro.jobs.execution import ExecutionState, OutputExecution, ExecutionPhase
+from taro.util import utc_now
 
 log = logging.getLogger(__name__)
 
 
 class TestExecution(OutputExecution):
-
     __test__ = False  # To tell pytest it isn't a test class
 
     def __init__(self, after_exec_state: ExecutionState = None, raise_exc: Exception = None, *, wait: bool = False):
@@ -74,7 +75,7 @@ class TestExecution(OutputExecution):
     @property
     def tracking(self):
         return self._tracking
-    
+
     @tracking.setter
     def tracking(self, tracking):
         self._tracking = tracking
@@ -98,3 +99,30 @@ class TestExecution(OutputExecution):
 
     def remove_output_observer(self, observer):
         pass
+
+
+def lc_active(active_state: ExecutionState):
+    assert not active_state.in_phase(ExecutionPhase.TERMINAL), "The state must not be terminal"
+
+    return ExecutionLifecycle((ExecutionState.CREATED, utc_now() - timedelta(minutes=1)), (active_state, utc_now()))
+
+
+def lc_ended(terminal_state: ExecutionState):
+    assert terminal_state.in_phase(ExecutionPhase.TERMINAL), "The state must be terminal"
+
+    return ExecutionLifecycle(
+        (ExecutionState.CREATED, utc_now() - timedelta(minutes=2)),
+        (ExecutionState.RUNNING, utc_now() - timedelta(minutes=1)),
+        (terminal_state, utc_now())
+    )
+
+
+def lc_pending():
+    return lc_active(ExecutionState.PENDING)
+
+
+def lc_running():
+    return lc_active(ExecutionState.RUNNING)
+
+def lc_completed():
+    return lc_ended(ExecutionState.COMPLETED)
