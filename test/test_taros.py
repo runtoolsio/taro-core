@@ -43,8 +43,8 @@ def web_app():
 def test_no_such_job(web_app):
     assert web_app.get('/jobs/no_such_job', expect_errors=True).status_int == 404
 
-
-def test_empty_jobs(web_app):
+@patch('taro.client.read_jobs_info', return_value=MultiResponse([], []))
+def test_empty_jobs(_, web_app):
     test_file_jobs_path = create_custom_test_config('jobs.yaml', {})
     repo.add_repo(JobRepositoryFile(test_file_jobs_path))
 
@@ -70,7 +70,8 @@ def test_jobs_all_default_repos(_, __, web_app):
     assert id_2_job["j3"]["properties"]["prop"] == 'value3'
 
 
-def test_empty_instances(web_app):
+@patch('taro.client.read_jobs_info', return_value=MultiResponse([], []))
+def test_empty_instances(_, web_app):
     resp = web_app.get('/instances')
     assert resp.status_int == 200
     assert len(resp.json["_embedded"]["instances"]) == 0
