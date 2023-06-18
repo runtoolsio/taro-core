@@ -8,6 +8,7 @@ from taro.client import MultiResponse
 from taro.jobs import repo
 from taro.jobs.inst import JobInfoList
 from taro.jobs.job import JobStats
+from taro.jobs.persistence import PersistenceDisabledError
 from taro.jobs.repo import JobRepositoryFile
 from taro.test.execution import lc_running
 from taro.test.job import i
@@ -77,10 +78,16 @@ def test_empty_instances(_, web_app):
     assert len(resp.json["_embedded"]["instances"]) == 0
 
 
-def test_empty_finished_instances(web_app):
-    resp = web_app.get('/instances?finished')
+@patch('taro.persistence.read_instances', return_value=JobInfoList([]))
+def test_empty_finished_instances(_, web_app):
+    resp = web_app.get('/instances?include=finished')
     assert resp.status_int == 200
     assert len(resp.json["_embedded"]["instances"]) == 0
+
+@patch('taro.persistence.read_instances', side_effect=PersistenceDisabledError)
+def test_instances_conflict_persistence_disabled(_, web_app):
+    resp = web_app.get('/instances?include=finished', expect_errors=True)
+    assert resp.status_int == 409
 
 
 @patch('taro.client.read_jobs_info', return_value=MultiResponse([i('j1', lifecycle=lc_running())], []))

@@ -46,6 +46,8 @@ _persistence = PersistenceHolder()
 
 
 def _instance():
+    if not cfg.persistence_enabled:
+        return NoPersistence()
     return _persistence[cfg.persistence_type]
 
 
@@ -102,7 +104,7 @@ def _sort_key(sort: SortCriteria):
 
 class NoPersistence:
 
-    def read_instances(self, instance_match=None, sort=SortCriteria.CREATED, *, asc, limit):
+    def read_instances(self, instance_match=None, sort=SortCriteria.CREATED, *, asc, limit, last=False):
         raise PersistenceDisabledError()
 
     def read_stats(self, instance_match=None):
@@ -114,7 +116,7 @@ class NoPersistence:
     def remove_instances(self, instance_match):
         raise PersistenceDisabledError()
 
-    def clean_up(self):
+    def clean_up(self, max_records, max_age):
         raise PersistenceDisabledError()
 
     def close(self):

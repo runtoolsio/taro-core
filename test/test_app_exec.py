@@ -6,13 +6,13 @@ import os
 
 import pytest
 
-from taro import util, cfg
-from taro.jobs import persistence, runner
+from taro import util
+from taro.jobs import runner
 from taro.jobs.execution import ExecutionState
 from taro.test.observer import TestStateObserver
-from taro_test_util import run_app, TestWarningObserver, test_db_path
+from taro_test_util import run_app, TestWarningObserver
 from taroapp.cmd.exec import ProgramExecutionError
-from test.taro_test_util import remove_test_db, run_app_as_process_and_wait
+from test.taro_test_util import remove_test_db, run_app_as_process_and_wait, create_test_sqlite, test_sqlite_cfg_vars
 
 
 @pytest.fixture(autouse=True)
@@ -84,13 +84,11 @@ def test_executed_when_dependency_is_running(observer: TestStateObserver):
 
 
 def test_job_persisted():
-    cfg.persistence_enabled = True
-    cfg.persistence_type = 'sqlite'
-    cfg.persistence_database = str(test_db_path())
+    remove_test_db()
 
     try:
-        run_app('exec --id persisted_job echo')
-        assert next(iter(persistence.read_instances(asc=True))).job_id == 'persisted_job'
+        run_app(f'exec --id persisted_job {test_sqlite_cfg_vars()} echo')
+        assert next(iter(create_test_sqlite().read_instances(asc=True))).job_id == 'persisted_job'
     finally:
         remove_test_db()
 
