@@ -16,7 +16,7 @@ def web_app():
     running_1 = i('running_1', lifecycle=lc_running())
     failed_1 = i('failed_1', lifecycle=lc_failed())
     pending_1 = i('pending_1', lifecycle=lc_pending())
-    completed_1 = i('completed_1', lifecycle=lc_completed(term_delta=1)) # Make it completed first
+    completed_1 = i('completed_1', lifecycle=lc_completed(term_delta=1))  # Make it completed first
     stopped_1 = i('stopped_1', lifecycle=lc_stopped())
 
     active_instances = [running_1, pending_1]
@@ -30,9 +30,11 @@ def web_app():
 
     bottle.debug(False)
 
+
 def assert_inst(resp, *job_ids):
     assert len(resp.json["_embedded"]["instances"]) == len(job_ids)
     assert [inst["metadata"]["id"]["job_id"] for inst in resp.json["_embedded"]["instances"]] == list(job_ids)
+
 
 def test_active(web_app):
     resp = web_app.get('/instances')
@@ -45,10 +47,12 @@ def test_incl_finished(web_app):
     assert resp.status_int == 200
     assert len(resp.json["_embedded"]["instances"]) == 3
 
+
 def test_incl_all(web_app):
     resp = web_app.get('/instances?include=all')
     assert resp.status_int == 200
     assert len(resp.json["_embedded"]["instances"]) == 5
+
 
 def test_limit_sort_all(web_app):
     resp = web_app.get('/instances?include=all&limit=2&order=asc')
