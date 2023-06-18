@@ -268,7 +268,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 log.log(level, self._log('job_state_changed', "prev_state=[{}] new_state=[{}]".format(
                     prev_state.name, new_state.name)))
                 job_info = self.create_info() # Be sure both new_state and exec_error are already set
-                if new_state.in_phase(Phase.TERMINAL) and persistence.is_enabled():
+                if new_state.in_phase(Phase.TERMINAL) and persistence.is_enabled(): # TODO Catch disabled error instead of the check
                     persistence.store_instances(job_info)  # TODO Consider move (managed _close_job() or listener?)
                 return job_info
 

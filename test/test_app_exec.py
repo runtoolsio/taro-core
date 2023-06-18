@@ -10,9 +10,10 @@ from taro import util
 from taro.jobs import runner
 from taro.jobs.execution import ExecutionState
 from taro.test.observer import TestStateObserver
+from taro.test.persistence import test_sqlite_cfg_vars, create_test_sqlite, remove_test_db
 from taro_test_util import run_app, TestWarningObserver
 from taroapp.cmd.exec import ProgramExecutionError
-from test.taro_test_util import remove_test_db, run_app_as_process_and_wait, create_test_sqlite, test_sqlite_cfg_vars
+from test.taro_test_util import run_app_as_process_and_wait
 
 
 @pytest.fixture(autouse=True)

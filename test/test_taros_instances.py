@@ -6,9 +6,10 @@ from webtest import TestApp
 
 import taros
 from taro.client import MultiResponse
-from taro.jobs.inst import JobInfoList
+from taro.jobs import persistence
 from taro.test.execution import lc_running, lc_pending, lc_completed, lc_failed, lc_stopped
 from taro.test.job import i
+from taro.test.persistence import TestPersistence
 
 
 @pytest.fixture
@@ -20,12 +21,12 @@ def web_app():
     stopped_1 = i('stopped_1', lifecycle=lc_stopped())
 
     active_instances = [running_1, pending_1]
-    ended_instances = JobInfoList([completed_1, failed_1, stopped_1])
 
     bottle.debug(True)
 
-    with patch('taro.client.read_jobs_info', return_value=MultiResponse(active_instances, [])):
-        with patch('taro.persistence.read_instances', return_value=ended_instances):
+    with TestPersistence():
+        persistence.store_instances(completed_1, failed_1, stopped_1)
+        with patch('taro.client.read_jobs_info', return_value=MultiResponse(active_instances, [])):
             yield TestApp(taros.app.api)
 
     bottle.debug(False)
@@ -54,10 +55,19 @@ def test_incl_all(web_app):
     assert len(resp.json["_embedded"]["instances"]) == 5
 
 
+def test_sort_default(web_app):
+    resp = web_app.get('/instances?include=all')
+    assert_inst(resp, 'stopped_1', 'completed_1', 'pending_1', 'failed_1', 'running_1')
+
+def test_sort_asc(web_app):
+    resp = web_app.get('/instances?include=all&order=asc')
+    assert_inst(resp, 'running_1', 'failed_1', 'pending_1', 'completed_1', 'stopped_1')
+
 def test_limit_sort_all(web_app):
     resp = web_app.get('/instances?include=all&limit=2&order=asc')
     assert_inst(resp, 'running_1', 'failed_1')
 
-# def test_limit_sort_finished(web_app):
-#     resp = web_app.get('/instances?include=finished&limit=2&sort=ended')
-#     assert_inst(resp, 'stopped_1', 'completed_1')
+
+def test_limit_sort_finished(web_app):
+    resp = web_app.get('/instances?include=finished&limit=2&sort=ended&order=asc')
+    assert_inst(resp, 'completed_1', 'failed_1')

@@ -1,4 +1,3 @@
-import sqlite3
 from multiprocessing import Queue
 from multiprocessing.context import Process
 from pathlib import Path
@@ -10,7 +9,6 @@ from prompt_toolkit.output import DummyOutput
 
 from taro import paths, JobInfo, Warn, WarningObserver, cfg, ExecutionStateObserver
 from taro.jobs import program, runner
-from taro.jobs.db.sqlite import SQLite
 from taro.jobs.inst import WarnEventCtx
 from taroapp import main
 
@@ -99,28 +97,12 @@ def remove_custom_test_config(filename):
         config.unlink()
 
 
-def test_sqlite_cfg_vars():
-    return f"--set persistence_enabled=1 --set persistence_type=sqlite --set persistence_database={test_db_path()}"
-
-def create_test_sqlite():
-    return SQLite(sqlite3.connect(test_db_path()))
-
-def remove_test_db():
-    test_db = test_db_path()
-    if test_db.exists():
-        test_db.unlink()
-
-
 def _test_config_path() -> Path:
     return _custom_test_config_path(paths.CONFIG_FILE)
 
 
 def _custom_test_config_path(filename) -> Path:
     return Path.cwd() / filename
-
-
-def test_db_path() -> Path:
-    return Path.cwd() / 'test.db'
 
 
 class NoFormattingOutput(DummyOutput):

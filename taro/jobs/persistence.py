@@ -45,6 +45,10 @@ class PersistenceHolder(dict):
 _persistence = PersistenceHolder()
 
 
+def reset():
+    _persistence.close()
+
+
 def _instance():
     if not cfg.persistence_enabled:
         return NoPersistence()
@@ -60,8 +64,10 @@ class SortCriteria(Enum):
 def read_instances(instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, last=False):
     return _instance().read_instances(instance_match=instance_match, sort=sort, asc=asc, limit=limit, last=last)
 
+
 def read_stats(instance_match=None):
     return _instance().read_stats(instance_match)
+
 
 def count_instances(instance_match):
     return sum(s.count for s in (_instance().read_stats(instance_match)))
