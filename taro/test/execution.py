@@ -101,33 +101,33 @@ class TestExecution(OutputExecution):
         pass
 
 
-def lc_active(active_state: ExecutionState):
+def lc_active(active_state: ExecutionState, delta=0):
     assert not active_state.in_phase(ExecutionPhase.TERMINAL), "The state must not be terminal"
 
     return ExecutionLifecycle(
-        (ExecutionState.CREATED, utc_now() - timedelta(minutes=10)),
-        (active_state, utc_now() - timedelta(minutes=9)))
+        (ExecutionState.CREATED, utc_now() - timedelta(minutes=10 + delta)),
+        (active_state, utc_now() - timedelta(minutes=9 + delta)))
 
 
-def lc_ended(terminal_state: ExecutionState, *, term_delta=0):
+def lc_ended(terminal_state: ExecutionState, *, delta=0, term_delta=0):
     assert terminal_state.in_phase(ExecutionPhase.TERMINAL), "The state must be terminal"
 
     return ExecutionLifecycle(
-        (ExecutionState.CREATED, utc_now() - timedelta(minutes=10)),
-        (ExecutionState.RUNNING, utc_now() - timedelta(minutes=9)),
-        (terminal_state, utc_now() - timedelta(minutes=term_delta))
+        (ExecutionState.CREATED, utc_now() - timedelta(minutes=10 + delta)),
+        (ExecutionState.RUNNING, utc_now() - timedelta(minutes=9 + delta)),
+        (terminal_state, utc_now() - timedelta(minutes=term_delta + delta))
     )
 
 
-def lc_pending():
-    return lc_active(ExecutionState.PENDING)
+def lc_pending(*, delta=0):
+    return lc_active(ExecutionState.PENDING, delta=delta)
 
 
 def lc_running():
     return lc_active(ExecutionState.RUNNING)
 
-def lc_completed(*, term_delta=0):
-    return lc_ended(ExecutionState.COMPLETED, term_delta=term_delta)
+def lc_completed(*, delta=0, term_delta=0):
+    return lc_ended(ExecutionState.COMPLETED, delta=delta, term_delta=term_delta)
 
 def lc_failed():
     return lc_ended(ExecutionState.FAILED)
