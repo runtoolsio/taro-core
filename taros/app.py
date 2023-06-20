@@ -9,13 +9,14 @@ from taro import util
 from taro.jobs import persistence
 from taro.jobs import repo
 from taro.jobs.execution import ExecutionState
-from taro.jobs.inst import InstanceMatchingCriteria, IDMatchingCriteria
+from taro.jobs.inst import InstanceMatchingCriteria
 from taro.jobs.job import JobMatchingCriteria
 from taro.jobs.persistence import SortCriteria, PersistenceDisabledError
 from taro.util import MatchingStrategy
 from taros.httputil import http_error, query_digit, query, query_multi
 
 api = Bottle()
+
 
 @api.route('/instances')
 def instances():
@@ -53,6 +54,10 @@ def instances():
 
 
 def _instance_match():
+    return InstanceMatchingCriteria(jobs=_matched_jobs())
+
+
+def _matched_jobs():
     job_prop_filters = query_multi('job_property')
     if not job_prop_filters:
         return None
@@ -67,11 +72,7 @@ def _instance_match():
                              + job_prop_filter)
 
     job_criteria = JobMatchingCriteria(properties=properties, property_match_strategy=MatchingStrategy.PARTIAL)
-    matched_jobs = job_criteria.matched(repo.read_jobs())
-    if not matched_jobs:
-        return InstanceMatchingCriteria(IDMatchingCriteria.none_match())
-
-    return InstanceMatchingCriteria([IDMatchingCriteria(mj.job_id, '') for mj in matched_jobs])
+    return [j.id for j in job_criteria.matched(repo.read_jobs())]
 
 
 def job_limiter(limit):
@@ -98,7 +99,7 @@ def instance(inst):
         raise http_error(404, "Instance not found")
 
     response.content_type = 'application/hal+json'
-    return to_json(resource_job_info(jobs_info[0])) # TODO Ensure always only 1
+    return to_json(resource_job_info(jobs_info[0]))  # TODO Ensure always only 1
 
 
 @api.route('/jobs')
