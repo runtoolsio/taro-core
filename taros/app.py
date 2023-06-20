@@ -9,7 +9,7 @@ from taro import util
 from taro.jobs import persistence
 from taro.jobs import repo
 from taro.jobs.execution import ExecutionState
-from taro.jobs.inst import InstanceMatchingCriteria
+from taro.jobs.inst import InstanceMatchingCriteria, IDMatchingCriteria
 from taro.jobs.job import JobMatchingCriteria
 from taro.jobs.persistence import SortCriteria, PersistenceDisabledError
 from taro.util import MatchingStrategy
@@ -54,7 +54,12 @@ def instances():
 
 
 def _instance_match():
-    return InstanceMatchingCriteria(jobs=_matched_jobs())
+    try:
+        matched_jobs = _matched_jobs()
+    except ValueError:  # No matched jobs found by provided criteria
+        return InstanceMatchingCriteria(IDMatchingCriteria.none_match())
+
+    return InstanceMatchingCriteria(jobs=matched_jobs)
 
 
 def _matched_jobs():
@@ -72,7 +77,11 @@ def _matched_jobs():
                              + job_prop_filter)
 
     job_criteria = JobMatchingCriteria(properties=properties, property_match_strategy=MatchingStrategy.PARTIAL)
-    return [j.id for j in job_criteria.matched(repo.read_jobs())]
+    matched_jobs = job_criteria.matched(repo.read_jobs())
+    if not matched_jobs:
+        raise ValueError
+
+    return [j.id for j in matched_jobs]
 
 
 def job_limiter(limit):
