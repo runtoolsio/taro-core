@@ -255,10 +255,11 @@ class StateCriteria:
 
 class InstanceMatchingCriteria:
 
-    def __init__(self, id_criteria=None, interval_criteria=None, state_criteria=None):
+    def __init__(self, id_criteria=None, interval_criteria=None, state_criteria=None, jobs=None):
         self._id_criteria = to_list(id_criteria)
         self._interval_criteria = to_list(interval_criteria)
         self._state_criteria = state_criteria
+        self._jobs = to_list(jobs)
 
     @classmethod
     def parse_pattern(cls, pattern, strategy: S = MatchingStrategy.EXACT):
@@ -270,7 +271,8 @@ class InstanceMatchingCriteria:
         interval_criteria = [IntervalCriteria.from_dict(c) for c in as_dict.get('interval_criteria', ())]
         sc = as_dict.get('state_criteria')
         state_criteria = StateCriteria.from_dict(sc) if sc else None
-        return cls(id_criteria, interval_criteria, state_criteria)
+        jobs = as_dict.get('jobs', ())
+        return cls(id_criteria, interval_criteria, state_criteria, jobs)
 
     @property
     def id_criteria(self):
@@ -296,6 +298,14 @@ class InstanceMatchingCriteria:
     def state_criteria(self, criteria):
         self._state_criteria = criteria
 
+    @property
+    def jobs(self):
+        return self._jobs
+
+    @jobs.setter
+    def jobs(self, criteria):
+        self._jobs = to_list(criteria)
+
     def matches_id(self, job_instance):
         return not self.id_criteria or compound_id_filter(self.id_criteria)(job_instance)
 
@@ -305,26 +315,33 @@ class InstanceMatchingCriteria:
     def matches_state(self, job_instance):
         return self.state_criteria is None or self.state_criteria(job_instance)
 
+    def matches_jobs(self, job_instance):
+        return not self.jobs or job_instance.job_id in self.jobs
+
     def matches(self, job_instance):
-        return self.matches_id(job_instance) and self.matches_interval(job_instance) \
-            and self.matches_state(job_instance)
+        return self.matches_id(job_instance)\
+            and self.matches_interval(job_instance) \
+            and self.matches_state(job_instance) \
+            and self.matches_jobs(job_instance)
 
     def to_dict(self, include_empty=True):
         d = {
             'id_criteria': [c.to_dict(include_empty) for c in self.id_criteria],
             'interval_criteria': [c.to_dict(include_empty) for c in self.interval_criteria],
-            'state_criteria': self.state_criteria.to_dict(include_empty) if self.state_criteria else None
+            'state_criteria': self.state_criteria.to_dict(include_empty) if self.state_criteria else None,
+            'jobs': self.jobs,
         }
         return remove_empty_values(d) if include_empty else d
 
     def __bool__(self):
-        return bool(self.id_criteria) or bool(self.interval_criteria) or bool(self.state_criteria)
+        return bool(self.id_criteria) or bool(self.interval_criteria) or bool(self.state_criteria) or bool(self.jobs)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(" \
                f"id_criteria={self._id_criteria}," \
                f"interval_criteria={self._interval_criteria}, " \
-               f"state_criteria={self.state_criteria})"
+               f"state_criteria={self.state_criteria}" \
+               f"jobs={self.jobs})"
 
 
 def parse_criteria(pattern, strategy: S = MatchingStrategy.EXACT):

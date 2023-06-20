@@ -30,9 +30,10 @@ def _build_where_clause(instance_match, alias=''):
     if alias and not alias.endswith('.'):
         alias = alias + "."
 
-    id_criteria = instance_match.id_criteria
+    job_conditions = [f"job_id = {j}" for j in instance_match.jobs]
+
     id_conditions = []
-    for c in id_criteria:
+    for c in instance_match.id_criteria:
         if c.strategy == MatchingStrategy.ALWAYS_TRUE:
             id_conditions.clear()
             break
@@ -50,7 +51,7 @@ def _build_where_clause(instance_match, alias=''):
             elif c.strategy == MatchingStrategy.EXACT:
                 conditions.append(f'{alias}job_id = "{c.job_id}"')
             else:
-                raise ValueError(f"Matching strategy {id_criteria.strategy} is not supported")
+                raise ValueError(f"Matching strategy {c.strategy} is not supported")
         if c.instance_id:
             if c.strategy == MatchingStrategy.PARTIAL:
                 conditions.append(f'{alias}instance_id GLOB "*{c.instance_id}*"')
@@ -59,7 +60,7 @@ def _build_where_clause(instance_match, alias=''):
             elif c.strategy == MatchingStrategy.EXACT:
                 conditions.append(f'{alias}instance_id = "{c.instance_id}"')
             else:
-                raise ValueError(f"Matching strategy {id_criteria.strategy} is not supported")
+                raise ValueError(f"Matching strategy {c.strategy} is not supported")
 
         id_conditions.append(op.join(conditions))
 
@@ -93,7 +94,7 @@ def _build_where_clause(instance_match, alias=''):
                                             for s in ExecutionState.get_states_by_flags(*group))
             state_conditions.append(f"{alias}terminal_state IN ({states})")
 
-    all_conditions_list = (id_conditions, int_conditions, state_conditions)
+    all_conditions_list = (job_conditions, id_conditions, int_conditions, state_conditions)
     all_conditions_str = ["(" + " OR ".join(c_list) + ")" for c_list in all_conditions_list if c_list]
 
     return " WHERE {conditions}".format(conditions=" AND ".join(all_conditions_str))
