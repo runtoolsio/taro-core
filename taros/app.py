@@ -9,7 +9,7 @@ from taro import util
 from taro.jobs import persistence
 from taro.jobs import repo
 from taro.jobs.execution import ExecutionState
-from taro.jobs.inst import InstanceMatchingCriteria, IDMatchingCriteria
+from taro.jobs.inst import InstanceMatchingCriteria
 from taro.jobs.job import JobMatchingCriteria
 from taro.jobs.persistence import SortCriteria, PersistenceDisabledError
 from taro.util import MatchingStrategy
@@ -28,60 +28,67 @@ def instances():
     order = query('order', default='desc', allowed=('asc', 'desc'), aliases={'ascending': 'asc', 'descending': 'desc'})
     asc = (order == 'asc')
 
-    instance_match = _instance_match()
+    try:
+        instance_match = _instance_match()
+    except ValueError:
+        return create_instances_response([])
 
-    jobs_info = []
+    job_instances = []
     if 'finished' in include or 'all' in include:
         sort = query('sort', default='created', allowed=[c.name.lower() for c in SortCriteria])
         try:
-            jobs_info = persistence.read_instances(instance_match, SortCriteria[sort.upper()], asc=asc, limit=limit)
+            job_instances = persistence.read_instances(instance_match, SortCriteria[sort.upper()], asc=asc, limit=limit)
         except PersistenceDisabledError:
             raise http_error(409, "Persistence is not enabled")
     if 'active' in include or 'all' in include:
         if query('sort'):
             raise http_error(412, "Query parameter 'sort' can be used only with query parameter 'finished'")
-        jobs_info = list(util.sequence_view(
-            jobs_info + taro.client.read_jobs_info(instance_match).responses,
+        job_instances = list(util.sequence_view(
+            job_instances + taro.client.read_jobs_info(instance_match).responses,
             sort_key=lambda j: j.lifecycle.changed_at(ExecutionState.CREATED),
             asc=asc,
             limit=limit,
             filter_=job_limiter(job_limit)))
 
+    return create_instances_response(job_instances)
+
+
+def create_instances_response(job_instances):
     response.content_type = 'application/hal+json'
-    embedded = {"instances": [resource_job_info(i) for i in jobs_info],
-                "jobs": [job_to_resource(i) for i in jobs_filter(repo.read_jobs(), jobs_info)]}
+    embedded = {"instances": [resource_job_info(i) for i in job_instances],
+                "jobs": [job_to_resource(i) for i in jobs_filter(repo.read_jobs(), job_instances)]}
     return to_json(resource({}, links={"self": "/instances", "jobs": "/jobs"}, embedded=embedded))
 
 
 def _instance_match():
-    try:
-        matched_jobs = _matched_jobs()
-    except ValueError:  # No matched jobs found by provided criteria
-        return InstanceMatchingCriteria(IDMatchingCriteria.none_match())
-
-    return InstanceMatchingCriteria(jobs=matched_jobs)
+    return InstanceMatchingCriteria(jobs=_matched_jobs())
 
 
 def _matched_jobs():
-    job_prop_filters = query_multi('job_property')
-    if not job_prop_filters:
-        return None
+    req_jobs = query_multi('job')
+    req_job_properties = query_multi('job_property')
+    if not req_job_properties:
+        return req_jobs
 
+    jobs_by_properties = _find_jobs_by_properties(req_job_properties)
+    if not jobs_by_properties and not req_jobs:
+        raise ValueError
+
+    return set(req_jobs).union(jobs_by_properties)
+
+
+def _find_jobs_by_properties(req_job_properties):
     properties = {}
-    for job_prop_filter in job_prop_filters:
+    for req_job_prop in req_job_properties:
         try:
-            name, value = job_prop_filter.rsplit(':', maxsplit=1)
+            name, value = req_job_prop.rsplit(':', maxsplit=1)
             properties[name] = value
         except ValueError:
             raise http_error(412, "Query parameter 'job_property' must be in format name:value but was "
-                             + job_prop_filter)
+                             + req_job_prop)
 
     job_criteria = JobMatchingCriteria(properties=properties, property_match_strategy=MatchingStrategy.PARTIAL)
-    matched_jobs = job_criteria.matched(repo.read_jobs())
-    if not matched_jobs:
-        raise ValueError
-
-    return [j.id for j in matched_jobs]
+    return {j.id for j in job_criteria.matched(repo.read_jobs())}
 
 
 def job_limiter(limit):

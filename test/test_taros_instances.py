@@ -83,3 +83,7 @@ def test_limit_sort_finished(web_app):
 def test_job_property_filter(_, web_app):
     assert_inst(web_app.get('/instances?include=finished&job_property=p1:v0'))  # Assert empty
     assert_inst(web_app.get('/instances?include=finished&job_property=p1:v1'), 'stopped_1')
+
+
+def test_job_filter(web_app):
+    assert_inst(web_app.get('/instances?include=finished&job=completed_1'), 'completed_1', 'completed_1')
