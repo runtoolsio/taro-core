@@ -2,7 +2,7 @@ import json
 from collections import Counter
 from urllib.parse import quote
 
-from bottle import response, Bottle
+from bottle import response, Bottle, request
 
 import taro.client
 from taro import util
@@ -27,6 +27,8 @@ def instances():
         raise http_error(412, "Query parameters 'limit' and 'job_limit' cannot be used together")
     order = query('order', default='desc', allowed=('asc', 'desc'), aliases={'ascending': 'asc', 'descending': 'desc'})
     asc = (order == 'asc')
+
+    request.jobs = repo.read_jobs()  # Move to create request ctx function if more data in the ctx
 
     try:
         instance_match = _instance_match()
@@ -57,7 +59,7 @@ def instances():
 def create_instances_response(job_instances):
     response.content_type = 'application/hal+json'
     embedded = {"instances": [resource_job_info(i) for i in job_instances],
-                "jobs": [job_to_resource(i) for i in jobs_filter(repo.read_jobs(), job_instances)]}
+                "jobs": [job_to_resource(i) for i in jobs_filter(request.jobs, job_instances)]}
     return to_json(resource({}, links={"self": "/instances", "jobs": "/jobs"}, embedded=embedded))
 
 
@@ -89,7 +91,7 @@ def _find_jobs_by_properties(req_job_properties):
                              + req_job_prop)
 
     job_criteria = JobMatchingCriteria(properties=properties, property_match_strategy=MatchingStrategy.PARTIAL)
-    return {j.id for j in job_criteria.matched(repo.read_jobs())}
+    return {j.id for j in job_criteria.matched(request.jobs)}
 
 
 def job_limiter(limit):

@@ -55,4 +55,4 @@ def test_job_property_filter(_, web_app, client_mock):
 def test_job_filter(web_app, client_mock):
     assert_inst(web_app.get('/instances?include=finished&job=completed_1'), 'completed_1', 'completed_1')
     assert_inst(web_app.get('/instances?include=all&job=completed_1'), 'completed_1', 'completed_1')  # TODO Why does it send 2 requests?
-    # assert client_mock.call_args_list[0].args[0].jobs == ['completed_1']
+    assert client_mock.call_args_list[-1].args[0].jobs == ['completed_1']
