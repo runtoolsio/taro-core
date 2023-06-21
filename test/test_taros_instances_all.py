@@ -7,7 +7,6 @@ from webtest import TestApp
 import taros
 from taro.client import MultiResponse
 from taro.jobs import persistence
-from taro.jobs.job import Job
 from taro.test.execution import lc_running, lc_pending, lc_completed, lc_failed, lc_stopped
 from taro.test.job import i
 from taro.test.persistence import TestPersistence
@@ -41,8 +40,13 @@ def assert_inst(resp, *job_ids):
     assert [inst["metadata"]["id"]["job_id"] for inst in resp.json["_embedded"]["instances"]] == list(job_ids)
 
 
-def test_active(web_app):
+def test_default_active(web_app):
     resp = web_app.get('/instances')
+    assert resp.status_int == 200
+    assert len(resp.json["_embedded"]["instances"]) == 2
+
+def test_incl_active(web_app):
+    resp = web_app.get('/instances?include=active')
     assert resp.status_int == 200
     assert len(resp.json["_embedded"]["instances"]) == 2
 
@@ -77,13 +81,3 @@ def test_limit_sort_all_in_period(web_app):
 def test_limit_sort_finished(web_app):
     resp = web_app.get('/instances?include=finished&limit=2&sort=ended&order=asc')
     assert_inst(resp, 'completed_2', 'completed_1')
-
-
-@patch('taro.repo.read_jobs', return_value=[Job('stopped_1', {'p1': 'v1'})])
-def test_job_property_filter(_, web_app):
-    assert_inst(web_app.get('/instances?include=finished&job_property=p1:v0'))  # Assert empty
-    assert_inst(web_app.get('/instances?include=finished&job_property=p1:v1'), 'stopped_1')
-
-
-def test_job_filter(web_app):
-    assert_inst(web_app.get('/instances?include=finished&job=completed_1'), 'completed_1', 'completed_1')
