@@ -1,3 +1,5 @@
+import datetime
+from datetime import timedelta
 from unittest.mock import patch
 
 import bottle
@@ -16,17 +18,17 @@ from taro.util import MatchingStrategy
 
 @pytest.fixture
 def web_app():
-    failed_1 = i('failed_1', lifecycle=lc_failed())
-    completed_1_new = i('completed_1', 'new',
-                        lifecycle=lc_completed(term_delta=1))  # Make it the third oldest ended one
-    completed_1_old = i('completed_1', 'old', lifecycle=lc_completed(delta=100))  # Make it the second oldest ended one
-    completed_2 = i('completed_2', 'oldest', lifecycle=lc_completed(delta=200))  # Make it the oldest ended one
-    stopped_1 = i('stopped_1', lifecycle=lc_stopped())
+    first_created = datetime.datetime(2023, 6, 22, 0, 0)
+    failed_1 = i('failed_1', lifecycle=lc_failed(start_date=first_created))
+    completed_2 = i('completed_2', 'oldest', lifecycle=lc_completed(start_date=first_created + timedelta(hours=1)))
+    completed_1_old = i('completed_1', 'old', lifecycle=lc_completed(start_date=first_created + timedelta(hours=2)))
+    completed_1_new = i('completed_1', 'new', lifecycle=lc_completed(start_date=first_created + timedelta(hours=3)))
+    stopped_1 = i('stopped_1', lifecycle=lc_stopped(start_date=first_created + timedelta(hours=4)))
 
     bottle.debug(True)
 
     with TestPersistence():
-        persistence.store_instances(completed_1_new, completed_1_old, completed_2, failed_1, stopped_1)
+        persistence.store_instances(completed_1_new, completed_2, completed_1_old, failed_1, stopped_1)
         yield TestApp(taros.app.api)
 
     bottle.debug(False)

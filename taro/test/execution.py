@@ -109,13 +109,14 @@ def lc_active(active_state: ExecutionState, delta=0):
         (active_state, utc_now() - timedelta(minutes=9 + delta)))
 
 
-def lc_ended(terminal_state: ExecutionState, *, delta=0, term_delta=0):
+def lc_ended(terminal_state: ExecutionState, *, start_date=None, delta=0, term_delta=0):
     assert terminal_state.in_phase(ExecutionPhase.TERMINAL), "The state must be terminal"
+    start_date = start_date or utc_now()
 
     return ExecutionLifecycle(
-        (ExecutionState.CREATED, utc_now() - timedelta(minutes=10 + delta)),
-        (ExecutionState.RUNNING, utc_now() - timedelta(minutes=9 + delta)),
-        (terminal_state, utc_now() - timedelta(minutes=term_delta + delta))
+        (ExecutionState.CREATED, start_date - timedelta(minutes=10 + delta)),
+        (ExecutionState.RUNNING, start_date - timedelta(minutes=9 + delta)),
+        (terminal_state, start_date - timedelta(minutes=term_delta + delta))
     )
 
 
@@ -126,11 +127,14 @@ def lc_pending(*, delta=0):
 def lc_running():
     return lc_active(ExecutionState.RUNNING)
 
-def lc_completed(*, delta=0, term_delta=0):
-    return lc_ended(ExecutionState.COMPLETED, delta=delta, term_delta=term_delta)
 
-def lc_failed():
-    return lc_ended(ExecutionState.FAILED)
+def lc_completed(*, start_date=None, delta=0, term_delta=0):
+    return lc_ended(ExecutionState.COMPLETED, start_date=start_date, delta=delta, term_delta=term_delta)
 
-def lc_stopped():
-    return lc_ended(ExecutionState.STOPPED)
+
+def lc_failed(*, start_date=None):
+    return lc_ended(ExecutionState.FAILED, start_date=start_date)
+
+
+def lc_stopped(*, start_date=None):
+    return lc_ended(ExecutionState.STOPPED, start_date=start_date)
