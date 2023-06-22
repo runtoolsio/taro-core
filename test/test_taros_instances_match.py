@@ -11,6 +11,7 @@ from taro.jobs.job import Job
 from taro.test.execution import lc_completed, lc_failed, lc_stopped
 from taro.test.job import i
 from taro.test.persistence import TestPersistence
+from taro.util import MatchingStrategy
 
 
 @pytest.fixture
@@ -54,5 +55,15 @@ def test_job_property_filter(_, web_app, client_mock):
 
 def test_job_filter(web_app, client_mock):
     assert_inst(web_app.get('/instances?include=finished&job=completed_1'), 'completed_1', 'completed_1')
-    assert_inst(web_app.get('/instances?include=all&job=completed_1'), 'completed_1', 'completed_1')  # TODO Why does it send 2 requests?
+    assert_inst(web_app.get('/instances?include=all&job=completed_1'), 'completed_1', 'completed_1')
     assert client_mock.call_args_list[-1].args[0].jobs == ['completed_1']
+
+def test_id_filter_job_id(web_app, client_mock):
+    assert_inst(web_app.get('/instances?include=finished&id=stop'), 'stopped_1')
+    assert_inst(web_app.get('/instances?include=all&id=stop'), 'stopped_1')
+
+    id_criteria = client_mock.call_args_list[-1].args[0].id_criteria[0]
+    assert id_criteria.job_id == 'stop'
+    assert id_criteria.instance_id == 'stop'
+    assert id_criteria.instance_id == 'stop'
+    assert id_criteria.strategy == MatchingStrategy.PARTIAL
