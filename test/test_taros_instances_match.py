@@ -20,9 +20,9 @@ from taro.util import MatchingStrategy
 def web_app():
     first_created = datetime.datetime(2023, 6, 22, 0, 0)
     failed_1 = i('failed_1', lifecycle=lc_failed(start_date=first_created))
-    completed_2 = i('completed_2', 'oldest', lifecycle=lc_completed(start_date=first_created + timedelta(hours=1)))
-    completed_1_old = i('completed_1', 'old', lifecycle=lc_completed(start_date=first_created + timedelta(hours=2)))
-    completed_1_new = i('completed_1', 'new', lifecycle=lc_completed(start_date=first_created + timedelta(hours=3)))
+    completed_2 = i('completed_2', 'oldest', lifecycle=lc_completed(start_date=first_created + timedelta(minutes=10), term_delta=4))
+    completed_1_old = i('completed_1', 'old', lifecycle=lc_completed(start_date=first_created + timedelta(minutes=11), term_delta=3))
+    completed_1_new = i('completed_1', 'new', lifecycle=lc_completed(start_date=first_created + timedelta(minutes=12), term_delta=2))
     stopped_1 = i('stopped_1', lifecycle=lc_stopped(start_date=first_created + timedelta(hours=4)))
 
     bottle.debug(True)

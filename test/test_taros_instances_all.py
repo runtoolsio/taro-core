@@ -16,11 +16,11 @@ from taro.test.persistence import TestPersistence
 def web_app():
     running_1 = i('running_1', lifecycle=lc_running())
     failed_1 = i('failed_1', lifecycle=lc_failed())
-    pending_1 = i('pending_1', lifecycle=lc_pending(delta=300))  # Make it the oldest one
+    pending_1 = i('pending_1', lifecycle=lc_pending(delta=-300))  # Make it the oldest one
     completed_1_new = i('completed_1', 'new',
-                        lifecycle=lc_completed(term_delta=1))  # Make it the third oldest ended one
-    completed_1_old = i('completed_1', 'old', lifecycle=lc_completed(delta=100))  # Make it the second oldest ended one
-    completed_2 = i('completed_2', lifecycle=lc_completed(delta=200))  # Make it the oldest ended one
+                        lifecycle=lc_completed(term_delta=-50))  # Make it the third oldest ended one
+    completed_1_old = i('completed_1', 'old', lifecycle=lc_completed(delta=-100))  # Make it the second oldest ended one
+    completed_2 = i('completed_2', lifecycle=lc_completed(delta=-200))  # Make it the oldest ended one
     stopped_1 = i('stopped_1', lifecycle=lc_stopped())
 
     active_instances = [running_1, pending_1]

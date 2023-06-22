@@ -103,20 +103,22 @@ class TestExecution(OutputExecution):
 
 def lc_active(active_state: ExecutionState, delta=0):
     assert not active_state.in_phase(ExecutionPhase.TERMINAL), "The state must not be terminal"
+    start_date = utc_now() + timedelta(minutes=delta)
 
     return ExecutionLifecycle(
-        (ExecutionState.CREATED, utc_now() - timedelta(minutes=10 + delta)),
-        (active_state, utc_now() - timedelta(minutes=9 + delta)))
+        (ExecutionState.CREATED, start_date),
+        (active_state, start_date + timedelta(minutes=delta + 1)))
 
 
-def lc_ended(terminal_state: ExecutionState, *, start_date=None, delta=0, term_delta=0):
+def lc_ended(terminal_state: ExecutionState, *, start_date=None, end_date=None, delta=0, term_delta=0):
     assert terminal_state.in_phase(ExecutionPhase.TERMINAL), "The state must be terminal"
-    start_date = start_date or utc_now()
+    start_date = start_date or (utc_now() + timedelta(minutes=delta))
+    end_date = end_date or (start_date + timedelta(minutes=term_delta + delta + 2))
 
     return ExecutionLifecycle(
-        (ExecutionState.CREATED, start_date - timedelta(minutes=10 + delta)),
-        (ExecutionState.RUNNING, start_date - timedelta(minutes=9 + delta)),
-        (terminal_state, start_date - timedelta(minutes=term_delta + delta))
+        (ExecutionState.CREATED, start_date),
+        (ExecutionState.RUNNING, start_date + timedelta(minutes=delta + 1)),
+        (terminal_state, end_date)
     )
 
 
@@ -128,13 +130,13 @@ def lc_running():
     return lc_active(ExecutionState.RUNNING)
 
 
-def lc_completed(*, start_date=None, delta=0, term_delta=0):
-    return lc_ended(ExecutionState.COMPLETED, start_date=start_date, delta=delta, term_delta=term_delta)
+def lc_completed(*, start_date=None, end_date=None, delta=0, term_delta=0):
+    return lc_ended(ExecutionState.COMPLETED, start_date=start_date, end_date=end_date, delta=delta, term_delta=term_delta)
 
 
-def lc_failed(*, start_date=None):
-    return lc_ended(ExecutionState.FAILED, start_date=start_date)
+def lc_failed(*, start_date=None, end_date=None, delta=0, term_delta=0):
+    return lc_ended(ExecutionState.FAILED, start_date=start_date, end_date=end_date, delta=delta, term_delta=term_delta)
 
 
-def lc_stopped(*, start_date=None):
-    return lc_ended(ExecutionState.STOPPED, start_date=start_date)
+def lc_stopped(*, start_date=None, end_date=None, delta=0, term_delta=0):
+    return lc_ended(ExecutionState.STOPPED, start_date=start_date, end_date=end_date, delta=delta, term_delta=term_delta)
