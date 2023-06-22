@@ -20,7 +20,7 @@ def web_app():
     completed_1_new = i('completed_1', 'new',
                         lifecycle=lc_completed(term_delta=1))  # Make it the third oldest ended one
     completed_1_old = i('completed_1', 'old', lifecycle=lc_completed(delta=100))  # Make it the second oldest ended one
-    completed_2 = i('completed_2', lifecycle=lc_completed(delta=200))  # Make it the oldest ended one
+    completed_2 = i('completed_2', 'oldest', lifecycle=lc_completed(delta=200))  # Make it the oldest ended one
     stopped_1 = i('stopped_1', lifecycle=lc_stopped())
 
     bottle.debug(True)
@@ -58,12 +58,20 @@ def test_job_filter(web_app, client_mock):
     assert_inst(web_app.get('/instances?include=all&job=completed_1'), 'completed_1', 'completed_1')
     assert client_mock.call_args_list[-1].args[0].jobs == ['completed_1']
 
-def test_id_filter_job_id(web_app, client_mock):
+def test_id_filter_job(web_app, client_mock):
     assert_inst(web_app.get('/instances?include=finished&id=stop'), 'stopped_1')
     assert_inst(web_app.get('/instances?include=all&id=stop'), 'stopped_1')
 
     id_criteria = client_mock.call_args_list[-1].args[0].id_criteria[0]
     assert id_criteria.job_id == 'stop'
     assert id_criteria.instance_id == 'stop'
-    assert id_criteria.instance_id == 'stop'
+    assert id_criteria.strategy == MatchingStrategy.PARTIAL
+
+def test_id_filter_instance(web_app, client_mock):
+    assert_inst(web_app.get('/instances?include=finished&id=old'), 'completed_1', 'completed_2')
+    assert_inst(web_app.get('/instances?include=all&id=old'), 'completed_1', 'completed_2')
+
+    id_criteria = client_mock.call_args_list[-1].args[0].id_criteria[0]
+    assert id_criteria.job_id == 'old'
+    assert id_criteria.instance_id == 'old'
     assert id_criteria.strategy == MatchingStrategy.PARTIAL
