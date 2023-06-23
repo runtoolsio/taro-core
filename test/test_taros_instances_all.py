@@ -7,28 +7,28 @@ from webtest import TestApp
 import taros
 from taro.client import MultiResponse
 from taro.jobs import persistence
-from taro.test.execution import lc_running, lc_pending, lc_completed, lc_failed, lc_stopped
+from taro.test.execution import lc_running, lc_pending, lc_completed, lc_failed, lc_stopped, lc_queued
 from taro.test.job import i
 from taro.test.persistence import TestPersistence
 
 
 @pytest.fixture
 def web_app():
-    running_1 = i('running_1', lifecycle=lc_running())
-    failed_1 = i('failed_1', lifecycle=lc_failed())
-    pending_1 = i('pending_1', lifecycle=lc_pending(delta=-300))  # Make it the oldest one
-    completed_1_new = i('completed_1', 'new',
-                        lifecycle=lc_completed(term_delta=-50))  # Make it the third oldest ended one
-    completed_1_old = i('completed_1', 'old', lifecycle=lc_completed(delta=-100))  # Make it the second oldest ended one
-    completed_2 = i('completed_2', lifecycle=lc_completed(delta=-200))  # Make it the oldest ended one
     stopped_1 = i('stopped_1', lifecycle=lc_stopped())
+    queued_1 = i('queued_1', lifecycle=lc_queued())
+    completed_1_new = i('completed_1', 'new', lifecycle=lc_completed())
+    failed_1 = i('failed_1', lifecycle=lc_failed(term_delta=10))  # Make with the newest ended time
+    running_1 = i('running_1', lifecycle=lc_running())
+    completed_1_old = i('completed_1', 'old', lifecycle=lc_completed())  # Make it the second newest ended one
+    completed_2 = i('completed_2', lifecycle=lc_completed())  # Make it the newest ended one
+    pending_1 = i('pending_1', lifecycle=lc_pending())  # Make it the newest one
 
-    active_instances = [running_1, pending_1]
+    active_instances = [running_1, queued_1, pending_1]
 
     bottle.debug(True)
 
     with TestPersistence():
-        persistence.store_instances(completed_1_new, completed_1_old, completed_2, failed_1, stopped_1)
+        persistence.store_instances(completed_1_new, completed_2, completed_1_old, failed_1, stopped_1)
         with patch('taro.client.read_jobs_info', return_value=MultiResponse(active_instances, [])):
             yield TestApp(taros.app.api)
 
@@ -43,12 +43,12 @@ def assert_inst(resp, *job_ids):
 def test_default_active(web_app):
     resp = web_app.get('/instances')
     assert resp.status_int == 200
-    assert len(resp.json["_embedded"]["instances"]) == 2
+    assert len(resp.json["_embedded"]["instances"]) == 3
 
 def test_incl_active(web_app):
     resp = web_app.get('/instances?include=active')
     assert resp.status_int == 200
-    assert len(resp.json["_embedded"]["instances"]) == 2
+    assert len(resp.json["_embedded"]["instances"]) == 3
 
 
 def test_incl_finished(web_app):
@@ -60,24 +60,29 @@ def test_incl_finished(web_app):
 def test_incl_all(web_app):
     resp = web_app.get('/instances?include=all')
     assert resp.status_int == 200
-    assert len(resp.json["_embedded"]["instances"]) == 7
-
-
-def test_sort_default(web_app):
-    resp = web_app.get('/instances?include=all')
-    assert_inst(resp, 'stopped_1', 'completed_1', 'failed_1', 'running_1', 'completed_1', 'completed_2', 'pending_1')
+    assert len(resp.json["_embedded"]["instances"]) == 8
 
 
 def test_sort_asc(web_app):
     resp = web_app.get('/instances?include=all&order=asc')
-    assert_inst(resp, 'pending_1', 'completed_2', 'completed_1', 'running_1', 'failed_1', 'completed_1', 'stopped_1')
+    assert_inst(resp, 'stopped_1', 'queued_1', 'completed_1', 'failed_1', 'running_1', 'completed_1', 'completed_2', 'pending_1')
 
 
-def test_limit_sort_all_in_period(web_app):
+def test_sort_default(web_app):
+    resp = web_app.get('/instances?include=all')
+    assert_inst(resp, 'pending_1', 'completed_2', 'completed_1', 'running_1', 'failed_1', 'completed_1', 'queued_1', 'stopped_1')
+
+
+def test_limit_sort_asc(web_app):
     resp = web_app.get('/instances?include=all&limit=2&order=asc')
+    assert_inst(resp, 'stopped_1', 'queued_1')
+
+
+def test_limit_sort_desc(web_app):
+    resp = web_app.get('/instances?include=all&limit=2&order=desc')
     assert_inst(resp, 'pending_1', 'completed_2')
 
 
 def test_limit_sort_finished(web_app):
-    resp = web_app.get('/instances?include=finished&limit=2&sort=ended&order=asc')
-    assert_inst(resp, 'completed_2', 'completed_1')
+    resp = web_app.get('/instances?include=finished&limit=2&sort=ended&order=desc')
+    assert_inst(resp, 'failed_1', 'completed_2')

@@ -9,6 +9,7 @@ Alternatively the execution can raise an exception set to raise_exc: :func:`Test
 import logging
 from datetime import datetime, timedelta
 from threading import Event
+from time import sleep
 from typing import List
 
 from taro import ExecutionLifecycle
@@ -102,6 +103,7 @@ class TestExecution(OutputExecution):
 
 
 def lc_active(active_state: ExecutionState, delta=0):
+    sleep(0.001)  # Ensure when executed sequentially the states are chronological
     assert not active_state.in_phase(ExecutionPhase.TERMINAL), "The state must not be terminal"
     start_date = utc_now() + timedelta(minutes=delta)
 
@@ -111,6 +113,7 @@ def lc_active(active_state: ExecutionState, delta=0):
 
 
 def lc_ended(terminal_state: ExecutionState, *, start_date=None, end_date=None, delta=0, term_delta=0):
+    sleep(0.001)  # Ensure when executed sequentially the states are chronological
     assert terminal_state.in_phase(ExecutionPhase.TERMINAL), "The state must be terminal"
     start_date = start_date or (utc_now() + timedelta(minutes=delta))
     end_date = end_date or (start_date + timedelta(minutes=term_delta + delta + 2))
@@ -126,12 +129,17 @@ def lc_pending(*, delta=0):
     return lc_active(ExecutionState.PENDING, delta=delta)
 
 
+def lc_queued(*, delta=0):
+    return lc_active(ExecutionState.QUEUED, delta=delta)
+
+
 def lc_running():
     return lc_active(ExecutionState.RUNNING)
 
 
 def lc_completed(*, start_date=None, end_date=None, delta=0, term_delta=0):
-    return lc_ended(ExecutionState.COMPLETED, start_date=start_date, end_date=end_date, delta=delta, term_delta=term_delta)
+    return lc_ended(ExecutionState.COMPLETED, start_date=start_date, end_date=end_date, delta=delta,
+                    term_delta=term_delta)
 
 
 def lc_failed(*, start_date=None, end_date=None, delta=0, term_delta=0):
@@ -139,4 +147,5 @@ def lc_failed(*, start_date=None, end_date=None, delta=0, term_delta=0):
 
 
 def lc_stopped(*, start_date=None, end_date=None, delta=0, term_delta=0):
-    return lc_ended(ExecutionState.STOPPED, start_date=start_date, end_date=end_date, delta=delta, term_delta=term_delta)
+    return lc_ended(ExecutionState.STOPPED, start_date=start_date, end_date=end_date, delta=delta,
+                    term_delta=term_delta)
