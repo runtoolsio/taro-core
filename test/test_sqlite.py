@@ -1,6 +1,5 @@
 import sqlite3
 from datetime import datetime as dt
-from datetime import timedelta
 
 import pytest
 
@@ -10,7 +9,7 @@ from taro.jobs.inst import parse_criteria, InstanceMatchingCriteria, IntervalCri
 from taro.jobs.track import MutableTrackedTask
 from taro.test.execution import lc_failed, lc_completed
 from taro.test.job import i
-from taro.util import utc_now, parse_iso8601_duration, MatchingStrategy
+from taro.util import parse_iso8601_duration, MatchingStrategy
 
 
 @pytest.fixture
@@ -24,18 +23,16 @@ def sut():
 
 def test_store_and_fetch(sut):
     error = ExecutionError('e1', ExecutionState.FAILED)
-    j = i('j1', 'i1', (('p1', 'v1'),), {'u1': 'v2'}, lc_failed(), MutableTrackedTask('task1'), exec_error=error)  # TODO add more fields
+    inst = i('j1', 'i1', (('p1', 'v1'),), {'u1': 'v2'}, lc_failed(), MutableTrackedTask('task1'), exec_error=error)  # TODO add more fields
 
-    sut.store_instances(j)
+    sut.store_instances(inst)
     jobs = sut.read_instances()
 
-    assert j == jobs[0]
+    assert inst == jobs[0]
 
 
-def j(c, instance=None, *, sec=0, created=utc_now(), completed=utc_now(), warnings=None):
-    delta = timedelta(seconds=sec)
-    # lifecycle = lc_completed(start_date=created, end_date=completed, delta=sec / 60)
-    lifecycle = lc_completed(start_date=created + delta, end_date=completed + delta)
+def j(c, instance=None, *, delta=0, created=None, completed=None, warnings=None):
+    lifecycle = lc_completed(start_date=created, end_date=completed, delta=delta)
     return i(f"j{c}", instance, lifecycle=lifecycle, warnings=warnings)
 
 
@@ -48,7 +45,7 @@ def test_last(sut):
 
 
 def test_sort(sut):
-    sut.store_instances(j(1), j(2, sec=1), j(3, sec=-1))
+    sut.store_instances(j(1), j(2, delta=1), j(3, delta=-1))
 
     jobs = sut.read_instances()
     assert jobs.job_ids == ['j3', 'j1', 'j2']
@@ -58,7 +55,7 @@ def test_sort(sut):
 
 
 def test_limit(sut):
-    sut.store_instances(j(1), j(2, sec=1), j(3, sec=-1))
+    sut.store_instances(j(1), j(2, delta=1), j(3, delta=-1))
 
     jobs = sut.read_instances(limit=1)
     assert len(jobs) == 1
@@ -88,7 +85,7 @@ def test_job_id_match(sut):
 
 
 def test_cleanup(sut):
-    sut.store_instances(j(1, sec=-120), j(2), j(3, sec=-240), j(4, sec=-10), j(5, sec=-60))
+    sut.store_instances(j(1, delta=-120), j(2), j(3, delta=-240), j(4, delta=-10), j(5, delta=-60))
 
     sut.clean_up(1, parse_iso8601_duration('PT50S'))
     jobs = sut.read_instances()

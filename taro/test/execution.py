@@ -109,7 +109,7 @@ def lc_active(active_state: ExecutionState, delta=0):
 
     return ExecutionLifecycle(
         (ExecutionState.CREATED, start_date),
-        (active_state, start_date + timedelta(minutes=delta + 1)))
+        (active_state, start_date + timedelta(minutes=delta) + timedelta(seconds=1)))
 
 
 def lc_ended(terminal_state: ExecutionState, *, start_date=None, end_date=None, delta=0, term_delta=0):
@@ -117,12 +117,12 @@ def lc_ended(terminal_state: ExecutionState, *, start_date=None, end_date=None, 
 
     if not start_date and not end_date:
         sleep(0.001)  # Ensure when executed sequentially the states are chronological
-    start_date = start_date or (utc_now() + timedelta(minutes=delta))
-    end_date = end_date or (start_date + timedelta(minutes=term_delta + delta + 2))
+    start_date = (start_date or utc_now()) + timedelta(minutes=delta)
+    end_date = (end_date or (start_date + timedelta(seconds=2))) + timedelta(minutes=term_delta + delta)
 
     return ExecutionLifecycle(
         (ExecutionState.CREATED, start_date),
-        (ExecutionState.RUNNING, start_date + timedelta(minutes=delta + 1)),
+        (ExecutionState.RUNNING, start_date + timedelta(minutes=delta) + timedelta(seconds=1)),
         (terminal_state, end_date)
     )
 
