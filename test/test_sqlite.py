@@ -4,11 +4,12 @@ from datetime import timedelta
 
 import pytest
 
-from taro import JobInfo, JobInstanceID, ExecutionLifecycle, ExecutionState, ExecutionError, util
+from taro import ExecutionState, ExecutionError
 from taro.jobs.db.sqlite import SQLite
-from taro.jobs.inst import parse_criteria, InstanceMatchingCriteria, IntervalCriteria, LifecycleEvent, StateCriteria, \
-    JobInstanceMetadata
+from taro.jobs.inst import parse_criteria, InstanceMatchingCriteria, IntervalCriteria, LifecycleEvent, StateCriteria
 from taro.jobs.track import MutableTrackedTask
+from taro.test.execution import lc_failed, lc_completed
+from taro.test.job import i
 from taro.util import utc_now, parse_iso8601_duration, MatchingStrategy
 
 
@@ -22,24 +23,20 @@ def sut():
 
 
 def test_store_and_fetch(sut):
-    metadata = JobInstanceMetadata(JobInstanceID('j1', 'i1'), (('p1', 'v1'),), {'u1': 'v2'})
-    lifecycle = ExecutionLifecycle((ExecutionState.CREATED, utc_now()))
-    tracking = MutableTrackedTask('task1')
-    error = ExecutionError('e1', ExecutionState.ERROR)
-    j1 = JobInfo(metadata, lifecycle, tracking, 's1', 'e1', {'w': 1}, error)
+    error = ExecutionError('e1', ExecutionState.FAILED)
+    j = i('j1', 'i1', (('p1', 'v1'),), {'u1': 'v2'}, lc_failed(), MutableTrackedTask('task1'), exec_error=error)  # TODO add more fields
 
-    sut.store_instances(j1)
+    sut.store_instances(j)
     jobs = sut.read_instances()
 
-    assert j1 == jobs[0]
+    assert j == jobs[0]
 
 
 def j(c, instance=None, *, sec=0, created=utc_now(), completed=utc_now(), warnings=None):
-    metadata = JobInstanceMetadata(JobInstanceID(f"j{c}", instance or util.unique_timestamp_hex()), (), {}, None)
-    lifecycle = ExecutionLifecycle(
-        (ExecutionState.CREATED, created + timedelta(seconds=sec)),
-        (ExecutionState.COMPLETED, completed + timedelta(seconds=sec)))
-    return JobInfo(metadata, lifecycle, None, None, None, warnings, None)
+    delta = timedelta(seconds=sec)
+    # lifecycle = lc_completed(start_date=created, end_date=completed, delta=sec / 60)
+    lifecycle = lc_completed(start_date=created + delta, end_date=completed + delta)
+    return i(f"j{c}", instance, lifecycle=lifecycle, warnings=warnings)
 
 
 def test_last(sut):
