@@ -68,7 +68,7 @@ def test_sort_asc(web_app):
     assert_inst(resp, 'stopped_1', 'queued_1', 'completed_1', 'failed_1', 'running_1', 'completed_1', 'completed_2', 'pending_1')
 
 
-def test_sort_default(web_app):
+def test_sort_default_desc(web_app):
     resp = web_app.get('/instances?include=all')
     assert_inst(resp, 'pending_1', 'completed_2', 'completed_1', 'running_1', 'failed_1', 'completed_1', 'queued_1', 'stopped_1')
 
