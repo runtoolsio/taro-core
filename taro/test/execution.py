@@ -113,8 +113,10 @@ def lc_active(active_state: ExecutionState, delta=0):
 
 
 def lc_ended(terminal_state: ExecutionState, *, start_date=None, end_date=None, delta=0, term_delta=0):
-    sleep(0.001)  # Ensure when executed sequentially the states are chronological
     assert terminal_state.in_phase(ExecutionPhase.TERMINAL), "The state must be terminal"
+
+    if not start_date and not end_date:
+        sleep(0.001)  # Ensure when executed sequentially the states are chronological
     start_date = start_date or (utc_now() + timedelta(minutes=delta))
     end_date = end_date or (start_date + timedelta(minutes=term_delta + delta + 2))
 
