@@ -16,6 +16,7 @@ import datetime
 import textwrap
 from collections import namedtuple
 from dataclasses import dataclass
+from datetime import timezone, time, timedelta
 from enum import Enum
 from fnmatch import fnmatch
 from functools import partial
@@ -141,6 +142,30 @@ class IntervalCriteria:
         to_dt = data.get("to_dt", '')
         include_to = data['include_to']
         return cls(event, from_dt, to_dt, include_to=include_to)
+
+    @classmethod
+    def parse(cls, event, from_val, to_val):
+        if from_val is None and to_val is None:
+            raise ValueError('Both `from_val` and `to_val` parameters cannot be None')
+
+        include_to = True
+
+        if from_val is None:
+            from_dt = None
+        elif isinstance(from_val, datetime.datetime):
+            from_dt = from_val.astimezone(timezone.utc)
+        else:  # Assuming it is datetime.date
+            from_dt = datetime.datetime.combine(from_val, time.min).astimezone(timezone.utc)
+
+        if to_val is None:
+            to_dt = None
+        elif isinstance(to_val, datetime.datetime):
+            to_dt = to_val.astimezone(timezone.utc)
+        else:  # Assuming it is datetime.date
+            to_dt = datetime.datetime.combine(to_val + timedelta(days=1), time.min).astimezone(timezone.utc)
+            include_to = False
+
+        return IntervalCriteria(event, from_dt, to_dt, include_to=include_to)
 
     @classmethod
     def single_day_period(cls, event, day, *, local_tz=False):
