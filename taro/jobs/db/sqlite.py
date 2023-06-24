@@ -133,7 +133,8 @@ class SQLite:
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
-    def read_instances(self, instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, last=False) \
+    def read_instances(self, instance_match=None, sort=SortCriteria.ENDED,
+                       *, asc=True, limit=-1, offset=-1, last=False) \
             -> JobInfoList:
         def sort_exp():
             if sort == SortCriteria.CREATED:
@@ -150,12 +151,10 @@ class SQLite:
         if last:
             statement += " GROUP BY h.job_id HAVING ROWID = max(ROWID) "
 
-        print(statement)
+        statement += " ORDER BY " + sort_exp() + (" ASC" if asc else " DESC") + " LIMIT ? OFFSET ?"
 
-        c = self._conn.execute(statement
-                               + " ORDER BY " + sort_exp() + (" ASC" if asc else " DESC")
-                               + " LIMIT ?",
-                               (limit,))
+        print(statement)
+        c = self._conn.execute(statement, (limit, offset))
 
         def to_job_info(t):
             state_changes = ((ExecutionState[state], datetime.datetime.fromtimestamp(changed, tz=timezone.utc))

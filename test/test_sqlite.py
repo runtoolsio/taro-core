@@ -62,6 +62,14 @@ def test_limit(sut):
     assert jobs[0].job_id == 'j3'
 
 
+def test_offset(sut):
+    sut.store_instances(j(1), j(2, delta=1), j(3, delta=-1))
+
+    jobs = sut.read_instances(offset=2)
+    assert len(jobs) == 1
+    assert jobs[0].job_id == 'j2'
+
+
 def test_job_id_match(sut):
     sut.store_instances(j(1, 'i1'), j(12, 'i12'), j(11, 'i11'), j(111, 'i111'), j(121, 'i121'))
 

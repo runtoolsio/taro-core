@@ -12,8 +12,8 @@ def run(args):
         args.sort = SortCriteria.TIME.name
         args.asc = False
 
-    jobs = persistence.read_instances(
-        instance_match, SortCriteria[args.sort.upper()], asc=args.asc, limit=args.lines or -1, last=args.last)
+    sort = SortCriteria[args.sort.upper()]
+    jobs = persistence.read_instances(instance_match, sort, asc=args.asc, limit=args.lines, offset=args.offset, last=args.last)
 
     columns = [view_inst.JOB_ID, view_inst.INSTANCE_ID, view_inst.CREATED, view_inst.ENDED, view_inst.EXEC_TIME,
                view_inst.STATE, view_inst.WARNINGS, view_inst.RESULT]

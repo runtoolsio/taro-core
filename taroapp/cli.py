@@ -207,7 +207,8 @@ def _init_history_parser(common, subparsers):
 
     filter_group = hist_parser.add_argument_group('filtering', 'These options allows to filter returned jobs')
     init_filter_group(filter_group)
-    filter_group.add_argument('-n', '--lines', type=int, help='Number of history entries to show')
+    filter_group.add_argument('-o', '--offset', type=int, default=-1, help='Number of history entries to skip')
+    filter_group.add_argument('-n', '--lines', type=int, default=-1, help='Number of history entries to show')
     filter_group.add_argument('-L', '--last', action='store_true', help='Show last execution of each job')
     filter_group.add_argument('--slowest', action='store_true', help='Show slowest instance from each job')
 
