@@ -22,6 +22,9 @@ api = Bottle()
 def instances():
     include = query_multi('include', default='active', allowed=('active', 'finished', 'all'))
     limit = query_digit('limit', default=-1)
+    offset = query_digit('offset', default=0)
+    if offset and ('all' in include or len(include) > 1):
+        raise http_error(412, "Query parameter 'offset' cannot be used for both active and finished instances")
     job_limit = query_digit('job_limit', default=-1)
     if limit >= 0 and job_limit >= 0:
         raise http_error(412, "Query parameters 'limit' and 'job_limit' cannot be used together")
@@ -39,7 +42,8 @@ def instances():
     if 'finished' in include or 'all' in include:
         sort = query('sort', default='created', allowed=[c.name.lower() for c in SortCriteria])
         try:
-            job_instances = persistence.read_instances(instance_match, SortCriteria[sort.upper()], asc=asc, limit=limit)
+            job_instances = persistence.read_instances(
+                instance_match, SortCriteria[sort.upper()], asc=asc, limit=limit, offset=offset)
         except PersistenceDisabledError:
             raise http_error(409, "Persistence is not enabled")
     if 'active' in include or 'all' in include:
@@ -51,6 +55,7 @@ def instances():
             sort_key=lambda j: j.lifecycle.changed_at(ExecutionState.CREATED),
             asc=asc,
             limit=limit,
+            offset=offset,
             filter_=job_limiter(job_limit)))
 
     return create_instances_response(job_instances)

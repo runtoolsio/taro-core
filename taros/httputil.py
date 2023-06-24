@@ -26,15 +26,15 @@ def query(name: str, *, mandatory=False, default=None, aliases=None, allowed=())
 
 def query_digit(name: str, *, mandatory=False, default=None):
     val = query(name, mandatory=mandatory, default=default)
-    if val:
-        if isinstance(val, int):
-            return val
-        if val.isdigit():
-            return int(val)
-        else:
-            raise http_error(412, "Query parameter '{}' must be a number".format(name))
-    else:
+    if val is None:
         return None
+
+    if isinstance(val, int):
+        return val
+    if val.isdigit():
+        return int(val)
+    else:
+        raise http_error(412, "Query parameter '{}' must be a number".format(name))
 
 
 def http_error(status, message):

@@ -45,6 +45,7 @@ def test_default_active(web_app):
     assert resp.status_int == 200
     assert len(resp.json["_embedded"]["instances"]) == 3
 
+
 def test_incl_active(web_app):
     resp = web_app.get('/instances?include=active')
     assert resp.status_int == 200
@@ -65,12 +66,14 @@ def test_incl_all(web_app):
 
 def test_sort_asc(web_app):
     resp = web_app.get('/instances?include=all&order=asc')
-    assert_inst(resp, 'stopped_1', 'queued_1', 'completed_1', 'failed_1', 'running_1', 'completed_1', 'completed_2', 'pending_1')
+    assert_inst(resp, 'stopped_1', 'queued_1', 'completed_1', 'failed_1', 'running_1', 'completed_1', 'completed_2',
+                'pending_1')
 
 
 def test_sort_default_desc(web_app):
     resp = web_app.get('/instances?include=all')
-    assert_inst(resp, 'pending_1', 'completed_2', 'completed_1', 'running_1', 'failed_1', 'completed_1', 'queued_1', 'stopped_1')
+    assert_inst(resp, 'pending_1', 'completed_2', 'completed_1', 'running_1', 'failed_1', 'completed_1', 'queued_1',
+                'stopped_1')
 
 
 def test_limit_sort_asc(web_app):
@@ -86,3 +89,13 @@ def test_limit_sort_desc(web_app):
 def test_limit_sort_finished(web_app):
     resp = web_app.get('/instances?include=finished&limit=2&sort=ended&order=desc')
     assert_inst(resp, 'failed_1', 'completed_2')
+
+
+def test_offset_sort_finished(web_app):
+    resp = web_app.get('/instances?include=finished&offset=3&sort=ended&order=desc')
+    assert_inst(resp, 'completed_1', 'stopped_1')
+
+
+def test_limit_offset_active(web_app):
+    resp = web_app.get('/instances?include=active&limit=1&offset=1')
+    assert_inst(resp, 'running_1')

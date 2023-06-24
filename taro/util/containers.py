@@ -3,11 +3,11 @@ import itertools
 from typing import Iterable
 
 
-def sequence_view(seq, *, sort_key, asc, limit, filter_=None):
+def sequence_view(seq, *, sort_key, asc, limit, offset=0, filter_=None):
     sorted_seq = sorted(seq, key=sort_key, reverse=not asc)
     if filter_:
         sorted_seq = filter(filter_, sorted_seq)
-    return itertools.islice(sorted_seq, 0, limit if limit > 0 else None)
+    return itertools.islice(sorted_seq, offset if offset > 0 else 0, (limit + offset) if limit > 0 else None)
 
 
 def iterates(func):
