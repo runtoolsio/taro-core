@@ -2,8 +2,8 @@ import argparse
 import re
 import textwrap
 from argparse import RawTextHelpFormatter
-from datetime import datetime
 
+from taro import util
 from taro.jobs.execution import ExecutionState
 from taro.jobs.persistence import SortCriteria
 from taroapp import version
@@ -222,12 +222,13 @@ def _init_history_parser(common, subparsers):
 def init_filter_group(filter_group):
     filter_group.add_argument('instances', nargs='*', type=str,
                               help='Identifiers of job or instance matching pattern for result filtering')
-    filter_group.add_argument('-f', '--from', type=_str2dt, help='Show entries not older than the specified date')
-    filter_group.add_argument('-t', '--to', type=_str2dt, help='Show entries not newer than the specified date')
+    filter_group.add_argument('-f', '--from', type=util.dt.parse, help='Show entries not older than the specified date')
+    filter_group.add_argument('-t', '--to', type=util.dt.parse, help='Show entries not newer than the specified date')
     filter_group.add_argument('-T', '--today', action='store_true', help='Show only jobs created today (local)')
     filter_group.add_argument('-Y', '--yesterday', action='store_true', help='Show only jobs created yesterday (local)')
     filter_group.add_argument('-1', '--week', action='store_true', help='Show only jobs created from now 7 days back')
-    filter_group.add_argument('-2', '--fortnight', action='store_true', help='Show only jobs created from now 2 weeks back')
+    filter_group.add_argument('-2', '--fortnight', action='store_true',
+                              help='Show only jobs created from now 2 weeks back')
     filter_group.add_argument('-3', '--month', action='store_true', help='Show only jobs created from now 31 days back')
     filter_group.add_argument('-S', '--success', action='store_true', default=None,
                               help='Show only successfully completed jobs')
@@ -256,6 +257,7 @@ def _init_history_remove_parser(common, subparsers):
 
     hist_rm_parser.add_argument('instances', nargs='+', type=str, help='instance filter')
 
+
 def _init_stats_parser(common, subparsers):
     """
     Creates parsers for `stats` command
@@ -269,7 +271,6 @@ def _init_stats_parser(common, subparsers):
 
     filter_group = stats_parser.add_argument_group('filtering', 'These options allows to filter returned jobs')
     init_filter_group(filter_group)
-
 
 
 def _init_release_parser(common, subparsers):
@@ -415,16 +416,6 @@ def _init_hostinfo_parser(common, subparsers):
         ACTION_HOSTINFO, parents=[common], description='Show host info', add_help=False)
 
 
-def _str2dt(v):
-    try:
-        return datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
-    except ValueError:
-        try:
-            return datetime.strptime(v, "%Y-%m-%d %H:%M")
-        except ValueError:
-            return datetime.strptime(v, "%Y-%m-%d").date()
-
-
 # TODO Consider: change to str (like SortCriteria case) and remove this function
 def _str2state(v):
     try:
@@ -445,12 +436,14 @@ def _warn_time_type(arg_value):
 def _build_warn_validation_regex(*warn_regex):
     return "^(" + "|".join(warn_regex) + ")$"
 
+
 def _check_conditions(parser, parsed):
     _check_config_option_conflicts(parser, parsed)
 
     if parsed.action == ACTION_RELEASE:
         if parsed.queued and not parsed.instances:
             parser.error('Missing argument `instance`: Min one arg must be specified when releasing queued instances')
+
 
 def _check_config_option_conflicts(parser, parsed):
     """

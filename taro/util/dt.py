@@ -27,14 +27,23 @@ def single_day_range(day=0, *, local_tz=False):
 
     return (to_local(start), to_local(end)) if local_tz else (start, end)
 
+
 def days_range(days=0, *, local_tz=False):
     end = datetime.now()
     start = end + timedelta(days=days)
 
     return (to_local(start), to_local(end)) if local_tz else (start, end)
 
+
 def to_local(dt):
-    return dt.astimezone().astimezone(timezone.utc).replace(tzinfo=None) # TODO better timezone aware?
+    return dt.astimezone().astimezone(timezone.utc).replace(tzinfo=None)  # TODO better timezone aware?
+
+
+def parse(str_val):
+    try:
+        return parse_datetime(str_val)
+    except ValueError:
+        return date.fromisoformat(str_val)
 
 
 def parse_datetime(str_ts):
@@ -42,6 +51,7 @@ def parse_datetime(str_ts):
         return None
 
     sep = "T" if "T" in str_ts else " "
+
     if "." in str_ts:
         dec = ".%f"
     elif "," in str_ts:
@@ -51,7 +61,10 @@ def parse_datetime(str_ts):
 
     zone = "%z" if any(1 for z in ('z', 'Z', '+') if z in str_ts) else ""
 
-    return datetime.strptime(str_ts, "%Y-%m-%d" + sep + "%H:%M:%S" + dec + zone)
+    try:
+        return datetime.strptime(str_ts, "%Y-%m-%d" + sep + "%H:%M:%S" + dec + zone)
+    except ValueError:
+        return datetime.strptime(str_ts, "%Y-%m-%d" + sep + "%H:%M" + zone)
 
 
 def parse_duration_to_sec(val):
