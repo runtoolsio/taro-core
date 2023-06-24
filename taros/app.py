@@ -9,7 +9,7 @@ from taro import util
 from taro.jobs import persistence
 from taro.jobs import repo
 from taro.jobs.execution import ExecutionState
-from taro.jobs.inst import InstanceMatchingCriteria, IDMatchingCriteria
+from taro.jobs.inst import InstanceMatchingCriteria, IDMatchingCriteria, IntervalCriteria, LifecycleEvent
 from taro.jobs.job import JobMatchingCriteria
 from taro.jobs.persistence import SortCriteria, PersistenceDisabledError
 from taro.util import MatchingStrategy
@@ -74,7 +74,15 @@ def _instance_match():
         id_criteria = [IDMatchingCriteria.parse_pattern(i, MatchingStrategy.PARTIAL) for i in ids]
     else:
         id_criteria = []
-    return InstanceMatchingCriteria(id_criteria=id_criteria, jobs=_matched_jobs())
+    from_str = query('from')
+    to_str = query('to')
+
+    if from_str or to_str:
+        interval_criteria = IntervalCriteria.to_utc(LifecycleEvent.CREATED, from_str, to_str)
+    else:
+        interval_criteria = None
+
+    return InstanceMatchingCriteria(id_criteria=id_criteria, interval_criteria=interval_criteria, jobs=_matched_jobs())
 
 
 def _matched_jobs():

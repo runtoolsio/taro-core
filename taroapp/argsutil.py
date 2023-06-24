@@ -30,7 +30,7 @@ def interval_criteria_converted_utc(args, interval_event=LifecycleEvent.CREATED)
     from_ = getattr(args, 'from', None)
     to = getattr(args, 'to', None)
     if from_ or to:
-        criteria.append(IntervalCriteria.parse(interval_event, from_, to))
+        criteria.append(IntervalCriteria.to_utc(interval_event, from_, to))
 
     if getattr(args, 'today', None):
         criteria.append(IntervalCriteria.today(interval_event, local_tz=True))

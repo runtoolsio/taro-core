@@ -26,7 +26,7 @@ from taro.jobs.execution import ExecutionError, ExecutionLifecycle, ExecutionPha
 from taro.jobs.track import TrackedTaskInfo
 from taro.util import and_, or_, MatchingStrategy, is_empty, to_list, format_dt_iso, remove_empty_values, \
     single_day_range, \
-    days_range
+    days_range, parse
 
 DEFAULT_OBSERVER_PRIORITY = 100
 
@@ -144,7 +144,7 @@ class IntervalCriteria:
         return cls(event, from_dt, to_dt, include_to=include_to)
 
     @classmethod
-    def parse(cls, event, from_val, to_val):
+    def to_utc(cls, event, from_val, to_val):
         if from_val is None and to_val is None:
             raise ValueError('Both `from_val` and `to_val` parameters cannot be None')
 
@@ -152,6 +152,8 @@ class IntervalCriteria:
 
         if from_val is None:
             from_dt = None
+        elif isinstance(from_val, str):
+            from_dt = parse(from_val)
         elif isinstance(from_val, datetime.datetime):
             from_dt = from_val.astimezone(timezone.utc)
         else:  # Assuming it is datetime.date
@@ -159,6 +161,8 @@ class IntervalCriteria:
 
         if to_val is None:
             to_dt = None
+        elif isinstance(to_val, str):
+            to_dt = parse(to_val)
         elif isinstance(to_val, datetime.datetime):
             to_dt = to_val.astimezone(timezone.utc)
         else:  # Assuming it is datetime.date

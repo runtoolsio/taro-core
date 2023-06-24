@@ -59,7 +59,7 @@ def parse_datetime(str_ts):
     else:
         dec = ""
 
-    zone = "%z" if any(1 for z in ('z', 'Z', '+') if z in str_ts) else ""
+    zone = "%z" if any(1 for z in ('Z', '+') if z in str_ts) else ""
 
     try:
         return datetime.strptime(str_ts, "%Y-%m-%d" + sep + "%H:%M:%S" + dec + zone)
