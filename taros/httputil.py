@@ -4,7 +4,7 @@ from bottle import request, HTTPError
 def query_multi(name: str, *, mandatory=False, default=(), aliases=None, allowed=()):
     if name not in request.query:
         if mandatory:
-            raise http_error(412, "Mandatory query parameter '{}' not found".format(name))
+            raise http_error(422, "Mandatory query parameter '{}' not found".format(name))
         return default
     values = request.query.getall(name)
     if aliases:
@@ -12,7 +12,7 @@ def query_multi(name: str, *, mandatory=False, default=(), aliases=None, allowed
     if allowed and not all(val in allowed for val in values):
         allowed_val = ", ".join(allowed)
         raise http_error(
-            412, "Invalid value '{}' for query parameter '{}'. Allowed values: {}".format(values, name, allowed_val))
+            422, "Invalid value '{}' for query parameter '{}'. Allowed values: {}".format(values, name, allowed_val))
     return values
 
 
@@ -34,7 +34,7 @@ def query_digit(name: str, *, mandatory=False, default=None):
     if val.isdigit():
         return int(val)
     else:
-        raise http_error(412, "Query parameter '{}' must be a number".format(name))
+        raise http_error(422, "Query parameter '{}' must be a number".format(name))
 
 
 def http_error(status, message):

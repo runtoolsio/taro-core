@@ -24,10 +24,10 @@ def instances():
     limit = query_digit('limit', default=-1)
     offset = query_digit('offset', default=0)
     if offset and ('all' in include or len(include) > 1):
-        raise http_error(412, "Query parameter 'offset' cannot be used for both active and finished instances")
+        raise http_error(422, "Query parameter 'offset' cannot be used for both active and finished instances")
     job_limit = query_digit('job_limit', default=-1)
     if limit >= 0 and job_limit >= 0:
-        raise http_error(412, "Query parameters 'limit' and 'job_limit' cannot be used together")
+        raise http_error(422, "Query parameters 'limit' and 'job_limit' cannot be used together")
     order = query('order', default='desc', allowed=('asc', 'desc'), aliases={'ascending': 'asc', 'descending': 'desc'})
     asc = (order == 'asc')
 
@@ -48,7 +48,7 @@ def instances():
             raise http_error(409, "Persistence is not enabled")
     if 'active' in include or 'all' in include:
         if query('sort'):
-            raise http_error(412, "Query parameter 'sort' can be used only with query parameter 'finished'")
+            raise http_error(422, "Query parameter 'sort' can be used only with query parameter 'finished'")
         active_instances = taro.client.read_jobs_info(instance_match).responses
         job_instances = list(util.sequence_view(
             job_instances + active_instances,
@@ -105,7 +105,7 @@ def _find_jobs_by_properties(req_job_properties):
             name, value = req_job_prop.rsplit(':', maxsplit=1)
             properties[name] = value
         except ValueError:
-            raise http_error(412, "Query parameter 'job_property' must be in format name:value but was "
+            raise http_error(422, "Query parameter 'job_property' must be in format name:value but was "
                              + req_job_prop)
 
     job_criteria = JobMatchingCriteria(properties=properties, property_match_strategy=MatchingStrategy.PARTIAL)
