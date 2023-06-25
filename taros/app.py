@@ -63,8 +63,8 @@ def instances():
 
 def create_instances_response(job_instances):
     response.content_type = 'application/hal+json'
-    embedded = {"instances": [resource_job_info(i) for i in job_instances],
-                "jobs": [job_to_resource(i) for i in jobs_filter(request.jobs, job_instances)]}
+    embedded = {"instances": [resource_instance(i) for i in job_instances],
+                "jobs": [resource_job(i) for i in jobs_filter(request.jobs, job_instances)]}
     return to_json(resource({}, links={"self": "/instances", "jobs": "/jobs"}, embedded=embedded))
 
 
@@ -154,12 +154,12 @@ def instance(inst):
         raise http_error(404, "Instance not found")
 
     response.content_type = 'application/hal+json'
-    return to_json(resource_job_info(job_instances[0]))  # TODO How to handle duplicated instances?
+    return to_json(resource_instance(job_instances[0]))  # TODO How to handle duplicated instances?
 
 
 @api.route('/jobs')
 def jobs():
-    embedded = {"jobs": [job_to_resource(i) for i in repo.read_jobs()]}
+    embedded = {"jobs": [resource_job(i) for i in repo.read_jobs()]}
     response.content_type = 'application/hal+json'
     return to_json(resource({}, links={"self": "/jobs", "instances": "/instances"}, embedded=embedded))
 
@@ -170,13 +170,9 @@ def jobs(job_id):
     if not job:
         raise http_error(404, "Instance not found")
 
-    embedded = job_to_resource(job)
+    embedded = resource_job(job)
     response.content_type = 'application/hal+json'
     return to_json(embedded)
-
-
-def job_to_resource(job):
-    return resource({"id": job.id, "properties": job.properties}, links={"self": "/jobs/" + quote(job.id)})
 
 
 def jobs_filter(jobs_, instances_):
@@ -193,11 +189,18 @@ def resource(props, *, links=None, embedded=None):
     return res
 
 
-def resource_job_info(job_inst):
+def resource_job(job):
+    return resource(
+        {"id": job.id, "properties": job.properties},
+        links={"self": "/jobs/" + quote(job.id), "instances": f"/instances?include=all&job={quote(job.id)}"}
+    )
+
+
+def resource_instance(job_inst):
     return resource(
         job_inst.to_dict(),
         links={"self": "/instances/" + quote(repr(job_inst.id)),
-               "jobs": "/jobs/" + quote(job_inst.job_id)}
+               "job": "/jobs/" + quote(job_inst.job_id)}
     )
 
 
