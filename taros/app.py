@@ -183,7 +183,7 @@ def instances_of_job(job_id):
 
 
 @api.route('/stats/jobs')
-def jobs():
+def stats_jobs():
     try:
         instance_match = _instance_match()
     except NoJobMatchesException:
@@ -199,7 +199,6 @@ def create_stats_list_response(job_stats_list):
     embedded = {"stats": [resource_stats(s) for s in job_stats_list]}
     response.content_type = 'application/hal+json'
     return to_json(resource({}, links={"self": "/stats/jobs", "jobs": "/jobs"}, embedded=embedded))
-
 
 
 def jobs_filter(jobs_, instances_):

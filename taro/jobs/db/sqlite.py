@@ -30,7 +30,7 @@ def _build_where_clause(instance_match, alias=''):
     if alias and not alias.endswith('.'):
         alias = alias + "."
 
-    job_conditions = [f'job_id = "{j}"' for j in instance_match.jobs]
+    job_conditions = [f'{alias}job_id = "{j}"' for j in instance_match.jobs]
 
     id_conditions = []
     for c in instance_match.id_criteria:

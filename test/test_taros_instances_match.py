@@ -125,6 +125,17 @@ def test_invalid_flag(web_app):
     resp = web_app.get('/instances?flag=xxx', expect_errors=True)
     assert resp.status_int == 422
 
+
 def test_stats_jobs(web_app):
     resp = web_app.get('/stats/jobs')
     assert_stats(resp, ('completed_1', 2), ('completed_2', 1), ('failed_1', 1), ('stopped_1', 1), ('stopped_2', 1))
+
+
+def test_stats_jobs_filter_by_job(web_app):
+    resp = web_app.get('/stats/jobs?job=completed_1')
+    assert_stats(resp, ('completed_1', 2))
+
+
+def test_stats_jobs_filter_by_interval(web_app):
+    resp = web_app.get('/stats/jobs?from=2023-06-22T00:12&to=2023-06-22T00:12')
+    assert_stats(resp, ('completed_1', 1))
