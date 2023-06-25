@@ -142,12 +142,19 @@ def instance(inst):
         raise http_error(404, "Instance not found")
 
     match_criteria = InstanceMatchingCriteria.parse_pattern(inst, MatchingStrategy.EXACT)
-    jobs_info, _ = taro.client.read_jobs_info(match_criteria)
-    if not jobs_info:
+    job_instances, _ = taro.client.read_jobs_info(match_criteria)
+
+    if not job_instances:
+        try:
+            job_instances = persistence.read_instances(match_criteria)
+        except PersistenceDisabledError:
+            raise http_error(404, "Instance not found")
+
+    if not job_instances:
         raise http_error(404, "Instance not found")
 
     response.content_type = 'application/hal+json'
-    return to_json(resource_job_info(jobs_info[0]))  # TODO Ensure always only 1
+    return to_json(resource_job_info(job_instances[0]))  # TODO How to handle duplicated instances?
 
 
 @api.route('/jobs')
@@ -186,11 +193,12 @@ def resource(props, *, links=None, embedded=None):
     return res
 
 
-def resource_job_info(job_info):
-    return resource(job_info.to_dict(),
-                    links={"self": "/instances/" + quote(job_info.instance_id),
-                           "jobs": "/jobs/" + quote(job_info.job_id)}
-                    )
+def resource_job_info(job_inst):
+    return resource(
+        job_inst.to_dict(),
+        links={"self": "/instances/" + quote(repr(job_inst.id)),
+               "jobs": "/jobs/" + quote(job_inst.job_id)}
+    )
 
 
 def to_json(d):

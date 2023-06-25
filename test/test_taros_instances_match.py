@@ -49,6 +49,18 @@ def assert_inst(resp, *job_ids):
     assert [inst["metadata"]["id"]["job_id"] for inst in resp.json["_embedded"]["instances"]] == list(job_ids)
 
 
+def test_instance_lookup(web_app, client_mock):
+    resp = web_app.get('/instances/completed_2@oldest')
+    assert resp.json["metadata"]["id"]["job_id"] == 'completed_2'
+
+    criteria = client_mock.call_args[0][0]
+    passed_id_criteria = criteria.id_criteria[0]
+    assert passed_id_criteria.job_id == 'completed_2'
+    assert passed_id_criteria.instance_id == 'oldest'
+    assert passed_id_criteria.match_both_ids
+    assert passed_id_criteria.strategy == MatchingStrategy.EXACT
+
+
 @patch('taro.repo.read_jobs', return_value=[Job('stopped_1', {'p1': 'v1'})])
 def test_job_property_filter(_, web_app, client_mock):
     assert_inst(web_app.get('/instances?include=all&job_property=p1:v0'))  # Assert empty
@@ -102,6 +114,7 @@ def test_success_flag(web_app):
 def test_two_flags(web_app):
     assert_inst(web_app.get('/instances?include=finished&flag=incomplete&flag=aborted&flag=failure'),
                 'stopped_1', 'stopped_2', 'failed_1')
+
 
 def test_invalid_flag(web_app):
     resp = web_app.get('/instances?flag=xxx', expect_errors=True)
