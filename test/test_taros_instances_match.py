@@ -91,5 +91,18 @@ def test_from_to_criteria(web_app):
 
 
 def test_invalid_from_criteria(web_app):
-    resp = web_app.get('/instances?include=finished&from=xxx', expect_errors=True)
+    resp = web_app.get('/instances?from=xxx', expect_errors=True)
+    assert resp.status_int == 422
+
+
+def test_success_flag(web_app):
+    assert_inst(web_app.get('/instances?include=finished&flag=success'), 'completed_1', 'completed_1', 'completed_2')
+
+
+def test_two_flags(web_app):
+    assert_inst(web_app.get('/instances?include=finished&flag=incomplete&flag=aborted&flag=failure'),
+                'stopped_1', 'stopped_2', 'failed_1')
+
+def test_invalid_flag(web_app):
+    resp = web_app.get('/instances?flag=xxx', expect_errors=True)
     assert resp.status_int == 422
