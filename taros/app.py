@@ -170,9 +170,9 @@ def jobs(job_id):
     if not job:
         raise http_error(404, "Instance not found")
 
-    embedded = resource_job(job)
+    res_job = resource_job(job)
     response.content_type = 'application/hal+json'
-    return to_json(embedded)
+    return to_json(res_job)
 
 
 @api.route('/jobs/<job_id>/instances')
@@ -199,6 +199,25 @@ def create_stats_list_response(job_stats_list):
     embedded = {"stats": [resource_stats(s) for s in job_stats_list]}
     response.content_type = 'application/hal+json'
     return to_json(resource({}, links={"self": "/stats/jobs", "jobs": "/jobs"}, embedded=embedded))
+
+@api.route('/stats/jobs/<job_id>')
+def stats_job(job_id):
+    try:
+        instance_match = _instance_match()
+        instance_match.id_criteria = None
+        instance_match.jobs = [job_id]
+    except NoJobMatchesException:
+        raise http_error(422, "Parameters `job_property` is not allowed")
+
+    try:
+        stats = persistence.read_stats(instance_match)
+        if not stats:
+            raise http_error(404, f"Job {job_id} not found")
+
+        response.content_type = 'application/hal+json'
+        return to_json(resource_stats(stats[0]))
+    except PersistenceDisabledError:
+        raise http_error(409, "Persistence is not enabled")
 
 
 def jobs_filter(jobs_, instances_):
