@@ -19,7 +19,7 @@ api = Bottle()
 
 
 @api.route('/instances')
-def instances():
+def instances(links=None):
     include = query_multi('include', default='active', allowed=('active', 'finished', 'all'))
     limit = query_digit('limit', default=-1)
     offset = query_digit('offset', default=0)
@@ -36,7 +36,7 @@ def instances():
     try:
         instance_match = _instance_match()
     except NoJobMatchesException:
-        return create_instances_response([])
+        return create_instances_response([], links)
 
     job_instances = []
     if 'finished' in include or 'all' in include:
@@ -58,14 +58,15 @@ def instances():
             offset=offset,
             filter_=job_limiter(job_limit)))
 
-    return create_instances_response(job_instances)
+    return create_instances_response(job_instances, links)
 
 
-def create_instances_response(job_instances):
+def create_instances_response(job_instances, links=None):
+    links = links or {"self": "/instances", "jobs": "/jobs"}
     response.content_type = 'application/hal+json'
     embedded = {"instances": [resource_instance(i) for i in job_instances],
                 "jobs": [resource_job(i) for i in jobs_filter(request.jobs, job_instances)]}
-    return to_json(resource({}, links={"self": "/instances", "jobs": "/jobs"}, embedded=embedded))
+    return to_json(resource({}, links=links, embedded=embedded))
 
 
 def _instance_match():
@@ -91,7 +92,6 @@ def _instance_match():
     except KeyError as e:
         raise http_error(422, f"Invalid flag: {e}, allowed values are {[f.name.lower() for f in ExecutionStateFlag]}")
     state_criteria = StateCriteria(flag_groups=flag_groups)
-
 
     return InstanceMatchingCriteria(id_criteria, interval_criteria, state_criteria, _matched_jobs())
 
@@ -174,6 +174,12 @@ def jobs(job_id):
     response.content_type = 'application/hal+json'
     return to_json(embedded)
 
+@api.route('/jobs/<job_id>/instances')
+def instances_of_job(job_id):
+    request.query.replace('job', job_id)
+    links = {"self": f"/jobs/{job_id}/instances", "jobs": f"/jobs/{job_id}"}
+    return instances(links)
+
 
 def jobs_filter(jobs_, instances_):
     return [j for j in jobs_ if j.id in [i.job_id for i in instances_]]  # TODO replace with criteria
@@ -192,7 +198,7 @@ def resource(props, *, links=None, embedded=None):
 def resource_job(job):
     return resource(
         {"id": job.id, "properties": job.properties},
-        links={"self": "/jobs/" + quote(job.id), "instances": f"/instances?include=all&job={quote(job.id)}"}
+        links={"self": "/jobs/" + quote(job.id), "instances": "/jobs/" + quote(job.id) + "/instances"}
     )
 
 
