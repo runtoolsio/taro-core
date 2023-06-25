@@ -174,11 +174,32 @@ def jobs(job_id):
     response.content_type = 'application/hal+json'
     return to_json(embedded)
 
+
 @api.route('/jobs/<job_id>/instances')
 def instances_of_job(job_id):
     request.query.replace('job', job_id)
     links = {"self": f"/jobs/{job_id}/instances", "jobs": f"/jobs/{job_id}"}
     return instances(links)
+
+
+@api.route('/stats/jobs')
+def jobs():
+    try:
+        instance_match = _instance_match()
+    except NoJobMatchesException:
+        return create_stats_list_response([])
+
+    try:
+        return create_stats_list_response(persistence.read_stats(instance_match))
+    except PersistenceDisabledError:
+        raise http_error(409, "Persistence is not enabled")
+
+
+def create_stats_list_response(job_stats_list):
+    embedded = {"stats": [resource_stats(s) for s in job_stats_list]}
+    response.content_type = 'application/hal+json'
+    return to_json(resource({}, links={"self": "/stats/jobs", "jobs": "/jobs"}, embedded=embedded))
+
 
 
 def jobs_filter(jobs_, instances_):
@@ -198,15 +219,32 @@ def resource(props, *, links=None, embedded=None):
 def resource_job(job):
     return resource(
         {"id": job.id, "properties": job.properties},
-        links={"self": "/jobs/" + quote(job.id), "instances": "/jobs/" + quote(job.id) + "/instances"}
+        links={
+            "self": "/jobs/" + quote(job.id),
+            "instances": "/jobs/" + quote(job.id) + "/instances",
+            "stats": "/stats/jobs/" + quote(job.id),
+        }
     )
 
 
 def resource_instance(job_inst):
     return resource(
         job_inst.to_dict(),
-        links={"self": "/instances/" + quote(repr(job_inst.id)),
-               "job": "/jobs/" + quote(job_inst.job_id)}
+        links={
+            "self": "/instances/" + quote(repr(job_inst.id)),
+            "job": "/jobs/" + quote(job_inst.job_id),
+        }
+    )
+
+
+def resource_stats(job_stats):
+    return resource(
+        job_stats.to_dict(),
+        links={
+            "self": "/stats/jobs/" + quote(job_stats.job_id),
+            "job": "/jobs/" + quote(job_stats.job_id),
+            "instances": "/jobs/" + quote(job_stats.job_id) + "/instances",
+        }
     )
 
 

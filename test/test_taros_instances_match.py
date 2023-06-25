@@ -49,6 +49,11 @@ def assert_inst(resp, *job_ids):
     assert [inst["metadata"]["id"]["job_id"] for inst in resp.json["_embedded"]["instances"]] == list(job_ids)
 
 
+def assert_stats(resp, *job_stats):
+    assert len(resp.json["_embedded"]["stats"]) == len(job_stats)
+    assert [(s["job_id"], s["count"]) for s in resp.json["_embedded"]["stats"]] == list(job_stats)
+
+
 def test_instance_lookup(web_app, client_mock):
     resp = web_app.get('/instances/completed_2@oldest')
     assert resp.json["metadata"]["id"]["job_id"] == 'completed_2'
@@ -119,3 +124,7 @@ def test_two_flags(web_app):
 def test_invalid_flag(web_app):
     resp = web_app.get('/instances?flag=xxx', expect_errors=True)
     assert resp.status_int == 422
+
+def test_stats_jobs(web_app):
+    resp = web_app.get('/stats/jobs')
+    assert_stats(resp, ('completed_1', 2), ('completed_2', 1), ('failed_1', 1), ('stopped_1', 1), ('stopped_2', 1))
