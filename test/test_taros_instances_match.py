@@ -20,10 +20,13 @@ from taro.util import MatchingStrategy
 def web_app():
     first_created = datetime.datetime(2023, 6, 22, 0, 0)
     failed_1 = i('failed_1', lifecycle=lc_failed(start_date=first_created))
-    completed_2 = i('completed_2', 'oldest', lifecycle=lc_completed(start_date=first_created + timedelta(minutes=10), term_delta=5))
+    completed_2 = i('completed_2', 'oldest',
+                    lifecycle=lc_completed(start_date=first_created + timedelta(minutes=10), term_delta=5))
     stopped_2 = i('stopped_2', lifecycle=lc_stopped(start_date=first_created + timedelta(minutes=11)))
-    completed_1_old = i('completed_1', 'old', lifecycle=lc_completed(start_date=first_created + timedelta(minutes=12), term_delta=3))
-    completed_1_new = i('completed_1', 'new', lifecycle=lc_completed(start_date=first_created + timedelta(minutes=13), term_delta=2))
+    completed_1_old = i('completed_1', 'old',
+                        lifecycle=lc_completed(start_date=first_created + timedelta(minutes=12), term_delta=3))
+    completed_1_new = i('completed_1', 'new',
+                        lifecycle=lc_completed(start_date=first_created + timedelta(minutes=13), term_delta=2))
     stopped_1 = i('stopped_1', lifecycle=lc_stopped(start_date=first_created + timedelta(hours=4)))
 
     bottle.debug(True)
@@ -61,6 +64,7 @@ def test_job_filter(web_app, client_mock):
     assert_inst(web_app.get('/instances?include=all&job=completed_1'), 'completed_1', 'completed_1')
     assert client_mock.call_args_list[-1].args[0].jobs == ['completed_1']
 
+
 def test_id_filter_job(web_app, client_mock):
     assert_inst(web_app.get('/instances?include=finished&id=stop'), 'stopped_1', 'stopped_2')
     assert_inst(web_app.get('/instances?include=all&id=stop'), 'stopped_1', 'stopped_2')
@@ -69,6 +73,7 @@ def test_id_filter_job(web_app, client_mock):
     assert id_criteria.job_id == 'stop'
     assert id_criteria.instance_id == 'stop'
     assert id_criteria.strategy == MatchingStrategy.PARTIAL
+
 
 def test_id_filter_instance(web_app, client_mock):
     assert_inst(web_app.get('/instances?include=finished&id=old'), 'completed_1', 'completed_2')
@@ -79,5 +84,12 @@ def test_id_filter_instance(web_app, client_mock):
     assert id_criteria.instance_id == 'old'
     assert id_criteria.strategy == MatchingStrategy.PARTIAL
 
+
 def test_from_to_criteria(web_app):
-    assert_inst(web_app.get('/instances?include=finished&from=2023-06-22T00:11&to=2023-06-22T00:12'), 'completed_1', 'stopped_2')
+    assert_inst(web_app.get('/instances?include=finished&from=2023-06-22T00:11&to=2023-06-22T00:12'), 'completed_1',
+                'stopped_2')
+
+
+def test_invalid_from_criteria(web_app):
+    resp = web_app.get('/instances?include=finished&from=xxx', expect_errors=True)
+    assert resp.status_int == 422

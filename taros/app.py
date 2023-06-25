@@ -35,7 +35,7 @@ def instances():
 
     try:
         instance_match = _instance_match()
-    except ValueError:
+    except NoJobMatchesException:
         return create_instances_response([])
 
     job_instances = []
@@ -78,7 +78,10 @@ def _instance_match():
     to_str = query('to')
 
     if from_str or to_str:
-        interval_criteria = IntervalCriteria.to_utc(LifecycleEvent.CREATED, from_str, to_str)
+        try:
+            interval_criteria = IntervalCriteria.to_utc(LifecycleEvent.CREATED, from_str, to_str)
+        except ValueError as e:
+            raise http_error(422, f"Invalid date or date-time value: {e}")
     else:
         interval_criteria = None
 
@@ -93,7 +96,7 @@ def _matched_jobs():
 
     jobs_by_properties = _find_jobs_by_properties(req_job_properties)
     if not jobs_by_properties and not req_jobs:
-        raise ValueError
+        raise NoJobMatchesException
 
     return set(req_jobs).union(jobs_by_properties)
 
@@ -184,6 +187,10 @@ def resource_job_info(job_info):
 
 def to_json(d):
     return json.dumps(d, indent=2)
+
+
+class NoJobMatchesException(Exception):
+    pass
 
 
 def start(host, port, reload=False):
