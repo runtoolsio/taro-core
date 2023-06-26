@@ -4,7 +4,7 @@ from typing import Sequence
 
 from taro import util
 from taro.jobs.execution import ExecutionPhase
-from taro.jobs.inst import JobInstance, JobInfo, ExecutionStateObserver, Warn, JobOutputObserver
+from taro.jobs.inst import JobInstance, JobInst, ExecutionStateObserver, Warn, JobOutputObserver
 
 
 def exec_time_exceeded(job_instance: JobInstance, warning_name: str, time: float):
@@ -32,7 +32,7 @@ class _ExecTimeWarning(ExecutionStateObserver):
         self.time = time
         self.timer = None
 
-    def state_update(self, job_info: JobInfo):
+    def state_update(self, job_info: JobInst):
         if job_info.state.in_phase(ExecutionPhase.EXECUTING):
             assert self.timer is None
             self.timer = Timer(self.time, self._check)

@@ -8,7 +8,7 @@ from taroapp.view.instance import JOB_ID, INSTANCE_ID, CREATED, STATE
 def run(args):
     with JobsClient() as client:
         instance_match = argsutil.instance_matching_criteria(args, MatchingStrategy.FN_MATCH)
-        stop_jobs, _ = client.read_jobs_info(instance_match)
+        stop_jobs, _ = client.read_job_instances(instance_match)
 
         if not stop_jobs:
             print('No instances to stop: ' + " ".join(args.instances))

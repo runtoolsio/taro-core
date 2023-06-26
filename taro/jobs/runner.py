@@ -14,7 +14,7 @@ from taro import util
 from taro.jobs import persistence, lock
 from taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver, \
     Phase, Flag, UnexpectedStateError
-from taro.jobs.inst import ExecutionStateObserver, JobInstance, JobInfo, WarningObserver, JobOutputObserver, Warn, \
+from taro.jobs.inst import ExecutionStateObserver, JobInstance, JobInst, WarningObserver, JobOutputObserver, Warn, \
     WarnEventCtx, JobInstanceID, DEFAULT_OBSERVER_PRIORITY, JobInstanceMetadata
 from taro.jobs.sync import NoSync, CompositeSync, Latch, Signal
 
@@ -107,7 +107,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
     def create_info(self):
         with self._state_lock:
-            return JobInfo(
+            return JobInst(
                 self.metadata,
                 copy.deepcopy(self._lifecycle),
                 self.tracking.copy() if self.tracking else None,
@@ -247,7 +247,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def _log(self, event: str, msg: str):
         return "event=[{}] instance=[{}] {}".format(event, self._id, msg)
 
-    def _change_state(self, new_state, exec_error: ExecutionError = None, *, use_global_lock=True) -> Optional[JobInfo]:
+    def _change_state(self, new_state, exec_error: ExecutionError = None, *, use_global_lock=True) -> Optional[JobInst]:
         if exec_error:
             self._exec_error = exec_error
             if exec_error.exec_state == ExecutionState.ERROR or exec_error.unexpected_error:
@@ -278,7 +278,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         if job_info:
             self._notify_state_observers(job_info)
 
-    def _notify_state_observers(self, job_info: JobInfo):
+    def _notify_state_observers(self, job_info: JobInst):
         for observer in _gen_prioritized(self._state_observers, _state_observers):
             # noinspection PyBroadException
             try:
@@ -291,7 +291,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             except BaseException:
                 log.exception("event=[state_observer_exception]")
 
-    def _notify_warning_observers(self, job_info: JobInfo, warning: Warn, event_ctx: WarnEventCtx):
+    def _notify_warning_observers(self, job_info: JobInst, warning: Warn, event_ctx: WarnEventCtx):
         for observer in _gen_prioritized(self._warning_observers, _warning_observers):
             # noinspection PyBroadException
             try:
@@ -311,7 +311,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             self._error_output.append(output)
         self._notify_output_observers(self.create_info(), output, is_error)
 
-    def _notify_output_observers(self, job_info: JobInfo, output, is_error):
+    def _notify_output_observers(self, job_info: JobInst, output, is_error):
         for observer in _gen_prioritized(self._output_observers, _output_observers):
             # noinspection PyBroadException
             try:

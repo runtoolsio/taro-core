@@ -29,7 +29,7 @@ def web_app():
 
     with TestPersistence():
         persistence.store_instances(completed_1_new, completed_2, completed_1_old, failed_1, stopped_1)
-        with patch('taro.client.read_jobs_info', return_value=MultiResponse(active_instances, [])):
+        with patch('taro.client.read_job_instances', return_value=MultiResponse(active_instances, [])):
             yield TestApp(taros.app.api)
 
     bottle.debug(False)

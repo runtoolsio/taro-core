@@ -5,7 +5,7 @@ from enum import Enum, auto
 from typing import List, Tuple, Any, Dict, NamedTuple, Optional, TypeVar, Generic
 
 from taro.jobs.api import API_FILE_EXTENSION
-from taro.jobs.inst import JobInfo, JobInstanceMetadata
+from taro.jobs.inst import JobInst, JobInstanceMetadata
 from taro.socket import SocketClient, ServerResponse, Error
 
 log = logging.getLogger(__name__)
@@ -63,9 +63,9 @@ class TailResponse(JobInstanceResponse):
     tail: List[str]
 
 
-def read_jobs_info(instance_match=None) -> MultiResponse[JobInfo]:
+def read_job_instances(instance_match=None) -> MultiResponse[JobInst]:
     with JobsClient() as client:
-        return client.read_jobs_info(instance_match)
+        return client.read_job_instances(instance_match)
 
 
 def release_waiting_jobs(instance_match, waiting_state) -> MultiResponse[ReleaseResponse]:
@@ -109,9 +109,9 @@ class JobsClient(SocketClient):
         server_responses: List[ServerResponse] = self.communicate(json.dumps(req_body))
         return _process_responses(server_responses)
 
-    def read_jobs_info(self, instance_match=None) -> MultiResponse[JobInfo]:
+    def read_job_instances(self, instance_match=None) -> MultiResponse[JobInst]:
         instance_responses, api_errors = self._send_request('/jobs', instance_match)
-        return MultiResponse([JobInfo.from_dict(body["job_info"]) for _, body in instance_responses], api_errors)
+        return MultiResponse([JobInst.from_dict(body["job_info"]) for _, body in instance_responses], api_errors)
 
     def release_waiting_jobs(self, instance_match, waiting_state) -> MultiResponse[ReleaseResponse]:
         if not instance_match or not waiting_state:

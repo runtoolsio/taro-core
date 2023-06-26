@@ -49,7 +49,7 @@ def instances(links=None):
     if 'active' in include or 'all' in include:
         if query('sort'):
             raise http_error(422, "Query parameter 'sort' can be used only with query parameter 'finished'")
-        active_instances = taro.client.read_jobs_info(instance_match).responses
+        active_instances = taro.client.read_job_instances(instance_match).responses
         job_instances = list(util.sequence_view(
             job_instances + active_instances,
             sort_key=lambda j: j.lifecycle.changed_at(ExecutionState.CREATED),
@@ -142,7 +142,7 @@ def instance(inst):
         raise http_error(404, "Instance not found")
 
     match_criteria = InstanceMatchingCriteria.parse_pattern(inst, MatchingStrategy.EXACT)
-    job_instances, _ = taro.client.read_jobs_info(match_criteria)
+    job_instances, _ = taro.client.read_job_instances(match_criteria)
 
     if not job_instances:
         try:

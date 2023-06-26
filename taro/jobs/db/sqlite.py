@@ -7,7 +7,7 @@ from typing import List
 
 from taro import cfg, paths
 from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle, ExecutionPhase, Flag
-from taro.jobs.inst import JobInfo, JobInfoList, JobInstanceID, LifecycleEvent, JobInstanceMetadata
+from taro.jobs.inst import JobInst, JobInstances, JobInstanceID, LifecycleEvent, JobInstanceMetadata
 from taro.jobs.job import JobStats
 from taro.jobs.persistence import SortCriteria
 from taro.jobs.track import TrackedTaskInfo
@@ -135,7 +135,7 @@ class SQLite:
 
     def read_instances(self, instance_match=None, sort=SortCriteria.ENDED,
                        *, asc=True, limit=-1, offset=-1, last=False) \
-            -> JobInfoList:
+            -> JobInstances:
         def sort_exp():
             if sort == SortCriteria.CREATED:
                 return 'h.created'
@@ -170,9 +170,9 @@ class SQLite:
             pending_group = json.loads(t[14]).get("pending_group") if t[14] else None
             metadata = JobInstanceMetadata(JobInstanceID(t[0], t[1]), parameters, user_params, pending_group)
 
-            return JobInfo(metadata, lifecycle, tracking, status, error_output, warnings, exec_error)
+            return JobInst(metadata, lifecycle, tracking, status, error_output, warnings, exec_error)
 
-        return JobInfoList((to_job_info(row) for row in c.fetchall()))
+        return JobInstances((to_job_info(row) for row in c.fetchall()))
 
     def clean_up(self, max_records, max_age):
         if max_records >= 0:

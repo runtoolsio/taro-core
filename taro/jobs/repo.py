@@ -67,7 +67,7 @@ class JobRepositoryActiveInstances(JobRepository):
         return 'active'
 
     def read_jobs(self):
-        return {Job(i.job_id) for i in client.read_jobs_info().responses}
+        return {Job(i.job_id) for i in client.read_job_instances().responses}
 
 
 class JobRepositoryHistory(JobRepository):

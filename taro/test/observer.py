@@ -12,7 +12,7 @@ from threading import Condition
 from typing import Tuple, List, Callable
 
 from taro.jobs.execution import ExecutionState, ExecutionError, ExecutionPhase
-from taro.jobs.inst import JobInfo, Warn, WarningObserver, JobOutputObserver, WarnEventCtx
+from taro.jobs.inst import JobInst, Warn, WarningObserver, JobOutputObserver, WarnEventCtx
 from taro.jobs.runner import ExecutionStateObserver
 
 log = logging.getLogger(__name__)
@@ -24,15 +24,15 @@ class TestStateObserver(ExecutionStateObserver):
     __test__ = False  # To tell pytest it isn't a test class
 
     def __init__(self):
-        self._events: List[Tuple[datetime, JobInfo, ExecutionState, ExecutionError]] = []
+        self._events: List[Tuple[datetime, JobInst, ExecutionState, ExecutionError]] = []
         self.completion_lock = Condition()
 
-    def state_update(self, job_info: JobInfo):
+    def state_update(self, job_info: JobInst):
         self._events.append((datetime.now(), job_info, job_info.state, job_info.exec_error))
         log.info("event=[state_changed] job_info=[{}]".format(job_info))
         self._release_state_waiter()
 
-    def last_job(self) -> JobInfo:
+    def last_job(self) -> JobInst:
         """
         :return: job of the last event
         """
@@ -90,9 +90,9 @@ class TestStateObserver(ExecutionStateObserver):
 class TestWarnObserver(WarningObserver):
 
     def __init__(self):
-        self.events: List[Tuple[JobInfo, Warn, WarnEventCtx]] = []
+        self.events: List[Tuple[JobInst, Warn, WarnEventCtx]] = []
 
-    def new_warning(self, job_info: JobInfo, warning: Warn, event_ctx: WarnEventCtx):
+    def new_warning(self, job_info: JobInst, warning: Warn, event_ctx: WarnEventCtx):
         self.events.append((job_info, warning, event_ctx))
 
     def is_empty(self):
@@ -104,7 +104,7 @@ class TestJobOutputObserver(JobOutputObserver):
     def __init__(self):
         self.output = []
 
-    def job_output_update(self, job_info: JobInfo, output, is_error):
+    def job_output_update(self, job_info: JobInst, output, is_error):
         self.output.append((job_info, output,))
 
     def last_output(self):

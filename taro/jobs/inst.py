@@ -552,7 +552,7 @@ class JobInstance(abc.ABC):
         Register execution state observer
         Observer can be:
             1. An instance of ExecutionStateObserver
-            2. Callable object with single parameter of JobInfo type
+            2. Callable object with single parameter of JobInst type
 
         :param observer: observer to register
         :param priority: observer priority as number (lower number is notified first)
@@ -673,7 +673,7 @@ class DelegatingJobInstance(JobInstance):
         self.delegated.remove_output_observer(observer)
 
 
-class JobInfo:
+class JobInst:
     """
     Immutable snapshot of job instance
     """
@@ -776,7 +776,7 @@ class JobInfo:
             return {k: v for k, v in d.items() if not is_empty(v)}
 
     def __eq__(self, other):
-        if not isinstance(other, JobInfo):
+        if not isinstance(other, JobInst):
             return NotImplemented
         return (self.metadata, self._lifecycle, self._tracking, self._status, self._error_output,
                 self._warnings, self._exec_error) == \
@@ -790,7 +790,7 @@ class JobInfo:
     def __repr__(self):
         return f"{self.__class__.__name__}("f"metadata={self.metadata!r}"
 
-class JobInfoList(list):
+class JobInstances(list):
 
     def __init__(self, jobs):
         super().__init__(jobs)
@@ -821,7 +821,7 @@ class JobInfoList(list):
 class ExecutionStateObserver(abc.ABC):
 
     @abc.abstractmethod
-    def state_update(self, job_info: JobInfo):
+    def state_update(self, job_info: JobInst):
         """This method is called when job instance execution state is changed."""
 
 
@@ -837,14 +837,14 @@ WarnEventCtx = namedtuple('WarnEventCtx', 'count')
 class WarningObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_warning(self, job_info: JobInfo, warning: Warn, event_ctx: WarnEventCtx):
+    def new_warning(self, job_info: JobInst, warning: Warn, event_ctx: WarnEventCtx):
         """This method is called when there is a new warning event."""
 
 
 class JobOutputObserver(abc.ABC):
 
     @abc.abstractmethod
-    def job_output_update(self, job_info: JobInfo, output, is_error):
+    def job_output_update(self, job_info: JobInst, output, is_error):
         """
         Executed when new output line is available.
 
@@ -859,5 +859,5 @@ class JobOutputTracker(JobOutputObserver):
     def __init__(self, output_tracker):
         self.output_tracker = output_tracker
 
-    def job_output_update(self, job_info: JobInfo, output, is_error):
+    def job_output_update(self, job_info: JobInst, output, is_error):
         self.output_tracker.new_output(output)

@@ -8,7 +8,7 @@ import pytest
 import taro.jobs.runner as runner
 from taro.jobs import lock
 from taro.jobs.execution import ExecutionState
-from taro.jobs.inst import ExecutionStateObserver, JobInfo
+from taro.jobs.inst import ExecutionStateObserver, JobInst
 from taro.jobs.runner import RunnerJobInstance
 from taro.test.execution import TestExecution  # TODO package import
 from taro.test.observer import TestStateObserver
@@ -64,5 +64,5 @@ class ExceptionRaisingObserver(ExecutionStateObserver):
     def __init__(self, raise_exc: BaseException):
         self.raise_exc = raise_exc
 
-    def state_update(self, job_info: JobInfo):
+    def state_update(self, job_inst: JobInst):
         raise self.raise_exc

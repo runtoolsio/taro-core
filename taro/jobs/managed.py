@@ -2,7 +2,7 @@ import logging
 from threading import Lock
 from typing import List
 
-from taro import cfg, JobInstance, ExecutionStateObserver, JobInfo
+from taro import cfg, JobInstance, ExecutionStateObserver, JobInst
 from taro.err import InvalidStateError
 from taro.jobs import plugins
 from taro.jobs.api import Server
@@ -78,7 +78,7 @@ class ManagedJobContext(ExecutionStateObserver):
 
         return job_instance
 
-    def state_update(self, job_info: JobInfo):
+    def state_update(self, job_info: JobInst):
         if job_info.lifecycle.state.in_phase(ExecutionPhase.TERMINAL):
             self._close_job(job_info.id)
 

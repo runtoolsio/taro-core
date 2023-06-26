@@ -28,7 +28,7 @@ def test_no_such_job(web_app):
     assert web_app.get('/jobs/no_such_job', expect_errors=True).status_int == 404
 
 
-@patch('taro.client.read_jobs_info', return_value=MultiResponse([i('j1', lifecycle=lc_running())], []))
+@patch('taro.client.read_job_instances', return_value=MultiResponse([i('j1', lifecycle=lc_running())], []))
 def test_job_def_included_for_instance(_, web_app):
     resp = web_app.get('/instances')
     assert resp.status_int == 200

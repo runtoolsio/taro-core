@@ -40,7 +40,7 @@ def web_app():
 
 @pytest.fixture
 def client_mock():
-    with patch('taro.client.read_jobs_info', return_value=MultiResponse([], [])) as client_mock:
+    with patch('taro.client.read_job_instances', return_value=MultiResponse([], [])) as client_mock:
         yield client_mock
 
 
