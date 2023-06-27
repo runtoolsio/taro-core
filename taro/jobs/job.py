@@ -4,7 +4,7 @@ from datetime import timedelta
 from typing import Dict, Any
 
 from taro.jobs.execution import ExecutionState
-from taro.util import MatchingStrategy
+from taro.util import MatchingStrategy, format_dt_iso
 
 
 class Job:
@@ -60,4 +60,44 @@ class JobStats:
     warning_count: int = 0
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
-        return {'job_id': self.job_id, 'count': self.count}
+        result = {
+            'job_id': self.job_id,
+            'count': self.count,
+            'last_state': self.last_state.name,
+            'failed_count': self.failed_count,
+            'warning_count': self.warning_count,
+        }
+
+        if self.first_created:
+            result['first_created'] = format_dt_iso(self.first_created)
+        else:
+            result['first_created'] = None
+
+        if self.last_created:
+            result['last_created'] = format_dt_iso(self.last_created)
+        else:
+            result['last_created'] = None
+
+        if self.fastest_time:
+            result['fastest_time'] = self.fastest_time.total_seconds()
+        else:
+            result['fastest_time'] = None
+
+        if self.average_time:
+            result['average_time'] = self.average_time.total_seconds()
+        else:
+            result['average_time'] = None
+
+        if self.slowest_time:
+            result['slowest_time'] = self.slowest_time.total_seconds()
+        else:
+            result['slowest_time'] = None
+
+        if self.last_time:
+            result['last_time'] = self.last_time.total_seconds()
+        else:
+            result['last_time'] = None
+
+        if not include_empty:
+            result = {k: v for k, v in result.items() if v is not None}
+        return result
