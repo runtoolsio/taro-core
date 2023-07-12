@@ -4,13 +4,13 @@ Tests :mod:`runner` module
 import time
 from threading import Thread
 
-import taro.jobs.runner as runner
-from taro.jobs import lock
-from taro.jobs.execution import ExecutionState as ExSt, ExecutionError
-from taro.jobs.program import ProgramExecution
-from taro.jobs.runner import RunnerJobInstance
-from taro.jobs.sync import Latch
-from taro.test.execution import TestExecution  # TODO package import
+import tarotools.taro.jobs.runner as runner
+from tarotools.taro.jobs import lock
+from tarotools.taro.jobs.execution import ExecutionState as ExSt, ExecutionError
+from tarotools.taro import ProgramExecution
+from tarotools.taro.jobs.runner import RunnerJobInstance
+from tarotools.taro.jobs.sync import Latch
+from tarotools.taro.test.execution import TestExecution
 
 
 def test_executed():

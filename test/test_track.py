@@ -1,7 +1,7 @@
 import re
 
-from taro.jobs.track import MutableTrackedTask, OperationInfo, ProgressInfo
-from taro.util import parse_datetime
+from tarotools.taro.jobs.track import MutableTrackedTask, OperationInfo, ProgressInfo
+from tarotools.taro.util import parse_datetime
 
 
 def test_add_event():

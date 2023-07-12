@@ -1,4 +1,4 @@
-from taro.util import KVParser
+from tarotools.taro.util import KVParser
 
 
 def test_default():

@@ -2,13 +2,13 @@
 Tests :mod:`cfgfile` module
 Description: Config related tests
 """
-import importlib
 
 import pytest
 
-from taro import paths, cfgfile, cfg
-from taro.cfg import LogMode
-from taro_test_util import create_test_config, remove_test_config
+from tarotools.taro import paths
+from tarotools.taro import cfg, cfgfile
+from tarotools.taro.log import LogMode
+from tarotools.taro.test.testutil import create_test_config, remove_test_config
 
 
 @pytest.fixture(autouse=True)

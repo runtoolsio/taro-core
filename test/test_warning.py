@@ -3,11 +3,10 @@ from threading import Thread
 
 import pytest
 
-from taro import warning
-from taro.jobs import lock
-from taro.jobs.runner import RunnerJobInstance
-from taro.test.execution import TestExecution
-from taro.test.observer import TestWarnObserver
+from tarotools.taro.jobs import lock, warning
+from tarotools.taro.jobs.runner import RunnerJobInstance
+from tarotools.taro.test.execution import TestExecution
+from tarotools.taro.test.observer import TestWarnObserver
 
 
 @pytest.fixture

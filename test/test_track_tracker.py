@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from taro.jobs.track import MutableTrackedTask, OutputTracker, Fields
-from taro.util import KVParser, iso_date_time_parser
+from tarotools.taro.jobs.track import MutableTrackedTask, OutputTracker, Fields
+from tarotools.taro.util import KVParser, iso_date_time_parser
 
 
 def test_parse_event():
@@ -152,7 +152,7 @@ def test_subtask_started_and_updated_set():
     assert task.started_at is None  # TODO should this be set too?
 
 
-def test_parse_timestamps():
+def test_timestamps():
     task = MutableTrackedTask('task')
     tracker = OutputTracker(task, [KVParser()])
 

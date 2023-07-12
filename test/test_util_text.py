@@ -4,7 +4,7 @@ Description: Util module tests
 """
 import pytest
 
-from taro import util
+from tarotools.taro import util
 
 
 def test_truncate_with_suffix():

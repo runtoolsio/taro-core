@@ -5,13 +5,13 @@ Tests that :mod:`runner` sends correct notification to state observers.
 
 import pytest
 
-import taro.jobs.runner as runner
-from taro.jobs import lock
-from taro.jobs.execution import ExecutionState
-from taro.jobs.inst import ExecutionStateObserver, JobInst
-from taro.jobs.runner import RunnerJobInstance
-from taro.test.execution import TestExecution  # TODO package import
-from taro.test.observer import TestStateObserver
+import tarotools.taro.jobs.runner as runner
+from tarotools.taro.jobs import lock
+from tarotools.taro.jobs.execution import ExecutionState
+from tarotools.taro.jobs.inst import ExecutionStateObserver, JobInst
+from tarotools.taro.jobs.runner import RunnerJobInstance
+from tarotools.taro.test.execution import TestExecution
+from tarotools.taro.test.observer import TestStateObserver
 
 
 @pytest.fixture

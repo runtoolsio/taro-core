@@ -3,13 +3,13 @@ from datetime import datetime as dt
 
 import pytest
 
-from taro import ExecutionState, ExecutionError
-from taro.jobs.db.sqlite import SQLite
-from taro.jobs.inst import parse_criteria, InstanceMatchingCriteria, IntervalCriteria, LifecycleEvent, StateCriteria
-from taro.jobs.track import MutableTrackedTask
-from taro.test.execution import lc_failed, lc_completed
-from taro.test.job import i
-from taro.util import parse_iso8601_duration, MatchingStrategy
+from tarotools.taro import ExecutionState, ExecutionError
+from tarotools.taro.jobs.db.sqlite import SQLite
+from tarotools.taro.jobs.inst import parse_criteria, InstanceMatchingCriteria, IntervalCriteria, LifecycleEvent, StateCriteria
+from tarotools.taro.jobs.track import MutableTrackedTask
+from tarotools.taro.test.execution import lc_failed, lc_completed
+from tarotools.taro.test.job import i
+from tarotools.taro.util import parse_iso8601_duration, MatchingStrategy
 
 
 @pytest.fixture
