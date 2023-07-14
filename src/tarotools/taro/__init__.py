@@ -8,20 +8,19 @@ IMPLEMENTATION NOTE:
 """
 from threading import Thread
 
-from . import cfg, cfgfile, client, log
-from .hostinfo import read_hostinfo, HostinfoError
-from .jobs import warning, persistence, plugins, repo, sync
-from .jobs.execution import Flag, ExecutionState, ExecutionError, ExecutionLifecycle
-from .jobs.inst import JobInstanceID, JobInstance, JobInst, ExecutionStateObserver, Warn, WarningObserver, WarnEventCtx
-from .jobs.managed import ManagedJobContext
-from .jobs.plugins import PluginBase, PluginDisabledError
-from .jobs.process import ProcessExecution
-from .jobs.program import ProgramExecution
-from .jobs.runner import RunnerJobInstance
-from .paths import lookup_file_in_config_path
-from .util import format_timedelta, read_yaml_file
-from .util.ns import NestedNamespace
-
+from tarotools.taro import cfgfile, client, log
+from tarotools.taro.hostinfo import read_hostinfo, HostinfoError
+from tarotools.taro.jobs import warning, persistence, plugins, repo, sync
+from tarotools.taro.jobs.execution import Flag, ExecutionState, ExecutionError, ExecutionLifecycle
+from tarotools.taro.jobs.inst import JobInstanceID, JobInstance, JobInst, ExecutionStateObserver, Warn, WarningObserver, WarnEventCtx
+from tarotools.taro.jobs.managed import ManagedJobContext
+from tarotools.taro.jobs.plugins import PluginBase, PluginDisabledError
+from tarotools.taro.jobs.process import ProcessExecution
+from tarotools.taro.jobs.program import ProgramExecution
+from tarotools.taro.jobs.runner import RunnerJobInstance
+from tarotools.taro.paths import lookup_file_in_config_path
+from tarotools.taro.util import format_timedelta, read_yaml_file
+from tarotools.taro.util.ns import NestedNamespace
 
 __version__ = "0.11.0"
 
