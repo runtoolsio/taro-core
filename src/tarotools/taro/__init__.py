@@ -8,11 +8,12 @@ IMPLEMENTATION NOTE:
 """
 from threading import Thread
 
-from tarotools.taro import cfgfile, client, log
+from tarotools.taro import cfg, cfgfile, client, log
 from tarotools.taro.hostinfo import read_hostinfo, HostinfoError
 from tarotools.taro.jobs import warning, persistence, plugins, repo, sync
 from tarotools.taro.jobs.execution import Flag, ExecutionState, ExecutionError, ExecutionLifecycle
-from tarotools.taro.jobs.inst import JobInstanceID, JobInstance, JobInst, ExecutionStateObserver, Warn, WarningObserver, WarnEventCtx
+from tarotools.taro.jobs.inst import JobInstanceID, JobInstance, JobInst, ExecutionStateObserver, Warn, WarningObserver, \
+    WarnEventCtx
 from tarotools.taro.jobs.managed import ManagedJobContext
 from tarotools.taro.jobs.plugins import PluginBase, PluginDisabledError
 from tarotools.taro.jobs.process import ProcessExecution

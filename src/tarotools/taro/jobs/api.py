@@ -51,6 +51,7 @@ class JobsResource(APIResource):
     def handle(self, job_instance, req_body):
         return {"job_info": job_instance.create_info().to_dict()}
 
+
 class ReleaseWaitingResource(APIResource):
 
     @property
@@ -70,6 +71,7 @@ class ReleaseWaitingResource(APIResource):
             return {"released": True}
         else:
             return {"released": False}
+
 
 class ReleasePendingResource(APIResource):
 

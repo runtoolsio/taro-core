@@ -196,7 +196,7 @@ class NoOverlap(Sync):
     def set_signal(self, job_info) -> Signal:
         job_instance = self._job_instance or job_info.job_id
 
-        jobs, _ = taro.client.read_job_instances()
+        jobs, _ = taro.client.read_instances()
         if any(j for j in jobs if j.id != job_info.id and j.id.matches_pattern(job_instance)):
             self._signal = Signal.TERMINATE
         else:
@@ -231,7 +231,7 @@ class Dependency(Sync):
         return ExecutionState.NONE
 
     def set_signal(self, job_info) -> Signal:
-        jobs, _ = taro.client.read_job_instances()
+        jobs, _ = taro.client.read_instances()
         if any(j for j in jobs if any(j.id.matches_pattern(dependency) for dependency in self.dependencies)):
             self._signal = Signal.CONTINUE
         else:
@@ -289,7 +289,7 @@ class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
 
     @timing('exec_limit_set_signal', args_idx=[1])
     def set_signal(self, job_info) -> Signal:
-        jobs, _ = taro.client.read_job_instances()
+        jobs, _ = taro.client.read_instances()
 
         exec_group_jobs_sorted = JobInstances(sorted(
             (job for job in jobs if self._is_same_exec_group(job.metadata)),
