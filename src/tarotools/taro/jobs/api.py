@@ -42,14 +42,14 @@ class APIResource(ABC):
         """Handle request and optionally return response or raise :class:`__ServerError"""
 
 
-class JobsResource(APIResource):
+class InstancesResource(APIResource):
 
     @property
     def path(self):
-        return '/jobs'
+        return '/instances'
 
     def handle(self, job_instance, req_body):
-        return {"job_info": job_instance.create_info().to_dict()}
+        return {"job_instance": job_instance.create_snapshot().to_dict()}
 
 
 class ReleaseWaitingResource(APIResource):
@@ -113,7 +113,7 @@ class TailResource(APIResource):
         return {"tail": job_instance.last_output}
 
 
-DEFAULT_RESOURCES = JobsResource(), ReleaseWaitingResource(), ReleasePendingResource(), StopResource(), TailResource()
+DEFAULT_RESOURCES = InstancesResource(), ReleaseWaitingResource(), ReleasePendingResource(), StopResource(), TailResource()
 
 
 class Server(SocketServer):
@@ -148,7 +148,13 @@ class Server(SocketServer):
 
         instance_responses = []
         for job_instance in job_instances:
-            instance_response = resource.handle(job_instance, req_body)
+            try:
+                instance_response = resource.handle(job_instance, req_body)
+            except _ApiError as e:
+                return e.create_response()
+            except Exception:
+                log.error("event=[api_handler_error]", exc_info=True)
+                return _resp_err(500, 'Unexpected API handler error')
             instance_response['instance_metadata'] = job_instance.metadata.to_dict()
             instance_responses.append(instance_response)
 

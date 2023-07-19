@@ -55,7 +55,7 @@ class SocketServer(abc.ABC):
             if self._allow_ping and req_body == 'ping':
                 resp_body = 'pong'
             else:
-                resp_body = self.handle(req_body)
+                resp_body = self.handle(req_body)  # TODO catch exceptions?
 
             if resp_body:
                 if client_address:

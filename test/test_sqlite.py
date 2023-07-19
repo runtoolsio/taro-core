@@ -5,10 +5,11 @@ import pytest
 
 from tarotools.taro import ExecutionState, ExecutionError
 from tarotools.taro.jobs.db.sqlite import SQLite
-from tarotools.taro.jobs.inst import parse_criteria, InstanceMatchingCriteria, IntervalCriteria, LifecycleEvent, StateCriteria
+from tarotools.taro.jobs.inst import parse_criteria, InstanceMatchingCriteria, IntervalCriteria, LifecycleEvent, \
+    StateCriteria
 from tarotools.taro.jobs.track import MutableTrackedTask
 from tarotools.taro.test.execution import lc_failed, lc_completed
-from tarotools.taro.test.job import i
+from tarotools.taro.test.inst import i
 from tarotools.taro.util import parse_iso8601_duration, MatchingStrategy
 
 

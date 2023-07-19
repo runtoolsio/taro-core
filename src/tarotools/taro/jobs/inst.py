@@ -348,7 +348,7 @@ class InstanceMatchingCriteria:
         return not self.jobs or job_instance.job_id in self.jobs
 
     def matches(self, job_instance):
-        return self.matches_id(job_instance)\
+        return self.matches_id(job_instance) \
             and self.matches_interval(job_instance) \
             and self.matches_state(job_instance) \
             and self.matches_jobs(job_instance)
@@ -526,11 +526,11 @@ class JobInstance(abc.ABC):
         """Job execution error if occurred otherwise None"""
 
     @abc.abstractmethod
-    def create_info(self):
+    def create_snapshot(self):
         """
-        Create consistent (thread-safe) snapshot of job instance state
+        Create consistent (thread-safe) snapshot of the job instance state
 
-        :return: job (instance) info
+        :return: job instance snapshot
         """
 
     @abc.abstractmethod
@@ -645,8 +645,8 @@ class DelegatingJobInstance(JobInstance):
     def exec_error(self) -> ExecutionError:
         return self.delegated.exec_error
 
-    def create_info(self):
-        return self.delegated.create_info()
+    def create_snapshot(self):
+        return self.delegated.create_snapshot()
 
     def stop(self):
         self.delegated.stop()
@@ -781,7 +781,7 @@ class JobInst:
         return (self.metadata, self._lifecycle, self._tracking, self._status, self._error_output,
                 self._warnings, self._exec_error) == \
             (other.metadata, other._lifecycle, other._tracking, other._status, other._error_output,
-             other._warnings, other._exec_error) # TODO
+             other._warnings, other._exec_error)  # TODO
 
     def __hash__(self):
         return hash((self.metadata, self._lifecycle, self._tracking, self._status, self._error_output,
@@ -789,6 +789,7 @@ class JobInst:
 
     def __repr__(self):
         return f"{self.__class__.__name__}("f"metadata={self.metadata!r}"
+
 
 class JobInstances(list):
 

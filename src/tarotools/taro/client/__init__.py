@@ -103,6 +103,21 @@ class TailResponse(JobInstanceResponse):
 
 
 def read_instances(instance_match=None) -> MultiResponse[JobInst]:
+    """
+    Retrieves instance information for all active job instances for the current user.
+
+    Args:
+        instance_match (InstanceMatchingCriteria, optional):
+            A filter for instance matching. If provided, only instances that match will be included.
+
+    Returns:
+        MultiResponse[JobInst]: A container holding the :class:`JobInst` objects that represent job instances.
+            Also includes any errors that may have occurred.
+
+    Raises:
+        PayloadTooLarge: If the payload size exceeds the maximum limit.
+    """
+
     with JobsClient() as client:
         return client.read_instances(instance_match)
 
@@ -150,8 +165,23 @@ class JobsClient(SocketClient):
         return _process_responses(server_responses)
 
     def read_instances(self, instance_match=None) -> MultiResponse[JobInst]:
-        instance_responses, api_errors = self.send_request('/jobs', instance_match)
-        return MultiResponse([JobInst.from_dict(body["job_info"]) for _, body in instance_responses], api_errors)
+        """
+        Retrieves instance information for all active job instances for the current user.
+
+        Args:
+            instance_match (InstanceMatchingCriteria, optional):
+                A filter for instance matching. If provided, only instances that match will be included.
+
+        Returns:
+            MultiResponse[JobInst]: A container holding the :class:`JobInst` objects that represent job instances.
+                Also includes any errors that may have occurred.
+
+        Raises:
+            PayloadTooLarge: If the payload size exceeds the maximum limit.
+        """
+
+        instance_responses, api_errors = self.send_request('/instances', instance_match)
+        return MultiResponse([JobInst.from_dict(body["job_instance"]) for _, body in instance_responses], api_errors)
 
     def release_waiting_jobs(self, instance_match, waiting_state) -> MultiResponse[ReleaseResponse]:
         if not instance_match or not waiting_state:
@@ -208,7 +238,7 @@ def _process_responses(responses: List[ServerResponse]) -> Tuple[List[APIInstanc
             continue
         if "error" in resp_metadata:
             log.error("event=[api_error] type=[api] error=[%s]", resp_metadata["error"])
-            api_errors.append(APIError(server_id, APIErrorType.API, None, resp_metadata["error"]))
+            api_errors.append(APIError(server_id, APIErrorType.API, None, resp_metadata))
             continue
 
         for instance_resp in resp_body['instances']:

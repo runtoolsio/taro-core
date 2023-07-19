@@ -11,11 +11,13 @@ from threading import RLock
 from typing import List, Union, Callable, Tuple, Optional
 
 from tarotools.taro import util
-from tarotools.taro.jobs import persistence
 from tarotools.taro.jobs import lock
-from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, ExecutionOutputObserver, \
+from tarotools.taro.jobs import persistence
+from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, \
+    ExecutionOutputObserver, \
     Phase, Flag, UnexpectedStateError
-from tarotools.taro.jobs.inst import ExecutionStateObserver, JobInstance, JobInst, WarningObserver, JobOutputObserver, Warn, \
+from tarotools.taro.jobs.inst import ExecutionStateObserver, JobInstance, JobInst, WarningObserver, JobOutputObserver, \
+    Warn, \
     WarnEventCtx, JobInstanceID, DEFAULT_OBSERVER_PRIORITY, JobInstanceMetadata
 from tarotools.taro.jobs.sync import NoSync, CompositeSync, Latch, Signal
 
@@ -106,7 +108,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def exec_error(self) -> Union[ExecutionError, None]:
         return self._exec_error
 
-    def create_info(self):
+    def create_snapshot(self):
         with self._state_lock:
             return JobInst(
                 self.metadata,
@@ -166,7 +168,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def add_warning(self, warning):
         self._warnings.update([warning.name])
         log.warning('event=[new_warning] warning=[%s]', warning)
-        self._notify_warning_observers(self.create_info(), warning, WarnEventCtx(self._warnings[warning.name]))  # Lock?
+        self._notify_warning_observers(self.create_snapshot(), warning,
+                                       WarnEventCtx(self._warnings[warning.name]))  # Lock?
 
     def run(self):
         # TODO Check executed only once
@@ -212,7 +215,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                     signal = Signal.TERMINATE
                     state = ExecutionState.CANCELLED
                 else:
-                    signal = self._sync.set_signal(self.create_info())
+                    signal = self._sync.set_signal(self.create_snapshot())
                     if signal is Signal.NONE:
                         assert False  # TODO raise exception
 
@@ -227,7 +230,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                         if not (state.has_flag(Flag.WAITING) or state.in_phase(Phase.TERMINAL)):
                             raise UnexpectedStateError(f"Unsupported state returned from sync: {state}")
 
-                # If wait and not the same state then the state must be changed first, then -> release the lock + notify observers and repeat
+                # If wait and not the same state then the state must be changed first,
+                # then -> release the lock + notify observers and repeat
                 if signal is Signal.WAIT and self.lifecycle.state == state:
                     self._sync.wait_and_unlock(state_lock)  # Waiting state already set, now we can wait
                     job_info = None
@@ -268,11 +272,11 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 level = logging.WARN if new_state.has_flag(Flag.NONSUCCESS) else logging.INFO
                 log.log(level, self._log('job_state_changed', "prev_state=[{}] new_state=[{}]".format(
                     prev_state.name, new_state.name)))
-                job_info = self.create_info() # Be sure both new_state and exec_error are already set
-                if new_state.in_phase(Phase.TERMINAL) and persistence.is_enabled(): # TODO Catch disabled error instead of the check
+                job_info = self.create_snapshot()  # Be sure both new_state and exec_error are already set
+                if new_state.in_phase(
+                        Phase.TERMINAL) and persistence.is_enabled():  # TODO Catch disabled error instead of the check
                     persistence.store_instances(job_info)  # TODO Consider move (managed _close_job() or listener?)
                 return job_info
-
 
     def _change_state_and_notify(self, new_state, exec_error: ExecutionError = None, *, use_global_lock=True):
         job_info = self._change_state(new_state, exec_error, use_global_lock=use_global_lock)
@@ -310,7 +314,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._last_output.append((output, is_error))
         if is_error:
             self._error_output.append(output)
-        self._notify_output_observers(self.create_info(), output, is_error)
+        self._notify_output_observers(self.create_snapshot(), output, is_error)
 
     def _notify_output_observers(self, job_info: JobInst, output, is_error):
         for observer in _gen_prioritized(self._output_observers, _output_observers):
