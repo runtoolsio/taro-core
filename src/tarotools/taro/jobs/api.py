@@ -56,7 +56,7 @@ class ReleaseWaitingResource(APIResource):
 
     @property
     def path(self):
-        return '/jobs/release/waiting'
+        return '/instances/release/waiting'
 
     def validate(self, req_body):
         if 'waiting_state' not in req_body:
@@ -116,7 +116,7 @@ class TailResource(APIResource):
 DEFAULT_RESOURCES = InstancesResource(), ReleaseWaitingResource(), ReleasePendingResource(), StopResource(), TailResource()
 
 
-class Server(SocketServer):
+class APIServer(SocketServer):
 
     def __init__(self, resources=DEFAULT_RESOURCES):
         super().__init__(_create_socket_name(), allow_ping=True)
@@ -148,6 +148,7 @@ class Server(SocketServer):
 
         instance_responses = []
         for job_instance in job_instances:
+            # noinspection PyBroadException
             try:
                 instance_response = resource.handle(job_instance, req_body)
             except _ApiError as e:

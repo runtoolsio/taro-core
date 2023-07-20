@@ -1,11 +1,25 @@
 from tarotools.taro import ExecutionState, client
-from tarotools.taro.jobs.api import Server, InstancesResource
+from tarotools.taro.client import APIClient, APIErrorType, ErrorCode
+from tarotools.taro.jobs.api import APIServer, InstancesResource
 from tarotools.taro.jobs.inst import InstanceMatchingCriteria, IDMatchingCriteria
 from tarotools.taro.test.inst import TestJobInstance
 
 
+def test_error_not_found():
+    server = APIServer([])
+    server.start()
+    with APIClient() as c:
+        try:
+            _, errors = c.send_request('/no-such-api')
+        finally:
+            server.close()
+
+    assert errors[0].error_type == APIErrorType.API_CLIENT
+    assert errors[0].response_error.code == ErrorCode.NOT_FOUND
+
+
 def test_instances():
-    server = Server([InstancesResource()])
+    server = APIServer([InstancesResource()])
     server.add_job_instance(TestJobInstance('j1', 'i1', ExecutionState.RUNNING))
     server.add_job_instance(TestJobInstance('j2', 'i2', ExecutionState.PENDING))
     assert server.start()

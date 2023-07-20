@@ -6,7 +6,7 @@ from tarotools.taro import JobInstance, ExecutionStateObserver, JobInst
 from tarotools.taro import cfg
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs import plugins
-from tarotools.taro.jobs.api import Server
+from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.events import StateDispatcher, OutputDispatcher
 from tarotools.taro.jobs.execution import ExecutionPhase
 
@@ -19,7 +19,7 @@ EXT_PLUGIN_MODULE_PREFIX = plugins.DEF_PLUGIN_MODULE_PREFIX
 class ManagedJobContext(ExecutionStateObserver):
 
     def __init__(self,
-                 api_factory=Server,
+                 api_factory=APIServer,
                  state_dispatcher_factory=StateDispatcher,
                  output_dispatcher_factory=OutputDispatcher):
         self._api = api_factory()

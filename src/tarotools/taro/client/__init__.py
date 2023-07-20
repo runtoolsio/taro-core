@@ -37,8 +37,31 @@ class APIErrorType(Enum):
     """
 
     SOCKET = auto()  # Errors related to the socket communication
-    API = auto()  # Errors returned in the standard response by an API itself
     INVALID_RESPONSE = auto()  # Errors arising when the API's response cannot be processed correctly
+    API_SERVER = auto()  # Errors signaled in the standard response indicating a problem on the server side
+    API_CLIENT = auto()  # Errors resulting from client-side issues such as invalid request
+
+
+class ErrorCode(Enum):
+    NOT_FOUND = 404
+    UNKNOWN = 1
+
+
+@dataclass
+class ResponseError:
+    """
+    Represents an error returned in the response from an API.
+
+    This class encapsulates details about an error that the API itself has generated,
+    either due to server-side issues or client-request related problems.
+
+    Attributes:
+        code: An enumeration member representing the type of error, as defined by the ErrorCode enumeration.
+        reason: A human-readable string providing more details about the cause of the error.
+    """
+
+    code: ErrorCode
+    reason: str
 
 
 @dataclass
@@ -48,15 +71,15 @@ class APIError:
 
     Attributes:
         api_id: Identifier of the API which generated the error.
-        error: The type of error, as defined by the APIErrorType enumeration.
+        error_type: The type of error, as defined by the APIErrorType enumeration.
         socket_error: An optional object, only present in case of `APIErrorType.SOCKET` error.
-        api_error: Details of the error returned by the API, only present in case of `APIErrorType.API` error.
+        response_error: Details of the error returned by the API, only present in case of `APIErrorType.API_*` errors.
     """
 
     api_id: str
-    error: APIErrorType
+    error_type: APIErrorType
     socket_error: Optional[Error]
-    api_error: Dict[str, Any]
+    response_error: Optional[ResponseError]
 
 
 T = TypeVar('T')
@@ -118,31 +141,31 @@ def read_instances(instance_match=None) -> MultiResponse[JobInst]:
         PayloadTooLarge: If the payload size exceeds the maximum limit.
     """
 
-    with JobsClient() as client:
+    with APIClient() as client:
         return client.read_instances(instance_match)
 
 
-def release_waiting_jobs(instance_match, waiting_state) -> MultiResponse[ReleaseResponse]:
-    with JobsClient() as client:
-        return client.release_waiting_jobs(instance_match, waiting_state)
+def release_waiting(instance_match, waiting_state) -> MultiResponse[ReleaseResponse]:
+    with APIClient() as client:
+        return client.release_waiting(instance_match, waiting_state)
 
 
 def release_pending_jobs(pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
-    with JobsClient() as client:
+    with APIClient() as client:
         return client.release_pending_jobs(pending_group, instance_match)
 
 
 def stop_jobs(instance_match) -> MultiResponse[StopResponse]:
-    with JobsClient() as client:
+    with APIClient() as client:
         return client.stop_jobs(instance_match)
 
 
 def read_tail(instance_match=None) -> MultiResponse[TailResponse]:
-    with JobsClient() as client:
+    with APIClient() as client:
         return client.read_tail(instance_match)
 
 
-class JobsClient(SocketClient):
+class APIClient(SocketClient):
 
     def __init__(self):
         super().__init__(API_FILE_EXTENSION, bidirectional=True)
@@ -183,13 +206,13 @@ class JobsClient(SocketClient):
         instance_responses, api_errors = self.send_request('/instances', instance_match)
         return MultiResponse([JobInst.from_dict(body["job_instance"]) for _, body in instance_responses], api_errors)
 
-    def release_waiting_jobs(self, instance_match, waiting_state) -> MultiResponse[ReleaseResponse]:
+    def release_waiting(self, instance_match, waiting_state) -> MultiResponse[ReleaseResponse]:
         if not instance_match or not waiting_state:
             raise ValueError("Arguments cannot be empty")
 
         req_body = {"waiting_state": waiting_state.name}
         instance_responses, api_errors = \
-            self.send_request('/jobs/release/waiting', instance_match, req_body)
+            self.send_request('/instances/release/waiting', instance_match, req_body)
         return MultiResponse([ReleaseResponse(meta) for meta, body in instance_responses if body["released"]],
                              api_errors)
 
@@ -227,18 +250,35 @@ def _process_responses(responses: List[ServerResponse]) -> Tuple[List[APIInstanc
     for server_id, resp, error in responses:
         if error:
             log.error("event=[api_error] type=[socket] error=[%s]", error)
-            api_errors.append(APIError(server_id, APIErrorType.SOCKET, error, {}))
+            api_errors.append(APIError(server_id, APIErrorType.SOCKET, error, None))
             continue
 
         resp_body = json.loads(resp)
         resp_metadata = resp_body.get("response_metadata")
         if not resp_metadata:
             log.error("event=[api_error] type=[invalid_response] error=[missing_response_metadata]")
-            api_errors.append(APIError(server_id, APIErrorType.INVALID_RESPONSE, None, {}))
+            api_errors.append(APIError(server_id, APIErrorType.INVALID_RESPONSE, None, None))
             continue
         if "error" in resp_metadata:
-            log.error("event=[api_error] type=[api] error=[%s]", resp_metadata["error"])
-            api_errors.append(APIError(server_id, APIErrorType.API, None, resp_metadata))
+            code = resp_metadata.get('code')
+            reason = resp_metadata['error'].get('reason')
+            if not code or code < 400 or code >= 600:
+                log.error("event=[api_error] type=[invalid_response] error=[invalid_response_code] code=[%s]", code)
+                api_errors.append(APIError(server_id, APIErrorType.INVALID_RESPONSE, None, None))
+                continue
+            if not reason:
+                log.error("event=[api_error] type=[invalid_response] error=[missing_error_reason] code=[%s]", code)
+                api_errors.append(APIError(server_id, APIErrorType.INVALID_RESPONSE, None, None))
+                continue
+
+            error_type = APIErrorType.API_CLIENT if code < 500 else APIErrorType.API_SERVER
+            try:
+                err_code = ErrorCode(code)
+            except ValueError:
+                log.warning("event=[unknown_error_code] code=[%s]", code)
+                err_code = ErrorCode.UNKNOWN
+            log.error("event=[api_error] type=[%s] code=[%s] reason=[%s]", error_type, err_code, reason)
+            api_errors.append(APIError(server_id, error_type, None, ResponseError(err_code, reason)))
             continue
 
         for instance_resp in resp_body['instances']:
