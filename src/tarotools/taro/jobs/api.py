@@ -68,16 +68,16 @@ class ReleaseWaitingResource(APIResource):
             raise _ApiError(422, f"Invalid waiting state: {waiting_state}")
         if job_instance.lifecycle.state == waiting_state:
             job_instance.release()
-            return {"released": True}
+            return {"release_result": 'released'}
         else:
-            return {"released": False}
+            return {"release_result": 'not_applicable'}
 
 
 class ReleasePendingResource(APIResource):
 
     @property
     def path(self):
-        return '/jobs/release/pending'
+        return '/instances/release/pending'
 
     def validate(self, req_body):
         if 'pending_group' not in req_body:
@@ -87,9 +87,9 @@ class ReleasePendingResource(APIResource):
         pending_group = req_body['pending_group']
         if pending_group and job_instance.metadata.pending_group == pending_group:
             job_instance.release()
-            return {"released": True}
+            return {"release_result": 'released'}
         else:
-            return {"released": False}
+            return {"release_result": 'not_applicable'}
 
 
 class StopResource(APIResource):

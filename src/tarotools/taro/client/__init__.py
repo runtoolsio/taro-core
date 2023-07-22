@@ -6,7 +6,7 @@ import json
 import logging
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import List, Tuple, Any, Dict, NamedTuple, Optional, TypeVar, Generic
+from typing import List, Any, Dict, NamedTuple, Optional, TypeVar, Generic, Callable
 
 from tarotools.taro.jobs.api import API_FILE_EXTENSION
 from tarotools.taro.jobs.inst import JobInst, JobInstanceMetadata
@@ -43,7 +43,9 @@ class APIErrorType(Enum):
 
 
 class ErrorCode(Enum):
+    INVALID_REQUEST = 400
     NOT_FOUND = 404
+    INVALID_ENTITY = 422
     UNKNOWN = 1
 
 
@@ -110,9 +112,16 @@ class JobInstanceResponse:
     instance_metadata: JobInstanceMetadata
 
 
+class ReleaseResult(Enum):
+    RELEASED = auto()
+    UNRELEASED = auto()
+    NOT_APPLICABLE = auto()
+    UNKNOWN = auto()
+
+
 @dataclass
 class ReleaseResponse(JobInstanceResponse):
-    pass
+    released_result: ReleaseResult
 
 
 @dataclass
@@ -165,6 +174,18 @@ def read_tail(instance_match=None) -> MultiResponse[TailResponse]:
         return client.read_tail(instance_match)
 
 
+def _no_resp_mapper(api_instance_response: APIInstanceResponse) -> APIInstanceResponse:
+    return api_instance_response
+
+
+def _release_resp_mapper(inst_resp: APIInstanceResponse) -> ReleaseResponse:
+    try:
+        release_res = ReleaseResult[inst_resp.body["release_result"]]
+    except KeyError:
+        release_res = ReleaseResult.UNKNOWN
+    return ReleaseResponse(inst_resp.instance_meta, release_res)
+
+
 class APIClient(SocketClient):
 
     def __init__(self):
@@ -176,8 +197,8 @@ class APIClient(SocketClient):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def send_request(self, api: str, instance_match=None, req_body=None) \
-            -> Tuple[List[APIInstanceResponse], List[APIError]]:
+    def send_request(self, api: str, instance_match=None, req_body=None,
+                     resp_mapper: Callable[[APIInstanceResponse], T] = _no_resp_mapper) -> MultiResponse[T]:
         if not req_body:
             req_body = {}
         req_body["request_metadata"] = {"api": api}
@@ -185,7 +206,7 @@ class APIClient(SocketClient):
             req_body["request_metadata"]["instance_match"] = instance_match.to_dict()
 
         server_responses: List[ServerResponse] = self.communicate(json.dumps(req_body))
-        return _process_responses(server_responses)
+        return _process_responses(server_responses, resp_mapper)
 
     def read_instances(self, instance_match=None) -> MultiResponse[JobInst]:
         """
@@ -211,20 +232,14 @@ class APIClient(SocketClient):
             raise ValueError("Arguments cannot be empty")
 
         req_body = {"waiting_state": waiting_state.name}
-        instance_responses, api_errors = \
-            self.send_request('/instances/release/waiting', instance_match, req_body)
-        return MultiResponse([ReleaseResponse(meta) for meta, body in instance_responses if body["released"]],
-                             api_errors)
+        return self.send_request('/instances/release/waiting', instance_match, req_body, _release_resp_mapper)
 
     def release_pending_jobs(self, pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
         if not pending_group:
             raise ValueError("Missing pending group")
 
         req_body = {"pending_group": pending_group}
-        instance_responses, api_errors = \
-            self.send_request('/jobs/release/pending', instance_match, req_body)
-        return MultiResponse([ReleaseResponse(meta) for meta, body in instance_responses if body["released"]],
-                             api_errors)
+        return self.send_request('/jobs/release/pending', instance_match, req_body, _release_resp_mapper)
 
     def stop_jobs(self, instance_match) -> MultiResponse[StopResponse]:
         """
@@ -235,16 +250,21 @@ class APIClient(SocketClient):
         if not instance_match:
             raise ValueError('Id matching criteria is mandatory for the stop operation')
 
-        instance_responses, api_errors = self.send_request('/jobs/stop', instance_match)
-        return MultiResponse([StopResponse(meta, body["result"]) for meta, body in instance_responses], api_errors)
+        def resp_mapper(inst_resp: APIInstanceResponse) -> StopResponse:
+            return StopResponse(inst_resp.instance_meta, inst_resp.body["result"])
+
+        return self.send_request('/jobs/stop', instance_match, resp_mapper=resp_mapper)
 
     def read_tail(self, instance_match) -> MultiResponse[TailResponse]:
-        instance_responses, api_errors = self.send_request('/jobs/tail', instance_match)
-        return MultiResponse([TailResponse(meta, body["tail"]) for meta, body in instance_responses], api_errors)
+        def resp_mapper(inst_resp: APIInstanceResponse) -> TailResponse:
+            return TailResponse(inst_resp.instance_meta, inst_resp.body["tail"])
+
+        return self.send_request('/jobs/tail', instance_match, resp_mapper=resp_mapper)
 
 
-def _process_responses(responses: List[ServerResponse]) -> Tuple[List[APIInstanceResponse], List[APIError]]:
-    instance_responses: List[APIInstanceResponse] = []
+def _process_responses(responses: List[ServerResponse], resp_mapper: Callable[[APIInstanceResponse], T]) \
+        -> MultiResponse[T]:
+    typed_responses: List[T] = []
     api_errors: List[APIError] = []
 
     for server_id, resp, error in responses:
@@ -283,6 +303,13 @@ def _process_responses(responses: List[ServerResponse]) -> Tuple[List[APIInstanc
 
         for instance_resp in resp_body['instances']:
             instance_metadata = JobInstanceMetadata.from_dict(instance_resp['instance_metadata'])
-            instance_responses.append(APIInstanceResponse(instance_metadata, instance_resp))
+            api_instance_response = APIInstanceResponse(instance_metadata, instance_resp)
+            try:
+                typed_resp = resp_mapper(api_instance_response)
+            except (KeyError, ValueError) as e:
+                log.error("event=[api_error] type=[%s] reason=[%s]", APIErrorType.INVALID_RESPONSE, e)
+                api_errors.append(APIError(server_id, APIErrorType.INVALID_RESPONSE, None, None))
+                break
+            typed_responses.append(typed_resp)
 
-    return instance_responses, api_errors
+    return MultiResponse(typed_responses, api_errors)
