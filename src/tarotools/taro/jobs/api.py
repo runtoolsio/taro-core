@@ -96,18 +96,18 @@ class StopResource(APIResource):
 
     @property
     def path(self):
-        return '/jobs/stop'
+        return '/instances/stop'
 
     def handle(self, job_instance, req_body):
         job_instance.stop()
-        return {"result": "stop_performed"}
+        return {"stop_result": "stop_performed"}
 
 
 class TailResource(APIResource):
 
     @property
     def path(self):
-        return '/jobs/tail'
+        return '/instances/tail'
 
     def handle(self, job_instance, req_body):
         return {"tail": job_instance.last_output}

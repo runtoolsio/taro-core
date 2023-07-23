@@ -114,19 +114,24 @@ class JobInstanceResponse:
 
 class ReleaseResult(Enum):
     RELEASED = auto()
-    UNRELEASED = auto()
     NOT_APPLICABLE = auto()
     UNKNOWN = auto()
 
 
 @dataclass
 class ReleaseResponse(JobInstanceResponse):
-    released_result: ReleaseResult
+    release_result: ReleaseResult
+
+
+class StopResult(Enum):
+    STOP_PERFORMED = auto()
+    NOT_APPLICABLE = auto()
+    UNKNOWN = auto()
 
 
 @dataclass
 class StopResponse(JobInstanceResponse):
-    result_str: str
+    stop_result: StopResult
 
 
 @dataclass
@@ -154,19 +159,19 @@ def read_instances(instance_match=None) -> MultiResponse[JobInst]:
         return client.read_instances(instance_match)
 
 
-def release_waiting(instance_match, waiting_state) -> MultiResponse[ReleaseResponse]:
+def release_waiting_instances(instance_match, waiting_state) -> MultiResponse[ReleaseResponse]:
     with APIClient() as client:
-        return client.release_waiting(instance_match, waiting_state)
+        return client.release_waiting_instances(instance_match, waiting_state)
 
 
-def release_pending_jobs(pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
+def release_pending_instances(pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
     with APIClient() as client:
-        return client.release_pending_jobs(pending_group, instance_match)
+        return client.release_pending_instances(pending_group, instance_match)
 
 
-def stop_jobs(instance_match) -> MultiResponse[StopResponse]:
+def stop_instances(instance_match) -> MultiResponse[StopResponse]:
     with APIClient() as client:
-        return client.stop_jobs(instance_match)
+        return client.stop_instances(instance_match)
 
 
 def read_tail(instance_match=None) -> MultiResponse[TailResponse]:
@@ -227,21 +232,21 @@ class APIClient(SocketClient):
         instance_responses, api_errors = self.send_request('/instances', instance_match)
         return MultiResponse([JobInst.from_dict(body["job_instance"]) for _, body in instance_responses], api_errors)
 
-    def release_waiting(self, instance_match, waiting_state) -> MultiResponse[ReleaseResponse]:
+    def release_waiting_instances(self, instance_match, waiting_state) -> MultiResponse[ReleaseResponse]:
         if not instance_match or not waiting_state:
             raise ValueError("Arguments cannot be empty")
 
         req_body = {"waiting_state": waiting_state.name}
         return self.send_request('/instances/release/waiting', instance_match, req_body, _release_resp_mapper)
 
-    def release_pending_jobs(self, pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
+    def release_pending_instances(self, pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
         if not pending_group:
             raise ValueError("Missing pending group")
 
         req_body = {"pending_group": pending_group}
         return self.send_request('/instances/release/pending', instance_match, req_body, _release_resp_mapper)
 
-    def stop_jobs(self, instance_match) -> MultiResponse[StopResponse]:
+    def stop_instances(self, instance_match) -> MultiResponse[StopResponse]:
         """
 
         :param instance_match: instance id matching criteria is mandatory for the stop operation
@@ -251,15 +256,15 @@ class APIClient(SocketClient):
             raise ValueError('Id matching criteria is mandatory for the stop operation')
 
         def resp_mapper(inst_resp: APIInstanceResponse) -> StopResponse:
-            return StopResponse(inst_resp.instance_meta, inst_resp.body["result"])
+            return StopResponse(inst_resp.instance_meta, StopResult[inst_resp.body["stop_result"].upper()])
 
-        return self.send_request('/jobs/stop', instance_match, resp_mapper=resp_mapper)
+        return self.send_request('/instances/stop', instance_match, resp_mapper=resp_mapper)
 
-    def read_tail(self, instance_match) -> MultiResponse[TailResponse]:
+    def read_tail(self, instance_match=None) -> MultiResponse[TailResponse]:
         def resp_mapper(inst_resp: APIInstanceResponse) -> TailResponse:
             return TailResponse(inst_resp.instance_meta, inst_resp.body["tail"])
 
-        return self.send_request('/jobs/tail', instance_match, resp_mapper=resp_mapper)
+        return self.send_request('/instances/tail', instance_match, resp_mapper=resp_mapper)
 
 
 def _process_responses(responses: List[ServerResponse], resp_mapper: Callable[[APIInstanceResponse], T]) \

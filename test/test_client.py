@@ -1,7 +1,7 @@
 import pytest
 
 from tarotools.taro import ExecutionState
-from tarotools.taro.client import APIClient, APIErrorType, ErrorCode, ReleaseResult
+from tarotools.taro.client import APIClient, APIErrorType, ErrorCode, ReleaseResult, StopResult
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.inst import InstanceMatchingCriteria, IDMatchingCriteria
 from tarotools.taro.test.inst import TestJobInstance
@@ -11,6 +11,7 @@ from tarotools.taro.test.inst import TestJobInstance
 def job_instances():
     server = APIServer()
     j1 = TestJobInstance('j1', 'i1', ExecutionState.RUNNING)
+    j1.last_output = [('Meditate, do not delay, lest you later regret it.', False)]
     server.add_job_instance(j1)
     j2 = TestJobInstance('j2', 'i2', ExecutionState.PENDING)
     j2.metadata.pending_group = 'p1'
@@ -49,26 +50,49 @@ def test_instances_api(client):
 
 
 def test_release_waiting_state(client):
-    instances, errors = client.release_waiting(InstanceMatchingCriteria(IDMatchingCriteria('j2', '')),
-                                               ExecutionState.PENDING)
+    instances, errors = client.release_waiting_instances(InstanceMatchingCriteria(IDMatchingCriteria('j2', '')),
+                                                         ExecutionState.PENDING)
     assert not errors
     assert instances[0].instance_metadata.id.job_id == 'j2'
-    assert instances[0].released_result == ReleaseResult.RELEASED
+    assert instances[0].release_result == ReleaseResult.RELEASED
 
 
 def test_not_released_waiting_state(client):
-    instances, errors = client.release_waiting(InstanceMatchingCriteria(IDMatchingCriteria('*', '')),
-                                               ExecutionState.QUEUED)
+    instances, errors = client.release_waiting_instances(InstanceMatchingCriteria(IDMatchingCriteria('*', '')),
+                                                         ExecutionState.QUEUED)
     assert not errors
     assert not instances
 
 
 def test_release_pending_group(client, job_instances):
-    instances, errors = client.release_pending_jobs('p1')
+    instances, errors = client.release_pending_instances('p1')
     assert not errors
     assert instances[0].instance_metadata.id.job_id == 'j1'
-    assert instances[0].released_result == ReleaseResult.NOT_APPLICABLE
+    assert instances[0].release_result == ReleaseResult.NOT_APPLICABLE
     assert instances[1].instance_metadata.id.job_id == 'j2'
-    assert instances[1].released_result == ReleaseResult.RELEASED
+    assert instances[1].release_result == ReleaseResult.RELEASED
 
+    assert not job_instances[0].released
     assert job_instances[1].released
+
+
+def test_stop(client, job_instances):
+    instances, errors = client.stop_instances(InstanceMatchingCriteria(IDMatchingCriteria('j1', '')))
+    assert not errors
+    assert len(instances) == 1
+    assert instances[0].instance_metadata.id.job_id == 'j1'
+    assert instances[0].stop_result == StopResult.STOP_PERFORMED
+
+    assert job_instances[0].stopped
+    assert not job_instances[1].stopped
+
+
+def test_tail(client):
+    instances, errors = client.read_tail()
+    assert not errors
+
+    assert instances[0].instance_metadata.id.job_id == 'j1'
+    assert instances[0].tail == [['Meditate, do not delay, lest you later regret it.', False]]
+
+    assert instances[1].instance_metadata.id.job_id == 'j2'
+    assert not instances[1].tail
