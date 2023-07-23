@@ -180,7 +180,7 @@ def _no_resp_mapper(api_instance_response: APIInstanceResponse) -> APIInstanceRe
 
 def _release_resp_mapper(inst_resp: APIInstanceResponse) -> ReleaseResponse:
     try:
-        release_res = ReleaseResult[inst_resp.body["release_result"]]
+        release_res = ReleaseResult[inst_resp.body["release_result"].upper()]
     except KeyError:
         release_res = ReleaseResult.UNKNOWN
     return ReleaseResponse(inst_resp.instance_meta, release_res)
@@ -239,7 +239,7 @@ class APIClient(SocketClient):
             raise ValueError("Missing pending group")
 
         req_body = {"pending_group": pending_group}
-        return self.send_request('/jobs/release/pending', instance_match, req_body, _release_resp_mapper)
+        return self.send_request('/instances/release/pending', instance_match, req_body, _release_resp_mapper)
 
     def stop_jobs(self, instance_match) -> MultiResponse[StopResponse]:
         """
