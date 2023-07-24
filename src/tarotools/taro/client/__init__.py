@@ -148,8 +148,8 @@ def read_instances(instance_match=None) -> MultiResponse[JobInst]:
             A filter for instance matching. If provided, only instances that match will be included.
 
     Returns:
-        MultiResponse[JobInst]: A container holding the :class:`JobInst` objects that represent job instances.
-            Also includes any errors that may have occurred.
+        A container holding the :class:`JobInst` objects that represent job instances.
+        It also includes any errors that may have happened, each one related to a specific server API.
 
     Raises:
         PayloadTooLarge: If the payload size exceeds the maximum limit.
@@ -159,12 +159,43 @@ def read_instances(instance_match=None) -> MultiResponse[JobInst]:
         return client.read_instances(instance_match)
 
 
-def release_waiting_instances(instance_match, waiting_state) -> MultiResponse[ReleaseResponse]:
+def release_waiting_instances(waiting_state, instance_match) -> MultiResponse[ReleaseResponse]:
+    """
+    This function releases job instances that are waiting in the specified state and match the provided criteria.
+
+    Args:
+        waiting_state (ExecutionState, mandatory):
+            Only instances that are waiting for this state will be released.
+        instance_match (InstanceMatchingCriteria, mandatory):
+            The operation will affect only instances matching these criteria.
+
+    Returns:
+        A container holding :class:`ReleaseResponse` objects, each representing the result of the release operation
+        for a respective job instance.
+        It also includes any errors that may have happened, each one related to a specific server API.
+    """
+
     with APIClient() as client:
-        return client.release_waiting_instances(instance_match, waiting_state)
+        return client.release_waiting_instances(waiting_state, instance_match)
 
 
 def release_pending_instances(pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
+    """
+    This function releases job instances that are pending in the provided group
+    and optionally match the provided criteria.
+
+    Args:
+        pending_group (str, mandatory):
+            Only instances that are waiting in this group will be released.
+        instance_match (InstanceMatchingCriteria, optional):
+            The operation will affect only instances matching these criteria or all instances if not provided.
+
+    Returns:
+        A container holding :class:`ReleaseResponse` objects, each representing the result of the release operation
+        for a respective job instance.
+        It also includes any errors that may have happened, each one related to a specific server API.
+    """
+
     with APIClient() as client:
         return client.release_pending_instances(pending_group, instance_match)
 
@@ -222,8 +253,8 @@ class APIClient(SocketClient):
                 A filter for instance matching. If provided, only instances that match will be included.
 
         Returns:
-            MultiResponse[JobInst]: A container holding the :class:`JobInst` objects that represent job instances.
-                Also includes any errors that may have occurred.
+            A container holding the :class:`JobInst` objects that represent job instances.
+            It also includes any errors that may have happened, each one related to a specific server API.
 
         Raises:
             PayloadTooLarge: If the payload size exceeds the maximum limit.
@@ -232,7 +263,22 @@ class APIClient(SocketClient):
         instance_responses, api_errors = self.send_request('/instances', instance_match)
         return MultiResponse([JobInst.from_dict(body["job_instance"]) for _, body in instance_responses], api_errors)
 
-    def release_waiting_instances(self, instance_match, waiting_state) -> MultiResponse[ReleaseResponse]:
+    def release_waiting_instances(self, waiting_state, instance_match) -> MultiResponse[ReleaseResponse]:
+        """
+        This function releases job instances that are waiting in the specified state and match the provided criteria.
+
+        Args:
+            waiting_state (ExecutionState, mandatory):
+                Only instances that are waiting for this state will be released.
+            instance_match (InstanceMatchingCriteria, mandatory):
+                The operation will affect only instances matching these criteria.
+
+        Returns:
+            A container holding :class:ReleaseResponse objects, each representing the result of the release operation
+            for a respective job instance.
+            It also includes any errors that may have happened, each one related to a specific server API.
+        """
+
         if not instance_match or not waiting_state:
             raise ValueError("Arguments cannot be empty")
 
@@ -240,6 +286,22 @@ class APIClient(SocketClient):
         return self.send_request('/instances/release/waiting', instance_match, req_body, _release_resp_mapper)
 
     def release_pending_instances(self, pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
+        """
+        This function releases job instances that are pending in the provided group
+        and optionally match the provided criteria.
+
+        Args:
+            pending_group (str, mandatory):
+                Only instances that are waiting in this group will be released.
+            instance_match (InstanceMatchingCriteria, optional):
+                The operation will affect only instances matching these criteria or all instances if not provided.
+
+        Returns:
+            A container holding :class:`ReleaseResponse` objects, each representing the result of the release operation
+            for a respective job instance.
+            It also includes any errors that may have happened, each one related to a specific server API.
+        """
+
         if not pending_group:
             raise ValueError("Missing pending group")
 

@@ -50,16 +50,16 @@ def test_instances_api(client):
 
 
 def test_release_waiting_state(client):
-    instances, errors = client.release_waiting_instances(InstanceMatchingCriteria(IDMatchingCriteria('j2', '')),
-                                                         ExecutionState.PENDING)
+    instances, errors = client.release_waiting_instances(ExecutionState.PENDING,
+                                                         InstanceMatchingCriteria(IDMatchingCriteria('j2', '')))
     assert not errors
     assert instances[0].instance_metadata.id.job_id == 'j2'
     assert instances[0].release_result == ReleaseResult.RELEASED
 
 
 def test_not_released_waiting_state(client):
-    instances, errors = client.release_waiting_instances(InstanceMatchingCriteria(IDMatchingCriteria('*', '')),
-                                                         ExecutionState.QUEUED)
+    instances, errors = client.release_waiting_instances(ExecutionState.QUEUED,
+                                                         InstanceMatchingCriteria(IDMatchingCriteria('*', '')))
     assert not errors
     assert not instances
 
