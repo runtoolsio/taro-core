@@ -202,7 +202,7 @@ def _resp_ok(instance_responses):
 def _resp(code: int, instance_responses):
     resp = {
         "response_metadata": {"code": code},
-        "instances": instance_responses
+        "instance_responses": instance_responses
     }
     return json.dumps(resp)
 

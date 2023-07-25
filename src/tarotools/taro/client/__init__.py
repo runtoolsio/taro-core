@@ -15,13 +15,13 @@ from tarotools.taro.socket import SocketClient, ServerResponse, Error
 log = logging.getLogger(__name__)
 
 
-class APIInstanceResponse(NamedTuple):
+class InstanceResponse(NamedTuple):
     """
     Represents generic data for a single job instance,
     extracted from a successful de-serialized and pre-processed Instances API response.
 
     Note that the Instances API may manage several job instances and thus may
-    return data for multiple instances.
+    return data for multiple instances, with each instance represented as a single instance response.
 
     Attributes:
     instance_meta: Metadata about the job instance.
@@ -88,7 +88,7 @@ T = TypeVar('T')
 
 
 @dataclass
-class MultiResponse(Generic[T]):
+class AggregatedResponse(Generic[T]):
     """
     Represents a collection of responses and errors from multiple APIs.
 
@@ -98,6 +98,9 @@ class MultiResponse(Generic[T]):
     Attributes:
         responses: A list of successful responses of type T.
         errors: A list of APIError instances representing errors that occurred during the API calls.
+
+    Note: In the case of the Instances API, each API response may contain multiple instance responses.
+          This means that the number of responses can exceed the number of contacted APIs.
     """
 
     responses: List[T]
@@ -139,7 +142,7 @@ class TailResponse(JobInstanceResponse):
     tail: List[str]
 
 
-def read_instances(instance_match=None) -> MultiResponse[JobInst]:
+def read_instances(instance_match=None) -> AggregatedResponse[JobInst]:
     """
     Retrieves instance information for all active job instances for the current user.
 
@@ -159,7 +162,7 @@ def read_instances(instance_match=None) -> MultiResponse[JobInst]:
         return client.read_instances(instance_match)
 
 
-def release_waiting_instances(waiting_state, instance_match) -> MultiResponse[ReleaseResponse]:
+def release_waiting_instances(waiting_state, instance_match) -> AggregatedResponse[ReleaseResponse]:
     """
     This function releases job instances that are waiting in the specified state and match the provided criteria.
 
@@ -179,7 +182,7 @@ def release_waiting_instances(waiting_state, instance_match) -> MultiResponse[Re
         return client.release_waiting_instances(waiting_state, instance_match)
 
 
-def release_pending_instances(pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
+def release_pending_instances(pending_group, instance_match=None) -> AggregatedResponse[ReleaseResponse]:
     """
     This function releases job instances that are pending in the provided group
     and optionally match the provided criteria.
@@ -200,7 +203,7 @@ def release_pending_instances(pending_group, instance_match=None) -> MultiRespon
         return client.release_pending_instances(pending_group, instance_match)
 
 
-def stop_instances(instance_match) -> MultiResponse[StopResponse]:
+def stop_instances(instance_match) -> AggregatedResponse[StopResponse]:
     """
     This function stops job instances that match the provided criteria.
 
@@ -221,7 +224,7 @@ def stop_instances(instance_match) -> MultiResponse[StopResponse]:
         return client.stop_instances(instance_match)
 
 
-def read_tail(instance_match=None) -> MultiResponse[TailResponse]:
+def read_tail(instance_match=None) -> AggregatedResponse[TailResponse]:
     """
     This function requests the last lines of the output from job instances that optionally match the provided criteria.
 
@@ -239,11 +242,11 @@ def read_tail(instance_match=None) -> MultiResponse[TailResponse]:
         return client.read_tail(instance_match)
 
 
-def _no_resp_mapper(api_instance_response: APIInstanceResponse) -> APIInstanceResponse:
+def _no_resp_mapper(api_instance_response: InstanceResponse) -> InstanceResponse:
     return api_instance_response
 
 
-def _release_resp_mapper(inst_resp: APIInstanceResponse) -> ReleaseResponse:
+def _release_resp_mapper(inst_resp: InstanceResponse) -> ReleaseResponse:
     try:
         release_res = ReleaseResult[inst_resp.body["release_result"].upper()]
     except KeyError:
@@ -263,7 +266,7 @@ class APIClient(SocketClient):
         self.close()
 
     def send_request(self, api: str, instance_match=None, req_body=None,
-                     resp_mapper: Callable[[APIInstanceResponse], T] = _no_resp_mapper) -> MultiResponse[T]:
+                     resp_mapper: Callable[[InstanceResponse], T] = _no_resp_mapper) -> AggregatedResponse[T]:
         if not req_body:
             req_body = {}
         req_body["request_metadata"] = {"api": api}
@@ -273,7 +276,7 @@ class APIClient(SocketClient):
         server_responses: List[ServerResponse] = self.communicate(json.dumps(req_body))
         return _process_responses(server_responses, resp_mapper)
 
-    def read_instances(self, instance_match=None) -> MultiResponse[JobInst]:
+    def read_instances(self, instance_match=None) -> AggregatedResponse[JobInst]:
         """
         Retrieves instance information for all active job instances for the current user.
 
@@ -289,10 +292,12 @@ class APIClient(SocketClient):
             PayloadTooLarge: If the payload size exceeds the maximum limit.
         """
 
-        instance_responses, api_errors = self.send_request('/instances', instance_match)
-        return MultiResponse([JobInst.from_dict(body["job_instance"]) for _, body in instance_responses], api_errors)
+        def resp_mapper(inst_resp: InstanceResponse) -> JobInst:
+            return JobInst.from_dict(inst_resp.body["job_instance"])
 
-    def release_waiting_instances(self, waiting_state, instance_match) -> MultiResponse[ReleaseResponse]:
+        return self.send_request('/instances', instance_match, resp_mapper=resp_mapper)
+
+    def release_waiting_instances(self, waiting_state, instance_match) -> AggregatedResponse[ReleaseResponse]:
         """
         This function releases job instances that are waiting in the specified state and match the provided criteria.
 
@@ -314,7 +319,7 @@ class APIClient(SocketClient):
         req_body = {"waiting_state": waiting_state.name}
         return self.send_request('/instances/release/waiting', instance_match, req_body, _release_resp_mapper)
 
-    def release_pending_instances(self, pending_group, instance_match=None) -> MultiResponse[ReleaseResponse]:
+    def release_pending_instances(self, pending_group, instance_match=None) -> AggregatedResponse[ReleaseResponse]:
         """
         This function releases job instances that are pending in the provided group
         and optionally match the provided criteria.
@@ -337,7 +342,7 @@ class APIClient(SocketClient):
         req_body = {"pending_group": pending_group}
         return self.send_request('/instances/release/pending', instance_match, req_body, _release_resp_mapper)
 
-    def stop_instances(self, instance_match) -> MultiResponse[StopResponse]:
+    def stop_instances(self, instance_match) -> AggregatedResponse[StopResponse]:
         """
         This function stops job instances that match the provided criteria.
 
@@ -357,12 +362,12 @@ class APIClient(SocketClient):
         if not instance_match:
             raise ValueError('Id matching criteria is mandatory for the stop operation')
 
-        def resp_mapper(inst_resp: APIInstanceResponse) -> StopResponse:
+        def resp_mapper(inst_resp: InstanceResponse) -> StopResponse:
             return StopResponse(inst_resp.instance_meta, StopResult[inst_resp.body["stop_result"].upper()])
 
         return self.send_request('/instances/stop', instance_match, resp_mapper=resp_mapper)
 
-    def read_tail(self, instance_match=None) -> MultiResponse[TailResponse]:
+    def read_tail(self, instance_match=None) -> AggregatedResponse[TailResponse]:
         """
         This function requests the last lines of the output from job instances
         that optionally match the provided criteria.
@@ -377,39 +382,39 @@ class APIClient(SocketClient):
             It also includes any errors that may have happened, each one related to a specific server API.
         """
 
-        def resp_mapper(inst_resp: APIInstanceResponse) -> TailResponse:
+        def resp_mapper(inst_resp: InstanceResponse) -> TailResponse:
             return TailResponse(inst_resp.instance_meta, inst_resp.body["tail"])
 
         return self.send_request('/instances/tail', instance_match, resp_mapper=resp_mapper)
 
 
-def _process_responses(responses: List[ServerResponse], resp_mapper: Callable[[APIInstanceResponse], T]) \
-        -> MultiResponse[T]:
-    typed_responses: List[T] = []
-    api_errors: List[APIError] = []
+def _process_responses(server_responses: List[ServerResponse], resp_mapper: Callable[[InstanceResponse], T]) \
+        -> AggregatedResponse[T]:
+    responses: List[T] = []
+    errors: List[APIError] = []
 
-    for server_id, resp, error in responses:
+    for server_id, resp, error in server_responses:
         if error:
             log.error("event=[api_error] type=[socket] error=[%s]", error)
-            api_errors.append(APIError(server_id, APIErrorType.SOCKET, error, None))
+            errors.append(APIError(server_id, APIErrorType.SOCKET, error, None))
             continue
 
         resp_body = json.loads(resp)
         resp_metadata = resp_body.get("response_metadata")
         if not resp_metadata:
             log.error("event=[api_error] type=[invalid_response] error=[missing_response_metadata]")
-            api_errors.append(APIError(server_id, APIErrorType.INVALID_RESPONSE, None, None))
+            errors.append(APIError(server_id, APIErrorType.INVALID_RESPONSE, None, None))
             continue
         if "error" in resp_metadata:
             code = resp_metadata.get('code')
             reason = resp_metadata['error'].get('reason')
             if not code or code < 400 or code >= 600:
                 log.error("event=[api_error] type=[invalid_response] error=[invalid_response_code] code=[%s]", code)
-                api_errors.append(APIError(server_id, APIErrorType.INVALID_RESPONSE, None, None))
+                errors.append(APIError(server_id, APIErrorType.INVALID_RESPONSE, None, None))
                 continue
             if not reason:
                 log.error("event=[api_error] type=[invalid_response] error=[missing_error_reason] code=[%s]", code)
-                api_errors.append(APIError(server_id, APIErrorType.INVALID_RESPONSE, None, None))
+                errors.append(APIError(server_id, APIErrorType.INVALID_RESPONSE, None, None))
                 continue
 
             error_type = APIErrorType.API_CLIENT if code < 500 else APIErrorType.API_SERVER
@@ -419,18 +424,18 @@ def _process_responses(responses: List[ServerResponse], resp_mapper: Callable[[A
                 log.warning("event=[unknown_error_code] code=[%s]", code)
                 err_code = ErrorCode.UNKNOWN
             log.error("event=[api_error] type=[%s] code=[%s] reason=[%s]", error_type, err_code, reason)
-            api_errors.append(APIError(server_id, error_type, None, ResponseError(err_code, reason)))
+            errors.append(APIError(server_id, error_type, None, ResponseError(err_code, reason)))
             continue
 
-        for instance_resp in resp_body['instances']:
+        for instance_resp in resp_body['instance_responses']:
             instance_metadata = JobInstanceMetadata.from_dict(instance_resp['instance_metadata'])
-            api_instance_response = APIInstanceResponse(instance_metadata, instance_resp)
+            api_instance_response = InstanceResponse(instance_metadata, instance_resp)
             try:
-                typed_resp = resp_mapper(api_instance_response)
+                resp = resp_mapper(api_instance_response)
             except (KeyError, ValueError) as e:
                 log.error("event=[api_error] type=[%s] reason=[%s]", APIErrorType.INVALID_RESPONSE, e)
-                api_errors.append(APIError(server_id, APIErrorType.INVALID_RESPONSE, None, None))
+                errors.append(APIError(server_id, APIErrorType.INVALID_RESPONSE, None, None))
                 break
-            typed_responses.append(typed_resp)
+            responses.append(resp)
 
-    return MultiResponse(typed_responses, api_errors)
+    return AggregatedResponse(responses, errors)
