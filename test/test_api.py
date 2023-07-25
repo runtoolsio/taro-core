@@ -3,7 +3,7 @@ import pytest
 from tarotools.taro import ExecutionState
 from tarotools.taro.client import APIClient, APIErrorType, ErrorCode, ReleaseResult, StopResult
 from tarotools.taro.jobs.api import APIServer
-from tarotools.taro.jobs.inst import InstanceMatchingCriteria, IDMatchingCriteria
+from tarotools.taro.jobs.inst import InstanceMatchCriteria, IDMatchCriteria
 from tarotools.taro.test.inst import TestJobInstance
 
 
@@ -41,8 +41,8 @@ def test_instances_api(client):
     assert instances['j1'].lifecycle.state == ExecutionState.RUNNING
     assert instances['j2'].lifecycle.state == ExecutionState.PENDING
 
-    multi_resp_j1 = client.read_instances(InstanceMatchingCriteria(IDMatchingCriteria('j1', '')))
-    multi_resp_j2 = client.read_instances(InstanceMatchingCriteria(IDMatchingCriteria('j2', '')))
+    multi_resp_j1 = client.read_instances(InstanceMatchCriteria(IDMatchCriteria('j1', '')))
+    multi_resp_j2 = client.read_instances(InstanceMatchCriteria(IDMatchCriteria('j2', '')))
     assert multi_resp_j1.responses[0].job_id == 'j1'
     assert multi_resp_j2.responses[0].job_id == 'j2'
 
@@ -51,7 +51,7 @@ def test_instances_api(client):
 
 def test_release_waiting_state(client):
     instances, errors = client.release_waiting_instances(ExecutionState.PENDING,
-                                                         InstanceMatchingCriteria(IDMatchingCriteria('j2', '')))
+                                                         InstanceMatchCriteria(IDMatchCriteria('j2', '')))
     assert not errors
     assert instances[0].instance_metadata.id.job_id == 'j2'
     assert instances[0].release_result == ReleaseResult.RELEASED
@@ -59,7 +59,7 @@ def test_release_waiting_state(client):
 
 def test_not_released_waiting_state(client):
     instances, errors = client.release_waiting_instances(ExecutionState.QUEUED,
-                                                         InstanceMatchingCriteria(IDMatchingCriteria('*', '')))
+                                                         InstanceMatchCriteria(IDMatchCriteria('*', '')))
     assert not errors
     assert not instances
 
@@ -77,7 +77,7 @@ def test_release_pending_group(client, job_instances):
 
 
 def test_stop(client, job_instances):
-    instances, errors = client.stop_instances(InstanceMatchingCriteria(IDMatchingCriteria('j1', '')))
+    instances, errors = client.stop_instances(InstanceMatchCriteria(IDMatchCriteria('j1', '')))
     assert not errors
     assert len(instances) == 1
     assert instances[0].instance_metadata.id.job_id == 'j1'

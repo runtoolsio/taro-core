@@ -34,7 +34,7 @@ S = Union[Callable[[str, str], bool], MatchingStrategy]
 
 
 @dataclass
-class IDMatchingCriteria:
+class IDMatchCriteria:
     """
     This class specifies criteria for matching :class:`JobInstanceID` instances.
     If both job_id and instance_id are empty, the matching strategy defaults to :class:`MatchingStrategy.ALWAYS_TRUE`.
@@ -282,7 +282,7 @@ class StateCriteria:
         return remove_empty_values(d) if include_empty else d
 
 
-class InstanceMatchingCriteria:
+class InstanceMatchCriteria:
 
     def __init__(self, id_criteria=None, interval_criteria=None, state_criteria=None, jobs=None):
         self._id_criteria = to_list(id_criteria)
@@ -292,11 +292,11 @@ class InstanceMatchingCriteria:
 
     @classmethod
     def parse_pattern(cls, pattern, strategy: S = MatchingStrategy.EXACT):
-        return cls(IDMatchingCriteria.parse_pattern(pattern, strategy))
+        return cls(IDMatchCriteria.parse_pattern(pattern, strategy))
 
     @classmethod
     def from_dict(cls, as_dict):
-        id_criteria = [IDMatchingCriteria.from_dict(c) for c in as_dict.get('id_criteria', ())]
+        id_criteria = [IDMatchCriteria.from_dict(c) for c in as_dict.get('id_criteria', ())]
         interval_criteria = [IntervalCriteria.from_dict(c) for c in as_dict.get('interval_criteria', ())]
         sc = as_dict.get('state_criteria')
         state_criteria = StateCriteria.from_dict(sc) if sc else None
@@ -374,7 +374,7 @@ class InstanceMatchingCriteria:
 
 
 def parse_criteria(pattern, strategy: S = MatchingStrategy.EXACT):
-    return InstanceMatchingCriteria.parse_pattern(pattern, strategy)
+    return InstanceMatchCriteria.parse_pattern(pattern, strategy)
 
 
 class JobInstanceID(NamedTuple):
@@ -389,7 +389,7 @@ class JobInstanceID(NamedTuple):
         return cls(as_dict['job_id'], as_dict['instance_id'])
 
     def matches_pattern(self, id_pattern, matching_strategy=fnmatch):
-        return IDMatchingCriteria.parse_pattern(id_pattern, strategy=matching_strategy).matches(self)
+        return IDMatchCriteria.parse_pattern(id_pattern, strategy=matching_strategy).matches(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {

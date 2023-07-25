@@ -147,7 +147,7 @@ def read_instances(instance_match=None) -> AggregatedResponse[JobInst]:
     Retrieves instance information for all active job instances for the current user.
 
     Args:
-        instance_match (InstanceMatchingCriteria, optional):
+        instance_match (InstanceMatchCriteria, optional):
             A filter for instance matching. If provided, only instances that match will be included.
 
     Returns:
@@ -169,7 +169,7 @@ def release_waiting_instances(waiting_state, instance_match) -> AggregatedRespon
     Args:
         waiting_state (ExecutionState, mandatory):
             Only instances that are waiting for this state will be released.
-        instance_match (InstanceMatchingCriteria, mandatory):
+        instance_match (InstanceMatchCriteria, mandatory):
             The operation will affect only instances matching these criteria.
 
     Returns:
@@ -190,7 +190,7 @@ def release_pending_instances(pending_group, instance_match=None) -> AggregatedR
     Args:
         pending_group (str, mandatory):
             Only instances that are waiting in this group will be released.
-        instance_match (InstanceMatchingCriteria, optional):
+        instance_match (InstanceMatchCriteria, optional):
             The operation will affect only instances matching these criteria or all instances if not provided.
 
     Returns:
@@ -208,7 +208,7 @@ def stop_instances(instance_match) -> AggregatedResponse[StopResponse]:
     This function stops job instances that match the provided criteria.
 
     Args:
-        instance_match (InstanceMatchingCriteria, mandatory):
+        instance_match (InstanceMatchCriteria, mandatory):
             The operation will affect only instances matching these criteria.
 
     Returns:
@@ -229,7 +229,7 @@ def read_tail(instance_match=None) -> AggregatedResponse[TailResponse]:
     This function requests the last lines of the output from job instances that optionally match the provided criteria.
 
     Args:
-        instance_match (InstanceMatchingCriteria, optional):
+        instance_match (InstanceMatchCriteria, optional):
             The operation will affect only instances matching these criteria.
             If not provided, the tail of all instances is read.
 
@@ -281,7 +281,7 @@ class APIClient(SocketClient):
         Retrieves instance information for all active job instances for the current user.
 
         Args:
-            instance_match (InstanceMatchingCriteria, optional):
+            instance_match (InstanceMatchCriteria, optional):
                 A filter for instance matching. If provided, only instances that match will be included.
 
         Returns:
@@ -304,7 +304,7 @@ class APIClient(SocketClient):
         Args:
             waiting_state (ExecutionState, mandatory):
                 Only instances that are waiting for this state will be released.
-            instance_match (InstanceMatchingCriteria, mandatory):
+            instance_match (InstanceMatchCriteria, mandatory):
                 The operation will affect only instances matching these criteria.
 
         Returns:
@@ -327,7 +327,7 @@ class APIClient(SocketClient):
         Args:
             pending_group (str, mandatory):
                 Only instances that are waiting in this group will be released.
-            instance_match (InstanceMatchingCriteria, optional):
+            instance_match (InstanceMatchCriteria, optional):
                 The operation will affect only instances matching these criteria or all instances if not provided.
 
         Returns:
@@ -347,7 +347,7 @@ class APIClient(SocketClient):
         This function stops job instances that match the provided criteria.
 
         Args:
-            instance_match (InstanceMatchingCriteria, mandatory):
+            instance_match (InstanceMatchCriteria, mandatory):
                 The operation will affect only instances matching these criteria.
 
         Returns:
@@ -373,7 +373,7 @@ class APIClient(SocketClient):
         that optionally match the provided criteria.
 
         Args:
-            instance_match (InstanceMatchingCriteria, optional):
+            instance_match (InstanceMatchCriteria, optional):
                 The operation will affect only instances matching these criteria.
                 If not provided, the tail of all instances is read.
 

@@ -5,7 +5,7 @@ import pytest
 
 from tarotools.taro import ExecutionState, ExecutionError
 from tarotools.taro.jobs.db.sqlite import SQLite
-from tarotools.taro.jobs.inst import parse_criteria, InstanceMatchingCriteria, IntervalCriteria, LifecycleEvent, \
+from tarotools.taro.jobs.inst import parse_criteria, InstanceMatchCriteria, IntervalCriteria, LifecycleEvent, \
     StateCriteria
 from tarotools.taro.jobs.track import MutableTrackedTask
 from tarotools.taro.test.execution import lc_failed, lc_completed
@@ -108,24 +108,24 @@ def test_interval(sut):
     sut.store_instances(j(3, created=dt(2023, 4, 22), completed=dt(2023, 4, 22, 23, 59, 58)))
 
     ic = IntervalCriteria(event=LifecycleEvent.ENDED, from_dt=dt(2023, 4, 23))
-    jobs = sut.read_instances(InstanceMatchingCriteria(interval_criteria=ic))
+    jobs = sut.read_instances(InstanceMatchCriteria(interval_criteria=ic))
     assert jobs.job_ids == ['j1']
 
     ic = IntervalCriteria(event=LifecycleEvent.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59))
-    jobs = sut.read_instances(InstanceMatchingCriteria(interval_criteria=ic))
+    jobs = sut.read_instances(InstanceMatchCriteria(interval_criteria=ic))
     assert sorted(jobs.job_ids) == ['j2', 'j3']
 
     ic = IntervalCriteria(event=LifecycleEvent.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59), include_to=False)
-    jobs = sut.read_instances(InstanceMatchingCriteria(interval_criteria=ic))
+    jobs = sut.read_instances(InstanceMatchCriteria(interval_criteria=ic))
     assert jobs.job_ids == ['j3']
 
     ic = IntervalCriteria(event=LifecycleEvent.ENDED, from_dt=dt(2023, 4, 22, 23, 59, 59), to_dt=dt(2023, 4, 23))
-    jobs = sut.read_instances(InstanceMatchingCriteria(interval_criteria=ic))
+    jobs = sut.read_instances(InstanceMatchCriteria(interval_criteria=ic))
     assert sorted(jobs.job_ids) == ['j1', 'j2']
 
 
 def test_warning(sut):
     sut.store_instances(j(1), j(2, warnings={'w1': 1}), j(3))
-    jobs = sut.read_instances(InstanceMatchingCriteria(state_criteria=StateCriteria(warning=True)))
+    jobs = sut.read_instances(InstanceMatchCriteria(state_criteria=StateCriteria(warning=True)))
 
     assert jobs.job_ids == ['j2']
