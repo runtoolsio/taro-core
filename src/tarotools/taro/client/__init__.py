@@ -201,11 +201,40 @@ def release_pending_instances(pending_group, instance_match=None) -> MultiRespon
 
 
 def stop_instances(instance_match) -> MultiResponse[StopResponse]:
+    """
+    This function stops job instances that match the provided criteria.
+
+    Args:
+        instance_match (InstanceMatchingCriteria, mandatory):
+            The operation will affect only instances matching these criteria.
+
+    Returns:
+        A container holding :class:`StopResponse` objects, each representing the result of the stop operation
+        for a respective job instance.
+        It also includes any errors that may have happened, each one related to a specific server API.
+
+    Note:
+        The stop operation might not succeed if the instance doesn't correctly handle stop/terminate signals.
+    """
+
     with APIClient() as client:
         return client.stop_instances(instance_match)
 
 
 def read_tail(instance_match=None) -> MultiResponse[TailResponse]:
+    """
+    This function requests the last lines of the output from job instances that optionally match the provided criteria.
+
+    Args:
+        instance_match (InstanceMatchingCriteria, optional):
+            The operation will affect only instances matching these criteria.
+            If not provided, the tail of all instances is read.
+
+    Returns:
+        A container holding :class:`TailResponse` objects, each containing last lines for a respective job instance.
+        It also includes any errors that may have happened, each one related to a specific server API.
+    """
+
     with APIClient() as client:
         return client.read_tail(instance_match)
 
@@ -310,10 +339,21 @@ class APIClient(SocketClient):
 
     def stop_instances(self, instance_match) -> MultiResponse[StopResponse]:
         """
+        This function stops job instances that match the provided criteria.
 
-        :param instance_match: instance id matching criteria is mandatory for the stop operation
-        :return: list of tuple[instance-id, stop-result]
+        Args:
+            instance_match (InstanceMatchingCriteria, mandatory):
+                The operation will affect only instances matching these criteria.
+
+        Returns:
+            A container holding :class:`StopResponse` objects, each representing the result of the stop operation
+            for a respective job instance.
+            It also includes any errors that may have happened, each one related to a specific server API.
+
+        Note:
+            The stop operation might not succeed if the instance doesn't correctly handle stop/terminate signals.
         """
+
         if not instance_match:
             raise ValueError('Id matching criteria is mandatory for the stop operation')
 
@@ -323,6 +363,20 @@ class APIClient(SocketClient):
         return self.send_request('/instances/stop', instance_match, resp_mapper=resp_mapper)
 
     def read_tail(self, instance_match=None) -> MultiResponse[TailResponse]:
+        """
+        This function requests the last lines of the output from job instances
+        that optionally match the provided criteria.
+
+        Args:
+            instance_match (InstanceMatchingCriteria, optional):
+                The operation will affect only instances matching these criteria.
+                If not provided, the tail of all instances is read.
+
+        Returns:
+            A container holding :class:`TailResponse` objects, each containing last lines for a respective job instance.
+            It also includes any errors that may have happened, each one related to a specific server API.
+        """
+
         def resp_mapper(inst_resp: APIInstanceResponse) -> TailResponse:
             return TailResponse(inst_resp.instance_meta, inst_resp.body["tail"])
 
