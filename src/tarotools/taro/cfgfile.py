@@ -8,12 +8,12 @@ loaded_config_path = None
 def load(config=None):
     config_path = util.expand_user(config) if config else paths.lookup_config_file()
     try:
-        cns = util.read_yaml_file(config_path)
+        flatten_cfg = util.read_toml_file_flatten(config_path)
     except FileNotFoundError:
         # Must be the explicit `config` as `lookup_config_file` already raises this exception
         raise ConfigFileNotFoundError(config)
 
-    cfg.set_nested_ns(cns)
+    cfg.set_variables(**flatten_cfg)
 
     global loaded_config_path
     loaded_config_path = config_path

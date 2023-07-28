@@ -2,10 +2,10 @@ from multiprocessing import Queue
 from pathlib import Path
 from typing import Dict, Tuple
 
-import yaml
+import tomli_w
 
-from tarotools.taro import paths, JobInst, Warn, WarningObserver, ExecutionStateObserver
 from tarotools.taro import cfg
+from tarotools.taro import paths, JobInst, Warn, WarningObserver, ExecutionStateObserver
 from tarotools.taro.jobs.inst import WarnEventCtx
 
 
@@ -19,7 +19,7 @@ def reset_config():
     cfg.persistence_type = cfg.DEF_PERSISTENCE_TYPE
     cfg.persistence_database = cfg.DEF_PERSISTENCE_DATABASE
 
-    cfg.plugins = cfg.DEF_PLUGINS
+    cfg.plugins_load = cfg.DEF_PLUGINS_LOAD
 
 
 def create_test_config(config):
@@ -28,8 +28,8 @@ def create_test_config(config):
 
 def create_custom_test_config(filename, config):
     path = _custom_test_config_path(filename)
-    with open(path, 'w') as outfile:
-        yaml.dump(config, outfile, default_flow_style=False)
+    with open(path, 'wb') as outfile:
+        tomli_w.dump(config, outfile)
     return path
 
 

@@ -18,7 +18,7 @@ from typing import Generator, List
 from tarotools.taro.err import ConfigFileNotFoundError
 
 CONFIG_DIR = 'taro'
-CONFIG_FILE = 'taro.yaml'
+CONFIG_FILE = 'taro.toml'
 JOBS_FILE = 'jobs.yaml'
 _HOSTINFO_FILE = 'hostinfo'
 _LOG_FILE = 'taro.log'

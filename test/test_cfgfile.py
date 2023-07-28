@@ -25,7 +25,8 @@ def test_defaults():
     assert cfg.log_file_level == 'off'
     assert cfg.log_file_path is None
     assert not cfg.persistence_enabled
-    assert cfg.plugins == ()
+    assert not cfg.plugins_enabled
+    assert cfg.plugins_load == ()
 
 
 def test_default_config():
@@ -37,13 +38,19 @@ def test_default_config():
     assert cfg.persistence_enabled
     assert cfg.persistence_type == 'sqlite'
     assert cfg.persistence_max_records == -1
-    assert cfg.plugins == ()
+    assert cfg.plugins_load == ()
+
+
+def test_field_with_underscore():
+    create_test_config({"persistence_max_records": 200})
+    cfgfile.load()
+    assert cfg.persistence_max_records == 200
 
 
 def test_plugins_array():
-    create_test_config({"plugins": ["p1", "p2"]})
+    create_test_config({"plugins": {"load": ["p1", "p2"]}})
     cfgfile.load()
-    assert cfg.plugins == ("p1", "p2")
+    assert cfg.plugins_load == ("p1", "p2")
 
 
 def test_str_type_error():

@@ -1,11 +1,11 @@
 import os
 from pathlib import Path
 from shutil import copy
+from typing import Dict, Any
 
-import yaml
+import tomli
 
-from tarotools.taro.util import ns
-from tarotools.taro.util.ns import NestedNamespace
+from tarotools.taro.util import flatten_dict
 
 
 def expand_user(file):
@@ -22,14 +22,9 @@ def print_file(path):
         print(file.read())
 
 
-def read_yaml_file(file_path) -> NestedNamespace:
-    with open(file_path, 'r') as file:
-        return ns.wrap_namespace(yaml.safe_load(file))
-
-
-def write_yaml_file(content, file_path):
-    with open(file_path, 'w') as file:
-        return yaml.dump(content, file)
+def read_toml_file_flatten(file_path) -> Dict[str, Any]:
+    with open(file_path, 'rb') as file:
+        return flatten_dict(tomli.load(file))
 
 
 def copy_resource(src: Path, dst: Path, overwrite=False):

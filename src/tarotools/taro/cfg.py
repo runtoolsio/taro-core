@@ -50,7 +50,8 @@ DEF_PERSISTENCE_DATABASE = ''
 DEF_LOCK_TIMEOUT = 10000
 DEF_LOCK_MAX_CHECK_TIME = 50
 
-DEF_PLUGINS = ()
+DEF_PLUGINS_ENABLED = False
+DEF_PLUGINS_LOAD = ()
 
 # ------------ CONFIG VALUES ------------ #
 # !! UPDATE CONFIG.md when changes are made !! #
@@ -70,13 +71,16 @@ persistence_database = DEF_PERSISTENCE_DATABASE
 lock_timeout_ms = DEF_LOCK_TIMEOUT
 lock_max_check_time_ms = DEF_LOCK_MAX_CHECK_TIME
 
-plugins = DEF_PLUGINS
+plugins_enabled = DEF_PLUGINS_ENABLED
+plugins_load = DEF_PLUGINS_LOAD
 
 
 def set_variables(**kwargs):
     module = sys.modules[__name__]
+    current_attrs = get_module_attributes(module)
+
     for name, value in kwargs.items():
-        cur_value = getattr(module, name)
+        cur_value = current_attrs[name]
         if type(value) == type(cur_value):
             value_to_set = value
         elif isinstance(cur_value, LogMode):  # Must be before bool or str as these types are supported by LogMode parse
@@ -91,15 +95,3 @@ def set_variables(**kwargs):
             raise TypeError(f'Cannot convert value {value} to {type(cur_value)}')
 
         setattr(module, name, value_to_set)
-
-
-def set_nested_ns(nested_ns):
-    new_attrs = {}
-
-    current_attrs = get_module_attributes(sys.modules[__name__])
-    for attr_name, attr_val in current_attrs.items():
-        new_val = nested_ns.get(attr_name, sep="_")
-        if new_val is not None:
-            new_attrs[attr_name] = new_val
-
-    set_variables(**new_attrs)

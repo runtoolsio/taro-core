@@ -1,5 +1,6 @@
 import functools
 import itertools
+from collections.abc import MutableMapping
 from typing import Iterable
 
 
@@ -25,3 +26,19 @@ def to_list(e):
     if e is None:
         return []
     return list(e) if isinstance(e, Iterable) else [e]
+
+
+def flatten_dict(dictionary, parent_key='', separator='_'):
+    """
+
+    Author: https://stackoverflow.com/a/6027615/5282992
+    """
+    items = []
+    for key, value in dictionary.items():
+        new_key = parent_key + separator + key if parent_key else key
+        if isinstance(value, MutableMapping):
+            items.extend(flatten_dict(value, new_key, separator=separator).items())
+        else:
+            items.append((new_key, value))
+
+    return dict(items)

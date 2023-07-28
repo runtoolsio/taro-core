@@ -14,7 +14,8 @@ dependencies = [
     "portalocker>=2.6.0",
     "pygrok>=1.0.0",
     "python-dateutil>=2.8.2",
-    "PyYAML>=5.1.2",
+    "tomli>=2.0.1",
+    "tomli-w>=1.0.0",
     "urllib3>=1.26.2",
 ]
 

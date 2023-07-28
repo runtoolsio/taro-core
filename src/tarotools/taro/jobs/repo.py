@@ -47,7 +47,7 @@ class JobRepositoryFile(JobRepository):
         return 'file'
 
     def read_jobs(self):
-        cns = util.read_yaml_file(self.path or paths.lookup_jobs_file())  # TODO read cfg
+        cns = util.read_toml_file_flatten(self.path or paths.lookup_jobs_file())  # TODO read cfg
         jobs = cns.get('jobs')
         if not jobs:
             return []
@@ -58,7 +58,9 @@ class JobRepositoryFile(JobRepository):
         # TODO Create `taro config create --jobs` command for this
         path = self.path or (paths.taro_config_file_search_path(exclude_cwd=True)[0] / paths.JOBS_FILE)
         if not os.path.exists(path) or overwrite:
-            util.write_yaml_file(JobRepositoryFile.DEF_FILE_CONTENT, path)
+            pass
+            # TODO Copy file from resources
+            # util.write_yaml_file(JobRepositoryFile.DEF_FILE_CONTENT, path)
 
 
 class JobRepositoryActiveInstances(JobRepository):

@@ -71,8 +71,8 @@ class ManagedJobContext(ExecutionStateObserver):
             self._api.add_job_instance(job_instance)
 
         #  TODO optional plugins
-        if cfg.plugins:
-            plugins.register_new_job_instance(job_instance, cfg.plugins, plugin_module_prefix=EXT_PLUGIN_MODULE_PREFIX)
+        if cfg.plugins_enabled and cfg.plugins_load:
+            plugins.register_new_job_instance(job_instance, cfg.plugins_load, plugin_module_prefix=EXT_PLUGIN_MODULE_PREFIX)
 
         job_instance.add_state_observer(self, 1000)  # Must be notified last because it is used to close job resources
         self._managed_jobs.append(job_instance)

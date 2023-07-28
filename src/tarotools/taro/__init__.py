@@ -20,8 +20,7 @@ from tarotools.taro.jobs.process import ProcessExecution
 from tarotools.taro.jobs.program import ProgramExecution
 from tarotools.taro.jobs.runner import RunnerJobInstance
 from tarotools.taro.paths import lookup_file_in_config_path
-from tarotools.taro.util import format_timedelta, read_yaml_file
-from tarotools.taro.util.ns import NestedNamespace
+from tarotools.taro.util import format_timedelta, read_toml_file_flatten
 
 __version__ = "0.11.0"
 
