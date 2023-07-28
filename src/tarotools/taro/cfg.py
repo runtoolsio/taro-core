@@ -9,6 +9,7 @@ import sys
 from enum import Enum, auto
 
 from tarotools.taro import util
+from tarotools.taro.util.attr import get_module_attributes
 
 
 class LogMode(Enum):
@@ -84,7 +85,21 @@ def set_variables(**kwargs):
             value_to_set = distutils.util.strtobool(value)
         elif isinstance(cur_value, int):
             value_to_set = int(value)
+        elif isinstance(cur_value, tuple):
+            value_to_set = tuple(value)
         else:
-            raise ValueError(f'Cannot convert value {value} to {type(cur_value)}')
+            raise TypeError(f'Cannot convert value {value} to {type(cur_value)}')
 
         setattr(module, name, value_to_set)
+
+
+def set_nested_ns(nested_ns):
+    new_attrs = {}
+
+    current_attrs = get_module_attributes(sys.modules[__name__])
+    for attr_name, attr_val in current_attrs.items():
+        new_val = nested_ns.get(attr_name, sep="_")
+        if new_val is not None:
+            new_attrs[attr_name] = new_val
+
+    set_variables(**new_attrs)

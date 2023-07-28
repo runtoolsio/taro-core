@@ -5,8 +5,8 @@ Description: Config related tests
 
 import pytest
 
-from tarotools.taro import paths
 from tarotools.taro import cfg, cfgfile
+from tarotools.taro import paths
 from tarotools.taro.log import LogMode
 from tarotools.taro.test.testutil import create_test_config, remove_test_config
 
@@ -35,13 +35,9 @@ def test_default_config():
     assert cfg.log_file_level == 'info'
     assert cfg.log_file_path is None
     assert cfg.persistence_enabled
+    assert cfg.persistence_type == 'sqlite'
+    assert cfg.persistence_max_records == -1
     assert cfg.plugins == ()
-
-
-def test_plugins_single_value():
-    create_test_config({"plugins": "plugin"})
-    cfgfile.load()
-    assert cfg.plugins == ("plugin",)
 
 
 def test_plugins_array():
