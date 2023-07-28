@@ -46,7 +46,13 @@ def test_plugins_array():
     assert cfg.plugins == ("p1", "p2")
 
 
-def test_not_str_type_raises_error():
+def test_str_type_error():
     create_test_config({"log": {"stdout": {"level": 3}}})  # Non-str value
     with pytest.raises(TypeError):
+        cfgfile.load()
+
+
+def test_bool_type_error():
+    create_test_config({"log": {"timing": "hello"}})  # Non-bool value
+    with pytest.raises(ValueError):
         cfgfile.load()
