@@ -1,4 +1,6 @@
-"""Global configuration
+"""
+Global configuration
+For more information read: https://github.com/tarotools/taro-core/blob/master/docs/CONFIG.md
 
 Implementation of config pattern:
 https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-across-modules
@@ -8,7 +10,8 @@ import distutils.util
 import sys
 from enum import Enum, auto
 
-from tarotools.taro import util
+from tarotools.taro import util, paths
+from tarotools.taro.err import ConfigFileNotFoundError, TaroException
 from tarotools.taro.util.attr import get_module_attributes
 
 
@@ -35,13 +38,13 @@ class LogMode(Enum):
 
 
 # ------------ DEFAULT VALUES ------------ #
-DEF_LOG = LogMode.DISABLED
-DEF_LOG_STDOUT_LEVEL = 'off'
+DEF_LOG = LogMode.PROPAGATE
+DEF_LOG_STDOUT_LEVEL = 'warn'
 DEF_LOG_FILE_LEVEL = 'off'
 DEF_LOG_FILE_PATH = None
 DEF_LOG_TIMING = False
 
-DEF_PERSISTENCE_ENABLED = False
+DEF_PERSISTENCE_ENABLED = True
 DEF_PERSISTENCE_TYPE = 'sqlite'
 DEF_PERSISTENCE_MAX_AGE = ''
 DEF_PERSISTENCE_MAX_RECORDS = -1
@@ -95,3 +98,61 @@ def set_variables(**kwargs):
             raise TypeError(f'Cannot convert value {value} to {type(cur_value)}')
 
         setattr(module, name, value_to_set)
+
+
+def set_minimal_config():
+    global log_mode, log_stdout_level, log_file_level, log_file_path, log_timing
+    global persistence_enabled, persistence_type, persistence_max_age, persistence_max_records, persistence_database
+    global lock_timeout_ms, lock_max_check_time_ms
+    global plugins_enabled, plugins_load
+
+    log_mode = LogMode.ENABLED
+    log_stdout_level = 'warn'
+    log_file_level = 'off'
+    log_file_path = None
+    log_timing = False
+
+    persistence_enabled = False
+    persistence_type = 'sqlite'
+    persistence_max_age = ''
+    persistence_max_records = -1
+    persistence_database = ''
+
+    lock_timeout_ms = 10000
+    lock_max_check_time_ms = 50
+
+    plugins_enabled = False
+    plugins_load = ()
+
+
+loaded_config_path = None
+
+
+def load_from_file(config=None):
+    config_path = util.expand_user(config) if config else paths.lookup_config_file()
+    try:
+        flatten_cfg = util.read_toml_file_flatten(config_path)
+    except FileNotFoundError:
+        # Must be the explicit `config` as `lookup_config_file` already raises this exception
+        raise ConfigFileNotFoundError(config)
+
+    set_variables(**flatten_cfg)
+
+    global loaded_config_path
+    loaded_config_path = config_path
+
+
+def copy_default_config_to_search_path(overwrite: bool):
+    cfg_to_copy = paths.default_config_file_path()
+    # Copy to first dir in search path
+    # TODO Specify where to copy the file - do not use XDG search path
+    copy_to = paths.taro_config_file_search_path(exclude_cwd=True)[0] / paths.CONFIG_FILE
+    try:
+        util.copy_resource(cfg_to_copy, copy_to, overwrite)
+        return copy_to
+    except FileExistsError as e:
+        raise ConfigFileAlreadyExists(str(e)) from e
+
+
+class ConfigFileAlreadyExists(TaroException, FileExistsError):
+    pass

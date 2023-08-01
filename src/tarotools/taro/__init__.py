@@ -8,7 +8,8 @@ IMPLEMENTATION NOTE:
 """
 from threading import Thread
 
-from tarotools.taro import cfg, cfgfile, client, log
+import tarotools.taro.cfg
+from tarotools.taro import cfg, client, log
 from tarotools.taro.hostinfo import read_hostinfo, HostinfoError
 from tarotools.taro.jobs import warning, persistence, plugins, repo, sync
 from tarotools.taro.jobs.execution import Flag, ExecutionState, ExecutionError, ExecutionLifecycle
@@ -26,12 +27,12 @@ __version__ = "0.11.0"
 
 
 def load_defaults(**kwargs):
-    cfgfile.load(paths.default_config_file_path())
+    cfg.load_from_file(paths.default_config_file_path())
     setup(**kwargs)
 
 
 def load_config(config=None, **kwargs):
-    cfgfile.load(config)
+    cfg.load_from_file(config)
     setup(**kwargs)
 
 
