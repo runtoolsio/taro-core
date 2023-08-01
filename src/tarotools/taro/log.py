@@ -4,12 +4,12 @@ import time
 from functools import wraps
 from logging import handlers
 
-from tarotools.taro import paths
 from tarotools.taro import cfg
+from tarotools.taro import paths
 from tarotools.taro.cfg import LogMode
 from tarotools.taro.util import expand_user
 
-_logger = logging.getLogger('taro')
+_logger = logging.getLogger('tarotools')
 _logger.setLevel(logging.DEBUG)
 _formatter = logging.Formatter('%(asctime)s - %(levelname)-5s - %(name)s - %(message)s')
 
