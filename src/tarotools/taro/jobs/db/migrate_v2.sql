@@ -22,7 +22,7 @@ CREATE TABLE history_new
 INSERT INTO history_new
     (job_id, instance_id, created, ended, state_changes, terminal_state, tracking, result, error_output, warnings, error, user_params, parameters)
 SELECT
-    job_id, instance_id, created, ended, state_changed, 'UNKNOWN', tracking, result, error_output, warnings, error, user_params, parameters
+    job_id, instance_id, created, finished, state_changed, 'UNKNOWN', tracking, result, error_output, warnings, error, user_params, parameters
 FROM history;
 
 -- Drop old table
