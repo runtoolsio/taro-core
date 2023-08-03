@@ -26,17 +26,12 @@ from tarotools.taro.util import format_timedelta, read_toml_file_flatten
 __version__ = "0.11.0"
 
 
-def load_defaults(**kwargs):
-    cfg.load_from_file(paths.default_config_file_path())
-    setup(**kwargs)
-
-
 def load_config(config=None, **kwargs):
     cfg.load_from_file(config)
-    setup(**kwargs)
+    configure(**kwargs)
 
 
-def setup(**kwargs):
+def configure(**kwargs):
     cfg.set_variables(**kwargs)
     log.init_by_config()
 

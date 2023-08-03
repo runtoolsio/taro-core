@@ -1,3 +1,23 @@
+"""
+This module is used for configuring the `tarotools` logger. The convention is to use this logger as a parent logger
+in all tarotools libraries, plugins, and related components. In doing so, all logging related to tarotools is unified
+and can be configured from a single location (this module).
+
+By default, no handlers are provided and propagation is turned off. If any logging is needed, the user of the library
+can use this module to set up logging according to their needs. This can be done either by adding their own handlers
+using the `register_handler()` function, or by using one of the pre-configured modes represented by the cfg.LogMode
+enum passed to the `configure()` function. See the `cfg.LogMode` documentation for details.
+
+When `LogMode.ENABLED` is set, stdout+stderr and/or file custom handlers are be registered.
+
+When `LogMode.DISABLED` is set, events of severity WARNING and higher will still be printed to stderr.
+A `logging.NullHandler` can be added to disable this behavior.
+
+Note:
+    This module follows the recommendations specified in the official documentation:
+    https://docs.python.org/3/howto/logging.html#configuring-logging-for-a-library.
+"""
+
 import logging
 import sys
 import time
@@ -9,18 +29,24 @@ from tarotools.taro import paths
 from tarotools.taro.cfg import LogMode
 from tarotools.taro.util import expand_user
 
-_logger = logging.getLogger('tarotools')
-_logger.setLevel(logging.DEBUG)
-_formatter = logging.Formatter('%(asctime)s - %(levelname)-5s - %(name)s - %(message)s')
-
-STDOUT_HANDLER = 'stdout-handler'
-STDERR_HANDLER = 'stderr-handler'
-FILE_HANDLER = 'file-handler'
+tarotools_logger = logging.getLogger('tarotools')
+tarotools_logger.propagate = False
 
 
-def init(log_mode=LogMode.ENABLED, log_stdout_level='warn', log_file_level='info', log_file_path=None):
-    # Resetting (required for tests) TODO make private and remove handlers?
-    config_logger(enable=True, propagate=False)
+def config_logger(*, enable, propagate):
+    tarotools_logger.disabled = not enable
+    tarotools_logger.propagate = propagate
+
+
+DEF_FORMATTER = logging.Formatter('%(asctime)s - %(levelname)-5s - %(name)s - %(message)s')
+
+STDOUT_HANDLER_NAME = 'stdout-handler'
+STDERR_HANDLER_NAME = 'stderr-handler'
+FILE_HANDLER_NAME = 'file-handler'
+
+
+def configure(log_mode, log_stdout_level='warn', log_file_level='info', log_file_path=None):
+    tarotools_logger.handlers.clear()
 
     if log_mode == LogMode.PROPAGATE:
         config_logger(enable=True, propagate=True)
@@ -29,6 +55,8 @@ def init(log_mode=LogMode.ENABLED, log_stdout_level='warn', log_file_level='info
     if log_mode == LogMode.DISABLED:
         config_logger(enable=False, propagate=False)
         return
+
+    config_logger(enable=True, propagate=False)
 
     if log_stdout_level != 'off':
         setup_console(log_stdout_level)
@@ -39,52 +67,47 @@ def init(log_mode=LogMode.ENABLED, log_stdout_level='warn', log_file_level='info
 
 
 def init_by_config():
-    init(cfg.log_mode, cfg.log_stdout_level, cfg.log_file_level, cfg.log_file_path)
-
-
-def config_logger(*, enable, propagate):
-    _logger.disabled = not enable
-    _logger.propagate = propagate
+    configure(cfg.log_mode, cfg.log_stdout_level, cfg.log_file_level, cfg.log_file_path)
 
 
 def is_disabled():
-    return _logger.disabled
+    return tarotools_logger.disabled
 
 
 def setup_console(level):
     stdout_handler = logging.StreamHandler(sys.stdout)
-    stdout_handler.set_name(STDOUT_HANDLER)
+    stdout_handler.set_name(STDOUT_HANDLER_NAME)
     stdout_handler.setLevel(logging.getLevelName(level.upper()))
-    stdout_handler.setFormatter(_formatter)
+    stdout_handler.setFormatter(DEF_FORMATTER)
     stdout_handler.addFilter(lambda record: record.levelno <= logging.INFO)
-    _register_handler(stdout_handler)
+    register_handler(stdout_handler)
 
     stderr_handler = logging.StreamHandler(sys.stderr)
-    stderr_handler.set_name(STDERR_HANDLER)
+    stderr_handler.set_name(STDERR_HANDLER_NAME)
     stderr_handler.setLevel(logging.getLevelName(level.upper()))
-    stderr_handler.setFormatter(_formatter)
+    stderr_handler.setFormatter(DEF_FORMATTER)
     stderr_handler.addFilter(lambda record: record.levelno > logging.INFO)
-    _register_handler(stderr_handler)
+    register_handler(stderr_handler)
 
 
 def get_console_level():
-    return _get_handler_level(STDOUT_HANDLER)
+    return _get_handler_level(STDOUT_HANDLER_NAME)
 
 
 def setup_file(level, file):
     file_handler = logging.handlers.WatchedFileHandler(file)
-    file_handler.set_name(FILE_HANDLER)
+    file_handler.set_name(FILE_HANDLER_NAME)
     file_handler.setLevel(logging.getLevelName(level.upper()))
-    file_handler.setFormatter(_formatter)
-    _register_handler(file_handler)
+    file_handler.setFormatter(DEF_FORMATTER)
+    register_handler(file_handler)
 
 
 def get_file_level():
-    return _get_handler_level(FILE_HANDLER)
+    return _get_handler_level(FILE_HANDLER_NAME)
 
 
 def get_file_path():
-    handler = _find_handler(FILE_HANDLER)
+    handler = _find_handler(FILE_HANDLER_NAME)
     if handler:
         return handler.baseFilename
     else:
@@ -92,19 +115,19 @@ def get_file_path():
 
 
 def _find_handler(name):
-    for handler in _logger.handlers:
+    for handler in tarotools_logger.handlers:
         if handler.name == name:
             return handler
 
     return None
 
 
-def _register_handler(handler):
+def register_handler(handler):
     previous = _find_handler(handler.name)
     if previous:
-        _logger.removeHandler(previous)
+        tarotools_logger.removeHandler(previous)
 
-    _logger.addHandler(handler)
+    tarotools_logger.addHandler(handler)
 
 
 def _get_handler_level(name):
