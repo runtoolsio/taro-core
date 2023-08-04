@@ -33,7 +33,7 @@ def test_defaults():
 
 def test_default_config():
     tarotools.taro.cfg.load_from_file(paths.default_config_file_path())
-    assert cfg.log_mode == LogMode.ENABLED
+    assert cfg.log_mode == LogMode.DISABLED
     assert cfg.log_stdout_level == 'warn'
     assert cfg.log_file_level == 'info'
     assert cfg.log_file_path is None
