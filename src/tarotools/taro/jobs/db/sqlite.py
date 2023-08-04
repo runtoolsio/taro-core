@@ -5,8 +5,8 @@ import sqlite3
 from datetime import timezone
 from typing import List
 
-from tarotools.taro import paths
 from tarotools.taro import cfg
+from tarotools.taro import paths
 from tarotools.taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle, ExecutionPhase, Flag
 from tarotools.taro.jobs.inst import JobInst, JobInstances, JobInstanceID, LifecycleEvent, JobInstanceMetadata
 from tarotools.taro.jobs.job import JobStats
@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 def create_persistence():
     db_con = sqlite3.connect(cfg.persistence_database or str(paths.sqlite_db_path(True)))
     sqlite_ = SQLite(db_con)
-    sqlite_.check_tables_exist()  # TODO execute only setup?
+    sqlite_.check_tables_exist()
     return sqlite_
 
 
@@ -107,7 +107,7 @@ class SQLite:
         self._conn = connection
 
     def check_tables_exist(self):
-        # Version 2
+        # Version 4
         c = self._conn.cursor()
         c.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='history' ''')
         if c.fetchone()[0] != 1:
@@ -154,7 +154,7 @@ class SQLite:
 
         statement += " ORDER BY " + sort_exp() + (" ASC" if asc else " DESC") + " LIMIT ? OFFSET ?"
 
-        print(statement)
+        log.debug("event=[executing_query] statement=[%s]", statement)
         c = self._conn.execute(statement, (limit, offset))
 
         def to_job_info(t):
