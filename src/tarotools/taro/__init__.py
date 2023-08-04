@@ -32,6 +32,16 @@ def load_config(config=None, **kwargs):
 
 
 def configure(**kwargs):
+    """
+    Args:
+        **kwargs:
+            log_mode (LogMode, str, bool): Sets a logging mode, see `cfg.LogMode` enum for more information
+            log_stdout_level (str): Used only with `LogMode.ENABLED`, registers stdout+stderr handler with given level
+            log_file_level (str): Used only with `LogMode.ENABLED`, registers file handler with given level
+            log_file_path (str): Custom log file path for the file handler
+
+    For more information about logging see the `log` module documentation.
+    """
     cfg.set_variables(**kwargs)
     log.init_by_config()
 

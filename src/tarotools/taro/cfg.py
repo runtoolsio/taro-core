@@ -24,7 +24,7 @@ class LogMode(Enum):
     Attributes:
         ENABLED:
             In this mode, the 'tarotools' parent logger is enabled and configured handlers are added. As a result,
-            all 'tarotools' logging is handled independently of the client's root logger.
+            all 'tarotools' logging is standardized and is handled independently of the client's root logger.
         PROPAGATE:
             In this mode, no handlers are attached and the log messages are propagated to the root logger.
             This allows the logs to be handled and formatted according to the root logger configuration.
