@@ -1,5 +1,8 @@
 """
-This module contains event producers as part of the Job Instance Event framework.
+This module contains event producers as part of the Job Instance Event framework. The event consumers are expected
+to create a domain socket with a corresponding file suffix located in the user's own subdirectory,
+which is in the `/tmp` directory by default. The sockets are used by the producers to send the events.
+In this design, the communication is unidirectional, with servers acting as consumers and clients as producers.
 """
 
 import abc
@@ -18,6 +21,10 @@ log = logging.getLogger(__name__)
 
 
 class EventDispatcher(abc.ABC):
+    """
+    This serves as a parent class for event producers. The subclasses (children) are expected to provide a specific
+    socket client and utilize the `_send_event` method to dispatch events to the respective consumers.
+    """
 
     @abc.abstractmethod
     def __init__(self, client):
@@ -41,20 +48,28 @@ class EventDispatcher(abc.ABC):
 
 
 class StateDispatcher(EventDispatcher, ExecutionStateObserver):
+    """
+    This producer emits an event when the state of a job instance changes. This dispatcher should be registered to
+    the job instance as an `ExecutionStateObserver`.
+    """
 
     def __init__(self):
         super(StateDispatcher, self).__init__(SocketClient(STATE_LISTENER_FILE_EXTENSION, bidirectional=False))
 
-    def state_update(self, job_info: JobInst):
+    def state_update(self, job_inst: JobInst, previous_state, new_state, changed):
         event = {
-            "new_state": job_info.state.name,
-            "previous_state": None,  # TODO previous_state
-            "changed": format_dt_iso(job_info.lifecycle.last_changed_at),
+            "new_state": new_state.name,
+            "previous_state": previous_state.name,
+            "changed": format_dt_iso(changed),
         }
-        self._send_event("execution_state_change", job_info.metadata, event)
+        self._send_event("execution_state_change", job_inst.metadata, event)
 
 
 class OutputDispatcher(EventDispatcher, JobOutputObserver):
+    """
+    This producer emits an event when a job instance generates a new output. This dispatcher should be registered to
+    the job instance as an `JobOutputObserver`.
+    """
 
     def __init__(self):
         super(OutputDispatcher, self).__init__(SocketClient(OUTPUT_LISTENER_FILE_EXTENSION, bidirectional=False))

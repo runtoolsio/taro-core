@@ -79,9 +79,9 @@ class ManagedJobContext(ExecutionStateObserver):
 
         return job_instance
 
-    def state_update(self, job_info: JobInst):
-        if job_info.lifecycle.state.in_phase(ExecutionPhase.TERMINAL):
-            self._close_job(job_info.id)
+    def state_update(self, job_inst: JobInst, previous_state, new_state, changed):
+        if new_state.in_phase(ExecutionPhase.TERMINAL):
+            self._close_job(job_inst.id)
 
     def _close_job(self, job_instance_id):
         with self._managed_jobs_lock:

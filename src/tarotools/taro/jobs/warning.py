@@ -32,12 +32,12 @@ class _ExecTimeWarning(ExecutionStateObserver):
         self.time = time
         self.timer = None
 
-    def state_update(self, job_info: JobInst):
-        if job_info.state.in_phase(ExecutionPhase.EXECUTING):
+    def state_update(self, job_inst: JobInst, previous_state, new_state, changed):
+        if new_state.in_phase(ExecutionPhase.EXECUTING):
             assert self.timer is None
             self.timer = Timer(self.time, self._check)
             self.timer.start()
-        elif job_info.state.in_phase(ExecutionPhase.TERMINAL) and self.timer is not None:
+        elif new_state.in_phase(ExecutionPhase.TERMINAL) and self.timer is not None:
             self.timer.cancel()
 
     def _check(self):

@@ -81,8 +81,8 @@ class PutStateToQueueObserver(ExecutionStateObserver):
     def __init__(self, queue):
         self.queue = queue
 
-    def state_update(self, job_inst: JobInst):
-        self.queue.put_nowait(job_inst.state)
+    def state_update(self, job_inst: JobInst, previous_state, new_state, changed):
+        self.queue.put_nowait(new_state)
 
 
 class TestWarningObserver(WarningObserver):

@@ -2,6 +2,9 @@
 This module provides components to expose the API of `JobInstance` objects via a local domain socket.
 The main component is `APIServer`, which offers the addition or removal of `JobInstance`s using
 the `add_job_instance()` and `remove_job_instance()` methods.
+
+The domain socket with an `.api` file suffix for each server is located in the user's own subdirectory,
+which is in the `/tmp` directory by default.
 """
 
 import json

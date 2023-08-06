@@ -822,7 +822,7 @@ class JobInstances(list):
 class ExecutionStateObserver(abc.ABC):
 
     @abc.abstractmethod
-    def state_update(self, job_info: JobInst):
+    def state_update(self, job_inst: JobInst, previous_state, new_state, changed):
         """This method is called when job instance execution state is changed."""
 
 

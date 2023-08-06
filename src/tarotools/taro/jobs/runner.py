@@ -168,8 +168,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def add_warning(self, warning):
         self._warnings.update([warning.name])
         log.warning('event=[new_warning] warning=[%s]', warning)
-        self._notify_warning_observers(self.create_snapshot(), warning,
-                                       WarnEventCtx(self._warnings[warning.name]))  # Lock?
+        self._notify_new_warning(self.create_snapshot(), warning,
+                                 WarnEventCtx(self._warnings[warning.name]))  # Lock?
 
     def run(self):
         # TODO Check executed only once
@@ -234,13 +234,13 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 # then -> release the lock + notify observers and repeat
                 if signal is Signal.WAIT and self.lifecycle.state == state:
                     self._sync.wait_and_unlock(state_lock)  # Waiting state already set, now we can wait
-                    job_info = None
+                    new_job_inst = None
                 else:
-                    job_info = self._change_state(state, use_global_lock=False)
+                    new_job_inst = self._change_state(state, use_global_lock=False)
 
             # Lock released -> do not hold lock when executing observers
-            if job_info:
-                self._notify_state_observers(job_info)
+            if new_job_inst:
+                self._notify_state_changed(new_job_inst)
             if signal is Signal.WAIT:
                 continue
             if signal is Signal.TERMINATE:
@@ -279,24 +279,29 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 return job_info
 
     def _change_state_and_notify(self, new_state, exec_error: ExecutionError = None, *, use_global_lock=True):
-        job_info = self._change_state(new_state, exec_error, use_global_lock=use_global_lock)
-        if job_info:
-            self._notify_state_observers(job_info)
+        new_job_inst = self._change_state(new_state, exec_error, use_global_lock=use_global_lock)
+        if new_job_inst:
+            self._notify_state_changed(new_job_inst)
 
-    def _notify_state_observers(self, job_info: JobInst):
+    def _notify_state_changed(self, job_inst: JobInst):
+        states = job_inst.lifecycle.states
+        previous_state = states[-2] if len(states) > 1 else ExecutionState.NONE
+        new_state = job_inst.state
+        changed = job_inst.lifecycle.last_changed_at
+
         for observer in _gen_prioritized(self._state_observers, _state_observers):
             # noinspection PyBroadException
             try:
                 if isinstance(observer, ExecutionStateObserver):
-                    observer.state_update(job_info)
+                    observer.state_update(job_inst, previous_state, new_state, changed)
                 elif callable(observer):
-                    observer(job_info)
+                    observer(job_inst, previous_state, new_state, changed)
                 else:
                     log.warning("event=[unsupported_state_observer] observer=[%s]", observer)
             except BaseException:
                 log.exception("event=[state_observer_exception]")
 
-    def _notify_warning_observers(self, job_info: JobInst, warning: Warn, event_ctx: WarnEventCtx):
+    def _notify_new_warning(self, job_info: JobInst, warning: Warn, event_ctx: WarnEventCtx):
         for observer in _gen_prioritized(self._warning_observers, _warning_observers):
             # noinspection PyBroadException
             try:
@@ -314,9 +319,9 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._last_output.append((output, is_error))
         if is_error:
             self._error_output.append(output)
-        self._notify_output_observers(self.create_snapshot(), output, is_error)
+        self._notify_new_output(self.create_snapshot(), output, is_error)
 
-    def _notify_output_observers(self, job_info: JobInst, output, is_error):
+    def _notify_new_output(self, job_info: JobInst, output, is_error):
         for observer in _gen_prioritized(self._output_observers, _output_observers):
             # noinspection PyBroadException
             try:
