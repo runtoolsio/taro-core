@@ -118,7 +118,12 @@ class OutputReceiver(EventReceiver):
         output = event['output']
         is_error = event['is_error']
         for listener in self.listeners:
-            listener.output_event_update(instance_meta, output, is_error)
+            if isinstance(listener, OutputEventObserver):
+                listener.output_event_update(instance_meta, output, is_error)
+            elif callable(listener):
+                listener(instance_meta, output, is_error)
+            else:
+                log.warning("event=[unsupported_output_event_observer] observer=[%s]", listener)
 
 
 class OutputEventObserver(abc.ABC):

@@ -8,6 +8,7 @@ between job executing thread and testing thread.
 
 import logging
 from datetime import datetime
+from queue import Queue
 from threading import Condition
 from typing import Tuple, List, Callable
 
@@ -18,6 +19,15 @@ from tarotools.taro.jobs.runner import ExecutionStateObserver
 log = logging.getLogger(__name__)
 
 type_id = 'test'
+
+
+class GenericObserver:
+
+    def __init__(self):
+        self.updates = Queue()
+
+    def __call__(self, *args):
+        self.updates.put_nowait(args)
 
 
 class TestStateObserver(ExecutionStateObserver):
