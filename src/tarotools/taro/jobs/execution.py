@@ -22,7 +22,9 @@ class ExecutionPhase(Enum):
     EXECUTING = auto()
     TERMINAL = auto()
 
+
 Phase = ExecutionPhase
+
 
 class ExecutionStateFlag(Enum):
     UNEXECUTED = auto()
@@ -35,6 +37,7 @@ class ExecutionStateFlag(Enum):
     INCOMPLETE = auto()
     FAILURE = auto()
     ABORTED = auto()
+
 
 Flag = ExecutionStateFlag
 
@@ -64,7 +67,7 @@ class ExecutionState(Enum, metaclass=ExecutionStateMeta):
     # More possible discarded states: DISABLED, SUSPENDED
 
     # START_FAILED = {ExecutionStateGroup.TERMINAL, ExecutionStateGroup.UNEXECUTED, ExecutionStateGroup.FAILURE}
-    TRIGGERED = Phase.EXECUTING, {Flag.EXECUTED}  # Start request sent, start confirmation not (yet) received
+    # TRIGGERED = Phase.EXECUTING, {Flag.EXECUTED}  # Start request sent, start confirmation not (yet) received
     # STARTED =   {ExecutionStateGroup.EXECUTED, ExecutionStateGroup.EXECUTING}
     RUNNING = Phase.EXECUTING, {Flag.EXECUTED}
 
@@ -143,22 +146,6 @@ class ExecutionError(Exception):
 
 
 class Execution(abc.ABC):
-
-    @property
-    @abc.abstractmethod
-    def is_async(self) -> bool:
-        """
-        TODO Delete
-        SYNCHRONOUS TASK
-            - finishes after the call of the execute() method
-            - execution state is changed to RUNNING before the call of the execute() method
-
-        ASYNCHRONOUS TASK
-            - need not to finish after the call of the execute() method
-            - execution state is changed to TRIGGER before the call of the execute() method
-
-        :return: whether this execution is asynchronous
-        """
 
     @abc.abstractmethod
     def execute(self) -> ExecutionState:
