@@ -1,9 +1,9 @@
 """
-Execution framework defines an abstraction for an execution of a task.
-It consists of:
- 1. Possible states of execution
- 2. A structure for conveying of error conditions
- 3. An interface for implementing various types of executions
+This module defines parts of the execution framework, which provide an abstraction for executing a task.
+During its lifecycle, an execution is expected to transition through various execution states, which are defined
+by the `ExecutionState` enum. Each state belongs to a single phase represented by the `ExecutionPhase` enum and
+can be associated with multiple execution flags, represented by the `ExecutionStateFlag` enum.
+The flags can be viewed as attributes that characterize the state.
 """
 
 import abc
@@ -27,16 +27,16 @@ Phase = ExecutionPhase
 
 
 class ExecutionStateFlag(Enum):
-    UNEXECUTED = auto()
-    WAITING = auto()
-    DISCARDED = auto()
-    REJECTED = auto()
-    EXECUTED = auto()
-    SUCCESS = auto()
-    NONSUCCESS = auto()
-    INCOMPLETE = auto()
-    FAILURE = auto()
-    ABORTED = auto()
+    UNEXECUTED = auto()  # Not yet executed.
+    WAITING = auto()     # Waiting for a condition before execution.
+    DISCARDED = auto()   # Discarded automatically or by the user before execution.
+    REJECTED = auto()    # Automatically rejected before execution.
+    EXECUTED = auto()    # Reached the executing state.
+    SUCCESS = auto()     # Completed successfully.
+    NONSUCCESS = auto()  # Not completed successfully either before or after execution.
+    INCOMPLETE = auto()  # Not completed successfully after execution.
+    FAILURE = auto()     # Failed after or before execution.
+    ABORTED = auto()     # Interrupted by the user after or before execution.
 
 
 Flag = ExecutionStateFlag
@@ -75,8 +75,8 @@ class ExecutionState(Enum, metaclass=ExecutionStateMeta):
 
     STOPPED =     Phase.TERMINAL, {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.ABORTED}
     INTERRUPTED = Phase.TERMINAL, {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.ABORTED}
-    FAILED =      Phase.TERMINAL, {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.FAILURE}
-    ERROR =       Phase.TERMINAL, {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.FAILURE}
+    FAILED =      Phase.TERMINAL, {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.FAILURE}  # TODO Remove EXECUTED
+    ERROR =       Phase.TERMINAL, {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.FAILURE}  # TODO Remove EXECUTED
 
     def __new__(cls, *args, **kwds):
         value = len(cls.__members__) + 1
