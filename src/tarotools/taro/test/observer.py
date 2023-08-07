@@ -13,7 +13,7 @@ from threading import Condition
 from typing import Tuple, List, Callable
 
 from tarotools.taro.jobs.execution import ExecutionState, ExecutionError, ExecutionPhase
-from tarotools.taro.jobs.inst import JobInst, Warn, WarningObserver, JobOutputObserver, WarnEventCtx
+from tarotools.taro.jobs.inst import JobInst
 from tarotools.taro.jobs.runner import ExecutionStateObserver
 
 log = logging.getLogger(__name__)
@@ -95,27 +95,3 @@ class TestStateObserver(ExecutionStateObserver):
     def _wait_for_state_condition(self, state_condition: Callable[[], bool], timeout: float):
         with self.completion_lock:
             return self.completion_lock.wait_for(state_condition, timeout)
-
-
-class TestWarnObserver(WarningObserver):
-
-    def __init__(self):
-        self.events: List[Tuple[JobInst, Warn, WarnEventCtx]] = []
-
-    def new_warning(self, job_info: JobInst, warning: Warn, event_ctx: WarnEventCtx):
-        self.events.append((job_info, warning, event_ctx))
-
-    def is_empty(self):
-        return not self.events
-
-
-class TestJobOutputObserver(JobOutputObserver):
-
-    def __init__(self):
-        self.output = []
-
-    def job_output_update(self, job_info: JobInst, output, is_error):
-        self.output.append((job_info, output,))
-
-    def last_output(self):
-        return self.output[-1][1]

@@ -6,7 +6,7 @@ import pytest
 from tarotools.taro.jobs import lock, warning
 from tarotools.taro.jobs.runner import RunnerJobInstance
 from tarotools.taro.test.execution import TestExecution
-from tarotools.taro.test.observer import TestWarnObserver
+from tarotools.taro.test.observer import GenericObserver
 
 
 @pytest.fixture
@@ -21,7 +21,7 @@ def job(execution):
 
 @pytest.fixture
 def observer(job):
-    observer = TestWarnObserver()
+    observer = GenericObserver()
     job.add_warning_observer(observer)
     return observer
 
@@ -31,11 +31,11 @@ def test_exec_time_warning(execution, job, observer):
     run_thread = Thread(target=job.run)
     run_thread.start()
 
-    assert not observer.events
+    assert observer.updates.empty()
     time.sleep(0.1)
-    assert not observer.events
+    assert observer.updates.empty()
     time.sleep(0.5)
 
     execution.release()
     run_thread.join(1)
-    assert len(observer.events) == 1
+    assert observer.updates.qsize() == 1

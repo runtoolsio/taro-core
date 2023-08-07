@@ -223,8 +223,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                         signal = Signal.CONTINUE
 
                     if signal is Signal.CONTINUE:
-                        # TODO remove the async condition
-                        state = ExecutionState.TRIGGERED if self._execution.is_async else ExecutionState.RUNNING
+                        state = ExecutionState.RUNNING
                     else:
                         state = self._sync.exec_state
                         if not (state.has_flag(Flag.WAITING) or state.in_phase(Phase.TERMINAL)):
