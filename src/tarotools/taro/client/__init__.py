@@ -24,8 +24,8 @@ class InstanceResponse(NamedTuple):
     return data for multiple instances, with each instance represented as a single instance response.
 
     Attributes:
-    instance_meta: Metadata about the job instance.
-    body: The JSON body of the response, as a dictionary.
+        instance_meta: Metadata about the job instance.
+        body: The JSON body of the response, as a dictionary.
     """
     instance_meta: JobInstanceMetadata
     body: Dict[str, Any]

@@ -101,20 +101,23 @@ class ExecutionState(Enum, metaclass=ExecutionStateMeta):
 
 class UnexpectedStateError(Exception):
     """
-    Raised when a processing logic cannot recognize an execution state or
-    when the state is not valid in a given context.
+    Raised when processing logic encounters an unrecognized or invalid
+    execution state in the given context.
     """
 
 
 class ExecutionError(Exception):
+    """
+    This exception is used to provide additional information about an error condition that occurred during execution.
+    """
 
     @classmethod
     def from_unexpected_error(cls, e: Exception):
-        return cls("Unexpected error", ExecutionState.ERROR, unexpected_error=e)
+        return cls("Unexpected error: " + str(e), ExecutionState.ERROR, unexpected_error=e)
 
     @classmethod
     def from_dict(cls, as_dict):
-        return cls(as_dict['message'], ExecutionState[as_dict['state']])
+        return cls(as_dict['message'], ExecutionState[as_dict['state']])  # TODO Add kwargs
 
     def __init__(self, message: str, exec_state: ExecutionState, unexpected_error: Exception = None, **kwargs):
         if not exec_state.has_flag(Flag.FAILURE):
@@ -126,6 +129,7 @@ class ExecutionError(Exception):
         self.params = kwargs
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
+        # TODO Add kwargs
         d = {
             "message": self.message,
             "state": self.exec_state.name,
@@ -136,54 +140,75 @@ class ExecutionError(Exception):
             return {k: v for k, v in d.items() if not is_empty(v)}
 
     def __hash__(self):
-        return hash((self.message, self.exec_state, self.unexpected_error))
+        """
+        Used for comparing in tests
+        """
+        return hash((self.message, self.exec_state, self.unexpected_error, self.params))
 
     def __eq__(self, other):
+        """
+        Used for comparing in tests
+        """
         if not isinstance(other, ExecutionError):
             return NotImplemented
-        return (self.message, self.exec_state, self.unexpected_error) == (
-            other.message, other.exec_state, other.unexpected_error)
+        return (self.message, self.exec_state, self.unexpected_error, self.params) == (
+            other.message, other.exec_state, other.unexpected_error, self.params)
 
 
 class Execution(abc.ABC):
+    """
+    A synchronous execution of a task
+    """
 
     @abc.abstractmethod
     def execute(self) -> ExecutionState:
         """
-        Executes a task
+        For the caller of this method:
+            This execution instance must be in `Phase.EXECUTING` phase when this method is called.
+            This execution instance must be in `Phase.TERMINAL` phase when this method returns a value.
 
-        :return: state after the execution of this method
-        :raises ExecutionError: when execution failed
-        :raises Exception: on unexpected failure
+        For the implementer of this class:
+            The execution must be started when this method is called.
+            The returned value must be a terminal execution state representing the final state of the execution.
+            In case of a failure an execution error can be raised or a failure state can be returned.
+
+        Raises:
+            ExecutionError: To provide more information when a failure or an error occurred during the execution.
         """
 
     @property
     @abc.abstractmethod
     def tracking(self):
         """
-        :return: an object containing tracking information about the progress of the execution
+        Returns:
+            An object containing tracking information about the progress of the execution
         """
 
     @property
     @abc.abstractmethod
     def status(self):
         """
-        If progress monitoring is not supported then this method will always return None otherwise:
-         - if executing -> current progress
-         - when finished -> result
+        Gets the status of the progress.
 
-        :return: progress/result or None
+        If progress monitoring is not supported, this method will always return None. Otherwise:
+         - if executing: returns the current progress.
+         - when finished: returns the result.
+
+        Returns:
+            str: The progress or result if applicable, or None if progress monitoring is not supported.
         """
 
     @property
     @abc.abstractmethod
     def parameters(self):
-        """Sequence of tuples representing arbitrary immutable execution parameters"""
+        """
+        Returns:
+            Tuple[str, str]: A sequence representing arbitrary immutable execution parameters
+        """
 
     @abc.abstractmethod
     def stop(self):
         """
-        If not yet executed: Do not execute
         If already executing: Stop running execution
         If execution finished: Ignore
         """
