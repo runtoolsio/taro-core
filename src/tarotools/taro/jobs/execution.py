@@ -221,26 +221,12 @@ class Execution(abc.ABC):
         """
 
 
-class OutputExecution(Execution):
-
-    @abc.abstractmethod
-    def add_output_observer(self, observer):
-        """
-        Register output observer
-
-        :param observer observer to register
-        """
-
-    @abc.abstractmethod
-    def remove_output_observer(self, observer):
-        """
-        De-register output observer
-
-        :param observer observer to de-register
-        """
-
-
 class ExecutionLifecycle:
+    """
+    This class represents the lifecycle of a task execution. A lifecycle consists of a chronological sequence of
+    execution states. Each state has a timestamp assigned, which is the datetime when the state was set
+    for the execution.
+    """
 
     def __init__(self, *state_changes: Tuple[ExecutionState, datetime.datetime]):
         self._state_changes: OrderedDict[ExecutionState, datetime.datetime] = OrderedDict(state_changes)
@@ -339,6 +325,9 @@ class ExecutionLifecycle:
 
 
 class ExecutionLifecycleManagement(ExecutionLifecycle):
+    """
+    Mutable version of `ExecutionLifecycle`
+    """
 
     def __init__(self, *state_changes: Tuple[ExecutionState, datetime.datetime]):
         super().__init__(*state_changes)
@@ -351,14 +340,39 @@ class ExecutionLifecycleManagement(ExecutionLifecycle):
             return True
 
 
+class OutputExecution(Execution):
+    """
+    An execution which produces output.
+    """
+
+    @abc.abstractmethod
+    def add_output_observer(self, observer):
+        """
+        Register output observer
+
+        Args:
+            observer: to register
+        """
+
+    @abc.abstractmethod
+    def remove_output_observer(self, observer):
+        """
+        De-register output observer
+
+        Args:
+            observer: to de-register
+        """
+
+
 class ExecutionOutputObserver(abc.ABC):
 
     def execution_output_update(self, output, is_error: bool):
         """
-        Executed when new output line is available
+        Executed when a new output line is available.
 
-        :param output: output text
-        :param is_error: True when the text represents error output
+        Args:
+            output (str): The output text.
+            is_error (bool): True when the text represents an error output.
         """
 
 
