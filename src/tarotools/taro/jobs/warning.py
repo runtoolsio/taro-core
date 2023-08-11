@@ -4,7 +4,7 @@ from typing import Sequence
 
 from tarotools.taro import util
 from tarotools.taro.jobs.execution import ExecutionPhase
-from tarotools.taro.jobs.inst import JobInstance, JobInst, ExecutionStateObserver, Warn, JobOutputObserver
+from tarotools.taro.jobs.inst import JobInstance, JobInst, InstanceStateObserver, Warn, InstanceOutputObserver
 
 
 def exec_time_exceeded(job_instance: JobInstance, warning_name: str, time: float):
@@ -24,7 +24,7 @@ def register(job_instance: JobInstance, *, warn_times: Sequence[str] = (), warn_
         output_matches(job_instance, f"output=~{warn_output}", warn_output)
 
 
-class _ExecTimeWarning(ExecutionStateObserver):
+class _ExecTimeWarning(InstanceStateObserver):
 
     def __init__(self, job_instance, name, time: float):
         self.job_instance = job_instance
@@ -32,7 +32,7 @@ class _ExecTimeWarning(ExecutionStateObserver):
         self.time = time
         self.timer = None
 
-    def state_update(self, job_inst: JobInst, previous_state, new_state, changed):
+    def instance_state_update(self, job_inst: JobInst, previous_state, new_state, changed):
         if new_state.in_phase(ExecutionPhase.EXECUTING):
             assert self.timer is None
             self.timer = Timer(self.time, self._check)
@@ -50,14 +50,14 @@ class _ExecTimeWarning(ExecutionStateObserver):
             self.__class__.__name__, self.job_instance, self.name, self.time)
 
 
-class _OutputMatchesWarning(JobOutputObserver):
+class _OutputMatchesWarning(InstanceOutputObserver):
 
     def __init__(self, job_instance, w_id, regex):
         self.job_instance = job_instance
         self.id = w_id
         self.regex = re.compile(regex)
 
-    def job_output_update(self, _, output, is_error):
+    def instance_output_update(self, _, output, is_error):
         m = self.regex.search(output)
         if m:
             warn = Warn(self.id, {'matches': output})

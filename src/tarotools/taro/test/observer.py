@@ -1,5 +1,5 @@
 """
-:class:`ExecutionStateObserver` implementation for testing purposes.
+:class:`InstanceStateObserver` implementation for testing purposes.
 
 Observed notifications are stored as events in indexed sequence.
 The wait_for_* methods allow to wait for a specific event to be observed. This can be used for synchronization
@@ -14,7 +14,7 @@ from typing import Tuple, List, Callable
 
 from tarotools.taro.jobs.execution import ExecutionState, ExecutionError, ExecutionPhase
 from tarotools.taro.jobs.inst import JobInst
-from tarotools.taro.jobs.runner import ExecutionStateObserver
+from tarotools.taro.jobs.runner import InstanceStateObserver
 
 log = logging.getLogger(__name__)
 
@@ -30,14 +30,14 @@ class GenericObserver:
         self.updates.put_nowait(args)
 
 
-class TestStateObserver(ExecutionStateObserver):
+class TestStateObserver(InstanceStateObserver):
     __test__ = False  # To tell pytest it isn't a test class
 
     def __init__(self):
         self._events: List[Tuple[datetime, JobInst, ExecutionState, ExecutionError]] = []
         self.completion_lock = Condition()
 
-    def state_update(self, job_inst: JobInst, previous_state, new_state, changed):
+    def instance_state_update(self, job_inst: JobInst, previous_state, new_state, changed):
         self._events.append((datetime.now(), job_inst, new_state, job_inst.exec_error))
         log.info("event=[state_changed] job_info=[{}]".format(job_inst))
         self._release_state_waiter()

@@ -8,7 +8,7 @@ import pytest
 import tarotools.taro.jobs.runner as runner
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.execution import ExecutionState
-from tarotools.taro.jobs.inst import ExecutionStateObserver, JobInst
+from tarotools.taro.jobs.inst import InstanceStateObserver, JobInst
 from tarotools.taro.jobs.runner import RunnerJobInstance
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.observer import TestStateObserver
@@ -59,10 +59,10 @@ def test_observer_raises_exception():
     assert execution.executed_count() == 1  # No exception thrown before
 
 
-class ExceptionRaisingObserver(ExecutionStateObserver):
+class ExceptionRaisingObserver(InstanceStateObserver):
 
     def __init__(self, raise_exc: BaseException):
         self.raise_exc = raise_exc
 
-    def state_update(self, job_inst: JobInst):
+    def instance_state_update(self, job_inst: JobInst, previous_state, new_state, changed):
         raise self.raise_exc

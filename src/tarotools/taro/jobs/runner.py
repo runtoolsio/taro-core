@@ -16,7 +16,8 @@ from tarotools.taro.jobs import persistence
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, \
     ExecutionOutputObserver, \
     Phase, Flag, UnexpectedStateError
-from tarotools.taro.jobs.inst import ExecutionStateObserver, JobInstance, JobInst, WarningObserver, JobOutputObserver, \
+from tarotools.taro.jobs.inst import InstanceStateObserver, JobInstance, JobInst, WarningObserver, \
+    InstanceOutputObserver, \
     Warn, \
     WarnEventCtx, JobInstanceID, DEFAULT_OBSERVER_PRIORITY, JobInstanceMetadata
 from tarotools.taro.jobs.sync import NoSync, CompositeSync, Latch, Signal
@@ -291,8 +292,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         for observer in _gen_prioritized(self._state_observers, _state_observers):
             # noinspection PyBroadException
             try:
-                if isinstance(observer, ExecutionStateObserver):
-                    observer.state_update(job_inst, previous_state, new_state, changed)
+                if isinstance(observer, InstanceStateObserver):
+                    observer.instance_state_update(job_inst, previous_state, new_state, changed)
                 elif callable(observer):
                     observer(job_inst, previous_state, new_state, changed)
                 else:
@@ -324,8 +325,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         for observer in _gen_prioritized(self._output_observers, _output_observers):
             # noinspection PyBroadException
             try:
-                if isinstance(observer, JobOutputObserver):
-                    observer.job_output_update(job_info, output, is_error)
+                if isinstance(observer, InstanceOutputObserver):
+                    observer.instance_output_update(job_info, output, is_error)
                 elif callable(observer):
                     observer(job_info, output, is_error)
                 else:
@@ -334,9 +335,9 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 log.exception("event=[output_observer_exception]")
 
 
-_state_observers: List[Union[Tuple[int, ExecutionStateObserver], Tuple[int, Callable]]] = []
+_state_observers: List[Union[Tuple[int, InstanceStateObserver], Tuple[int, Callable]]] = []
 _warning_observers: List[Union[Tuple[int, WarningObserver], Tuple[int, Callable]]] = []
-_output_observers: List[Union[Tuple[int, JobOutputObserver], Tuple[int, Callable]]] = []
+_output_observers: List[Union[Tuple[int, InstanceOutputObserver], Tuple[int, Callable]]] = []
 
 
 def register_state_observer(observer, priority=DEFAULT_OBSERVER_PRIORITY):

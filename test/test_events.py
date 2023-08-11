@@ -14,7 +14,7 @@ def test_state_dispatching():
     receiver.listeners.append(observer)
     receiver.start()
     try:
-        dispatcher.state_update(
+        dispatcher.instance_state_update(
             TestJobInstance('j1').create_snapshot(),
             ExecutionState.NONE,
             ExecutionState.CREATED,
@@ -37,7 +37,7 @@ def test_output_dispatching():
     receiver.listeners.append(observer)
     receiver.start()
     try:
-        dispatcher.job_output_update(TestJobInstance('j1').create_snapshot(), "Happy Mushrooms", True)
+        dispatcher.instance_output_update(TestJobInstance('j1').create_snapshot(), "Happy Mushrooms", True)
     finally:
         dispatcher.close()
         receiver.close()

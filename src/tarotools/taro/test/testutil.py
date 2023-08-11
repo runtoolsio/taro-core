@@ -5,7 +5,7 @@ from typing import Dict, Tuple
 import tomli_w
 
 from tarotools.taro import cfg
-from tarotools.taro import paths, JobInst, Warn, WarningObserver, ExecutionStateObserver
+from tarotools.taro import paths, JobInst, Warn, WarningObserver, InstanceStateObserver
 from tarotools.taro.jobs.inst import WarnEventCtx
 
 
@@ -70,7 +70,7 @@ class StateWaiter:
                 return
 
 
-class PutStateToQueueObserver(ExecutionStateObserver):
+class PutStateToQueueObserver(InstanceStateObserver):
     """
     This observer puts execution states into the provided queue. With multiprocessing queue this can be used for sending
     execution states into the parent process.
@@ -81,7 +81,7 @@ class PutStateToQueueObserver(ExecutionStateObserver):
     def __init__(self, queue):
         self.queue = queue
 
-    def state_update(self, job_inst: JobInst, previous_state, new_state, changed):
+    def instance_state_update(self, job_inst: JobInst, previous_state, new_state, changed):
         self.queue.put_nowait(new_state)
 
 

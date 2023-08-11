@@ -1,14 +1,12 @@
 """
-Job framework defines components used for job submission and management.
-It is built upon :mod:`execution` framework.
-It provides constructs for:
-  1. Creating of job definition
-  2. Implementing of job instance
-  3. Implementing of job observer
+This module defines the instance part of the Job framework and is built on top of the Execution framework defined
+in the execution module.
 
-There are two type of clients of the framework:
-  1. Job users
-  2. Job management implementation
+The main parts are:
+1. The job instance abstraction: An interface of job instance
+2. Instance based criteria: Various criteria used to match job instances
+3. `JobInst` class: An immutable snapshot of a job instance
+4. Job instance observers
 """
 
 import abc
@@ -551,7 +549,7 @@ class JobInstance(abc.ABC):
         TODO Should move to Lifecycle class?
         Register execution state observer
         Observer can be:
-            1. An instance of ExecutionStateObserver
+            1. An instance of InstanceStateObserver
             2. Callable object with single parameter of JobInst type
 
         :param observer: observer to register
@@ -819,10 +817,10 @@ class JobInstances(list):
         return {"jobs": [job.to_dict(include_empty=include_empty) for job in self]}
 
 
-class ExecutionStateObserver(abc.ABC):
+class InstanceStateObserver(abc.ABC):
 
     @abc.abstractmethod
-    def state_update(self, job_inst: JobInst, previous_state, new_state, changed):
+    def instance_state_update(self, job_inst: JobInst, previous_state, new_state, changed):
         """This method is called when job instance execution state is changed."""
 
 
@@ -842,10 +840,10 @@ class WarningObserver(abc.ABC):
         """This method is called when there is a new warning event."""
 
 
-class JobOutputObserver(abc.ABC):
+class InstanceOutputObserver(abc.ABC):
 
     @abc.abstractmethod
-    def job_output_update(self, job_info: JobInst, output, is_error):
+    def instance_output_update(self, job_info: JobInst, output, is_error):
         """
         Executed when new output line is available.
 
@@ -855,10 +853,11 @@ class JobOutputObserver(abc.ABC):
         """
 
 
-class JobOutputTracker(JobOutputObserver):
+class JobOutputTracker(InstanceOutputObserver):
+    # TODO Delete?
 
     def __init__(self, output_tracker):
         self.output_tracker = output_tracker
 
-    def job_output_update(self, job_info: JobInst, output, is_error):
+    def instance_output_update(self, job_info: JobInst, output, is_error):
         self.output_tracker.new_output(output)

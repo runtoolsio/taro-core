@@ -10,7 +10,7 @@ import json
 import logging
 
 from tarotools.taro import util
-from tarotools.taro.jobs.inst import ExecutionStateObserver, JobInst, JobOutputObserver
+from tarotools.taro.jobs.inst import InstanceStateObserver, JobInst, InstanceOutputObserver
 from tarotools.taro.socket import SocketClient, PayloadTooLarge
 from tarotools.taro.util import format_dt_iso
 
@@ -47,16 +47,16 @@ class EventDispatcher(abc.ABC):
         self._client.close()
 
 
-class StateDispatcher(EventDispatcher, ExecutionStateObserver):
+class StateDispatcher(EventDispatcher, InstanceStateObserver):
     """
     This producer emits an event when the state of a job instance changes. This dispatcher should be registered to
-    the job instance as an `ExecutionStateObserver`.
+    the job instance as an `InstanceStateObserver`.
     """
 
     def __init__(self):
         super(StateDispatcher, self).__init__(SocketClient(STATE_LISTENER_FILE_EXTENSION, bidirectional=False))
 
-    def state_update(self, job_inst: JobInst, previous_state, new_state, changed):
+    def instance_state_update(self, job_inst: JobInst, previous_state, new_state, changed):
         event = {
             "new_state": new_state.name,
             "previous_state": previous_state.name,
@@ -65,7 +65,7 @@ class StateDispatcher(EventDispatcher, ExecutionStateObserver):
         self._send_event("execution_state_change", job_inst.metadata, event)
 
 
-class OutputDispatcher(EventDispatcher, JobOutputObserver):
+class OutputDispatcher(EventDispatcher, InstanceOutputObserver):
     """
     This producer emits an event when a job instance generates a new output. This dispatcher should be registered to
     the job instance as an `JobOutputObserver`.
@@ -74,7 +74,7 @@ class OutputDispatcher(EventDispatcher, JobOutputObserver):
     def __init__(self):
         super(OutputDispatcher, self).__init__(SocketClient(OUTPUT_LISTENER_FILE_EXTENSION, bidirectional=False))
 
-    def job_output_update(self, job_info: JobInst, output, is_error):
+    def instance_output_update(self, job_info: JobInst, output, is_error):
         event = {
             "output": util.truncate(output, 10000, truncated_suffix=".. (truncated)"),
             "is_error": is_error,
