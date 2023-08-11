@@ -374,12 +374,3 @@ class ExecutionOutputObserver(abc.ABC):
             output (str): The output text.
             is_error (bool): True when the text represents an error output.
         """
-
-
-class ExecutionOutputTracker(ExecutionOutputObserver):
-
-    def __init__(self, output_tracker):
-        self.output_tracker = output_tracker
-
-    def execution_output_update(self, output, is_error: bool):
-        self.output_tracker.new_output(output)

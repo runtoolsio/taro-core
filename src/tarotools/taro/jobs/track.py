@@ -658,10 +658,10 @@ class OutputTracker:
         self.parsers = parsers
         self.conversion = conversion
 
-    def __call__(self, output):
-        self.new_output(output)
+    def __call__(self, output, is_error=False):
+        self.new_output(output, is_error)
 
-    def new_output(self, output):
+    def new_output(self, output, is_error=False):
         parsed = {}
         for parser in self.parsers:
             if p := parser(output):
