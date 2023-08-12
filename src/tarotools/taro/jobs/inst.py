@@ -18,7 +18,7 @@ from datetime import timezone, time, timedelta
 from enum import Enum
 from fnmatch import fnmatch
 from functools import partial
-from typing import NamedTuple, Dict, Any, Optional, Callable, Union, List, Tuple, Iterable, Set
+from typing import NamedTuple, Dict, Any, Optional, List, Tuple, Iterable, Set
 
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionLifecycle, ExecutionPhase, ExecutionStateFlag
 from tarotools.taro.jobs.track import TrackedTaskInfo
@@ -28,32 +28,46 @@ from tarotools.taro.util import and_, or_, MatchingStrategy, is_empty, to_list, 
 
 DEFAULT_OBSERVER_PRIORITY = 100
 
-S = Union[Callable[[str, str], bool], MatchingStrategy]
-
 
 @dataclass
 class IDMatchCriteria:
     """
-    This class specifies criteria for matching :class:`JobInstanceID` instances.
-    If both job_id and instance_id are empty, the matching strategy defaults to :class:`MatchingStrategy.ALWAYS_TRUE`.
+    This class specifies criteria for matching `JobInstanceID` instances.
+    If both `job_id` and `instance_id` are empty, the matching strategy defaults to `MatchingStrategy.ALWAYS_TRUE`.
 
     Attributes:
-    job_id (str): The pattern for job ID matching. If empty, it is ignored.
-    instance_id (str): The pattern for instance ID matching. If empty, it is ignored.
-    match_both_ids (bool): If False, a match with either job_id or instance_id is sufficient. Default is True.
-    strategy (S): The strategy to use for matching. Default is :class:`MatchingStrategy.EXACT`.
+        job_id (str): The pattern for job ID matching. If empty, the field is ignored.
+        instance_id (str): The pattern for instance ID matching. If empty, the field is ignored.
+        match_both_ids (bool): If False, a match with either job_id or instance_id is sufficient. Default is True.
+        strategy (MatchingStrategy): The strategy to use for matching. Default is `MatchingStrategy.EXACT`.
     """
     job_id: str
     instance_id: str  # TODO consider default value too
     match_both_ids: bool = True
-    strategy: S = MatchingStrategy.EXACT
+    strategy: MatchingStrategy = MatchingStrategy.EXACT
 
     @classmethod
     def none_match(cls):
         return cls('', '', True, MatchingStrategy.ALWAYS_FALSE)
 
     @classmethod
-    def parse_pattern(cls, pattern, strategy: S = MatchingStrategy.EXACT):
+    def parse_pattern(cls, pattern: str, strategy=MatchingStrategy.EXACT):
+        """
+        Parses the provided pattern and returns the corresponding IDMatchCriteria object.
+        The pattern can contain the `@` token to denote `job_id` and `instance_id` parts in this format:
+        `{job_id}@{instance_id}`. If the token is not included, then the pattern is matched against both IDs,
+        and a match on any fields results in a positive match.
+
+        For matching only `job_id`, use the format: `{job_id}@`
+        For matching only `instance_id`, use the format: `@{instance_id}`
+
+        Args:
+            pattern (str): The pattern to parse. It can contain a job ID and instance ID separated by '@'.
+            strategy (MatchingStrategy, optional): The strategy to use for matching. Default is `MatchingStrategy.EXACT`
+
+        Returns:
+            IDMatchCriteria: A new IDMatchCriteria object with the parsed job_id, instance_id, and strategy.
+        """
         if "@" in pattern:
             job_id, instance_id = pattern.split("@")
             match_both = True
@@ -73,6 +87,15 @@ class IDMatchCriteria:
         return and_ if self.match_both_ids else or_
 
     def matches(self, jid):
+        """
+        The matching method. It can be also executed by calling this object (`__call__` delegates to this method).
+
+        Args:
+            jid: Job instance ID to be matched
+
+        Returns:
+            bool: Whether the provided job instance ID matches this criteria
+        """
         op = self._op()
         return op(not self.job_id or self.strategy(jid.job_id, self.job_id),
                   not self.instance_id or self.strategy(jid.instance_id, self.instance_id))
@@ -81,6 +104,13 @@ class IDMatchCriteria:
         return self.matches(jid)
 
     def matches_instance(self, job_instance):
+        """
+        Args:
+            job_instance: Job instance to be matched
+
+        Returns:
+            bool: Whether the provided job instance matches this criteria
+        """
         return self.matches(job_instance.id)
 
     def to_dict(self, include_empty=True):
@@ -122,7 +152,7 @@ class LifecycleEvent(Enum):
 
 class IntervalCriteria:
 
-    def __init__(self, event, from_dt=None, to_dt=None, *, include_to=True):
+    def __init__(self, event: LifecycleEvent, from_dt=None, to_dt=None, *, include_to=True):
         if not event:
             raise ValueError('Interval criteria event must be provided')
         if not from_dt and not to_dt:
@@ -289,7 +319,7 @@ class InstanceMatchCriteria:
         self._jobs = to_list(jobs)
 
     @classmethod
-    def parse_pattern(cls, pattern, strategy: S = MatchingStrategy.EXACT):
+    def parse_pattern(cls, pattern: str, strategy: MatchingStrategy = MatchingStrategy.EXACT):
         return cls(IDMatchCriteria.parse_pattern(pattern, strategy))
 
     @classmethod
@@ -371,7 +401,7 @@ class InstanceMatchCriteria:
                f"jobs={self.jobs})"
 
 
-def parse_criteria(pattern, strategy: S = MatchingStrategy.EXACT):
+def parse_criteria(pattern: str, strategy: MatchingStrategy = MatchingStrategy.EXACT):
     return InstanceMatchCriteria.parse_pattern(pattern, strategy)
 
 
@@ -410,7 +440,6 @@ class JobInstanceID(NamedTuple):
 
 @dataclass
 class JobInstanceMetadata:
-
     id: JobInstanceID
     parameters: Tuple[Tuple[str, str]]
     user_params: Dict[str, Any]
