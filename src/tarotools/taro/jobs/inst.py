@@ -222,28 +222,28 @@ class IntervalCriteria:
         return IntervalCriteria(event, from_dt, to_dt, include_to=include_to)
 
     @classmethod
-    def single_day_period(cls, event, day_offset, *, local_tz=False):
+    def single_day_period(cls, event, day_offset, *, to_utc=False):
         """
         Creates criteria for a duration of one day.
 
         Args:
             event (LifecycleEvent): The lifecycle event for which the interval is defined.
             day_offset (int): A day offset for which the period is created. 0 > today, -1 > yesterday, 1 > tomorrow...
-            local_tz (bool): The interval is converted from local zone to UTC when set to true.
+            to_utc (bool): The interval is converted from local zone to UTC when set to true.
         """
-        range_ = single_day_range(day_offset, local_tz=local_tz)
+        range_ = single_day_range(day_offset, to_utc=to_utc)
         return cls(event, *range_, include_to=False)
 
     @classmethod
-    def today(cls, event, *, local_tz=False):
-        return cls.single_day_period(event, 0, local_tz=local_tz)
+    def today(cls, event, *, to_utc=False):
+        return cls.single_day_period(event, 0, to_utc=to_utc)
 
     @classmethod
-    def yesterday(cls, event, *, local_tz=False):
-        return cls.single_day_period(event, -1, local_tz=local_tz)
+    def yesterday(cls, event, *, to_utc=False):
+        return cls.single_day_period(event, -1, to_utc=to_utc)
 
     @classmethod
-    def days_interval(cls, event, days, *, local_tz=False):
+    def days_interval(cls, event, days, *, to_utc=False):
         """
         Creates criteria for an interval extending a specified number of days into the past or future from now.
 
@@ -253,16 +253,16 @@ class IntervalCriteria:
             days (int):
                 Duration of the interval in days. Use a negative number for an interval extending into the past,
                 and a positive number for an interval extending into the future.
-            local_tz (bool):
+            to_utc (bool):
                 If true, the interval is converted from the local time zone to UTC; otherwise, it remains
                 in the local time zone.
         """
-        range_ = days_range(days, local_tz=local_tz)
+        range_ = days_range(days, to_utc=to_utc)
         return cls(event, *range_, include_to=False)
 
     @classmethod
-    def week_back(cls, event, *, local_tz=False):
-        return cls.days_interval(event, -7, local_tz=local_tz)
+    def week_back(cls, event, *, to_utc=False):
+        return cls.days_interval(event, -7, to_utc=to_utc)
 
     @property
     def event(self):
