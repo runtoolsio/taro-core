@@ -313,6 +313,22 @@ class IntervalCriteria:
 
 
 class StateCriteria:
+    """
+    This object can be used to filter job instances based on their state, such as execution state or warnings.
+    For the criteria to match, all set matching properties must be met.
+
+    Properties:
+        flag_groups (Iterable[Set[ExecutionStateFlag]]):
+            An iterable of sets, where each set contains flags that define a group. The criteria match if any of
+            the provided groups match the state, and a group matches when all flags in the group match the state.
+        warning (Optional[bool]):
+            A boolean value to filter job instances based on warnings.
+            If set to True, only job instances with warnings are matched.
+            If set to False, only job instances without warnings are matched.
+            If None, the warning status is ignored in the matching.
+            Default is None.
+
+    """
 
     def __init__(self, *, flag_groups: Iterable[Set[ExecutionStateFlag]] = (), warning: Optional[bool] = None):
         self._flags = flag_groups
