@@ -151,6 +151,18 @@ class LifecycleEvent(Enum):
 
 
 class IntervalCriteria:
+    """
+    A class to represent interval criteria. The interval is defined for the provided execution lifecycle event.
+
+    Properties:
+        event (LifecycleEvent): The lifecycle event for which the interval is defined.
+        from_dt (datetime, optional): The start date-time of the interval. Defaults to None.
+        to_dt (datetime, optional): The end date-time of the interval. Defaults to None.
+        include_to (bool, optional): Whether to include the end date-time in the interval. Defaults to True.
+
+    Raises:
+        ValueError: If neither 'from_dt' nor 'to_dt' is provided or if 'event' is not provided.
+    """
 
     def __init__(self, event: LifecycleEvent, from_dt=None, to_dt=None, *, include_to=True):
         if not event:
@@ -173,6 +185,14 @@ class IntervalCriteria:
 
     @classmethod
     def to_utc(cls, event, from_val, to_val):
+        """
+        Creates criteria with provided values converted to the UTC timezone.
+
+        Args:
+            event (LifecycleEvent): The lifecycle event for which the interval is defined.
+            from_val (str, datetime, date): The start date-time of the interval.
+            to_val (str, datetime, date): The end date-time of the interval.
+        """
         if from_val is None and to_val is None:
             raise ValueError('Both `from_val` and `to_val` parameters cannot be None')
 
@@ -180,28 +200,38 @@ class IntervalCriteria:
 
         if from_val is None:
             from_dt = None
-        elif isinstance(from_val, str):
-            from_dt = parse(from_val)
-        elif isinstance(from_val, datetime.datetime):
-            from_dt = from_val.astimezone(timezone.utc)
-        else:  # Assuming it is datetime.date
-            from_dt = datetime.datetime.combine(from_val, time.min).astimezone(timezone.utc)
+        else:
+            if isinstance(from_val, str):
+                from_val = parse(from_val)
+            if isinstance(from_val, datetime.datetime):
+                from_dt = from_val.astimezone(timezone.utc)
+            else:  # Assuming it is datetime.date
+                from_dt = datetime.datetime.combine(from_val, time.min).astimezone(timezone.utc)
 
         if to_val is None:
             to_dt = None
-        elif isinstance(to_val, str):
-            to_dt = parse(to_val)
-        elif isinstance(to_val, datetime.datetime):
-            to_dt = to_val.astimezone(timezone.utc)
-        else:  # Assuming it is datetime.date
-            to_dt = datetime.datetime.combine(to_val + timedelta(days=1), time.min).astimezone(timezone.utc)
-            include_to = False
+        else:
+            if isinstance(to_val, str):
+                to_val = parse(to_val)
+            if isinstance(to_val, datetime.datetime):
+                to_dt = to_val.astimezone(timezone.utc)
+            else:  # Assuming it is datetime.date
+                to_dt = datetime.datetime.combine(to_val + timedelta(days=1), time.min).astimezone(timezone.utc)
+                include_to = False
 
         return IntervalCriteria(event, from_dt, to_dt, include_to=include_to)
 
     @classmethod
-    def single_day_period(cls, event, day, *, local_tz=False):
-        range_ = single_day_range(day, local_tz=local_tz)
+    def single_day_period(cls, event, day_offset, *, local_tz=False):
+        """
+        Creates criteria for a duration of one day.
+
+        Args:
+            event (LifecycleEvent): The lifecycle event for which the interval is defined.
+            day_offset (int): A day offset for which the period is created. 0 > today, -1 > yesterday, 1 > tomorrow...
+            local_tz (bool): The interval is converted from local zone to UTC when set to true.
+        """
+        range_ = single_day_range(day_offset, local_tz=local_tz)
         return cls(event, *range_, include_to=False)
 
     @classmethod
@@ -214,6 +244,19 @@ class IntervalCriteria:
 
     @classmethod
     def days_interval(cls, event, days, *, local_tz=False):
+        """
+        Creates criteria for an interval extending a specified number of days into the past or future from now.
+
+        Args:
+            event (LifecycleEvent):
+                The lifecycle event for which the interval is defined.
+            days (int):
+                Duration of the interval in days. Use a negative number for an interval extending into the past,
+                and a positive number for an interval extending into the future.
+            local_tz (bool):
+                If true, the interval is converted from the local time zone to UTC; otherwise, it remains
+                in the local time zone.
+        """
         range_ = days_range(days, local_tz=local_tz)
         return cls(event, *range_, include_to=False)
 
@@ -264,6 +307,9 @@ class IntervalCriteria:
             "include_to": self.include_to,
         }
         return remove_empty_values(d) if include_empty else d
+
+    def __str__(self):
+        return f"Event: {self.event}, From: {self.from_dt}, To: {self.to_dt}, Include To: {self.include_to}"
 
 
 class StateCriteria:
