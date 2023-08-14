@@ -453,6 +453,12 @@ class InstanceMatchCriteria:
         return not self.job_ids or job_instance.job_id in self.job_ids
 
     def matches(self, job_instance):
+        """
+        Args:
+            job_instance (JobInstance): Job instance to match.
+        Returns:
+            bool: Whether the provided job instance matches all criteria.
+        """
         return self.matches_id(job_instance) \
             and self.matches_interval(job_instance) \
             and self.matches_state(job_instance) \
@@ -484,7 +490,11 @@ def parse_criteria(pattern: str, strategy: MatchingStrategy = MatchingStrategy.E
 
 class JobInstanceID(NamedTuple):
     """
-    TODO Create a method returning a no-match of this ID
+    Attributes:
+        job_id (str): The ID of the job to which the instance belongs.
+        instance_id (str): The ID of the individual instance.
+
+    TODO: Create a method that returns a match and a no-match for this ID.
     """
     job_id: str
     instance_id: str
@@ -517,6 +527,26 @@ class JobInstanceID(NamedTuple):
 
 @dataclass
 class JobInstanceMetadata:
+    """
+    A dataclass that contains metadata information related to a specific job instance.
+    This object is designed to represent essential information about a job instance in a compact and
+    serializable format. By using this object instead of a full job instance snapshot, you can reduce the amount of
+    data transmitted when sending information across a network or between different parts of a system.
+
+    Attributes:
+        id (JobInstanceID):
+            The unique identifier associated with the job instance.
+        parameters (Tuple[Tuple[str, str]]):
+            A tuple of key-value pairs representing system parameters for the job.
+            These parameters are implementation-specific and contain information needed by the system to
+            perform certain tasks or enable specific features.
+        user_params (Dict[str, Any]):
+            A dictionary containing user-defined parameters associated with the instance.
+            These are arbitrary parameters set by the user, and they do not affect the functionality.
+        pending_group (Optional[str]):
+            An optional string representing a group name where the job is pending, if applicable.
+            This is mainly used to identify that the instance belongs to the group when the release command is set.
+    """
     id: JobInstanceID
     parameters: Tuple[Tuple[str, str]]
     user_params: Dict[str, Any]
