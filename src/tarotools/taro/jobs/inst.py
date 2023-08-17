@@ -582,39 +582,77 @@ class JobInstanceMetadata:
 
 
 class JobInstance(abc.ABC):
+    """
+    The `JobInstance` class is a central component of this package. It denotes a single occurrence of a job.
+    While the job itself describes static attributes common to all its instances, the JobInstance class
+    represents a specific execution or run of that job.
+    """
 
     @property
     def job_id(self) -> str:
-        """Job part of the instance identifier"""
+        """
+        Returns:
+            str: Job part of the instance identifier.
+        """
         return self.id.job_id
 
     @property
     def instance_id(self) -> str:
-        """Instance part of the instance identifier"""
+        """
+        Returns:
+            str: Instance part of the instance identifier.
+        """
         return self.id.instance_id
 
     @property
     @abc.abstractmethod
-    def id(self):
-        """Identifier of this instance"""
+    def id(self) -> 'JobInstanceID':
+        """
+        Returns:
+            JobInstanceID: Identifier of this instance.
+        """
 
     @property
     @abc.abstractmethod
-    def metadata(self):
-        """Descriptive information of this instance"""
+    def metadata(self) -> 'JobInstanceMetadata':
+        """
+        Returns:
+            JobInstanceMetadata: Descriptive information about this instance.
+        """
 
     @abc.abstractmethod
     def run(self):
-        """Run the job"""
+        """
+        Run the job.
+
+        This method is not expected to raise any errors. In case of any failure the error details can be retrieved
+        by calling `exec_error` method.
+        """
 
     @abc.abstractmethod
     def release(self):
-        """Release the job if it is waiting to be synchronised otherwise ignore"""
+        """
+        Releases the instance if it's in the pre-execution phase, waiting for a specific condition to be met
+        before it begins execution.
+
+        This method is intended for two primary scenarios:
+        1. When the job is awaiting an external condition and relies on the user to signal when that condition is met.
+        2. When the user, understanding the implications, chooses to bypass the waiting condition and releases
+           the instance prematurely.
+        """
 
     @property
     @abc.abstractmethod
     def lifecycle(self):
-        """Execution lifecycle of this instance"""
+        """
+        Retrieves the execution lifecycle of this instance.
+
+        The execution lifecycle comprises a sequence of states that the job instance transitions through,
+        each associated with a timestamp indicating when that state was reached.
+
+        Returns:
+            ExecutionLifecycle: The lifecycle of this job instance.
+        """
 
     @property
     @abc.abstractmethod
