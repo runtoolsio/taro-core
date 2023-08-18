@@ -657,52 +657,79 @@ class JobInstance(abc.ABC):
     @property
     @abc.abstractmethod
     def tracking(self):
-        """Task tracking information, None if tracking is not supported"""
+        """TODO: Task tracking information, None if tracking is not supported"""
 
     @property
     @abc.abstractmethod
     def status(self):
-        """Current status of the job or None if not supported"""
+        """
+        Returns:
+            str: Current status of the job or None if not supported
+        """
 
     @property
     @abc.abstractmethod
     def last_output(self):
-        """Last lines of output or None if not supported"""
+        """
+        Retrieves the recent lines of job output.
+
+        Each line is returned as a tuple, where the first element is the output string and the second element
+        is a boolean value indicating whether the output is an error output.
+
+        The number of lines returned is dependent on the specific implementation. It is not recommended to return
+        large number of lines.
+
+        Returns:
+            List[Tuple[str, bool]]: A list of the latest output lines or None if output capture is not supported.
+        """
 
     @property
     @abc.abstractmethod
     def error_output(self):
-        """Lines of error output or None if not supported"""
+        """
+        Retrieves the lines of error output.
+
+        Returns:
+            List[str] or None: Lines of error output, or None if error output capture is not supported.
+        """
 
     @property
     @abc.abstractmethod
     def warnings(self):
         """
-        TODO Warning as custom type?
-        Return dictionary of {alarm_name: occurrence_count}
+        Retrieves the warnings associated with the job instance.
 
-        :return: warnings
+        Returns:
+            Dict[str, int]: A dictionary mapping warning names to their occurrence count.
         """
 
     @abc.abstractmethod
-    def add_warning(self, warning):
+    def add_warning(self, warning: str):
         """
-        Add warning to the instance
+        Adds a warning to the job instance.
 
-        :param warning: warning to add
+        Args:
+            warning (str): The warning ID to be added.
         """
 
     @property
     @abc.abstractmethod
-    def exec_error(self) -> ExecutionError:
-        """Job execution error if occurred otherwise None"""
+    def exec_error(self):
+        """
+        Retrieves the error details of the job execution, if any occurred.
+        If no errors occurred during the execution of the job, this property returns None.
+
+        Returns:
+            ExecutionError: The details of the execution error or None if the job executed successfully.
+        """
 
     @abc.abstractmethod
     def create_snapshot(self):
         """
-        Create consistent (thread-safe) snapshot of the job instance state
+        Creates a consistent, thread-safe snapshot of the job instance's current state.
 
-        :return: job instance snapshot
+        Returns:
+            JobInst: A snapshot representing the current state of the job instance.
         """
 
     @abc.abstractmethod
