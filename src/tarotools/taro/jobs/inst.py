@@ -735,68 +735,86 @@ class JobInstance(abc.ABC):
     @abc.abstractmethod
     def stop(self):
         """
-        Stop running execution gracefully
+        Attempts to cancel a scheduled job or stop a job that is already executing.
+
+        Note:
+            The way the stop request is handled can vary based on the implementation or the specific job.
+            It's possible that not all instances will respond successfully to the stop request.
         """
 
     @abc.abstractmethod
     def interrupted(self):
         """
-        Notify about keyboard interruption signal
+        TODO: Notify about keyboard interruption signal
         """
 
     @abc.abstractmethod
     def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         """
-        TODO Should move to Lifecycle class?
-        Register execution state observer
-        Observer can be:
-            1. An instance of InstanceStateObserver
-            2. Callable object with single parameter of JobInst type
+        Register an instance state observer.
 
-        :param observer: observer to register
-        :param priority: observer priority as number (lower number is notified first)
+        The observer can be:
+            1. An instance of `InstanceStateObserver`.
+            2. A callable object with the signature of `InstanceStateObserver.instance_state_update`.
+
+        Args:
+            observer: The observer to register.
+            priority (int, optional): The observer's priority as a number. Lower numbers are notified first.
         """
 
     @abc.abstractmethod
     def remove_state_observer(self, observer):
         """
-        De-register execution state observer
+        De-register an execution state observer.
 
-        :param observer observer to de-register
+        Args:
+            observer: The observer to de-register.
         """
 
     @abc.abstractmethod
     def add_warning_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         """
-        Register warning observer
+        Register a warning observer.
+        The observer can be:
+            1. An instance of `WarningObserver`.
+            2. A callable object with the signature of `WarningObserver.new_warning`.
 
-        :param observer: observer to register
-        :param priority: observer priority as number (lower number is notified first)
+        Args:
+            observer:
+                The observer to register.
+            priority (int, optional):
+                The observer's priority as a number. Lower numbers are notified first.
         """
 
     @abc.abstractmethod
     def remove_warning_observer(self, observer):
         """
-        De-register warning observer
+        De-register a warning observer.
 
-        :param observer observer to de-register
+        Args:
+            observer: The observer to de-register.
         """
 
     @abc.abstractmethod
     def add_output_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         """
-        Register output observer
+        Register an output observer.
+        The observer can be:
+            1. An instance of `InstanceOutputObserver`.
+            2. A callable object with the signature of `InstanceOutputObserver.instance_output_update`.
 
-        :param observer: observer to register
-        :param priority: observer priority as number (lower number is notified first)
+        Args:
+            observer: The observer to register.
+            priority (int, optional): The observer's priority as a number. Lower numbers are notified first.
         """
 
     @abc.abstractmethod
     def remove_output_observer(self, observer):
         """
-        De-register output observer
+        De-register an output observer.
 
-        :param observer observer to de-register
+        Args:
+            observer: The observer to de-register.
         """
 
 
