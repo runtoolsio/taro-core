@@ -5,7 +5,7 @@ from typing import Dict, Tuple
 import tomli_w
 
 from tarotools.taro import cfg
-from tarotools.taro import paths, JobInst, Warn, WarningObserver, InstanceStateObserver
+from tarotools.taro import paths, JobInst, Warn, InstanceWarningObserver, InstanceStateObserver
 from tarotools.taro.jobs.inst import WarnEventCtx
 
 
@@ -85,7 +85,7 @@ class PutStateToQueueObserver(InstanceStateObserver):
         self.queue.put_nowait(new_state)
 
 
-class TestWarningObserver(WarningObserver):
+class TestWarningObserver(InstanceWarningObserver):
 
     def __init__(self):
         self.warnings: Dict[str, Tuple[JobInst, Warn, WarnEventCtx]] = {}

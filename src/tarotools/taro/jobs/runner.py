@@ -16,7 +16,7 @@ from tarotools.taro.jobs import persistence
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, \
     ExecutionOutputObserver, \
     Phase, Flag, UnexpectedStateError
-from tarotools.taro.jobs.inst import InstanceStateObserver, JobInstance, JobInst, WarningObserver, \
+from tarotools.taro.jobs.inst import InstanceStateObserver, JobInstance, JobInst, InstanceWarningObserver, \
     InstanceOutputObserver, \
     Warn, \
     WarnEventCtx, JobInstanceID, DEFAULT_OBSERVER_PRIORITY, JobInstanceMetadata
@@ -305,7 +305,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         for observer in _gen_prioritized(self._warning_observers, _warning_observers):
             # noinspection PyBroadException
             try:
-                if isinstance(observer, WarningObserver):
+                if isinstance(observer, InstanceWarningObserver):
                     observer.new_instance_warning(job_info, warning, event_ctx)
                 elif callable(observer):
                     observer(job_info, warning, event_ctx)
@@ -336,7 +336,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
 
 _state_observers: List[Union[Tuple[int, InstanceStateObserver], Tuple[int, Callable]]] = []
-_warning_observers: List[Union[Tuple[int, WarningObserver], Tuple[int, Callable]]] = []
+_warning_observers: List[Union[Tuple[int, InstanceWarningObserver], Tuple[int, Callable]]] = []
 _output_observers: List[Union[Tuple[int, InstanceOutputObserver], Tuple[int, Callable]]] = []
 
 

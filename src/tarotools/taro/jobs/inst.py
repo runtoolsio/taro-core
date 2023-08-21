@@ -704,12 +704,12 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_warning(self, warning: str):
+    def add_warning(self, warning):
         """
         Adds a warning to the job instance.
 
         Args:
-            warning (str): The warning ID to be added.
+            warning (Warn): The warning to be added.
         """
 
     @property
@@ -1116,7 +1116,7 @@ class Warn:
 WarnEventCtx = namedtuple('WarnEventCtx', 'count')
 
 
-class WarningObserver(abc.ABC):
+class InstanceWarningObserver(abc.ABC):
 
     @abc.abstractmethod
     def new_instance_warning(self, job_info: JobInst, warning: Warn, event_ctx: WarnEventCtx):
