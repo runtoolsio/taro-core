@@ -1136,12 +1136,3 @@ class InstanceOutputObserver(abc.ABC):
             is_error (bool): True if it is an error output, otherwise False.
         """
 
-
-class JobOutputTracker(InstanceOutputObserver):
-    # TODO Delete?
-
-    def __init__(self, output_tracker):
-        self.output_tracker = output_tracker
-
-    def new_instance_output(self, job_info: JobInst, output, is_error):
-        self.output_tracker.new_output(output)
