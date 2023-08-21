@@ -935,46 +935,99 @@ class JobInst:
 
     @property
     def job_id(self) -> str:
+        """
+        Returns:
+            str: Job part of the instance identifier.
+        """
         return self.metadata.id.job_id
 
     @property
     def instance_id(self) -> str:
+        """
+        Returns:
+            str: Instance part of the instance identifier.
+        """
         return self.metadata.id.instance_id
 
     @property
     def id(self):
+        """
+        Returns:
+            JobInstanceID: Identifier of this instance.
+        """
         return self.metadata.id
 
     @property
     def metadata(self):
+        """
+        Returns:
+            JobInstanceMetadata: Descriptive information about this instance.
+        """
         return self._metadata
 
     @property
     def lifecycle(self):
+        """
+        Retrieves the execution lifecycle of this instance.
+
+        The execution lifecycle comprises a sequence of states that the job instance transitions through,
+        each associated with a timestamp indicating when that state was reached.
+
+        Returns:
+            ExecutionLifecycle: The lifecycle of this job instance.
+        """
         return self._lifecycle
 
     @property
     def state(self):
+        """
+        Returns:
+            The current execution state of the instance
+        """
         return self._lifecycle.state
 
     @property
     def tracking(self):
+        """TODO: Task tracking information, None if tracking is not supported"""
         return self._tracking
 
     @property
     def status(self):
+        """
+        Returns:
+            str: Current status of the job or None if not supported.
+        """
         return self._status
 
     @property
     def warnings(self):
+        """
+        Retrieves the warnings associated with the job instance.
+
+        Returns:
+            Dict[str, int]: A dictionary mapping warning names to their occurrence count.
+        """
         return self._warnings
 
     @property
     def error_output(self):
+        """
+        Retrieves the lines of error output.
+
+        Returns:
+            List[str] or None: Lines of error output, or None if error output capture is not supported.
+        """
         return self._error_output
 
     @property
-    def exec_error(self) -> ExecutionError:
+    def exec_error(self):
+        """
+        Retrieves the error details of the job execution, if any occurred.
+        If no errors occurred during the execution of the job, this property returns None.
+
+        Returns:
+            ExecutionError: The details of the execution error or None if the job executed successfully.
+        """
         return self._exec_error
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
@@ -1009,6 +1062,9 @@ class JobInst:
 
 
 class JobInstances(list):
+    """
+    List of job instances with auxiliary methods.
+    """
 
     def __init__(self, jobs):
         super().__init__(jobs)
@@ -1040,7 +1096,15 @@ class InstanceStateObserver(abc.ABC):
 
     @abc.abstractmethod
     def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
-        """This method is called when job instance execution state is changed."""
+        """
+        Called when the instance execution state changes.
+
+        Args:
+            job_inst (JobInst): The job instance whose state changed.
+            previous_state (ExecutionState): The previous execution state of the job instance.
+            new_state (ExecutionState): The new/current execution state of the job instance.
+            changed (datetime.datetime): The timestamp of when the state change occurred.
+        """
 
 
 @dataclass
@@ -1064,11 +1128,12 @@ class InstanceOutputObserver(abc.ABC):
     @abc.abstractmethod
     def new_instance_output(self, job_info: JobInst, output, is_error):
         """
-        Executed when new output line is available.
+        Executed when a new output line is available.
 
-        :param job_info: job instance producing the output
-        :param output: job instance output text
-        :param is_error: True when it is an error output
+        Args:
+            job_info (JobInst): Job instance producing the output.
+            output (str): Job instance output text.
+            is_error (bool): True if it is an error output, otherwise False.
         """
 
 
