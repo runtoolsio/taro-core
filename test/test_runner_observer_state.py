@@ -64,5 +64,5 @@ class ExceptionRaisingObserver(InstanceStateObserver):
     def __init__(self, raise_exc: BaseException):
         self.raise_exc = raise_exc
 
-    def instance_state_update(self, job_inst: JobInst, previous_state, new_state, changed):
+    def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
         raise self.raise_exc

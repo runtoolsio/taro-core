@@ -32,7 +32,7 @@ class _ExecTimeWarning(InstanceStateObserver):
         self.time = time
         self.timer = None
 
-    def instance_state_update(self, job_inst: JobInst, previous_state, new_state, changed):
+    def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
         if new_state.in_phase(ExecutionPhase.EXECUTING):
             assert self.timer is None
             self.timer = Timer(self.time, self._check)
@@ -57,7 +57,7 @@ class _OutputMatchesWarning(InstanceOutputObserver):
         self.id = w_id
         self.regex = re.compile(regex)
 
-    def instance_output_update(self, _, output, is_error):
+    def new_instance_output(self, _, output, is_error):
         m = self.regex.search(output)
         if m:
             warn = Warn(self.id, {'matches': output})

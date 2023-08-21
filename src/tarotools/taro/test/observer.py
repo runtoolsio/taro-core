@@ -37,7 +37,7 @@ class TestStateObserver(InstanceStateObserver):
         self._events: List[Tuple[datetime, JobInst, ExecutionState, ExecutionError]] = []
         self.completion_lock = Condition()
 
-    def instance_state_update(self, job_inst: JobInst, previous_state, new_state, changed):
+    def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
         self._events.append((datetime.now(), job_inst, new_state, job_inst.exec_error))
         log.info("event=[state_changed] job_info=[{}]".format(job_inst))
         self._release_state_waiter()

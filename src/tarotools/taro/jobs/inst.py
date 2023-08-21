@@ -1039,7 +1039,7 @@ class JobInstances(list):
 class InstanceStateObserver(abc.ABC):
 
     @abc.abstractmethod
-    def instance_state_update(self, job_inst: JobInst, previous_state, new_state, changed):
+    def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
         """This method is called when job instance execution state is changed."""
 
 
@@ -1055,14 +1055,14 @@ WarnEventCtx = namedtuple('WarnEventCtx', 'count')
 class WarningObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_warning(self, job_info: JobInst, warning: Warn, event_ctx: WarnEventCtx):
+    def new_instance_warning(self, job_info: JobInst, warning: Warn, event_ctx: WarnEventCtx):
         """This method is called when there is a new warning event."""
 
 
 class InstanceOutputObserver(abc.ABC):
 
     @abc.abstractmethod
-    def instance_output_update(self, job_info: JobInst, output, is_error):
+    def new_instance_output(self, job_info: JobInst, output, is_error):
         """
         Executed when new output line is available.
 
@@ -1078,5 +1078,5 @@ class JobOutputTracker(InstanceOutputObserver):
     def __init__(self, output_tracker):
         self.output_tracker = output_tracker
 
-    def instance_output_update(self, job_info: JobInst, output, is_error):
+    def new_instance_output(self, job_info: JobInst, output, is_error):
         self.output_tracker.new_output(output)

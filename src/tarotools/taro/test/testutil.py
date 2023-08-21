@@ -81,7 +81,7 @@ class PutStateToQueueObserver(InstanceStateObserver):
     def __init__(self, queue):
         self.queue = queue
 
-    def instance_state_update(self, job_inst: JobInst, previous_state, new_state, changed):
+    def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
         self.queue.put_nowait(new_state)
 
 
@@ -90,5 +90,5 @@ class TestWarningObserver(WarningObserver):
     def __init__(self):
         self.warnings: Dict[str, Tuple[JobInst, Warn, WarnEventCtx]] = {}
 
-    def new_warning(self, job_inst: JobInst, warning: Warn, event_ctx):
+    def new_instance_warning(self, job_inst: JobInst, warning: Warn, event_ctx):
         self.warnings[warning.name] = (job_inst, warning, event_ctx)

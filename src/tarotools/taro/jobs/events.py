@@ -56,13 +56,13 @@ class StateDispatcher(EventDispatcher, InstanceStateObserver):
     def __init__(self):
         super(StateDispatcher, self).__init__(SocketClient(STATE_LISTENER_FILE_EXTENSION, bidirectional=False))
 
-    def instance_state_update(self, job_inst: JobInst, previous_state, new_state, changed):
+    def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
         event = {
             "new_state": new_state.name,
             "previous_state": previous_state.name,
             "changed": format_dt_iso(changed),
         }
-        self._send_event("execution_state_change", job_inst.metadata, event)
+        self._send_event("new_instance_state", job_inst.metadata, event)
 
 
 class OutputDispatcher(EventDispatcher, InstanceOutputObserver):
@@ -74,9 +74,9 @@ class OutputDispatcher(EventDispatcher, InstanceOutputObserver):
     def __init__(self):
         super(OutputDispatcher, self).__init__(SocketClient(OUTPUT_LISTENER_FILE_EXTENSION, bidirectional=False))
 
-    def instance_output_update(self, job_info: JobInst, output, is_error):
+    def new_instance_output(self, job_info: JobInst, output, is_error):
         event = {
             "output": util.truncate(output, 10000, truncated_suffix=".. (truncated)"),
             "is_error": is_error,
         }
-        self._send_event("new_output", job_info.metadata, event)
+        self._send_event("new_instance_output", job_info.metadata, event)

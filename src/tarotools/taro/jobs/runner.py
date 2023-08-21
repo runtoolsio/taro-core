@@ -293,7 +293,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             # noinspection PyBroadException
             try:
                 if isinstance(observer, InstanceStateObserver):
-                    observer.instance_state_update(job_inst, previous_state, new_state, changed)
+                    observer.new_instance_state(job_inst, previous_state, new_state, changed)
                 elif callable(observer):
                     observer(job_inst, previous_state, new_state, changed)
                 else:
@@ -306,7 +306,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             # noinspection PyBroadException
             try:
                 if isinstance(observer, WarningObserver):
-                    observer.new_warning(job_info, warning, event_ctx)
+                    observer.new_instance_warning(job_info, warning, event_ctx)
                 elif callable(observer):
                     observer(job_info, warning, event_ctx)
                 else:
@@ -326,7 +326,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             # noinspection PyBroadException
             try:
                 if isinstance(observer, InstanceOutputObserver):
-                    observer.instance_output_update(job_info, output, is_error)
+                    observer.new_instance_output(job_info, output, is_error)
                 elif callable(observer):
                     observer(job_info, output, is_error)
                 else:
