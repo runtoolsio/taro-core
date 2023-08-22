@@ -12,7 +12,6 @@ The main parts are:
 import abc
 import datetime
 import textwrap
-from collections import namedtuple
 from dataclasses import dataclass
 from datetime import timezone, time, timedelta
 from enum import Enum
@@ -1109,17 +1108,34 @@ class InstanceStateObserver(abc.ABC):
 
 @dataclass
 class Warn:
+    """
+    This class represents a warning.
+
+    Attributes:
+        name (str): Name is used to identify the type of the warning.
+        params (Optional[Dict[str, Any]]): Arbitrary parameters related to the warning.
+    """
     name: str
     params: Optional[Dict[str, Any]] = None
 
 
-WarnEventCtx = namedtuple('WarnEventCtx', 'count')
+@dataclass
+class WarnEventCtx:
+    """
+    A class representing information related to a warning event.
+
+    Attributes:
+        warning (Warn): The warning which initiated the event.
+        count (int): The total number of warnings with the same name associated with the instance.
+    """
+    warning: Warn
+    count: int
 
 
 class InstanceWarningObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_instance_warning(self, job_info: JobInst, warning: Warn, event_ctx: WarnEventCtx):
+    def new_instance_warning(self, job_info: JobInst, warning_ctx: WarnEventCtx):
         """This method is called when there is a new warning event."""
 
 
@@ -1135,4 +1151,3 @@ class InstanceOutputObserver(abc.ABC):
             output (str): Job instance output text.
             is_error (bool): True if it is an error output, otherwise False.
         """
-

@@ -28,7 +28,7 @@ def test_warning_added(observer: TestWarningObserver):
 
     assert job.warnings[warn.name] == 1
     assert observer.warnings['test_warn'][0].job_id == 'j1'
-    assert observer.warnings['test_warn'][1] == warn
+    assert observer.warnings['test_warn'][1].warning == warn
 
 
 def test_warning_repeated(observer: TestWarningObserver):

@@ -18,7 +18,6 @@ from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, Execut
     Phase, Flag, UnexpectedStateError
 from tarotools.taro.jobs.inst import InstanceStateObserver, JobInstance, JobInst, InstanceWarningObserver, \
     InstanceOutputObserver, \
-    Warn, \
     WarnEventCtx, JobInstanceID, DEFAULT_OBSERVER_PRIORITY, JobInstanceMetadata
 from tarotools.taro.jobs.sync import NoSync, CompositeSync, Latch, Signal
 
@@ -169,8 +168,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def add_warning(self, warning):
         self._warnings.update([warning.name])
         log.warning('event=[new_warning] warning=[%s]', warning)
-        self._notify_new_warning(self.create_snapshot(), warning,
-                                 WarnEventCtx(self._warnings[warning.name]))  # Lock?
+        self._notify_new_warning(self.create_snapshot(), WarnEventCtx(warning, self._warnings[warning.name]))  # Lock?
 
     def run(self):
         # TODO Check executed only once
@@ -301,14 +299,14 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
             except BaseException:
                 log.exception("event=[state_observer_exception]")
 
-    def _notify_new_warning(self, job_info: JobInst, warning: Warn, event_ctx: WarnEventCtx):
+    def _notify_new_warning(self, job_inst: JobInst, warn_ctx: WarnEventCtx):
         for observer in _gen_prioritized(self._warning_observers, _warning_observers):
             # noinspection PyBroadException
             try:
                 if isinstance(observer, InstanceWarningObserver):
-                    observer.new_instance_warning(job_info, warning, event_ctx)
+                    observer.new_instance_warning(job_inst, warn_ctx)
                 elif callable(observer):
-                    observer(job_info, warning, event_ctx)
+                    observer(job_inst, warn_ctx)
                 else:
                     log.warning("event=[unsupported_warning_observer] observer=[%s]", observer)
             except BaseException:
