@@ -1,34 +1,88 @@
 import datetime
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
 from tarotools.taro.jobs.execution import ExecutionState
 from tarotools.taro.util import MatchingStrategy, format_dt_iso
 
 
 class Job:
+    """
+    Represents a job definition.
 
-    def __init__(self, job_id, properties: Dict[str, str] = None):
+    This class encapsulates the properties and characteristics of a job. Each individual execution
+    of a job is represented as an object of the `JobInstance` class.
+
+    Attributes:
+        _id (str): Unique identifier for the job.
+        _properties (Dict[str, str]): Additional properties or metadata associated with the job.
+    """
+
+    def __init__(self, job_id: str, properties: Dict[str, str] = None):
+        """
+        Initialize a new Job object.
+
+        Args:
+            job_id (str): Unique identifier for the job.
+            properties (Dict[str, str], optional): Additional properties or metadata. Defaults to an empty dictionary.
+        """
         self._id = job_id
         self._properties = properties or {}
 
     @property
-    def id(self):
+    def id(self) -> str:
+        """
+        Returns the unique identifier of the job.
+
+        Returns:
+            str: The job's unique identifier.
+        """
         return self._id
 
     @property
-    def properties(self):
+    def properties(self) -> Dict[str, str]:
+        """
+        Returns the properties or metadata associated with the job.
+
+        Returns:
+            Dict[str, str]: Dictionary containing job properties.
+        """
         return self._properties
 
 
 class JobMatchingCriteria:
+    """
+    Specifies criteria for matching `Job` instances based on job properties and a matching strategy.
+
+    Attributes:
+        properties (Dict[str, str], optional): Dictionary of properties to match against.
+        property_match_strategy (MatchingStrategy): Strategy function to use for matching property values.
+    """
 
     def __init__(self, *, properties=None, property_match_strategy=MatchingStrategy.EXACT):
+        """
+        Initializes the JobMatchingCriteria with the given properties and matching strategy.
+
+        Args:
+            properties (Dict[str, str], optional):
+                Dictionary of properties to match against.
+            property_match_strategy (MatchingStrategy):
+                Strategy function to use for matching property values. Defaults to an exact match.
+        """
         self.properties = properties
         self.property_match_strategy = property_match_strategy
 
-    def matches(self, job):
+    def matches(self, job) -> bool:
+        """
+        Determines if the given job matches the set criteria.
+
+        Args:
+            job (Job): The job instance to check against the criteria.
+
+        Returns:
+            bool: True if the job matches the criteria, otherwise False.
+        """
         if not self.properties:
             return True
 
@@ -41,20 +95,49 @@ class JobMatchingCriteria:
 
         return True
 
-    def matched(self, jobs):
+    def matched(self, jobs) -> List[Job]:
+        """
+        Returns a list of jobs that match the set criteria.
+
+        Args:
+            jobs (List[Job]): A list of job instances to check against the criteria.
+
+        Returns:
+            List[Job]: A list of job instances that match the criteria.
+        """
         return [job for job in jobs if self.matches(job)]
 
 
 @dataclass
 class JobStats:
+    """
+    Represents the statistics related to a specific job over a certain time period.
+
+    These statistics provide insights into the job's performance and status trends during
+    the specified timeframe.
+
+    Attributes:
+        job_id (str): Unique identifier for the job.
+        count (int): Number of instances of the job within the time interval.
+        first_created (datetime): Creation time of the first job instance in the interval.
+        last_created (datetime): Creation time of the last job instance in the interval.
+        fastest_time (timedelta): Shortest execution time among all instances in the interval.
+        average_time (timedelta): Average execution time across all instances in the interval.
+        slowest_time (timedelta): Longest execution time among all instances in the interval.
+        last_time (timedelta): Execution time of the most recent instance in the interval.
+        last_state (ExecutionState): State of the last executed instance in the interval.
+        failed_count (int): Number of instances that failed during the time interval.
+        warning_count (int): Number of instances with at least one warning during the time interval.
+    """
+
     job_id: str
     count: int = 0
-    first_created: datetime = None
-    last_created: datetime = None
-    fastest_time: timedelta = None
-    average_time: timedelta = None
-    slowest_time: timedelta = None
-    last_time: timedelta = None
+    first_created: Optional[datetime] = None
+    last_created: Optional[datetime] = None
+    fastest_time: Optional[timedelta] = None
+    average_time: Optional[timedelta] = None
+    slowest_time: Optional[timedelta] = None
+    last_time: Optional[timedelta] = None
     last_state: ExecutionState = ExecutionState.NONE
     failed_count: int = 0
     warning_count: int = 0
