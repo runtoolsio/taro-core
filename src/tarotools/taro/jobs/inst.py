@@ -1002,6 +1002,11 @@ class JobInst:
     def warnings(self):
         """
         Retrieves the warnings associated with the job instance.
+        TODO:
+            1. Rename to `warning_counts` or so (maybe just move to `JobInst`)
+            2. Make `warnings` returned the `Warn` objects (impl. limit)
+            3. Modify de/serialization accordingly
+            4. Associated timestamps or add timestamp to `Warn` object?
 
         Returns:
             Dict[str, int]: A dictionary mapping warning names to their occurrence count.
