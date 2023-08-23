@@ -1,3 +1,8 @@
+"""
+This module defines the job part of the job framework and, together with the instance part in the `inst` module,
+forms the framework's foundation.
+"""
+
 import datetime
 from dataclasses import dataclass
 from datetime import timedelta

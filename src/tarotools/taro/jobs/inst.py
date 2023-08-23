@@ -1,5 +1,5 @@
 """
-This module defines the instance part of the Job framework and is built on top of the Execution framework defined
+This module defines the instance part of the job framework and is built on top of the execution framework defined
 in the execution module.
 
 The main parts are:
