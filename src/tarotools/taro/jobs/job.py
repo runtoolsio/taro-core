@@ -1,7 +1,12 @@
 """
-This module defines the job part of the job framework and, together with the instance part in the `inst` module,
-forms the framework's foundation.
+This module defines the 'job' component of the job framework. Together with the 'instance' component
+in the `inst` module, they establish the foundation of this framework.
+
+A job consists of an ID and may have static attributes. When a job is executed, it creates a job instance.
+Naturally, while the specific task a job instance performs is user-defined, each instance of the same job is expected
+to perform the same task.
 """
+
 
 import datetime
 from dataclasses import dataclass
