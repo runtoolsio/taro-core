@@ -1,3 +1,14 @@
+"""
+This module provides the logic required for the locking mechanisms used by specific parts of the library.
+
+Locks:
+1. State Lock
+Several features enable synchronization among job instances. To ensure their proper functioning, it is essential
+to control when an active job instance can change its state. To do this, the instance must obtain the state lock.
+While an instance holds the lock, only that instance is permitted to change its state.
+Therefore, any part of the code possessing the lock can depend on the current immutable state of all instances.
+"""
+
 import contextlib
 import logging
 import random
@@ -6,8 +17,8 @@ from abc import ABC, abstractmethod
 
 import portalocker
 
-from tarotools.taro import paths
 from tarotools.taro import cfg
+from tarotools.taro import paths
 
 log = logging.getLogger(__name__)
 
