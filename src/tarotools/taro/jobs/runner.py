@@ -234,7 +234,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                     self._sync.wait_and_unlock(state_lock)  # Waiting state already set, now we can wait
                     new_job_inst = None
                 else:
-                    new_job_inst = self._change_state(state, use_global_lock=False)
+                    new_job_inst: Optional[JobInst] = self._change_state(state, use_global_lock=False)
 
             # Lock released -> do not hold lock when executing observers
             if new_job_inst:

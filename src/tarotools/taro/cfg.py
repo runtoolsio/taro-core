@@ -60,14 +60,14 @@ DEF_LOG_FILE_LEVEL = 'off'
 DEF_LOG_FILE_PATH = None
 DEF_LOG_TIMING = False
 
-DEF_PERSISTENCE_ENABLED = True
+DEF_PERSISTENCE_ENABLED = False
 DEF_PERSISTENCE_TYPE = 'sqlite'
 DEF_PERSISTENCE_MAX_AGE = ''
 DEF_PERSISTENCE_MAX_RECORDS = -1
 DEF_PERSISTENCE_DATABASE = ''
 
-DEF_LOCK_TIMEOUT = 10000
-DEF_LOCK_MAX_CHECK_TIME = 50
+DEF_LOCK_TIMEOUT = 10
+DEF_LOCK_MAX_CHECK_TIME = 0.05
 
 DEF_PLUGINS_ENABLED = False
 DEF_PLUGINS_LOAD = ()
@@ -87,8 +87,8 @@ persistence_max_age = DEF_PERSISTENCE_MAX_AGE
 persistence_max_records = DEF_PERSISTENCE_MAX_RECORDS
 persistence_database = DEF_PERSISTENCE_DATABASE
 
-lock_timeout_ms = DEF_LOCK_TIMEOUT
-lock_max_check_time_ms = DEF_LOCK_MAX_CHECK_TIME
+lock_timeout_sec = DEF_LOCK_TIMEOUT
+lock_max_check_time_sec = DEF_LOCK_MAX_CHECK_TIME
 
 plugins_enabled = DEF_PLUGINS_ENABLED
 plugins_load = DEF_PLUGINS_LOAD
@@ -119,7 +119,7 @@ def set_variables(**kwargs):
 def set_minimal_config():
     global log_mode, log_stdout_level, log_file_level, log_file_path, log_timing
     global persistence_enabled, persistence_type, persistence_max_age, persistence_max_records, persistence_database
-    global lock_timeout_ms, lock_max_check_time_ms
+    global lock_timeout_sec, lock_max_check_time_sec
     global plugins_enabled, plugins_load
 
     log_mode = LogMode.ENABLED
@@ -134,8 +134,8 @@ def set_minimal_config():
     persistence_max_records = -1
     persistence_database = ''
 
-    lock_timeout_ms = 10000
-    lock_max_check_time_ms = 50
+    lock_timeout_sec = 10000
+    lock_max_check_time_sec = 50
 
     plugins_enabled = False
     plugins_load = ()

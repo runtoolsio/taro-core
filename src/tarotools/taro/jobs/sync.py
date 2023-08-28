@@ -159,7 +159,7 @@ class Latch(Sync):
         if self._event.is_set():
             return
 
-        lock.unlock()
+        lock.unlock()  # TODO Race condition?
         self._event.wait()
 
     def release(self):
