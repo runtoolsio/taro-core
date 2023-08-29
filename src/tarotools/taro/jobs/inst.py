@@ -12,6 +12,7 @@ The main parts are:
 import abc
 import datetime
 import textwrap
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import timezone, time, timedelta
 from enum import Enum
@@ -1156,3 +1157,30 @@ class InstanceOutputObserver(abc.ABC):
             output (str): Job instance output text.
             is_error (bool): True if it is an error output, otherwise False.
         """
+
+
+class JobInstanceManager(ABC):
+    """
+    Interface for managing job instances. The ambiguous name 'Manager' is used because the
+    subclasses may implement diverse functionalities for the instances added to this object.
+    """
+
+    @abstractmethod
+    def add_job_instance(self, job_instance):
+        """
+        Add a new job instance to the object, making it subject to subclass-specific functionalities.
+
+        Parameters:
+            job_instance: The job instance to add.
+        """
+        pass
+
+    @abstractmethod
+    def remove_job_instance(self, job_instance):
+        """
+        Remove an existing job instance from the object.
+
+        Parameters:
+            job_instance: The job instance to remove.
+        """
+        pass

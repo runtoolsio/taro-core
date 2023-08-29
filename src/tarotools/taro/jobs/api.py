@@ -14,7 +14,7 @@ from json import JSONDecodeError
 
 from tarotools.taro import util
 from tarotools.taro.jobs.execution import ExecutionState, Flag
-from tarotools.taro.jobs.inst import InstanceMatchCriteria
+from tarotools.taro.jobs.inst import InstanceMatchCriteria, JobInstanceManager
 from tarotools.taro.socket import SocketServer
 
 log = logging.getLogger(__name__)
@@ -125,7 +125,7 @@ class TailResource(APIResource):
 DEFAULT_RESOURCES = InstancesResource(), ReleaseWaitingResource(), ReleasePendingResource(), StopResource(), TailResource()
 
 
-class APIServer(SocketServer):
+class APIServer(SocketServer, JobInstanceManager):
 
     def __init__(self, resources=DEFAULT_RESOURCES):
         super().__init__(_create_socket_name(), allow_ping=True)
