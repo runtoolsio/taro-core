@@ -68,7 +68,7 @@ class ManagedJobContext(InstanceStateObserver):
         if self._output_dispatcher:
             job_instance.add_output_observer(self._output_dispatcher, 100)
         if self._api:
-            self._api.add_job_instance(job_instance)
+            self._api.register_instance(job_instance)
 
         #  TODO optional plugins
         if cfg.plugins_enabled and cfg.plugins_load:
@@ -91,7 +91,7 @@ class ManagedJobContext(InstanceStateObserver):
 
         job_instance.remove_state_observer(self._state_dispatcher)
         job_instance.remove_output_observer(self._output_dispatcher)
-        self._api.remove_job_instance(job_instance)
+        self._api.unregister_instance(job_instance)
 
         if close:
             self._close()

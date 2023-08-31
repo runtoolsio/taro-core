@@ -132,10 +132,10 @@ class APIServer(SocketServer, JobInstanceManager):
         self._resources = {resource.path: resource for resource in resources}
         self._job_instances = []
 
-    def add_job_instance(self, job_instance):
+    def register_instance(self, job_instance):
         self._job_instances.append(job_instance)
 
-    def remove_job_instance(self, job_instance):
+    def unregister_instance(self, job_instance):
         self._job_instances.remove(job_instance)
 
     def handle(self, req):

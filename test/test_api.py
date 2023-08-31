@@ -12,10 +12,10 @@ def job_instances():
     server = APIServer()
     j1 = TestJobInstance('j1', 'i1', ExecutionState.RUNNING)
     j1.last_output = [('Meditate, do not delay, lest you later regret it.', False)]
-    server.add_job_instance(j1)
+    server.register_instance(j1)
     j2 = TestJobInstance('j2', 'i2', ExecutionState.PENDING)
     j2.metadata.pending_group = 'p1'
-    server.add_job_instance(j2)
+    server.register_instance(j2)
     assert server.start()
     try:
         yield j1, j2

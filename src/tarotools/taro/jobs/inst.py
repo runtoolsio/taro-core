@@ -1162,25 +1162,32 @@ class InstanceOutputObserver(abc.ABC):
 class JobInstanceManager(ABC):
     """
     Interface for managing job instances. The ambiguous name 'Manager' is used because the
-    subclasses may implement diverse functionalities for the instances added to this object.
+    subclasses may implement diverse functionalities for the instances registered to this object.
     """
 
     @abstractmethod
-    def add_job_instance(self, job_instance):
+    def register_instance(self, job_instance):
         """
-        Add a new job instance to the object, making it subject to subclass-specific functionalities.
+        Register a new job instance with the manager.
 
-        Parameters:
-            job_instance: The job instance to add.
+        The specifics of what occurs upon registering an instance depend on the implementing class.
+        The class is not required to keep track of the instance if that is not needed for the provided functionality.
+
+        Args:
+            job_instance: The job instance to be registered.
         """
         pass
 
     @abstractmethod
-    def remove_job_instance(self, job_instance):
+    def unregister_instance(self, job_instance):
         """
-        Remove an existing job instance from the object.
+        Unregister an existing job instance from the manager.
 
-        Parameters:
-            job_instance: The job instance to remove.
+        This will trigger any necessary clean-up or de-initialization tasks if needed. The specifics of what occurs
+        upon unregistering an instance depend on the implementing class. It can be ignored if the manager does not
+        track the registered instances.
+
+        Args:
+            job_instance: The job instance to be unregistered.
         """
         pass

@@ -1,11 +1,10 @@
-import abc
 import importlib
 import logging
 import pkgutil
 from types import ModuleType
 from typing import Dict
 
-from tarotools.taro.jobs.inst import JobInstance
+from tarotools.taro.jobs.inst import JobInstanceManager
 
 log = logging.getLogger(__name__)
 
@@ -13,7 +12,7 @@ DEF_PLUGIN_MODULE_PREFIX = 'taro_'
 
 
 # TODO plugin collisions
-class PluginBase(abc.ABC):
+class PluginBase(JobInstanceManager):
     name2subclass = {}
     name2plugin = {}
 
@@ -63,12 +62,6 @@ class PluginBase(abc.ABC):
 
         cls.name2plugin = name2plugin
         return name2plugin
-
-    @abc.abstractmethod
-    def new_job_instance(self, job_instance: JobInstance):
-        """
-        New job instance created.
-        """
 
 
 class PluginDisabledError(Exception):
