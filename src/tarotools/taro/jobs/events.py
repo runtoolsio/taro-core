@@ -1,8 +1,10 @@
 """
-This module contains event producers as part of the Job Instance Event framework. The event consumers are expected
-to create a domain socket with a corresponding file suffix located in the user's own subdirectory,
-which is in the `/tmp` directory by default. The sockets are used by the producers to send the events.
-In this design, the communication is unidirectional, with servers acting as consumers and clients as producers.
+This module contains event dispatchers as part of the Job Instance Event framework.
+The dispatchers deliver events of registered job instances to the listeners using domain socket communication.
+The event listeners are expected to create a domain socket with a corresponding file suffix located
+in the user's own subdirectory, which is in the `/tmp` directory by default. The sockets are used by the dispatchers
+to send the events. In this design, the communication is unidirectional, with servers acting as consumers
+and clients as producers.
 """
 
 import abc
