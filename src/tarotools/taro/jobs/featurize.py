@@ -21,8 +21,8 @@ class Feature(Generic[F]):
 
 
 @dataclass
-class InstanceManager(Feature):
-    always_unregister_terminated_instance: bool = False
+class ManagerFeature(Feature):
+    unregister_terminated_instances: bool = False
 
 
 @dataclass
@@ -30,32 +30,68 @@ class ObserverFeature(Feature):
     priority: int = 100
 
 
-class FeatureFactory:
+def _convert_hook(feature, hook):
+    def wrapped_hook():
+        return hook(feature)
+
+    return wrapped_hook if hook else None
+
+
+def _create_observer_features(factories):
+    observers = []
+    for factory, open_hook, close_hook, priority in factories:
+        feature = factory()
+        cnv_open_hook = _convert_hook(feature, open_hook)
+        cnv_close_hook = _convert_hook(feature, close_hook)
+
+        observers.append(ObserverFeature(feature, cnv_open_hook, cnv_close_hook, priority))
+
+    return observers
+
+
+class FeatureBuilder:
 
     def __init__(self):
         self._instance_managers = []
         self._state_observers = []
         self._output_observers = []
-        self._open_hooks = []
-        self._close_hooks = []
         # TODO job_context_listeners
 
-    def add_instance_manager(self, factory, open_hook=None, close_hook=None):
-        self._instance_managers.append((factory, open_hook, close_hook))
+    def add_instance_manager(self, factory, open_hook=None, close_hook=None, unregister_terminated_instances=False) \
+            -> 'FeatureBuilder':
+        self._instance_managers.append((factory, open_hook, close_hook, unregister_terminated_instances))
+        return self
 
-    def add_state_observer(self, factory, priority=100, open_hook=None, close_hook=None):
-        self._state_observers.append((factory, priority, open_hook, close_hook))
+    def add_state_observer(self, factory, open_hook=None, close_hook=None, priority=100) -> 'FeatureBuilder':
+        self._state_observers.append((factory, open_hook, close_hook, priority))
+        return self
 
-    def add_output_observer(self, factory, priority=100, open_hook=None, close_hook=None):
-        self._output_observers.append((factory, priority, open_hook, close_hook))
+    def add_output_observer(self, factory, open_hook=None, close_hook=None, priority=100) -> 'FeatureBuilder':
+        self._output_observers.append((factory, open_hook, close_hook, priority))
+        return self
+
+    def build(self) -> 'FeaturedContext':
+        instance_managers = []
+        for factory, open_hook, close_hook, unregister_terminated in self._instance_managers:
+            feature = factory()
+            cnv_open_hook = _convert_hook(feature, open_hook)
+            cnv_close_hook = _convert_hook(feature, close_hook)
+
+            instance_managers.append(ManagerFeature(feature, cnv_open_hook, cnv_close_hook, unregister_terminated))
+            instance_managers = []
+
+        state_observers = _create_observer_features(self._state_observers)
+        output_observers = _create_observer_features(self._output_observers)
+
+        return FeaturedContext(instance_managers, state_observers, output_observers)
 
 
 class FeaturedContext(InstanceStateObserver):
 
     def __init__(self, instance_managers=(), state_observers=(), output_observers=()):
-        self._instance_managers: Tuple[InstanceManager[JobInstanceManager]] = instance_managers
-        self._state_observers: Tuple[ObserverFeature[InstanceStateObserver]] = state_observers
-        self._output_observers: Tuple[ObserverFeature[InstanceOutputObserver]] = output_observers
+        self._instance_managers: Tuple[ManagerFeature[JobInstanceManager]] = tuple(instance_managers)
+        self._state_observers: Tuple[ObserverFeature[InstanceStateObserver]] = tuple(state_observers)
+        self._output_observers: Tuple[ObserverFeature[InstanceOutputObserver]] = tuple(output_observers)
         self._managed_jobs = []
         self._managed_jobs_lock = Lock()
         self._opened = False
