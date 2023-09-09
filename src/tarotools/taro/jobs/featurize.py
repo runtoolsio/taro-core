@@ -49,7 +49,7 @@ def _create_observer_features(factories):
     return observers
 
 
-class FeatureBuilder:
+class FeaturedContextBuilder:
 
     def __init__(self):
         self._instance_managers = []
@@ -58,15 +58,15 @@ class FeatureBuilder:
         # TODO job_context_listeners
 
     def add_instance_manager(self, factory, open_hook=None, close_hook=None, unregister_terminated_instances=False) \
-            -> 'FeatureBuilder':
+            -> 'FeaturedContextBuilder':
         self._instance_managers.append((factory, open_hook, close_hook, unregister_terminated_instances))
         return self
 
-    def add_state_observer(self, factory, open_hook=None, close_hook=None, priority=100) -> 'FeatureBuilder':
+    def add_state_observer(self, factory, open_hook=None, close_hook=None, priority=100) -> 'FeaturedContextBuilder':
         self._state_observers.append((factory, open_hook, close_hook, priority))
         return self
 
-    def add_output_observer(self, factory, open_hook=None, close_hook=None, priority=100) -> 'FeatureBuilder':
+    def add_output_observer(self, factory, open_hook=None, close_hook=None, priority=100) -> 'FeaturedContextBuilder':
         self._output_observers.append((factory, open_hook, close_hook, priority))
         return self
 
@@ -78,7 +78,6 @@ class FeatureBuilder:
             cnv_close_hook = _convert_hook(feature, close_hook)
 
             instance_managers.append(ManagerFeature(feature, cnv_open_hook, cnv_close_hook, unregister_terminated))
-            instance_managers = []
 
         state_observers = _create_observer_features(self._state_observers)
         output_observers = _create_observer_features(self._output_observers)

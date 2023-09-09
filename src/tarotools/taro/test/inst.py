@@ -1,9 +1,10 @@
 from collections import Counter
+from dataclasses import dataclass
 
 from tarotools.taro import JobInst, JobInstanceID, ExecutionError, ExecutionState
 from tarotools.taro import util
 from tarotools.taro.jobs.execution import ExecutionLifecycleManagement
-from tarotools.taro.jobs.inst import JobInstance, JobInstanceMetadata, DEFAULT_OBSERVER_PRIORITY
+from tarotools.taro.jobs.inst import JobInstance, JobInstanceMetadata, DEFAULT_OBSERVER_PRIORITY, JobInstanceManager
 from tarotools.taro.jobs.track import MutableTrackedTask
 
 
@@ -147,3 +148,24 @@ class TestJobInstance(JobInstance):
 
     def remove_output_observer(self, observer):
         pass
+
+
+@dataclass
+class TestJobInstanceManager(JobInstanceManager):
+
+    def __init__(self):
+        self.opened = False
+        self.closed = False
+        self.instances = []
+
+    def open(self):
+        self.opened = True
+
+    def close(self):
+        self.closed = True
+
+    def register_instance(self, job_instance):
+        self.instances.append(job_instance)
+
+    def unregister_instance(self, job_instance):
+        self.instances.remove(job_instance)
