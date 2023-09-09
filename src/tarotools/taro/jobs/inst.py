@@ -18,6 +18,8 @@ from datetime import timezone, time, timedelta
 from enum import Enum
 from fnmatch import fnmatch
 from functools import partial
+from itertools import chain
+from operator import itemgetter
 from typing import NamedTuple, Dict, Any, Optional, List, Tuple, Iterable, Set
 
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionLifecycle, ExecutionPhase, ExecutionStateFlag
@@ -134,7 +136,6 @@ def compound_id_filter(criteria_seq):
 
 
 class LifecycleEvent(Enum):
-
     CREATED = partial(lambda l: l.created_at)
     EXECUTED = partial(lambda l: l.executed_at)
     ENDED = partial(lambda l: l.ended_at)
@@ -1191,3 +1192,37 @@ class JobInstanceManager(ABC):
             job_instance: The job instance to be unregistered.
         """
         pass
+
+
+class Notification:
+
+    def __init__(self, logger=None):
+        self.logger = logger
+        self.observers = []
+
+    def notify(self, observer, *args) -> bool:
+        return False
+
+    def add_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+        self.observers = sorted(chain(self.observers, [(priority, observer)]), key=itemgetter(0))
+
+    def remove_observer(self, observer):
+        self.observers = [(priority, i) for priority, i in self.observers if i != observer]
+
+    def notify_all(self, *args, **kwargs):
+        if 'more_observers' in kwargs:
+            all_observers = sorted(chain(self.observers, kwargs['more_observers']), key=itemgetter(0))
+        else:
+            all_observers = self.observers
+
+        for _, observer in all_observers:
+            # noinspection PyBroadException
+            try:
+                if not self.notify(observer, *args):
+                    observer(*args)
+                else:
+                    if self.logger:
+                        self.logger.warning("event=[unsupported_warning_observer] observer=[%s]", observer)
+            except Exception:
+                if self.logger:
+                    self.logger.exception("event=[warning_observer_exception]")
