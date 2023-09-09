@@ -22,7 +22,8 @@ from itertools import chain
 from operator import itemgetter
 from typing import NamedTuple, Dict, Any, Optional, List, Tuple, Iterable, Set
 
-from tarotools.taro.jobs.execution import ExecutionError, ExecutionLifecycle, ExecutionPhase, ExecutionStateFlag
+from tarotools.taro.jobs.execution import ExecutionError, ExecutionLifecycle, ExecutionPhase, ExecutionStateFlag, \
+    ExecutionState
 from tarotools.taro.jobs.track import TrackedTaskInfo
 from tarotools.taro.util import and_, or_, MatchingStrategy, is_empty, to_list, format_dt_iso, remove_empty_values, \
     single_day_range, \
@@ -1226,3 +1227,24 @@ class Notification:
             except Exception:
                 if self.logger:
                     self.logger.exception("event=[warning_observer_exception]")
+
+
+class InstanceStateNotification(Notification):
+
+    def __init__(self, logger=None):
+        super().__init__(logger=logger)
+
+    def notify_state_changed(self, job_inst: JobInst):
+        states = job_inst.lifecycle.states
+        previous_state = states[-2] if len(states) > 1 else ExecutionState.NONE
+        new_state = job_inst.state
+        changed = job_inst.lifecycle.last_changed_at
+
+        self.notify_all(job_inst, previous_state, new_state, changed)
+
+    def notify(self, observer, *args) -> bool:
+        if isinstance(observer, InstanceStateObserver):
+            observer.new_instance_state(*args)
+            return True
+        else:
+            return False
