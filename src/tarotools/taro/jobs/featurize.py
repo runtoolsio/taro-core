@@ -184,5 +184,7 @@ class FeaturedContext(InstanceStateObserver):
         for manager_feat in self._instance_managers:
             manager_feat.feature.unregister_instance(job_instance)
 
+        job_instance.remove_state_observer(self)
+
         if close:
             self._close()

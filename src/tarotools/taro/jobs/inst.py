@@ -1208,7 +1208,7 @@ class Notification:
         self.observers = sorted(chain(self.observers, [(priority, observer)]), key=itemgetter(0))
 
     def remove_observer(self, observer):
-        self.observers = [(priority, i) for priority, i in self.observers if i != observer]
+        self.observers = [(priority, o) for priority, o in self.observers if o != observer]
 
     def notify_all(self, *args, **kwargs):
         if 'more_observers' in kwargs:

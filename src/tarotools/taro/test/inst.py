@@ -27,7 +27,7 @@ class TestJobInstance(JobInstance):
         self._warnings = Counter()
         self._exec_error = None
         self._error_output = None
-        self._state_notification = InstanceStateNotification()
+        self.state_notification = InstanceStateNotification()
         self.ran = False
         self.released = False
         self.stopped = False
@@ -38,7 +38,7 @@ class TestJobInstance(JobInstance):
 
     def change_state(self, state):
         self.lifecycle.set_state(state)
-        self._state_notification.notify_state_changed(self.create_snapshot())
+        self.state_notification.notify_state_changed(self.create_snapshot())
 
     @property
     def id(self):
@@ -138,10 +138,10 @@ class TestJobInstance(JobInstance):
         self.interrupted = True
 
     def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self._state_notification.add_observer(observer, priority)
+        self.state_notification.add_observer(observer, priority)
 
     def remove_state_observer(self, observer):
-        self._state_notification.remove_observer(observer)
+        self.state_notification.remove_observer(observer)
 
     def add_warning_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         pass
