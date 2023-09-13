@@ -272,6 +272,10 @@ class ExecutionLifecycle:
         return self._state_changes.get(self.first_executing_state)
 
     @property
+    def ended(self):
+        return self.state.in_phase(ExecutionPhase.TERMINAL)
+
+    @property
     def ended_at(self) -> Optional[datetime.datetime]:
         state = self.state
         if not state.in_phase(ExecutionPhase.TERMINAL):

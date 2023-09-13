@@ -1,9 +1,9 @@
 import logging
 from dataclasses import dataclass
-from threading import Lock
-from typing import Optional, Tuple, Callable, TypeVar, Generic
+from threading import RLock
+from typing import Optional, Tuple, Callable, TypeVar, Generic, Dict
 
-from tarotools.taro import InstanceStateObserver, JobInst
+from tarotools.taro import InstanceStateObserver, JobInst, JobInstance, JobInstanceID
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.execution import ExecutionPhase
 from tarotools.taro.jobs.inst import JobInstanceManager, InstanceOutputObserver
@@ -55,7 +55,6 @@ class FeaturedContextBuilder:
         self._instance_managers = []
         self._state_observers = []
         self._output_observers = []
-        # TODO job_context_listeners
 
     def add_instance_manager(self, factory, open_hook=None, close_hook=None, unregister_terminated_instances=False) \
             -> 'FeaturedContextBuilder':
@@ -85,29 +84,44 @@ class FeaturedContextBuilder:
         return FeaturedContext(instance_managers, state_observers, output_observers)
 
 
+@dataclass
+class _ManagedInstance:
+    instance: JobInstance
+    released: bool = False  # Must be guarded by the lock
+
+    def __iter__(self):
+        return iter((self.instance, self.released))
+
+
 class FeaturedContext(InstanceStateObserver):
 
-    def __init__(self, instance_managers=(), state_observers=(), output_observers=()):
+    def __init__(self, instance_managers=(), state_observers=(), output_observers=(), *, remove_terminated=True):
         self._instance_managers: Tuple[ManagerFeature[JobInstanceManager]] = tuple(instance_managers)
         self._state_observers: Tuple[ObserverFeature[InstanceStateObserver]] = tuple(state_observers)
         self._output_observers: Tuple[ObserverFeature[InstanceOutputObserver]] = tuple(output_observers)
-        self._managed_jobs = []
-        self._managed_jobs_lock = Lock()
+        self._remove_terminated = remove_terminated
+        self._managed_instances: Dict[JobInstanceID, _ManagedInstance] = {}
+        self._ctx_lock = RLock()
         self._opened = False
+        self._close_requested = False
         self._closed = False
 
     @property
-    def managed_jobs(self):
-        with self._managed_jobs:
-            return list(self._managed_jobs)
+    def instances(self):
+        with self._ctx_lock:
+            return list(instance for instance, _ in self._managed_instances.values())
+
+    def get_instance(self, job_instance_id) -> Optional[JobInstance]:
+        with self._ctx_lock:
+            return self._managed_instances.get(job_instance_id).instance
 
     def __enter__(self):
         if self._opened:
             raise InvalidStateError("Managed job context has been already opened")
 
         self._execute_open_hooks()
-
         self._opened = True
+
         return self
 
     def _execute_open_hooks(self):
@@ -115,34 +129,17 @@ class FeaturedContext(InstanceStateObserver):
                           (self._instance_managers + self._state_observers + self._output_observers) if f.open_hook):
             open_hook()
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        with self._managed_jobs_lock:
-            if self._closed:
-                return
-
-            self._closed = True
-            if not self._managed_jobs:
-                self._close()
-
-    def _close(self):
-        self._execute_close_hooks()
-
-    def _execute_close_hooks(self):
-        for close_hook in (f.close_hook for f in
-                           (self._instance_managers + self._state_observers + self._output_observers) if f.close_hook):
-            # noinspection PyBroadException
-            try:
-                close_hook()
-            except BaseException:
-                log.exception("event=[close_hook_error] hook=[%s]", close_hook)
-
     def add(self, job_instance):
-        with self._managed_jobs_lock:
+        with self._ctx_lock:
             if not self._opened:
                 raise InvalidStateError("Cannot add job instance because the context has not been opened")
-            if self._closed:
+            if self._close_requested:
                 raise InvalidStateError("Cannot add job instance because the context has been already closed")
-            self._managed_jobs.append(job_instance)
+            if job_instance.id in self._managed_instances:
+                raise ValueError("An instance with this ID has already been added to the context")
+
+            managed_instance = _ManagedInstance(job_instance)
+            self._managed_instances[job_instance.id] = managed_instance
 
         for manager_feat in self._instance_managers:
             manager_feat.feature.register_instance(job_instance)
@@ -160,31 +157,85 @@ class FeaturedContext(InstanceStateObserver):
         #     plugins.register_new_job_instance(job_instance, cfg.plugins_load,
         #                                       plugin_module_prefix=EXT_PLUGIN_MODULE_PREFIX)
 
-        # Must be notified last because it is used to close job resources
+        # Add observer first and only then check for termination to prevent release miss by the race condition
         job_instance.add_state_observer(self, ctx_observer_priority + 1)
+        if job_instance.lifecycle.ended:
+            self._release_instance(job_instance.id, self._remove_terminated)
 
         return job_instance
 
+    def remove(self, job_instance_id) -> Optional[JobInstance]:
+        return self._release_instance(job_instance_id, True)
+
     def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
         if new_state.in_phase(ExecutionPhase.TERMINAL):
-            self._close_job(job_inst.id)
+            self._release_instance(job_inst.id, self._remove_terminated)
 
-    def _close_job(self, job_instance_id):
-        with self._managed_jobs_lock:
-            job_instance = next(j for j in self._managed_jobs if j.id == job_instance_id)
-            self._managed_jobs.remove(job_instance)
-            close = self._closed and len(self._managed_jobs) == 0
+    def _release_instance(self, job_instance_id, remove):
+        """
+        Implementation note: A race condition can cause this method to be executed twice with the same ID
+        """
+        release = False
+        removed = False
+        with self._ctx_lock:
+            managed_instance = self._managed_instances.get(job_instance_id)
+            if not managed_instance:
+                return None  # The instance has been removed before termination
 
-        for output_observer_feat in self._output_observers:
-            job_instance.remove_output_observer(output_observer_feat.feature)
+            if not managed_instance.released:
+                managed_instance.released = release = True  # The flag is guarded by the lock
 
-        for state_observer_feat in self._state_observers:
-            job_instance.remove_state_observer(state_observer_feat.feature)
+            if remove:
+                del self._managed_instances[job_instance_id]
+                removed = True
 
-        for manager_feat in self._instance_managers:
-            manager_feat.feature.unregister_instance(job_instance)
+        job_instance = managed_instance.instance
+        if release:
+            job_instance.remove_state_observer(self)
 
-        job_instance.remove_state_observer(self)
+            for output_observer_feat in self._output_observers:
+                job_instance.remove_output_observer(output_observer_feat.feature)
+
+            for state_observer_feat in self._state_observers:
+                job_instance.remove_state_observer(state_observer_feat.feature)
+
+            for manager_feat in self._instance_managers:
+                if manager_feat.unregister_terminated_instances:
+                    manager_feat.feature.unregister_instance(job_instance)
+
+        if removed:
+            for manager_feat in self._instance_managers:
+                if not manager_feat.unregister_terminated_instances:
+                    manager_feat.feature.unregister_instance(job_instance)
+
+        self._check_close()
+        return job_instance
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._close_requested:
+            return
+
+        self._close_requested = True
+        self._check_close()
+
+    def _check_close(self):
+        close = False
+        with self._ctx_lock:
+            if not self._close_requested or self._closed:
+                return
+
+            all_terminated = all(i.lifecycle.ended for i in self.instances)
+            if all_terminated:
+                self._closed = close = True
 
         if close:
-            self._close()
+            self._execute_close_hooks()
+
+    def _execute_close_hooks(self):
+        for close_hook in (f.close_hook for f in
+                           (self._instance_managers + self._state_observers + self._output_observers) if f.close_hook):
+            # noinspection PyBroadException
+            try:
+                close_hook()
+            except BaseException:
+                log.exception("event=[close_hook_error] hook=[%s]", close_hook)
