@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from threading import RLock
+from threading import Lock
 from typing import Optional, Tuple, Callable, TypeVar, Generic, Dict
 
 from tarotools.taro import InstanceStateObserver, JobInst, JobInstance, JobInstanceID
@@ -87,10 +87,8 @@ class FeaturedContextBuilder:
 @dataclass
 class _ManagedInstance:
     instance: JobInstance
-    released: bool = False  # Must be guarded by the lock
-
-    def __iter__(self):
-        return iter((self.instance, self.released))
+    releasing: bool = False  # Must be guarded by the lock
+    released: bool = False
 
 
 class FeaturedContext(InstanceStateObserver):
@@ -101,7 +99,7 @@ class FeaturedContext(InstanceStateObserver):
         self._output_observers: Tuple[ObserverFeature[InstanceOutputObserver]] = tuple(output_observers)
         self._remove_terminated = remove_terminated
         self._managed_instances: Dict[JobInstanceID, _ManagedInstance] = {}
-        self._ctx_lock = RLock()
+        self._ctx_lock = Lock()
         self._opened = False
         self._close_requested = False
         self._closed = False
@@ -182,8 +180,8 @@ class FeaturedContext(InstanceStateObserver):
             if not managed_instance:
                 return None  # The instance has been removed before termination
 
-            if not managed_instance.released:
-                managed_instance.released = release = True  # The flag is guarded by the lock
+            if not managed_instance.releasing:
+                managed_instance.releasing = release = True  # The flag is guarded by the lock
 
             if remove:
                 del self._managed_instances[job_instance_id]
@@ -202,6 +200,8 @@ class FeaturedContext(InstanceStateObserver):
             for manager_feat in self._instance_managers:
                 if manager_feat.unregister_terminated_instances:
                     manager_feat.feature.unregister_instance(job_instance)
+
+            managed_instance.released = True
 
         if removed:
             for manager_feat in self._instance_managers:
@@ -224,8 +224,8 @@ class FeaturedContext(InstanceStateObserver):
             if not self._close_requested or self._closed:
                 return
 
-            all_terminated = all(i.lifecycle.ended for i in self.instances)
-            if all_terminated:
+            all_released = all(managed.released for managed in self._managed_instances.values())
+            if all_released:
                 self._closed = close = True
 
         if close:
