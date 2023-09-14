@@ -5,6 +5,8 @@ from typing import Optional, Tuple, Callable, TypeVar, Generic, Dict
 
 from tarotools.taro import InstanceStateObserver, JobInst, JobInstance, JobInstanceID
 from tarotools.taro.err import InvalidStateError
+from tarotools.taro.jobs.api import APIServer
+from tarotools.taro.jobs.events import StateDispatcher, OutputDispatcher
 from tarotools.taro.jobs.execution import ExecutionPhase
 from tarotools.taro.jobs.inst import JobInstanceManager, InstanceOutputObserver
 
@@ -57,6 +59,9 @@ class FeaturedContextBuilder:
         self._output_observers = []
         self._keep_removed = keep_removed
 
+    def __call__(self):
+        self.build()
+
     def add_instance_manager(self, factory, open_hook=None, close_hook=None, unregister_terminated_instances=False) \
             -> 'FeaturedContextBuilder':
         self._instance_managers.append((factory, open_hook, close_hook, unregister_terminated_instances))
@@ -69,6 +74,15 @@ class FeaturedContextBuilder:
     def add_output_observer(self, factory, open_hook=None, close_hook=None, priority=100) -> 'FeaturedContextBuilder':
         self._output_observers.append((factory, open_hook, close_hook, priority))
         return self
+
+    def standard_features(
+            self, api_server=True, state_dispatcher=True, output_dispatcher=True, persistence=True, plugins=True):
+        if api_server:
+            self.add_instance_manager(APIServer, lambda api: api.open(), lambda api: api.close())
+        if state_dispatcher:
+            self.add_state_observer(StateDispatcher, close_hook=lambda dispatcher: dispatcher.close())
+        if output_dispatcher:
+            self.add_state_observer(OutputDispatcher, close_hook=lambda dispatcher: dispatcher.close())
 
     def build(self) -> 'FeaturedContext':
         instance_managers = []
