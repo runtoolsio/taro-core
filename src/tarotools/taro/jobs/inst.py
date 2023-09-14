@@ -1199,22 +1199,26 @@ class Notification:
 
     def __init__(self, logger=None):
         self.logger = logger
-        self.observers = []
+        self.prioritized_observers = []
+
+    @property
+    def observers(self):
+        return [o for _, o in self.prioritized_observers]
 
     def notify(self, observer, *args) -> bool:
         return False
 
     def add_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self.observers = sorted(chain(self.observers, [(priority, observer)]), key=itemgetter(0))
+        self.prioritized_observers = sorted(chain(self.prioritized_observers, [(priority, observer)]), key=itemgetter(0))
 
     def remove_observer(self, observer):
-        self.observers = [(priority, o) for priority, o in self.observers if o != observer]
+        self.prioritized_observers = [(priority, o) for priority, o in self.prioritized_observers if o != observer]
 
     def notify_all(self, *args, **kwargs):
         if 'more_observers' in kwargs:
-            all_observers = sorted(chain(self.observers, kwargs['more_observers']), key=itemgetter(0))
+            all_observers = sorted(chain(self.prioritized_observers, kwargs['more_observers']), key=itemgetter(0))
         else:
-            all_observers = self.observers
+            all_observers = self.prioritized_observers
 
         for _, observer in all_observers:
             # noinspection PyBroadException

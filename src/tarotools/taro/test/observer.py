@@ -13,7 +13,7 @@ from threading import Condition
 from typing import Tuple, List, Callable
 
 from tarotools.taro.jobs.execution import ExecutionState, ExecutionError, ExecutionPhase
-from tarotools.taro.jobs.inst import JobInst
+from tarotools.taro.jobs.inst import JobInst, InstanceOutputObserver
 from tarotools.taro.jobs.runner import InstanceStateObserver
 
 log = logging.getLogger(__name__)
@@ -95,3 +95,13 @@ class TestStateObserver(InstanceStateObserver):
     def _wait_for_state_condition(self, state_condition: Callable[[], bool], timeout: float):
         with self.completion_lock:
             return self.completion_lock.wait_for(state_condition, timeout)
+
+
+class TestOutputObserver(InstanceOutputObserver):
+    __test__ = False  # To tell pytest it isn't a test class
+
+    def __init__(self):
+        self.outputs = []
+
+    def new_instance_output(self, job_info: JobInst, output, is_error):
+        self.outputs.append((job_info, output, is_error))

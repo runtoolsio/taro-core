@@ -107,11 +107,13 @@ class FeaturedContext(InstanceStateObserver):
     @property
     def instances(self):
         with self._ctx_lock:
-            return list(instance for instance, _ in self._managed_instances.values())
+            return list(managed.instance for managed in self._managed_instances.values())
 
     def get_instance(self, job_instance_id) -> Optional[JobInstance]:
         with self._ctx_lock:
-            return self._managed_instances.get(job_instance_id).instance
+            managed = self._managed_instances.get(job_instance_id)
+
+        return managed.instance if managed else None
 
     def __enter__(self):
         if self._opened:

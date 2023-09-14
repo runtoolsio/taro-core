@@ -1,7 +1,7 @@
 from tarotools.taro import ExecutionState
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.test.inst import TestJobInstanceManager, TestJobInstance
-from tarotools.taro.test.observer import TestStateObserver
+from tarotools.taro.test.observer import TestStateObserver, TestOutputObserver
 
 
 class FeatHelper:
@@ -23,44 +23,59 @@ class FeatHelper:
         self.closed = True
 
 
-def test_instance_manager():
-    helper = FeatHelper(TestJobInstanceManager)
-    ctx = FeaturedContextBuilder().add_instance_manager(helper, open_hook=helper.open, close_hook=helper.close).build()
-    inst_manager = helper.feature
-    assert not helper.opened
+class TestEnv:
 
-    with ctx:
-        assert helper.opened
-        assert not helper.closed
+    def __init__(self):
+        self.instance_manager = FeatHelper(TestJobInstanceManager)
+        self.state_observer = FeatHelper(TestStateObserver)
+        self.output_observer = FeatHelper(TestOutputObserver)
+        self.all_features = (self.instance_manager, self.state_observer, self.output_observer)
+        self.ctx = (FeaturedContextBuilder()
+                    .add_instance_manager(self.instance_manager,
+                                          open_hook=self.instance_manager.open,
+                                          close_hook=self.instance_manager.close)
+                    .add_state_observer(self.state_observer,
+                                        open_hook=self.state_observer.open,
+                                        close_hook=self.state_observer.close,
+                                        priority=111)
+                    .add_output_observer(self.output_observer,
+                                         open_hook=self.output_observer.open,
+                                         close_hook=self.output_observer.close,
+                                         priority=112)
+                    .build())
+
+    def not_opened(self):
+        return not any(f.opened for f in self.all_features)
+
+    def opened(self):
+        return all(f.opened for f in self.all_features) and not any(f.closed for f in self.all_features)
+
+    def closed(self):
+        return all(f.closed for f in self.all_features)
+
+    def instance_contained(self, job_instance: TestJobInstance):
+        added_to_ctx = bool(self.ctx.get_instance(job_instance.id)) and job_instance in self.ctx.instances
+        added_to_manager = job_instance in self.instance_manager.feature.instances
+        state_observer_registered = self.state_observer.feature in job_instance.state_notification.observers
+        # TODO
+        return added_to_ctx and added_to_manager and state_observer_registered
+
+
+def test_instance_management():
+    env = TestEnv()
+
+    assert env.not_opened()
+    with env.ctx:
+        assert env.opened()
+        assert not env.closed()
 
         inst = TestJobInstance()
-        ctx.add(inst)
-        assert inst_manager.instances[0] == inst
+        env.ctx.add(inst)
+        assert env.instance_contained(inst)
 
-    assert not helper.closed  # Closed only after the last instance is terminated
-    assert inst_manager.instances
+    assert not env.closed()  # Closed only after the last instance is terminated
+    assert env.instance_contained(inst)  # Instance removed only after is terminated
 
-    inst.change_state(ExecutionState.COMPLETED)
-    assert not inst_manager.instances
-    assert helper.closed
-
-
-def test_state_observer():
-    helper = FeatHelper(TestStateObserver)
-    ctx = (FeaturedContextBuilder()
-           .add_state_observer(helper, open_hook=helper.open, close_hook=helper.close, priority=111)
-           .build())
-    observer = helper.feature
-
-    with ctx:
-        assert helper.opened
-
-        inst = TestJobInstance()
-        ctx.add(inst)
-        assert inst.state_notification.observers[0] == (111, observer)
-
-    assert inst.state_notification.observers
-
-    inst.change_state(ExecutionState.COMPLETED)
-    assert not inst.state_notification.observers
-    assert helper.closed
+    inst.change_state(ExecutionState.COMPLETED)  # Terminated
+    assert env.closed()
+    assert not env.instance_contained(inst)
