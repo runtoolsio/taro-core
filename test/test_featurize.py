@@ -25,15 +25,17 @@ class FeatHelper:
 
 class TestEnv:
 
-    def __init__(self):
+    def __init__(self, *, keep_removed=False):
         self.instance_manager = FeatHelper(TestJobInstanceManager)
+        self.instance_manager_volatile = FeatHelper(TestJobInstanceManager)
         self.state_observer = FeatHelper(TestStateObserver)
         self.output_observer = FeatHelper(TestOutputObserver)
         self.all_features = (self.instance_manager, self.state_observer, self.output_observer)
-        self.ctx = (FeaturedContextBuilder()
+        self.ctx = (FeaturedContextBuilder(keep_removed=keep_removed)
                     .add_instance_manager(self.instance_manager,
                                           open_hook=self.instance_manager.open,
                                           close_hook=self.instance_manager.close)
+                    .add_instance_manager(self.instance_manager_volatile, unregister_terminated_instances=True)
                     .add_state_observer(self.state_observer,
                                         open_hook=self.state_observer.open,
                                         close_hook=self.state_observer.close,
@@ -53,12 +55,14 @@ class TestEnv:
     def closed(self):
         return all(f.closed for f in self.all_features)
 
-    def instance_contained(self, job_instance: TestJobInstance):
-        added_to_ctx = bool(self.ctx.get_instance(job_instance.id)) and job_instance in self.ctx.instances
+    def instance_registered(self, job_instance: TestJobInstance):
         added_to_manager = job_instance in self.instance_manager.feature.instances
         state_observer_registered = self.state_observer.feature in job_instance.state_notification.observers
-        # TODO
-        return added_to_ctx and added_to_manager and state_observer_registered
+        # TODO output observer
+        return added_to_manager and state_observer_registered
+
+    def instance_contained(self, job_instance: TestJobInstance):
+        return bool(self.ctx.get_instance(job_instance.id)) and job_instance in self.ctx.instances
 
 
 def test_instance_management():
@@ -71,11 +75,46 @@ def test_instance_management():
 
         inst = TestJobInstance()
         env.ctx.add(inst)
+        assert env.instance_registered(inst)
         assert env.instance_contained(inst)
 
     assert not env.closed()  # Closed only after the last instance is terminated
+    assert env.instance_registered(inst)
     assert env.instance_contained(inst)  # Instance removed only after is terminated
 
     inst.change_state(ExecutionState.COMPLETED)  # Terminated
     assert env.closed()
+    assert not env.instance_registered(inst)
     assert not env.instance_contained(inst)
+
+
+def test_removed_when_terminated_before_closed():
+    env = TestEnv()
+
+    with env.ctx:
+        inst = TestJobInstance()
+        env.ctx.add(inst)
+        assert env.instance_registered(inst)
+        assert env.instance_contained(inst)
+
+        inst.change_state(ExecutionState.COMPLETED)  # Terminated
+        assert not env.instance_registered(inst)
+        assert not env.instance_contained(inst)
+
+
+def test_keep_removed():
+    env = TestEnv(keep_removed=True)
+    with env.ctx:
+        inst = TestJobInstance()
+        env.ctx.add(inst)
+        assert env.instance_registered(inst)
+        assert env.instance_contained(inst)
+        assert env.instance_manager_volatile.feature.instances
+
+        inst.change_state(ExecutionState.COMPLETED)  # Terminated
+        assert not env.instance_registered(inst)
+        assert env.instance_contained(inst)
+        assert not env.instance_manager_volatile.feature.instances  # Set to unregister terminated
+
+    assert env.closed()
+    assert env.instance_contained(inst)

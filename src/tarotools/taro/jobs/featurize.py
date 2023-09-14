@@ -51,10 +51,11 @@ def _create_observer_features(factories):
 
 class FeaturedContextBuilder:
 
-    def __init__(self):
+    def __init__(self, *, keep_removed=False):
         self._instance_managers = []
         self._state_observers = []
         self._output_observers = []
+        self._keep_removed = keep_removed
 
     def add_instance_manager(self, factory, open_hook=None, close_hook=None, unregister_terminated_instances=False) \
             -> 'FeaturedContextBuilder':
@@ -81,7 +82,7 @@ class FeaturedContextBuilder:
         state_observers = _create_observer_features(self._state_observers)
         output_observers = _create_observer_features(self._output_observers)
 
-        return FeaturedContext(instance_managers, state_observers, output_observers)
+        return FeaturedContext(instance_managers, state_observers, output_observers, keep_removed=self._keep_removed)
 
 
 @dataclass
@@ -93,11 +94,11 @@ class _ManagedInstance:
 
 class FeaturedContext(InstanceStateObserver):
 
-    def __init__(self, instance_managers=(), state_observers=(), output_observers=(), *, remove_terminated=True):
+    def __init__(self, instance_managers=(), state_observers=(), output_observers=(), *, keep_removed=False):
         self._instance_managers: Tuple[ManagerFeature[JobInstanceManager]] = tuple(instance_managers)
         self._state_observers: Tuple[ObserverFeature[InstanceStateObserver]] = tuple(state_observers)
         self._output_observers: Tuple[ObserverFeature[InstanceOutputObserver]] = tuple(output_observers)
-        self._remove_terminated = remove_terminated
+        self._keep_removed = keep_removed
         self._managed_instances: Dict[JobInstanceID, _ManagedInstance] = {}
         self._ctx_lock = Lock()
         self._opened = False
@@ -160,7 +161,7 @@ class FeaturedContext(InstanceStateObserver):
         # Add observer first and only then check for termination to prevent release miss by the race condition
         job_instance.add_state_observer(self, ctx_observer_priority + 1)
         if job_instance.lifecycle.ended:
-            self._release_instance(job_instance.id, self._remove_terminated)
+            self._release_instance(job_instance.id, not self._keep_removed)
 
         return job_instance
 
@@ -169,7 +170,7 @@ class FeaturedContext(InstanceStateObserver):
 
     def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
         if new_state.in_phase(ExecutionPhase.TERMINAL):
-            self._release_instance(job_inst.id, self._remove_terminated)
+            self._release_instance(job_inst.id, not self._keep_removed)
 
     def _release_instance(self, job_instance_id, remove):
         """
