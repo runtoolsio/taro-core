@@ -57,7 +57,8 @@ class TestEnv:
 
     def instance_registered(self, job_instance: TestJobInstance):
         added_to_manager = job_instance in self.instance_manager.feature.instances
-        state_observer_registered = self.state_observer.feature in job_instance.state_notification.observers
+        state_observer_registered = (
+                (111, self.state_observer.feature) in job_instance.state_notification.prioritized_observers)
         # TODO output observer
         return added_to_manager and state_observer_registered
 
