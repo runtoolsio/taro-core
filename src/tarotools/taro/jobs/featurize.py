@@ -4,6 +4,7 @@ from threading import Lock
 from typing import Optional, Tuple, Callable, TypeVar, Generic, Dict
 
 from tarotools.taro import InstanceStateObserver, JobInst, JobInstance, JobInstanceID
+from tarotools.taro import persistence as persistence_mod
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.events import StateDispatcher, OutputDispatcher
@@ -83,6 +84,11 @@ class FeaturedContextBuilder:
             self.add_state_observer(StateDispatcher, close_hook=lambda dispatcher: dispatcher.close())
         if output_dispatcher:
             self.add_state_observer(OutputDispatcher, close_hook=lambda dispatcher: dispatcher.close())
+        if persistence:
+            # Lower default priority so other listeners can see the instance already persisted
+            self.add_state_observer(
+                persistence_mod.load_configured_persistence, close_hook=lambda db: db.close(), priority=50)
+        # TODO plugins
 
     def build(self) -> 'FeaturedContext':
         instance_managers = []

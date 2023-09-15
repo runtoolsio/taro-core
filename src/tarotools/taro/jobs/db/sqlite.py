@@ -7,8 +7,10 @@ from typing import List
 
 from tarotools.taro import cfg
 from tarotools.taro import paths
-from tarotools.taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle, ExecutionPhase, Flag
-from tarotools.taro.jobs.inst import JobInst, JobInstances, JobInstanceID, LifecycleEvent, JobInstanceMetadata
+from tarotools.taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle, ExecutionPhase, Flag, \
+    Phase
+from tarotools.taro.jobs.inst import (InstanceStateObserver, JobInst, JobInstances, JobInstanceID, LifecycleEvent,
+                                      JobInstanceMetadata)
 from tarotools.taro.jobs.job import JobStats
 from tarotools.taro.jobs.persistence import SortCriteria
 from tarotools.taro.jobs.track import TrackedTaskInfo
@@ -101,10 +103,14 @@ def _build_where_clause(instance_match, alias=''):
     return " WHERE {conditions}".format(conditions=" AND ".join(all_conditions_str))
 
 
-class SQLite:
+class SQLite(InstanceStateObserver):
 
     def __init__(self, connection):
         self._conn = connection
+
+    def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
+        if new_state.in_phase(Phase.TERMINAL):
+            self.store_instances(job_inst)
 
     def check_tables_exist(self):
         # Version 4

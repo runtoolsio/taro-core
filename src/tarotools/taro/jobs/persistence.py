@@ -14,16 +14,20 @@ def is_enabled():
     return cfg.persistence_enabled
 
 
-def _load_persistence(type_):
+def load_configured_persistence():
+    return load_persistence(cfg.persistence_type)
+
+
+def load_persistence(persistence_type):
     if not cfg.persistence_enabled:
         return NoPersistence()
 
     for finder, name, is_pkg in pkgutil.iter_modules(taro.jobs.db.__path__, taro.jobs.db.__name__ + "."):
-        if name == taro.jobs.db.__name__ + "." + type_:
+        if name == taro.jobs.db.__name__ + "." + persistence_type:
             db_module = importlib.import_module(name)
             return db_module.create_persistence()
 
-    raise PersistenceNotFoundError(taro.jobs.db.__name__ + "." + type_)
+    raise PersistenceNotFoundError(taro.jobs.db.__name__ + "." + persistence_type)
 
 
 class PersistenceHolder(dict):
@@ -31,7 +35,7 @@ class PersistenceHolder(dict):
     def __missing__(self, key):
         self.close()
 
-        new_instance = _load_persistence(key)
+        new_instance = load_persistence(key)
         self[key] = new_instance
         return new_instance
 
