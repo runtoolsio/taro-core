@@ -1,3 +1,15 @@
+"""
+This module provides tools for adding custom and built-in features to job instances using a specialized context,
+referred to as a 'featured context'. When job instances are added to this context, they automatically gain the
+features defined by the context.
+
+The context serves dual roles:
+1. As a container that holds job instances.
+2. As an enabler of features for these instances.
+
+If the context is configured as 'transient', job instances are auto-removed upon reaching their termination state.
+"""
+
 import logging
 from dataclasses import dataclass
 from threading import Lock
@@ -13,12 +25,12 @@ from tarotools.taro.jobs.inst import JobInstanceManager, InstanceOutputObserver
 
 log = logging.getLogger(__name__)
 
-F = TypeVar('F')
+C = TypeVar('C')
 
 
 @dataclass
-class Feature(Generic[F]):
-    feature: F
+class Feature(Generic[C]):
+    component: C
     open_hook: Optional[Callable[[], None]] = None
     close_hook: Optional[Callable[[], None]] = None
 
@@ -33,9 +45,9 @@ class ObserverFeature(Feature):
     priority: int = 100
 
 
-def _convert_hook(feature, hook):
+def _convert_hook(component, hook):
     def wrapped_hook():
-        return hook(feature)
+        return hook(component)
 
     return wrapped_hook if hook else None
 
@@ -43,11 +55,11 @@ def _convert_hook(feature, hook):
 def _create_observer_features(factories):
     observers = []
     for factory, open_hook, close_hook, priority in factories:
-        feature = factory()
-        cnv_open_hook = _convert_hook(feature, open_hook)
-        cnv_close_hook = _convert_hook(feature, close_hook)
+        component = factory()
+        cnv_open_hook = _convert_hook(component, open_hook)
+        cnv_close_hook = _convert_hook(component, close_hook)
 
-        observers.append(ObserverFeature(feature, cnv_open_hook, cnv_close_hook, priority))
+        observers.append(ObserverFeature(component, cnv_open_hook, cnv_close_hook, priority))
 
     return observers
 
@@ -93,11 +105,11 @@ class FeaturedContextBuilder:
     def build(self) -> 'FeaturedContext':
         instance_managers = []
         for factory, open_hook, close_hook, unregister_terminated in self._instance_managers:
-            feature = factory()
-            cnv_open_hook = _convert_hook(feature, open_hook)
-            cnv_close_hook = _convert_hook(feature, close_hook)
+            component = factory()
+            cnv_open_hook = _convert_hook(component, open_hook)
+            cnv_close_hook = _convert_hook(component, close_hook)
 
-            instance_managers.append(ManagerFeature(feature, cnv_open_hook, cnv_close_hook, unregister_terminated))
+            instance_managers.append(ManagerFeature(component, cnv_open_hook, cnv_close_hook, unregister_terminated))
 
         state_observers = _create_observer_features(self._state_observers)
         output_observers = _create_observer_features(self._output_observers)
@@ -163,15 +175,15 @@ class FeaturedContext(InstanceStateObserver):
             self._managed_instances[job_instance.id] = managed_instance
 
         for manager_feat in self._instance_managers:
-            manager_feat.feature.register_instance(job_instance)
+            manager_feat.component.register_instance(job_instance)
 
         ctx_observer_priority = 1000
         for state_observer_feat in self._state_observers:
-            job_instance.add_state_observer(state_observer_feat.feature, state_observer_feat.priority)
+            job_instance.add_state_observer(state_observer_feat.component, state_observer_feat.priority)
             ctx_observer_priority = max(ctx_observer_priority, state_observer_feat.priority)
 
         for output_observer_feat in self._output_observers:
-            job_instance.add_output_observer(output_observer_feat.feature, output_observer_feat.priority)
+            job_instance.add_output_observer(output_observer_feat.component, output_observer_feat.priority)
 
         # #  TODO optional plugins
         # if cfg.plugins_enabled and cfg.plugins_load:
@@ -215,21 +227,21 @@ class FeaturedContext(InstanceStateObserver):
             job_instance.remove_state_observer(self)
 
             for output_observer_feat in self._output_observers:
-                job_instance.remove_output_observer(output_observer_feat.feature)
+                job_instance.remove_output_observer(output_observer_feat.component)
 
             for state_observer_feat in self._state_observers:
-                job_instance.remove_state_observer(state_observer_feat.feature)
+                job_instance.remove_state_observer(state_observer_feat.component)
 
             for manager_feat in self._instance_managers:
                 if manager_feat.unregister_terminated_instances:
-                    manager_feat.feature.unregister_instance(job_instance)
+                    manager_feat.component.unregister_instance(job_instance)
 
             managed_instance.released = True
 
         if removed:
             for manager_feat in self._instance_managers:
                 if not manager_feat.unregister_terminated_instances:
-                    manager_feat.feature.unregister_instance(job_instance)
+                    manager_feat.component.unregister_instance(job_instance)
 
         self._check_close()
         return job_instance
