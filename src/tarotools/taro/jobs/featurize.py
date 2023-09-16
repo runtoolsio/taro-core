@@ -30,18 +30,40 @@ C = TypeVar('C')
 
 @dataclass
 class Feature(Generic[C]):
+    """Represents a feature to be added to the context.
+
+    Attributes:
+        component (Generic[C]): The main component representing the feature.
+        open_hook (Optional[Callable[[], None]]): A hook called when the context is opened. Default is None.
+        close_hook (Optional[Callable[[], None]]): A hook called after the context has been closed. Default is None.
+    """
     component: C
     open_hook: Optional[Callable[[], None]] = None
     close_hook: Optional[Callable[[], None]] = None
 
 
 @dataclass
-class ManagerFeature(Feature):
-    unregister_terminated_instances: bool = False
+class ManagerFeature(Feature[JobInstanceManager]):
+    """
+    The attribute `always_unregister_terminated` can be set to `True` if the manager has no need to retain instances
+    that have ended.
+
+    Attributes:
+        always_unregister_terminated (bool):
+            If set to `True`, every instance will be unregistered once it reaches its terminal phase,
+            even if the context is not configured as transient. Default is False.
+    """
+    always_unregister_terminated: bool = False
 
 
 @dataclass
 class ObserverFeature(Feature):
+    """
+    Attributes:
+        priority (int):
+            The priority value assigned when this observer is registered to a job instance.
+            A lower value indicates higher priority. Default is 100.
+    """
     priority: int = 100
 
 
@@ -65,12 +87,27 @@ def _create_observer_features(factories):
 
 
 class FeaturedContextBuilder:
+    """
+    This class offers a convenient and clear way to define a featured context.
+    The simplest approach is to create the context using the `standard_features` method.
+    Additionally, the builder can also serve as a provider, allowing it to be reused
+    through repeated execution of the `build` method or, if more suitable, via the `__call__` mechanism:
+    ```
+    ctxProvider = FeaturedContextBuilder()...
+    newCtx = ctxProvider()
+    ```
+    The builder re-instantiates the features every time a new context is constructed.
+    """
 
-    def __init__(self, *, keep_removed=False):
+    def __init__(self, *, transient=False):
+        """
+        Args:
+            transient (bool): Transient context auto-removes terminated instances
+        """
         self._instance_managers = []
         self._state_observers = []
         self._output_observers = []
-        self._keep_removed = keep_removed
+        self._transient = transient
 
     def __call__(self):
         self.build()
@@ -114,7 +151,7 @@ class FeaturedContextBuilder:
         state_observers = _create_observer_features(self._state_observers)
         output_observers = _create_observer_features(self._output_observers)
 
-        return FeaturedContext(instance_managers, state_observers, output_observers, keep_removed=self._keep_removed)
+        return FeaturedContext(instance_managers, state_observers, output_observers, transient=self._transient)
 
 
 @dataclass
@@ -125,12 +162,44 @@ class _ManagedInstance:
 
 
 class FeaturedContext(InstanceStateObserver):
+    """
+    Represents a specialized context for job instances enriched with features.
 
-    def __init__(self, instance_managers=(), state_observers=(), output_observers=(), *, keep_removed=False):
+    When job instances are added to this context, they are automatically augmented with the features defined
+    by the context. The context serves two main purposes:
+    1. As a container for job instances.
+    2. As an enabler for features for these instances.
+
+    If the context is configured as 'transient', job instances are automatically removed upon reaching their
+    termination state.
+
+    The context adheres to the context manager protocol:
+    The context must be opened before any job instance is added to it. Upon opening, all provided open hooks
+    are executed. The context can be opened either by invoking the `open` method or by using the
+    context manager's `__enter__` method.
+
+    Once the context is closed, no further job instances can be added. The closure procedure only initiates
+    after the last job instance terminates. As a result, you can trigger the context's closure even
+    if some instances are still executing. This can be achieved by either calling the `close` method or
+    by using the context manager's `__exit__` mechanism.
+
+    Instance Managers:
+        - When an instance is added to the context, it is registered with all instance managers.
+        - Conversely, when an instance is removed from the context, it is unregistered from all instance managers.
+
+    Observers:
+        - Upon adding an instance to the context, all observers are attached to the instance.
+        - The observers are detached from an instance either when the instance reaches its terminal phase
+          or when the instance is explicitly removed from the context before its termination.
+
+    Properties:
+        instances (list[JobInstance]): A list of job instances managed by the context.
+    """
+    def __init__(self, instance_managers=(), state_observers=(), output_observers=(), *, transient=False):
         self._instance_managers: Tuple[ManagerFeature[JobInstanceManager]] = tuple(instance_managers)
         self._state_observers: Tuple[ObserverFeature[InstanceStateObserver]] = tuple(state_observers)
         self._output_observers: Tuple[ObserverFeature[InstanceOutputObserver]] = tuple(output_observers)
-        self._keep_removed = keep_removed
+        self._keep_removed = not transient
         self._managed_instances: Dict[JobInstanceID, _ManagedInstance] = {}
         self._ctx_lock = Lock()
         self._opened = False
@@ -139,23 +208,43 @@ class FeaturedContext(InstanceStateObserver):
 
     @property
     def instances(self):
+        """
+        Note: The returned list is a mutable copy.
+
+        Returns:
+            Return a list of all job instances currently managed by the context.
+        """
         with self._ctx_lock:
             return list(managed.instance for managed in self._managed_instances.values())
 
     def get_instance(self, job_instance_id) -> Optional[JobInstance]:
+        """
+        Retrieve a specific job instance using its ID.
+
+        Args:
+            job_instance_id (JobInstanceID): The ID of the job instance to retrieve.
+
+        Returns:
+            Optional[JobInstance]: The job instance if found, otherwise None.
+        """
         with self._ctx_lock:
             managed = self._managed_instances.get(job_instance_id)
 
         return managed.instance if managed else None
 
     def __enter__(self):
+        self.open()
+        return self
+
+    def open(self):
+        """
+        Open the context and execute all open hooks.
+        """
         if self._opened:
             raise InvalidStateError("Managed job context has been already opened")
 
         self._execute_open_hooks()
         self._opened = True
-
-        return self
 
     def _execute_open_hooks(self):
         for open_hook in (f.open_hook for f in
@@ -163,6 +252,19 @@ class FeaturedContext(InstanceStateObserver):
             open_hook()
 
     def add(self, job_instance):
+        """
+        Add a job instance to the context.
+
+        Args:
+            job_instance (JobInstance): The job instance to be added.
+
+        Returns:
+            JobInstance: The added job instance.
+
+        Raises:
+            InvalidStateError: If the context is not opened or is already closed.
+            ValueError: If a job instance with the same ID already exists in the context.
+        """
         with self._ctx_lock:
             if not self._opened:
                 raise InvalidStateError("Cannot add job instance because the context has not been opened")
@@ -190,7 +292,11 @@ class FeaturedContext(InstanceStateObserver):
         #     plugins.register_new_job_instance(job_instance, cfg.plugins_load,
         #                                       plugin_module_prefix=EXT_PLUGIN_MODULE_PREFIX)
 
-        # Add observer first and only then check for termination to prevent release miss by the race condition
+        # IMPORTANT:
+        #   1. Add observer first and only then check for the termination to prevent release miss by the race condition
+        #   2. Priority should be set to be the lowest from all observers, however the current implementation
+        #      will work regardless of the priority as the removal of the observers doesn't affect
+        #      iteration/notification (`Notification` class)
         job_instance.add_state_observer(self, ctx_observer_priority + 1)
         if job_instance.lifecycle.ended:
             self._release_instance(job_instance.id, not self._keep_removed)
@@ -198,9 +304,21 @@ class FeaturedContext(InstanceStateObserver):
         return job_instance
 
     def remove(self, job_instance_id) -> Optional[JobInstance]:
+        """
+        Remove a job instance from the context using its ID.
+
+        Args:
+            job_instance_id (JobInstanceID): The ID of the job instance to remove.
+
+        Returns:
+            Optional[JobInstance]: The removed job instance if found, otherwise None.
+        """
         return self._release_instance(job_instance_id, True)
 
     def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
+        """
+        DO NOT EXECUTE THIS METHOD! It is part of the internal mechanism.
+        """
         if new_state.in_phase(ExecutionPhase.TERMINAL):
             self._release_instance(job_inst.id, not self._keep_removed)
 
@@ -233,20 +351,23 @@ class FeaturedContext(InstanceStateObserver):
                 job_instance.remove_state_observer(state_observer_feat.component)
 
             for manager_feat in self._instance_managers:
-                if manager_feat.unregister_terminated_instances:
+                if manager_feat.always_unregister_terminated:
                     manager_feat.component.unregister_instance(job_instance)
 
             managed_instance.released = True
 
         if removed:
             for manager_feat in self._instance_managers:
-                if not manager_feat.unregister_terminated_instances:
+                if not manager_feat.always_unregister_terminated:
                     manager_feat.component.unregister_instance(job_instance)
 
         self._check_close()
         return job_instance
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
         if self._close_requested:
             return
 

@@ -11,6 +11,7 @@ The main parts are:
 
 import abc
 import datetime
+import sys
 import textwrap
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -768,6 +769,7 @@ class JobInstance(abc.ABC):
     def remove_state_observer(self, observer):
         """
         De-register an execution state observer.
+        Note: The implementation must cope with the scenario when this method is executed during notification.
 
         Args:
             observer: The observer to de-register.
@@ -1228,9 +1230,11 @@ class Notification:
                 else:
                     if self.logger:
                         self.logger.warning("event=[unsupported_warning_observer] observer=[%s]", observer)
-            except Exception:
+            except Exception as e:
                 if self.logger:
                     self.logger.exception("event=[warning_observer_exception]")
+                else:
+                    print(e, file=sys.stderr)
 
 
 class InstanceStateNotification(Notification):

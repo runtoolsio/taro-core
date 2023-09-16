@@ -48,6 +48,10 @@ class TestStateObserver(InstanceStateObserver):
         """
         return self._events[-1][1]
 
+    @property
+    def last_state_any_job(self) -> ExecutionState:
+        return self._events[-1][2]
+
     def last_state(self, job_id) -> ExecutionState:
         """
         :return: last state of the specified job

@@ -25,13 +25,13 @@ class FeatHelper:
 
 class TestEnv:
 
-    def __init__(self, *, keep_removed=False):
+    def __init__(self, *, transient=True):
         self.instance_manager = FeatHelper(TestJobInstanceManager)
         self.instance_manager_volatile = FeatHelper(TestJobInstanceManager)
         self.state_observer = FeatHelper(TestStateObserver)
         self.output_observer = FeatHelper(TestOutputObserver)
         self.all_features = (self.instance_manager, self.state_observer, self.output_observer)
-        self.ctx = (FeaturedContextBuilder(keep_removed=keep_removed)
+        self.ctx = (FeaturedContextBuilder(transient=transient)
                     .add_instance_manager(self.instance_manager,
                                           open_hook=self.instance_manager.open,
                                           close_hook=self.instance_manager.close)
@@ -84,6 +84,7 @@ def test_instance_management():
     assert env.instance_contained(inst)  # Instance removed only after is terminated
 
     inst.change_state(ExecutionState.COMPLETED)  # Terminated
+    assert env.state_observer.feature.last_state_any_job == ExecutionState.COMPLETED
     assert env.closed()
     assert not env.instance_registered(inst)
     assert not env.instance_contained(inst)
@@ -104,7 +105,7 @@ def test_removed_when_terminated_before_closed():
 
 
 def test_keep_removed():
-    env = TestEnv(keep_removed=True)
+    env = TestEnv(transient=False)
     with env.ctx:
         inst = TestJobInstance()
         env.ctx.add(inst)
