@@ -12,7 +12,6 @@ from typing import List, Union, Callable, Tuple, Optional
 
 from tarotools.taro import util
 from tarotools.taro.jobs import lock
-from tarotools.taro.jobs import persistence
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, \
     ExecutionOutputObserver, \
     Phase, Flag, UnexpectedStateError
@@ -270,11 +269,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 level = logging.WARN if new_state.has_flag(Flag.NONSUCCESS) else logging.INFO
                 log.log(level, self._log('job_state_changed', "prev_state=[{}] new_state=[{}]".format(
                     prev_state.name, new_state.name)))
-                job_info = self.create_snapshot()  # Be sure both new_state and exec_error are already set
-                if new_state.in_phase(
-                        Phase.TERMINAL) and persistence.is_enabled():  # TODO Catch disabled error instead of the check
-                    persistence.store_instances(job_info)  # TODO Consider move (managed _close_job() or listener?)
-                return job_info
+                # Be sure both new_state and exec_error are already set
+                return self.create_snapshot()
 
     def _change_state_and_notify(self, new_state, exec_error: ExecutionError = None, *, use_global_lock=True):
         new_job_inst = self._change_state(new_state, exec_error, use_global_lock=use_global_lock)

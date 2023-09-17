@@ -1,3 +1,33 @@
+"""
+This module consists of:
+
+- The persistence contract:
+    The contract defines the mandatory methods for a class implementing the persistence functionality:
+        > read_instances(instance_match, sort, *, asc, limit, offset, last)
+        > read_stats(instance_match)
+        > count_instances(instance_match)
+        > store_instances(*job_inst)
+        > remove_instances(instance_match)
+        > clean_up(max_records, max_age)
+        > clean_up(max_records, max_age)
+    An instance of this class is returned when the `create_persistence()` function of the implementing module is called.
+
+- Persistence implementation lookup:
+    This module identifies and loads the desired persistence contract implementation when:
+        a) A `load_*` method is invoked.
+        b) The global persistence is accessed.
+    Modules providing a `create_persistence` function, which returns a class adhering to the contract,
+    are discovered using the conventional package name pattern: `tarotools.taro.db.{persistence_type}`.
+
+- Global persistence:
+    This module itself implements the persistence contract, meaning it provides the contract methods
+    as module functions. The module loads and caches the implementation defined in the `cfg.persistence_type`
+    configuration field when any of the contract functions are called for the first time.
+    Subsequent uses of the methods delegates to the cached implementation until the `reset` function is invoked.
+    After using the global persistence, it should be closed  by calling the `close` function.
+
+"""
+
 import importlib
 import pkgutil
 import sys
@@ -7,20 +37,26 @@ from tarotools import taro
 from tarotools.taro import paths
 from tarotools.taro import util, cfg
 from tarotools.taro.err import TaroException
+from tarotools.taro.jobs import db
 from tarotools.taro.jobs.execution import ExecutionState
 
 
-def is_enabled():
-    return cfg.persistence_enabled
-
-
 def load_configured_persistence():
+    """
+    Loads the persistence specified in the `cfg.persistence_type` field and creates a new instance of it.
+    """
     return load_persistence(cfg.persistence_type)
 
 
 def load_persistence(persistence_type):
+    """
+    Loads the persistence specified by the parameter and creates a new instance of it.
+
+    Args:
+        persistence_type (str): Type of the persistence to be loaded
+    """
     if not cfg.persistence_enabled:
-        return NoPersistence()
+        return NoPersistence()  # TODO Not sure about it, maybe this check should be pushed level up
 
     for finder, name, is_pkg in pkgutil.iter_modules(taro.jobs.db.__path__, taro.jobs.db.__name__ + "."):
         if name == taro.jobs.db.__name__ + "." + persistence_type:
@@ -30,7 +66,7 @@ def load_persistence(persistence_type):
     raise PersistenceNotFoundError(taro.jobs.db.__name__ + "." + persistence_type)
 
 
-class PersistenceHolder(dict):
+class _PersistenceHolder(dict):
 
     def __missing__(self, key):
         self.close()
@@ -45,10 +81,14 @@ class PersistenceHolder(dict):
         self.clear()
 
 
-_persistence = PersistenceHolder()
+_persistence = _PersistenceHolder()
 
 
 def reset():
+    """
+    Resets the cached persistence implementation. An implementation will be re-loaded when the global persistence
+    is accessed again.
+    """
     _persistence.close()
 
 
