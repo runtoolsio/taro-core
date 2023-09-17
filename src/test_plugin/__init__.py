@@ -14,9 +14,12 @@ class TestPlugin(PluginBase):
         TestPlugin.instance_ref = ref(self)
         self.job_instances: List[JobInstance] = []
 
-    def new_job_instance(self, job_instance: JobInstance):
+    def register_instance(self, job_instance):
         self.job_instances.append(job_instance)
         error_to_raise = TestPlugin.error_on_new_job_instance
         TestPlugin.error_on_new_job_instance = None
         if error_to_raise:
             raise error_to_raise
+
+    def unregister_instance(self, job_instance):
+        pass

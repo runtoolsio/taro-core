@@ -1,7 +1,7 @@
 from typing import Optional
 
 import test_plugin
-from tarotools.taro import PluginBase, JobInstance
+from tarotools.taro import PluginBase
 from tarotools.taro import plugins
 
 
@@ -38,6 +38,7 @@ def test_create_invalid_plugins():
 
 
 class Plugin2(PluginBase, plugin_name='plugin2'):
+
     error_on_init: Optional[BaseException] = None
 
     def __init__(self):
@@ -46,10 +47,16 @@ class Plugin2(PluginBase, plugin_name='plugin2'):
         if error_to_raise:
             raise error_to_raise
 
-    def new_job_instance(self, job_instance: JobInstance):
+    def register_instance(self, job_instance):
+        pass
+
+    def unregister_instance(self, job_instance):
         pass
 
 
 class Plugin3(PluginBase, plugin_name='plugin3'):
-    def new_job_instance(self, job_instance: JobInstance):
+    def register_instance(self, job_instance):
+        pass
+
+    def unregister_instance(self, job_instance):
         pass
