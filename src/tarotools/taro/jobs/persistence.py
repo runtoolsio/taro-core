@@ -32,6 +32,7 @@ import importlib
 import pkgutil
 import sys
 from enum import Enum
+from typing import List
 
 from tarotools import taro
 from tarotools.taro import paths
@@ -39,6 +40,8 @@ from tarotools.taro import util, cfg
 from tarotools.taro.err import TaroException
 from tarotools.taro.jobs import db
 from tarotools.taro.jobs.execution import ExecutionState
+from tarotools.taro.jobs.inst import JobInstances
+from tarotools.taro.jobs.job import JobStats
 
 
 def load_configured_persistence():
@@ -56,7 +59,7 @@ def load_persistence(persistence_type):
         persistence_type (str): Type of the persistence to be loaded
     """
     if not cfg.persistence_enabled:
-        return NoPersistence()  # TODO Not sure about it, maybe this check should be pushed level up
+        return _NoPersistence()  # TODO Not sure about it, maybe this check should be pushed level up
 
     for finder, name, is_pkg in pkgutil.iter_modules(taro.jobs.db.__path__, taro.jobs.db.__name__ + "."):
         if name == taro.jobs.db.__name__ + "." + persistence_type:
@@ -94,38 +97,102 @@ def reset():
 
 def _instance():
     if not cfg.persistence_enabled:
-        return NoPersistence()
+        return _NoPersistence()
     return _persistence[cfg.persistence_type]
 
 
 class SortCriteria(Enum):
+    """
+    Enum representing the criteria by which job instance rows can be sorted.
+
+    Attributes:
+    - CREATED: Sort by the timestamp when the job instance was created.
+    - ENDED: Sort by the timestamp when the job instance ended or was completed.
+    - TIME: Sort by the execution time of the job instance.
+    """
     CREATED = 1
     ENDED = 2
     TIME = 3
 
 
-def read_instances(instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, offset=-1, last=False):
+def read_instances(instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, offset=-1, last=False) \
+        -> JobInstances:
+    """
+    Fetches ended job instances based on specified criteria.
+    Datasource: The database as defined by the configured persistence type.
+
+    Args:
+        instance_match (InstanceMatchCriteria, optional):
+            Criteria to match specific job instances. None means fetch all. Defaults to None.
+        sort (SortCriteria):
+            Determines the field by which records are sorted. Defaults to `SortCriteria.ENDED`.
+        asc (bool, optional):
+            Determines if the sorting is in ascending order. Defaults to True.
+        limit (int, optional):
+            Maximum number of records to return. -1 means no limit. Defaults to -1.
+        offset (int, optional):
+            Number of records to skip before starting to return. -1 means no offset. Defaults to -1.
+        last (bool, optional):
+            If set to True, only the last record for each job is returned. Defaults to False.
+
+    Returns:
+        JobInstances: A collection of job instances that match the given criteria.
+    """
     return _instance().read_instances(instance_match, sort, asc=asc, limit=limit, offset=offset, last=last)
 
 
-def read_stats(instance_match=None):
+def read_stats(instance_match=None) -> List[JobStats]:
+    """
+    Returns job statistics for each job based on specified criteria.
+    Datasource: The database as defined by the configured persistence type.
+
+    Args:
+        instance_match (InstanceMatchCriteria, optional):
+            Criteria to match records used to calculate the statistics. None means fetch all. Defaults to None.
+    """
     return _instance().read_stats(instance_match)
 
 
 def count_instances(instance_match):
+    """
+    Counts the total number of job instances based on the specified match criteria.
+    Datasource: The database as defined by the configured persistence type.
+
+    Args:
+        instance_match (InstanceMatchCriteria): Criteria to filter job instances.
+
+    Returns:
+        int: Total count of job instances matching the specified criteria.
+    """
     return sum(s.count for s in (_instance().read_stats(instance_match)))
 
 
-def store_instances(*job_info):
-    _instance().store_instances(*job_info)
+def store_instances(*job_inst):
+    """
+    Stores the provided job instances to the configured persistence source.
+    After storing, it also initiates a cleanup based on configured criteria.
+
+    Args:
+        *job_inst (JobInst): Variable number of job instances to be stored.
+    """
+    _instance().store_instances(*job_inst)
     clean_up()
 
 
 def remove_instances(instance_match):
+    """
+    Removes job instances based on the specified match criteria from the configured persistence source.
+
+    Args:
+        instance_match (InstanceMatchCriteria): Criteria to filter job instances for removal.
+    """
     _instance().remove_instances(instance_match)
 
 
 def clean_up():
+    """
+    Cleans up the job instances based on max records and max age as defined in the configuration.
+    """
     try:
         max_age = util.parse_iso8601_duration(cfg.persistence_max_age) if cfg.persistence_max_age else None
     except ValueError:
@@ -151,7 +218,7 @@ def _sort_key(sort: SortCriteria):
     return key
 
 
-class NoPersistence:
+class _NoPersistence:
 
     def read_instances(self, instance_match=None, sort=SortCriteria.CREATED, *, asc, limit, offset, last=False):
         raise PersistenceDisabledError()
@@ -159,7 +226,7 @@ class NoPersistence:
     def read_stats(self, instance_match=None):
         raise PersistenceDisabledError()
 
-    def store_instances(self, job_info):
+    def store_instances(self, *jobs_inst):
         raise PersistenceDisabledError()
 
     def remove_instances(self, instance_match):

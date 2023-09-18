@@ -248,7 +248,7 @@ class SQLite(InstanceStateObserver):
 
         return [to_job_stats(row) for row in c.fetchall()]
 
-    def store_instances(self, *job_info):
+    def store_instances(self, *job_inst):
         def to_tuple(j):
             return (j.job_id,
                     j.instance_id,
@@ -268,7 +268,7 @@ class SQLite(InstanceStateObserver):
                     json.dumps({"pending_group": j.metadata.pending_group}) if j.metadata.pending_group else None
                     )
 
-        jobs = [to_tuple(j) for j in job_info]
+        jobs = [to_tuple(j) for j in job_inst]
         self._conn.executemany(
             "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             jobs

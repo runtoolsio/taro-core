@@ -38,11 +38,13 @@ def j(c, instance=None, *, delta=0, created=None, completed=None, warnings=None)
 
 
 def test_last(sut):
-    sut.store_instances(j(1), j(2), j(1), j(3), j(2))
+    sut.store_instances(
+        j(1, 'j1-1'), j(2, 'j2-1'), j(1, 'j1-2'), j(3, 'j3-1'),
+        j(2, 'j2-2'))  # Stored chronologically
 
     jobs = sut.read_instances(last=True)
     assert len(jobs) == 3
-    assert {job.job_id for job in jobs} == {'j1', 'j2', 'j3'}
+    assert [job.instance_id for job in jobs] == ['j1-2', 'j3-1', 'j2-2']
 
 
 def test_sort(sut):
