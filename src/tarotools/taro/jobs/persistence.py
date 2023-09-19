@@ -190,8 +190,8 @@ def remove_instances(instance_match):
 
 def clean_up_by_config():
     """
-    Cleans up the job instances based on max records and max age as defined in the configuration.
-    See `clean_up` function for more details.
+    Cleans up the job instances in the configured persistence source based on max records and max age
+    as defined in the configuration. See `clean_up` function for more details.
     """
     try:
         max_age = util.parse_iso8601_duration(cfg.persistence_max_age) if cfg.persistence_max_age else None
@@ -203,7 +203,7 @@ def clean_up_by_config():
 
 def clean_up(max_records=-1, max_age=None):
     """
-    Cleans up old records based on given parameters.
+    Cleans up old records in the configured persistence source based on given parameters.
     The cleanup can be based on a maximum number of records to retain or/and the age of the records.
 
     Args:
@@ -218,6 +218,13 @@ def clean_up(max_records=-1, max_age=None):
 
 
 def close():
+    """
+    Closes the current persistence source.
+
+    This method should be called:
+        1. After finishing use of the global persistence storage.
+        2. After the global persistence configuration has changed and before calling any other persistence methods.
+    """
     _persistence.close()
 
 
