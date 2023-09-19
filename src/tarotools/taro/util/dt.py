@@ -3,7 +3,7 @@ import secrets
 from datetime import datetime, timezone, date, time, timedelta
 from enum import Enum
 
-from dateutil import relativedelta
+from dateutil.relativedelta import relativedelta
 
 # Produced by ChatGPT - seems correct
 ISO_DATE_TIME_PATTERN = re.compile(
@@ -86,7 +86,7 @@ def parse_duration_to_sec(val):
     raise ValueError("Unknown unit: " + unit)
 
 
-def parse_iso8601_duration(duration):
+def parse_iso8601_duration(duration) -> relativedelta:
     match = re.match(r'P(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?', duration)
     if not match:
         raise ValueError('Invalid duration: ' + duration)
@@ -97,8 +97,8 @@ def parse_iso8601_duration(duration):
     hours = int(match.group(5)) if match.group(5) else 0
     minutes = int(match.group(6)) if match.group(6) else 0
     seconds = int(match.group(7)) if match.group(7) else 0
-    return relativedelta.relativedelta(years=years, months=months, weeks=weeks, days=days, hours=hours, minutes=minutes,
-                                       seconds=seconds).normalized()
+    return relativedelta(
+        years=years, months=months, weeks=weeks, days=days, hours=hours, minutes=minutes, seconds=seconds).normalized()
 
 
 def format_timedelta(td, *, show_ms=True, null=''):

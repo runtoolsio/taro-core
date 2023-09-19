@@ -1,3 +1,7 @@
+"""
+Persistence storage implementation using SQLite. See `tarotools.taro.persistence` module doc for much more details.
+"""
+
 import datetime
 import json
 import logging

@@ -9,7 +9,6 @@ This module consists of:
         > store_instances(*job_inst)
         > remove_instances(instance_match)
         > clean_up(max_records, max_age)
-        > clean_up(max_records, max_age)
     An instance of this class is returned when the `create_persistence()` function of the implementing module is called.
 
 - Persistence implementation lookup:
@@ -176,7 +175,7 @@ def store_instances(*job_inst):
         *job_inst (JobInst): Variable number of job instances to be stored.
     """
     _instance().store_instances(*job_inst)
-    clean_up()
+    clean_up_by_config()
 
 
 def remove_instances(instance_match):
@@ -189,9 +188,10 @@ def remove_instances(instance_match):
     _instance().remove_instances(instance_match)
 
 
-def clean_up():
+def clean_up_by_config():
     """
     Cleans up the job instances based on max records and max age as defined in the configuration.
+    See `clean_up` function for more details.
     """
     try:
         max_age = util.parse_iso8601_duration(cfg.persistence_max_age) if cfg.persistence_max_age else None
@@ -199,6 +199,22 @@ def clean_up():
         sys.stderr.write("Invalid max_age in " + str(paths.lookup_config_file()) + "\n")
         return
     _instance().clean_up(cfg.persistence_max_records, max_age)
+
+
+def clean_up(max_records=-1, max_age=None):
+    """
+    Cleans up old records based on given parameters.
+    The cleanup can be based on a maximum number of records to retain or/and the age of the records.
+
+    Args:
+        max_records (int, optional):
+            The maximum number of records to retain. Records are deleted from the oldest one defined by `ended` field.
+            A value of -1 indicates no limit. Defaults to -1.
+        max_age (relativedelta, optional):
+            The maximum age of the records to retain. Older records will be removed.
+            If None, removal by age is not performed. Defaults to None.
+    """
+    _instance().clean_up(max_records, max_age)
 
 
 def close():
