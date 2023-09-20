@@ -58,7 +58,7 @@ def load_persistence(persistence_type):
         persistence_type (str): Type of the persistence to be loaded
     """
     if not cfg.persistence_enabled:
-        return _NoPersistence()  # TODO Not sure about it, maybe this check should be pushed level up
+        return _NoPersistence()
 
     for finder, name, is_pkg in pkgutil.iter_modules(taro.jobs.db.__path__, taro.jobs.db.__name__ + "."):
         if name == taro.jobs.db.__name__ + "." + persistence_type:
@@ -222,8 +222,8 @@ def close():
     Closes the current persistence source.
 
     This method should be called:
-        1. After finishing use of the global persistence storage.
-        2. After the global persistence configuration has changed and before calling any other persistence methods.
+        1. After finishing the use of the global persistence storage.
+        2. Before changing the global persistence type or any configuration which requires resetting the persistence.
     """
     _persistence.close()
 
@@ -269,11 +269,15 @@ class PersistenceError(TaroException):
 class PersistenceNotFoundError(PersistenceError):
 
     def __init__(self, module_):
-        super().__init__(f'Cannot find persistence module {module_}. Ensure the module is installed '
-                         f'or check that persistence type value in the config is correct.')
+        super().__init__(f'Cannot find persistence module {module_}. Ensure this module is installed '
+                         f'or check that the provided persistence type value is correct.')
 
 
 class PersistenceDisabledError(PersistenceError):
+    """
+    Raised when attempting an operation while persistence is disabled.
+    Any code using persistence should always catch this exception.
+    """
 
     def __init__(self):
-        super().__init__("Logic execution relies on data persistence, but it's disabled in the config.")
+        super().__init__("Cannot perform persistence operation because persistence is disabled.")
