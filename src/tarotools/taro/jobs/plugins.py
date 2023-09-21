@@ -1,67 +1,65 @@
 import importlib
 import logging
 import pkgutil
+from abc import abstractmethod
 from types import ModuleType
-from typing import Dict
+from typing import Dict, Type
 
+import tarotools.plugins
 from tarotools.taro.jobs.inst import JobInstanceManager
 
 log = logging.getLogger(__name__)
 
-DEF_PLUGIN_MODULE_PREFIX = 'taro_'
 
+class Plugin(JobInstanceManager):
+    name2subclass: Dict[str, Type] = {}
+    name2plugin: Dict[str, 'Plugin'] = {}
 
-# TODO plugin collisions
-class PluginBase(JobInstanceManager):
-    name2subclass = {}
-    name2plugin = {}
-
-    def __init_subclass__(cls, *, plugin_name=None, **kwargs):
+    def __init_subclass__(cls, **kwargs):
         """
         All plugins are registered using subclass registration:
         https://www.python.org/dev/peps/pep-0487/#subclass-registration
         """
-
-        super().__init_subclass__(**kwargs)
-        res_name = plugin_name or cls.__module__
+        res_name = cls.__module__
         cls.name2subclass[res_name] = cls
         log.debug("event=[plugin_registered] name=[%s] class=[%s]", res_name, cls)
 
     @classmethod
-    def load_plugins(cls, ext_prefix, names, *, reload=True) -> Dict[str, 'PluginBase']:
+    def fetch_plugins(cls, names, *, cached=False) -> Dict[str, 'Plugin']:
         if not names:
             raise ValueError("Plugins not specified")
 
-        new_plugins = [name for name in names if name not in cls.name2plugin]
-        if not new_plugins and not reload:
-            return  # All plugins already loaded TODO do not return None
+        if cached:
+            initialized = {name: cls.name2plugin[name] for name in names if name in cls.name2plugin}
+        else:
+            initialized = {}
 
-        not_discovered = [name for name in new_plugins if name not in cls.name2subclass]
-        if not_discovered:
-            discover_ext_plugins(ext_prefix, not_discovered)
+        plugins_to_init = [name for name in names if name not in initialized]
+        if plugins_to_init:
+            load_plugins(plugins_to_init)
 
-        name2plugin = {}
-        for name in names:
-            if not reload and name in cls.name2plugin:
-                name2plugin[name] = cls.name2plugin[name]
-                continue
-
+        for name in plugins_to_init:
             try:
-                plugin_cls = PluginBase.name2subclass[name]
+                plugin_cls = Plugin.name2subclass[name]
             except KeyError:
                 log.warning("event=[plugin_not_found] name=[%s]", name)
                 continue
             try:
                 plugin = plugin_cls()
-                name2plugin[name] = plugin
+                initialized[name] = plugin
                 log.debug("event=[plugin_created] name=[%s] plugin=[%s]", name, plugin)
+                if cached:
+                    cls.name2plugin[name] = plugin
             except PluginDisabledError as e:
                 log.warning("event=[plugin_disabled] name=[%s] detail=[%s]", name, e)
             except BaseException as e:
                 log.warning("event=[plugin_instantiation_failed] name=[%s] detail=[%s]", name, e)
 
-        cls.name2plugin = name2plugin
-        return name2plugin
+        return initialized
+
+    @abstractmethod
+    def close(self):
+        pass
 
 
 class PluginDisabledError(Exception):
@@ -74,34 +72,25 @@ class PluginDisabledError(Exception):
         super().__init__(message)
 
 
-def discover_ext_plugins(ext_prefix, names, skip_imported=True) -> Dict[str, ModuleType]:
-    if not names:
+def load_plugins(modules, *, package=tarotools.plugins, skip_imported=True) -> Dict[str, ModuleType]:
+    if not modules:
         raise ValueError("Plugins for discovery not specified")
-    discovered_names = [name for finder, name, is_pkg in pkgutil.iter_modules() if name.startswith(ext_prefix)]
-    log.debug("event=[ext_plugin_modules_discovered] names=[%s]", ",".join(discovered_names))
+    discovered_modules = [name for _, name, __ in pkgutil.iter_modules(package.__path__, package.__name__ + ".")]
+    log.debug("event=[plugin_modules_discovered] names=[%s]", ",".join(discovered_modules))
 
     name2module = {}
-    for name in names:
-        if skip_imported and name in PluginBase.name2subclass.keys():
+    for name in modules:
+        if skip_imported and name in Plugin.name2subclass.keys():
             continue  # Already imported
-        if name not in discovered_names:
-            log.warning("event=[ext_plugin_module_not_found] module=[%s]", name)
+        if name not in discovered_modules:
+            log.warning("event=[plugin_module_not_found] module=[%s]", name)
             continue
 
         try:
             module = importlib.import_module(name)
             name2module[name] = module
-            log.debug("event=[ext_plugin_module_imported] name=[%s] module=[%s]", name, module)
+            log.debug("event=[plugin_module_imported] name=[%s] module=[%s]", name, module)
         except BaseException as e:
-            log.exception("event=[ext_plugin_module_invalid] reason=[import_failed] name=[%s] detail=[%s]", name, e)
+            log.exception("event=[plugin_module_invalid] reason=[import_failed] name=[%s] detail=[%s]", name, e)
 
     return name2module
-
-
-def register_new_job_instance(job_instance, plugins, *, plugin_module_prefix=DEF_PLUGIN_MODULE_PREFIX, reload=False):
-    PluginBase.load_plugins(plugin_module_prefix, plugins, reload=reload)  # Load plugins if not yet loaded
-    for plugin in PluginBase.name2plugin.values():  # May contain other plugins loaded before
-        try:
-            plugin.new_job_instance(job_instance)
-        except BaseException as e:
-            log.warning("event=[plugin_failed] reason=[exception_on_new_job_instance] detail=[%s]", e)

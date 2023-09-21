@@ -3,10 +3,10 @@ from typing import List, Optional
 from weakref import ref
 
 from tarotools.taro import JobInstance
-from tarotools.taro import PluginBase
+from tarotools.taro import Plugin
 
 
-class TestPlugin(PluginBase):
+class TestPlugin(Plugin):
     instance_ref: Optional["ref"] = None
     error_on_new_job_instance: Optional[BaseException] = None
 

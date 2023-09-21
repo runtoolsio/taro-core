@@ -17,7 +17,7 @@ from tarotools.taro.jobs.inst import JobInstanceID, JobInstance, JobInst, Instan
     InstanceWarningObserver, \
     WarnEventCtx
 from tarotools.taro.jobs.managed import ManagedJobContext
-from tarotools.taro.jobs.plugins import PluginBase, PluginDisabledError
+from tarotools.taro.jobs.plugins import Plugin, PluginDisabledError
 from tarotools.taro.jobs.process import ProcessExecution
 from tarotools.taro.jobs.program import ProgramExecution
 from tarotools.taro.jobs.runner import RunnerJobInstance

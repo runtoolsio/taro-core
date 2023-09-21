@@ -3,16 +3,12 @@ from threading import Lock
 from typing import List
 
 from tarotools.taro import JobInstance, InstanceStateObserver, JobInst
-from tarotools.taro import cfg
 from tarotools.taro.err import InvalidStateError
-from tarotools.taro.jobs import plugins
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.events import StateDispatcher, OutputDispatcher
 from tarotools.taro.jobs.execution import ExecutionPhase
 
 log = logging.getLogger(__name__)
-
-EXT_PLUGIN_MODULE_PREFIX = plugins.DEF_PLUGIN_MODULE_PREFIX
 
 
 # TODO Consider rename to better convey meaning of this class which is to expose jobs outside of the current runtime env
@@ -69,10 +65,6 @@ class ManagedJobContext(InstanceStateObserver):
             job_instance.add_output_observer(self._output_dispatcher, 100)
         if self._api:
             self._api.register_instance(job_instance)
-
-        #  TODO optional plugins
-        if cfg.plugins_enabled and cfg.plugins_load:
-            plugins.register_new_job_instance(job_instance, cfg.plugins_load, plugin_module_prefix=EXT_PLUGIN_MODULE_PREFIX)
 
         job_instance.add_state_observer(self, 1000)  # Must be notified last because it is used to close job resources
         self._managed_jobs.append(job_instance)
