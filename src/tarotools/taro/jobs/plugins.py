@@ -75,21 +75,23 @@ class PluginDisabledError(Exception):
 def load_plugins(modules, *, package=tarotools.plugins, skip_imported=True) -> Dict[str, ModuleType]:
     if not modules:
         raise ValueError("Plugins for discovery not specified")
+
     discovered_modules = [name for _, name, __ in pkgutil.iter_modules(package.__path__, package.__name__ + ".")]
     log.debug("event=[plugin_modules_discovered] names=[%s]", ",".join(discovered_modules))
 
     name2module = {}
     for name in modules:
+        full_name = f"{package.__name__}.{name}"
         if skip_imported and name in Plugin.name2subclass.keys():
             continue  # Already imported
-        if name not in discovered_modules:
+        if full_name not in discovered_modules:
             log.warning("event=[plugin_module_not_found] module=[%s]", name)
             continue
 
         try:
-            module = importlib.import_module(name)
+            module = importlib.import_module(full_name)
             name2module[name] = module
-            log.debug("event=[plugin_module_imported] name=[%s] module=[%s]", name, module)
+            log.debug("event=[plugin_module_imported] name=[%s] module=[%s]", module, module)
         except BaseException as e:
             log.exception("event=[plugin_module_invalid] reason=[import_failed] name=[%s] detail=[%s]", name, e)
 

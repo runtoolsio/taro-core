@@ -6,10 +6,9 @@ from tarotools.taro import plugins
 
 
 def test_plugin_discovered():
-    plugins.load_plugins(['test_plugin'], package=test.plugins)
-    name2module = plugins.load_plugins('test_plugin')
+    name2module = plugins.load_plugins(['test_plugin'], package=test.plugins)
     assert len(name2module) == 1
-    assert name2module['test_plugin'].__name__ == 'test_plugin'
+    assert name2module['test_plugin'].__name__ == 'test.plugins.test_plugin'
 
 
 def test_invalid_plugin_ignored():
