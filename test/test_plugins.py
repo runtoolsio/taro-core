@@ -1,24 +1,26 @@
 from typing import Optional
 
 import test.plugins
+from plugins import test_plugin
 from tarotools.taro import Plugin
 from tarotools.taro import plugins
 
 
 def test_plugin_discovered():
-    name2module = plugins.load_plugins(['test_plugin'], package=test.plugins)
+    name2module = plugins.load_modules(['test_plugin'], package=test.plugins)
     assert len(name2module) == 1
     assert name2module['test_plugin'].__name__ == 'test.plugins.test_plugin'
 
 
 def test_invalid_plugin_ignored():
     """Test that error raised during plugin import is captured"""
-    name2module = plugins.load_plugins('test_', ['test_plugin_invalid'])
+    name2module = plugins.load_modules(['test_plugin_invalid'], package=test.plugins)
     assert len(name2module) == 0
 
 
-def test_create_plugins():
-    name2plugin = plugins.Plugin.fetch_plugins('test_', ['plugin2', 'test_plugin'])
+def test_fetch_plugins():
+    plugins.load_modules(['test_plugin'], package=test.plugins)
+    name2plugin = plugins.Plugin.fetch_plugins(['plugin2', 'test_plugin'])
     assert len(name2plugin) == 2
     assert isinstance(name2plugin['plugin2'], Plugin2)
     assert isinstance(name2plugin['test_plugin'], test_plugin.TestPlugin)
@@ -38,7 +40,6 @@ def test_create_invalid_plugins():
 
 
 class Plugin2(Plugin, plugin_name='plugin2'):
-
     error_on_init: Optional[BaseException] = None
 
     def __init__(self):
@@ -53,10 +54,17 @@ class Plugin2(Plugin, plugin_name='plugin2'):
     def unregister_instance(self, job_instance):
         pass
 
+    def close(self):
+        pass
+
 
 class Plugin3(Plugin, plugin_name='plugin3'):
+
     def register_instance(self, job_instance):
         pass
 
     def unregister_instance(self, job_instance):
+        pass
+
+    def close(self):
         pass

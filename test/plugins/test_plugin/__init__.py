@@ -7,6 +7,7 @@ from tarotools.taro import Plugin
 
 
 class TestPlugin(Plugin):
+
     instance_ref: Optional["ref"] = None
     error_on_new_job_instance: Optional[BaseException] = None
 
@@ -22,4 +23,7 @@ class TestPlugin(Plugin):
             raise error_to_raise
 
     def unregister_instance(self, job_instance):
+        pass
+
+    def close(self):
         pass

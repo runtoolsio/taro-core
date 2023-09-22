@@ -15,12 +15,12 @@ class Plugin(JobInstanceManager):
     name2subclass: Dict[str, Type] = {}
     name2plugin: Dict[str, 'Plugin'] = {}
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, *, plugin_name=None, **kwargs):
         """
         All plugins are registered using subclass registration:
         https://www.python.org/dev/peps/pep-0487/#subclass-registration
         """
-        res_name = cls.__module__
+        res_name = plugin_name or cls.__module__.split('.')[-1]
         cls.name2subclass[res_name] = cls
         log.debug("event=[plugin_registered] name=[%s] class=[%s]", res_name, cls)
 
@@ -34,11 +34,7 @@ class Plugin(JobInstanceManager):
         else:
             initialized = {}
 
-        plugins_to_init = [name for name in names if name not in initialized]
-        if plugins_to_init:
-            load_plugins(plugins_to_init)
-
-        for name in plugins_to_init:
+        for name in (name for name in names if name not in initialized):
             try:
                 plugin_cls = Plugin.name2subclass[name]
             except KeyError:
@@ -72,9 +68,9 @@ class PluginDisabledError(Exception):
         super().__init__(message)
 
 
-def load_plugins(modules, *, package=tarotools.plugins, skip_imported=True) -> Dict[str, ModuleType]:
+def load_modules(modules, *, package=tarotools.plugins) -> Dict[str, ModuleType]:
     if not modules:
-        raise ValueError("Plugins for discovery not specified")
+        raise ValueError("Modules for discovery not specified")
 
     discovered_modules = [name for _, name, __ in pkgutil.iter_modules(package.__path__, package.__name__ + ".")]
     log.debug("event=[plugin_modules_discovered] names=[%s]", ",".join(discovered_modules))
@@ -82,8 +78,6 @@ def load_plugins(modules, *, package=tarotools.plugins, skip_imported=True) -> D
     name2module = {}
     for name in modules:
         full_name = f"{package.__name__}.{name}"
-        if skip_imported and name in Plugin.name2subclass.keys():
-            continue  # Already imported
         if full_name not in discovered_modules:
             log.warning("event=[plugin_module_not_found] module=[%s]", name)
             continue
