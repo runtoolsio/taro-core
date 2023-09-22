@@ -23,7 +23,7 @@ def test_fetch_plugins():
     name2plugin = plugins.Plugin.fetch_plugins(['plugin2', 'test_plugin'])
     assert len(name2plugin) == 2
     assert isinstance(name2plugin['plugin2'], Plugin2)
-    assert isinstance(name2plugin['test_plugin'], test_plugin.TestPlugin)
+    assert isinstance(name2plugin['test_plugin'], test.plugins.test_plugin.TestPlugin)
 
 
 def test_non_existing_plugin_ignored():
