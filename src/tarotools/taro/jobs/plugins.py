@@ -1,3 +1,35 @@
+"""
+Job Instance Plugin Module
+===========================
+
+Purpose:
+--------
+This module provides plugin mechanisms specifically for job instances. By using plugins, additional features
+related to job instance management and monitoring can be introduced, allowing customization based on the
+executing environment (plugins installed in the search path) and custom configuration (enabled plugins).
+
+Plugin Representation:
+----------------------
+Plugins are subclasses of the `Plugin` ABC class and must implement the `JobInstanceManager` interface.
+
+Registration:
+-------------
+Plugins are automatically registered when their defining module is imported. The `load_modules` utility function
+can assist in this process.
+
+Plugin Location:
+----------------
+By default, the `load_modules` function locates modules in the `tarotools.plugins` namespace subpackage. More details
+are available in the official documentation:
+https://packaging.python.org/en/latest/guides/creating-and-discovering-plugins/#using-namespace-packages
+
+Fetching Plugins:
+-----------------
+Before retrieving plugins, call the `load_modules` function to ensure all required plugins are registered. The
+`Plugin.fetch_plugins` class method can then be used to instantiate the plugins.
+"""
+
+
 import importlib
 import logging
 import pkgutil
@@ -48,10 +80,18 @@ class Plugin(JobInstanceManager):
                     cls.name2plugin[name] = plugin
             except PluginDisabledError as e:
                 log.warning("event=[plugin_disabled] name=[%s] detail=[%s]", name, e)
-            except BaseException as e:
+            except Exception as e:
                 log.warning("event=[plugin_instantiation_failed] name=[%s] detail=[%s]", name, e)
 
         return initialized
+
+    @classmethod
+    def close_all(cls):
+        for name, plugin in cls.name2plugin.items():
+            try:
+                plugin.close()
+            except Exception as e:
+                log.warning("event=[plugin_closing_failed] name=[%s] plugin=[%s] detail=[%s]", name, plugin, e)
 
     @abstractmethod
     def close(self):

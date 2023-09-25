@@ -26,21 +26,35 @@ def test_fetch_plugins():
     assert isinstance(name2plugin['test_plugin'], test.plugins.test_plugin.TestPlugin)
 
 
+def test_fetch_plugin_twice():
+    name2plugin_first = plugins.Plugin.fetch_plugins(['plugin3'])
+    name2plugin_second = plugins.Plugin.fetch_plugins(['plugin3'])
+
+    assert name2plugin_first != name2plugin_second
+
+
+def test_fetch_plugin_cached():
+    name2plugin_first = plugins.Plugin.fetch_plugins(['plugin3'], cached=True)
+    name2plugin_second = plugins.Plugin.fetch_plugins(['plugin3'], cached=True)
+
+    assert name2plugin_first == name2plugin_second
+
+
 def test_non_existing_plugin_ignored():
-    name2plugin = plugins.Plugin.fetch_plugins('none', ['plugin2', 'plugin4'])
+    name2plugin = plugins.Plugin.fetch_plugins(['plugin2', 'plugin4'])
     assert len(name2plugin) == 1
     assert isinstance(name2plugin['plugin2'], Plugin2)
 
 
 def test_create_invalid_plugins():
-    Plugin2.error_on_init = BaseException('Must be caught')
-    name2plugin = plugins.Plugin.fetch_plugins('none', ['plugin2', 'plugin3'])
+    Plugin2.error_on_init = Exception('Must be caught')
+    name2plugin = plugins.Plugin.fetch_plugins(['plugin2', 'plugin3'])
     assert len(name2plugin) == 1
     assert isinstance(name2plugin['plugin3'], Plugin3)
 
 
 class Plugin2(Plugin, plugin_name='plugin2'):
-    error_on_init: Optional[BaseException] = None
+    error_on_init: Optional[Exception] = None
 
     def __init__(self):
         error_to_raise = Plugin2.error_on_init
