@@ -15,8 +15,9 @@ from dataclasses import dataclass
 from threading import Lock
 from typing import Optional, Tuple, Callable, TypeVar, Generic, Dict
 
-from tarotools.taro import InstanceStateObserver, JobInst, JobInstance, JobInstanceID
+from tarotools.taro import InstanceStateObserver, JobInst, JobInstance, JobInstanceID, Plugin
 from tarotools.taro import persistence as persistence_mod
+from tarotools.taro import plugins as plugins_mod
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.events import StateDispatcher, OutputDispatcher
@@ -45,15 +46,15 @@ class Feature(Generic[C]):
 @dataclass
 class ManagerFeature(Feature[JobInstanceManager]):
     """
-    The attribute `always_unregister_terminated` can be set to `True` if the manager has no need to retain instances
-    that have ended.
+    The attribute `unregister_after_termination` can be set to `True` if the manager should
+    not retain instances immediately after they have ended.
 
     Attributes:
-        always_unregister_terminated (bool):
-            If set to `True`, every instance will be unregistered once it reaches its terminal phase,
-            even if the context is not configured as transient. Default is False.
+        unregister_after_termination (bool):
+            If set to `True`, every instance will be unregistered as soon as it reaches its terminal phase,
+            regardless of the context's `transient` configuration. Default is False.
     """
-    always_unregister_terminated: bool = False
+    unregister_after_termination: bool = False
 
 
 @dataclass
@@ -86,6 +87,18 @@ def _create_observer_features(factories):
     return observers
 
 
+def _create_plugins(names):
+    plugins_mod.load_modules(names)
+    fetched_plugins = Plugin.fetch_plugins(names)
+
+    plugin_features = []
+    for plugin in fetched_plugins.values():
+        feature = ManagerFeature(plugin, None, plugin.close, plugin.unregister_after_termination())
+        plugin_features.append(feature)
+
+    return plugin_features
+
+
 class FeaturedContextBuilder:
     """
     This class offers a convenient and clear way to define a featured context.
@@ -107,14 +120,15 @@ class FeaturedContextBuilder:
         self._instance_managers = []
         self._state_observers = []
         self._output_observers = []
+        self._plugins = []
         self._transient = transient
 
     def __call__(self):
         self.build()
 
-    def add_instance_manager(self, factory, open_hook=None, close_hook=None, unregister_terminated_instances=False) \
+    def add_instance_manager(self, factory, open_hook=None, close_hook=None, unregister_after_termination=False) \
             -> 'FeaturedContextBuilder':
-        self._instance_managers.append((factory, open_hook, close_hook, unregister_terminated_instances))
+        self._instance_managers.append((factory, open_hook, close_hook, unregister_after_termination))
         return self
 
     def add_state_observer(self, factory, open_hook=None, close_hook=None, priority=100) -> 'FeaturedContextBuilder':
@@ -126,18 +140,39 @@ class FeaturedContextBuilder:
         return self
 
     def standard_features(
-            self, api_server=True, state_dispatcher=True, output_dispatcher=True, persistence=True, plugins=True):
+            self, api_server=True, state_dispatcher=True, output_dispatcher=True, persistence=True, plugins=()):
         if api_server:
-            self.add_instance_manager(APIServer, lambda api: api.open(), lambda api: api.close())
+            self.api_server()
         if state_dispatcher:
-            self.add_state_observer(StateDispatcher, close_hook=lambda dispatcher: dispatcher.close())
+            self.state_dispatcher()
         if output_dispatcher:
-            self.add_state_observer(OutputDispatcher, close_hook=lambda dispatcher: dispatcher.close())
+            self.output_dispatcher()
         if persistence:
-            # Lower default priority so other listeners can see the instance already persisted
-            self.add_state_observer(
-                persistence_mod.load_configured_persistence, close_hook=lambda db: db.close(), priority=50)
-        # TODO plugins
+            self.persistence()
+        if plugins:
+            self.plugins(plugins)
+
+    def api_server(self):
+        self.add_instance_manager(APIServer, lambda api: api.open(), lambda api: api.close())
+        return self
+
+    def state_dispatcher(self):
+        self.add_state_observer(StateDispatcher, close_hook=lambda dispatcher: dispatcher.close())
+        return self
+
+    def output_dispatcher(self):
+        self.add_state_observer(OutputDispatcher, close_hook=lambda dispatcher: dispatcher.close())
+        return self
+
+    def persistence(self):
+        # Lower default priority so other listeners can see the instance already persisted
+        self.add_state_observer(
+            persistence_mod.load_configured_persistence, close_hook=lambda db: db.close(), priority=50)
+        return self
+
+    def plugins(self, names):
+        self._plugins = names
+        return self
 
     def build(self) -> 'FeaturedContext':
         instance_managers = []
@@ -150,6 +185,9 @@ class FeaturedContextBuilder:
 
         state_observers = _create_observer_features(self._state_observers)
         output_observers = _create_observer_features(self._output_observers)
+
+        if self._plugins:
+            instance_managers += _create_plugins(self._plugins)
 
         return FeaturedContext(instance_managers, state_observers, output_observers, transient=self._transient)
 
@@ -195,6 +233,7 @@ class FeaturedContext(InstanceStateObserver):
     Properties:
         instances (list[JobInstance]): A list of job instances managed by the context.
     """
+
     def __init__(self, instance_managers=(), state_observers=(), output_observers=(), *, transient=False):
         self._instance_managers: Tuple[ManagerFeature[JobInstanceManager]] = tuple(instance_managers)
         self._state_observers: Tuple[ObserverFeature[InstanceStateObserver]] = tuple(state_observers)
@@ -351,14 +390,14 @@ class FeaturedContext(InstanceStateObserver):
                 job_instance.remove_state_observer(state_observer_feat.component)
 
             for manager_feat in self._instance_managers:
-                if manager_feat.always_unregister_terminated:
+                if manager_feat.unregister_after_termination:
                     manager_feat.component.unregister_instance(job_instance)
 
             managed_instance.released = True
 
         if removed:
             for manager_feat in self._instance_managers:
-                if not manager_feat.always_unregister_terminated:
+                if not manager_feat.unregister_after_termination:
                     manager_feat.component.unregister_instance(job_instance)
 
         self._check_close()

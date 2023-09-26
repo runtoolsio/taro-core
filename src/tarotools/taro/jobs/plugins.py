@@ -27,6 +27,15 @@ Fetching Plugins:
 -----------------
 Before retrieving plugins, call the `load_modules` function to ensure all required plugins are registered. The
 `Plugin.fetch_plugins` class method can then be used to instantiate the plugins.
+
+Using Plugins:
+--------------
+Plugins are designed for use by code that manages job instances. The most common practice is to call
+`register_instance()` when a new job instance is created and `unregister_instance()` when the job instance is
+to be discarded, which typically happens after the instance terminates.
+
+A convenient way to utilize plugins is to use the featured context from the `featurize` module with
+the plugins feature set up. This context then handles the registration and un-registration automatically.
 """
 
 
@@ -44,8 +53,8 @@ log = logging.getLogger(__name__)
 
 
 class Plugin(JobInstanceManager):
-    name2subclass: Dict[str, Type] = {}
-    name2plugin: Dict[str, 'Plugin'] = {}
+    _name2subclass: Dict[str, Type] = {}
+    _name2plugin: Dict[str, 'Plugin'] = {}
 
     def __init_subclass__(cls, *, plugin_name=None, **kwargs):
         """
@@ -53,7 +62,7 @@ class Plugin(JobInstanceManager):
         https://www.python.org/dev/peps/pep-0487/#subclass-registration
         """
         res_name = plugin_name or cls.__module__.split('.')[-1]
-        cls.name2subclass[res_name] = cls
+        cls._name2subclass[res_name] = cls
         log.debug("event=[plugin_registered] name=[%s] class=[%s]", res_name, cls)
 
     @classmethod
@@ -62,13 +71,13 @@ class Plugin(JobInstanceManager):
             raise ValueError("Plugins not specified")
 
         if cached:
-            initialized = {name: cls.name2plugin[name] for name in names if name in cls.name2plugin}
+            initialized = {name: cls._name2plugin[name] for name in names if name in cls._name2plugin}
         else:
             initialized = {}
 
         for name in (name for name in names if name not in initialized):
             try:
-                plugin_cls = Plugin.name2subclass[name]
+                plugin_cls = Plugin._name2subclass[name]
             except KeyError:
                 log.warning("event=[plugin_not_found] name=[%s]", name)
                 continue
@@ -77,7 +86,7 @@ class Plugin(JobInstanceManager):
                 initialized[name] = plugin
                 log.debug("event=[plugin_created] name=[%s] plugin=[%s]", name, plugin)
                 if cached:
-                    cls.name2plugin[name] = plugin
+                    cls._name2plugin[name] = plugin
             except PluginDisabledError as e:
                 log.warning("event=[plugin_disabled] name=[%s] detail=[%s]", name, e)
             except Exception as e:
@@ -87,11 +96,15 @@ class Plugin(JobInstanceManager):
 
     @classmethod
     def close_all(cls):
-        for name, plugin in cls.name2plugin.items():
+        for name, plugin in cls._name2plugin.items():
             try:
                 plugin.close()
             except Exception as e:
                 log.warning("event=[plugin_closing_failed] name=[%s] plugin=[%s] detail=[%s]", name, plugin, e)
+
+    @abstractmethod
+    def unregister_after_termination(self):
+        pass
 
     @abstractmethod
     def close(self):

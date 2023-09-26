@@ -35,7 +35,7 @@ class TestEnv:
                     .add_instance_manager(self.instance_manager,
                                           open_hook=self.instance_manager.open,
                                           close_hook=self.instance_manager.close)
-                    .add_instance_manager(self.instance_manager_volatile, unregister_terminated_instances=True)
+                    .add_instance_manager(self.instance_manager_volatile, unregister_after_termination=True)
                     .add_state_observer(self.state_observer,
                                         open_hook=self.state_observer.open,
                                         close_hook=self.state_observer.close,
