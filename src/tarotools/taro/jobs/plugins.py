@@ -67,6 +67,24 @@ class Plugin(JobInstanceManager):
 
     @classmethod
     def fetch_plugins(cls, names, *, cached=False) -> Dict[str, 'Plugin']:
+        """
+        Instantiates and returns registered plugins based on the provided names.
+        A plugin gets registered once its defining module has been imported.
+
+        If the `cached` parameter is set to `True`, the behavior alters slightly:
+         1. All fetched plugins are stored in a cache.
+         2. If a plugin is already in the cache, it's not instantiated again but instead returned from the cache.
+
+        Note: If the cache is used, it is the code client's responsibility to execute `close_all`
+              when all cached plugins are no longer needed to ensure proper resource cleanup.
+
+        Args:
+            names (List[str]): Names of the plugins to be fetched.
+            cached (bool): Determines if the listed plugins should be cached or retrieved from the cache.
+
+        Returns:
+            Dict[str, 'Plugin']: Dictionary mapping plugin names to their instances.
+        """
         if not names:
             raise ValueError("Plugins not specified")
 
@@ -104,10 +122,20 @@ class Plugin(JobInstanceManager):
 
     @abstractmethod
     def unregister_after_termination(self):
+        """
+        Determines if the manager of the plugin should always unregister an instance immediately after its termination.
+        This is useful for plugins which operate only with active instances.
+
+        Returns:
+            bool: `True` if the instance should be unregistered post-termination, otherwise `False`.
+        """
         pass
 
     @abstractmethod
     def close(self):
+        """
+        Releases resources held by the plugin when it's no longer needed. (Or ignore when not required...)
+        """
         pass
 
 
@@ -122,6 +150,15 @@ class PluginDisabledError(Exception):
 
 
 def load_modules(modules, *, package=tarotools.plugins) -> Dict[str, ModuleType]:
+    """
+    Utility function to ensure all plugins are registered before use.
+    Users of the plugins API should call this before utilizing any plugin.
+
+    Args:
+        modules (List[str]): Modules where plugins are defined.
+        package (ModuleType, optional): Base package for plugins. Defaults to `tarotools.plugins` namespace sub-package.
+    """
+
     if not modules:
         raise ValueError("Modules for discovery not specified")
 
