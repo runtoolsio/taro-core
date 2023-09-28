@@ -156,7 +156,7 @@ class FeaturedContextBuilder:
         return self
 
     def api_server(self):
-        self.add_instance_manager(APIServer, lambda api: api.open(), lambda api: api.close())
+        self.add_instance_manager(APIServer, lambda api: api.start(), lambda api: api.close())
         return self
 
     def state_dispatcher(self):
@@ -164,7 +164,7 @@ class FeaturedContextBuilder:
         return self
 
     def output_dispatcher(self):
-        self.add_state_observer(OutputDispatcher, close_hook=lambda dispatcher: dispatcher.close())
+        self.add_output_observer(OutputDispatcher, close_hook=lambda dispatcher: dispatcher.close())
         return self
 
     def persistence(self):

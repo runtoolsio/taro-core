@@ -57,6 +57,7 @@ def execute(job_id, job_execution, instance_id=None, *, no_overlap=False, depend
             instance_id=instance_id,
             pending_group=pending_group))
         job_instance.run()
+        return job_instance
 
 
 def execute_in_new_thread(job_id, job_execution, no_overlap=False, depends_on=None, pending_group=None):

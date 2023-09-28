@@ -1,3 +1,8 @@
+"""
+This module contains the `ProcessExecution` class, an implementation of the `Execution` abstract class, used to
+execute code in a separate process using the `multiprocessing` package from the standard library.
+"""
+
 import logging
 import signal
 import sys
@@ -6,7 +11,6 @@ from contextlib import contextmanager
 from multiprocessing import Queue
 from multiprocessing.context import Process
 from queue import Full
-from threading import Thread
 from typing import Union, Tuple
 
 from tarotools.taro import ExecutionState
@@ -28,22 +32,15 @@ class ProcessExecution(OutputExecution):
         self._interrupted: bool = False
         self._output_observers = []
 
-    @property
-    def is_async(self) -> bool:
-        return False
-
     def execute(self) -> ExecutionState:
         if not self._stopped and not self._interrupted:
-            output_reader = Thread(target=self._read_output, name='Output-Reader', daemon=True)
-            output_reader.start()
             self._process = Process(target=self._run)
 
             try:
                 self._process.start()
-                self._process.join()
+                self._read_output()
+                self._process.join()  # Just in case as it should be completed at this point
             finally:
-                self.output_queue.put_nowait((_QueueStop(), False))
-                output_reader.join(timeout=1)
                 self.output_queue.close()
 
             if self._process.exitcode == 0:
@@ -64,6 +61,8 @@ class ProcessExecution(OutputExecution):
                 for line in traceback.format_exception(*sys.exc_info()):
                     self.output_queue.put_nowait((line, True))
                 raise
+            finally:
+                self.output_queue.put_nowait((_QueueStop(), False))
 
     @contextmanager
     def _capture_stdout(self):
