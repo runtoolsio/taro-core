@@ -13,10 +13,10 @@ from tarotools.taro import cfg, client, log
 from tarotools.taro.hostinfo import read_hostinfo, HostinfoError
 from tarotools.taro.jobs import warning, persistence, plugins, repo, sync
 from tarotools.taro.jobs.execution import Flag, ExecutionState, ExecutionError, ExecutionLifecycle
+from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.jobs.inst import JobInstanceID, JobInstance, JobInst, InstanceStateObserver, Warn, \
     InstanceWarningObserver, \
     WarnEventCtx
-from tarotools.taro.jobs.managed import ManagedJobContext
 from tarotools.taro.jobs.plugins import Plugin, PluginDisabledError
 from tarotools.taro.jobs.process import ProcessExecution
 from tarotools.taro.jobs.program import ProgramExecution
@@ -48,7 +48,8 @@ def configure(**kwargs):
 
 
 def execute(job_id, job_execution, instance_id=None, *, no_overlap=False, depends_on=None, pending_group=None):
-    with ManagedJobContext() as ctx:
+    plugins_ = cfg.plugins_load if cfg.plugins_enabled else None
+    with FeaturedContextBuilder().standard_features(plugins=plugins_).build() as ctx:
         job_instance = ctx.add(RunnerJobInstance(
             job_id,
             job_execution,

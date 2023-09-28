@@ -152,6 +152,8 @@ class FeaturedContextBuilder:
         if plugins:
             self.plugins(plugins)
 
+        return self
+
     def api_server(self):
         self.add_instance_manager(APIServer, lambda api: api.open(), lambda api: api.close())
         return self
