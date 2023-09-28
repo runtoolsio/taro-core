@@ -15,14 +15,15 @@ from dataclasses import dataclass
 from threading import Lock
 from typing import Optional, Tuple, Callable, TypeVar, Generic, Dict
 
-from tarotools.taro import InstanceStateObserver, JobInst, JobInstance, JobInstanceID, Plugin
 from tarotools.taro import persistence as persistence_mod
 from tarotools.taro import plugins as plugins_mod
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.events import StateDispatcher, OutputDispatcher
 from tarotools.taro.jobs.execution import ExecutionPhase
-from tarotools.taro.jobs.inst import JobInstanceManager, InstanceOutputObserver
+from tarotools.taro.jobs.inst import (InstanceStateObserver, JobInst, JobInstance, JobInstanceManager,
+                                      InstanceOutputObserver, JobInstanceID)
+from tarotools.taro.jobs.plugins import Plugin
 
 log = logging.getLogger(__name__)
 

@@ -25,5 +25,8 @@ class TestPlugin(Plugin):
     def unregister_instance(self, job_instance):
         pass
 
+    def unregister_after_termination(self):
+        return False
+
     def close(self):
         pass

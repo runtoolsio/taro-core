@@ -68,6 +68,9 @@ class Plugin2(Plugin, plugin_name='plugin2'):
     def unregister_instance(self, job_instance):
         pass
 
+    def unregister_after_termination(self):
+        return False
+
     def close(self):
         pass
 
@@ -79,6 +82,9 @@ class Plugin3(Plugin, plugin_name='plugin3'):
 
     def unregister_instance(self, job_instance):
         pass
+
+    def unregister_after_termination(self):
+        return False
 
     def close(self):
         pass
