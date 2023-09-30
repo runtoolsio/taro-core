@@ -1,3 +1,13 @@
+"""
+This module provides:
+ 1. An API for reading job definitions, each represented as an instance of the `Job` class, from job repositories.
+ 2. Job repository interface
+ 3. Default job repositories (active, history, file)
+
+Custom job repository can be added by implementing the `JobRepository` interface and passing the instance into the
+`add_repo` function.
+"""
+
 import os
 from abc import ABC, abstractmethod
 from typing import List, Optional
@@ -46,13 +56,13 @@ class JobRepositoryFile(JobRepository):
     def id(self):
         return 'file'
 
-    def read_jobs(self):
-        cns = util.read_toml_file_flatten(self.path or paths.lookup_jobs_file())  # TODO read cfg
-        jobs = cns.get('jobs')
+    def read_jobs(self) -> List[Job]:
+        root = util.read_toml_file(self.path or paths.lookup_jobs_file())
+        jobs = root.get('jobs')
         if not jobs:
             return []
 
-        return [Job(j.get('id'), vars(j.get('properties'))) for j in jobs]
+        return [Job(j.get('id'), j.get('properties')) for j in jobs]
 
     def reset(self, overwrite: bool):
         # TODO Create `taro config create --jobs` command for this
@@ -69,8 +79,8 @@ class JobRepositoryActiveInstances(JobRepository):
     def id(self):
         return 'active'
 
-    def read_jobs(self):
-        return {Job(i.job_id) for i in client.read_instances().responses}
+    def read_jobs(self) -> List[Job]:
+        return [*{Job(i.job_id) for i in client.read_instances().responses}]
 
 
 class JobRepositoryHistory(JobRepository):
@@ -79,11 +89,11 @@ class JobRepositoryHistory(JobRepository):
     def id(self):
         return 'history'
 
-    def read_jobs(self):
+    def read_jobs(self) -> List[Job]:
         try:
-            return {Job(s.job_id) for s in persistence.read_stats()}
+            return [*{Job(s.job_id) for s in persistence.read_stats()}]
         except PersistenceDisabledError:
-            return set()
+            return []
 
 
 def _init_repos():

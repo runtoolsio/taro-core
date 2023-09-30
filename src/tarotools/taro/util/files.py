@@ -22,6 +22,11 @@ def print_file(path):
         print(file.read())
 
 
+def read_toml_file(file_path) -> Dict[str, Any]:
+    with open(file_path, 'rb') as file:
+        return tomli.load(file)
+
+
 def read_toml_file_flatten(file_path) -> Dict[str, Any]:
     with open(file_path, 'rb') as file:
         return flatten_dict(tomli.load(file))

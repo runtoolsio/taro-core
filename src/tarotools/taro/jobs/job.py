@@ -60,6 +60,16 @@ class Job:
         """
         return self._properties
 
+    def __eq__(self, other: object) -> bool:
+        """Checks if two Job objects are equal based on their unique ID and properties."""
+        if not isinstance(other, Job):
+            return False
+        return self._id == other._id and self._properties == other._properties
+
+    def __hash__(self) -> int:
+        """Returns the hash based on the job's unique ID and properties."""
+        return hash((self._id, frozenset(self._properties.items())))
+
 
 class JobMatchingCriteria:
     """

@@ -1,3 +1,8 @@
+"""
+This module contains the `ProgramExecution` class, an implementation of the `Execution` abstract class, used to
+run an external program using the `subprocess` module from the standard library.
+"""
+
 import io
 import logging
 import signal
@@ -31,10 +36,6 @@ class ProgramExecution(OutputExecution):
             return None
 
         return self._popen.returncode
-
-    @property
-    def is_async(self) -> bool:
-        return False
 
     def execute(self) -> ExecutionState:
         if not self._stopped and not self._interrupted:
