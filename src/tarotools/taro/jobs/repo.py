@@ -1,12 +1,12 @@
 """
-This module provides:
- 1. An API for reading job definitions, each represented as an instance of the `Job` class, from job repositories.
- 2. Job repository interface
- 3. Default job repositories (active, history, file)
+This module serves as a source of job definitions and offers:
+ 1. An API to read job definitions, with each represented as an instance of the `Job` class, from job repositories.
+ 2. A job repository interface.
+ 3. Default job repositories: active, history, and file.
 
-Custom job repository can be added by implementing the `JobRepository` interface and passing the instance into the
-`add_repo` function.
+To add a custom job repository, implement the `JobRepository` interface and pass its instance to the `add_repo` function
 """
+
 
 import os
 from abc import ABC, abstractmethod
@@ -109,6 +109,13 @@ def add_repo(repo):
 
 
 def read_job(job_id) -> Optional[Job]:
+    """
+    Args:
+        job_id (str): ID of the job to be searched.
+
+    Returns:
+        Optional[Job]: Searched job from registered repositories or None if not found.
+    """
     for repo in reversed(_job_repos.values()):
         job = repo.read_job(job_id)
         if job:
@@ -118,6 +125,10 @@ def read_job(job_id) -> Optional[Job]:
 
 
 def read_jobs() -> List[Job]:
+    """
+    Returns:
+        List[Job]: Jobs from all registered repositories
+    """
     jobs = {}
     for repo in _job_repos.values():
         for job in repo.read_jobs():
