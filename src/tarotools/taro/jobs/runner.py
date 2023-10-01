@@ -15,12 +15,14 @@ from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, \
     ExecutionOutputObserver, \
     Phase, Flag, UnexpectedStateError
-from tarotools.taro.jobs.inst import InstanceStateObserver, JobInstance, JobInst, InstanceWarningObserver, \
+from tarotools.taro.jobs.inst import JobInstance, JobInst, InstanceWarningObserver, \
     InstanceOutputObserver, \
-    WarnEventCtx, JobInstanceID, DEFAULT_OBSERVER_PRIORITY, JobInstanceMetadata
+    WarnEventCtx, JobInstanceID, DEFAULT_OBSERVER_PRIORITY, JobInstanceMetadata, InstanceStateNotification
 from tarotools.taro.jobs.sync import NoSync, CompositeSync, Latch, Signal
 
 log = logging.getLogger(__name__)
+
+_state_observers = InstanceStateNotification(logger=log)
 
 
 def run(job_id, execution, state_locker):
@@ -65,7 +67,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._stopped_or_interrupted: bool = False
         self._state_lock: RLock = RLock()
         self._warnings = Counter()
-        self._state_observers = []
+        self._state_notification = InstanceStateNotification(_state_observers, log)
         self._warning_observers = []
         self._output_observers = []
 
@@ -119,10 +121,10 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 self.exec_error)
 
     def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self._state_observers = _add_prioritized(self._state_observers, priority, observer)
+        self._state_notification.add_observer(observer, priority)
 
     def remove_state_observer(self, observer):
-        self._state_observers = _remove_prioritized(self._state_observers, observer)
+        self._state_notification.remove_observer(observer)
 
     def add_warning_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self._warning_observers = _add_prioritized(self._warning_observers, priority, observer)
@@ -237,7 +239,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
 
             # Lock released -> do not hold lock when executing observers
             if new_job_inst:
-                self._notify_state_changed(new_job_inst)
+                self._state_notification.notify_state_changed(new_job_inst)
             if signal is Signal.WAIT:
                 continue
             if signal is Signal.TERMINATE:
@@ -275,25 +277,7 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def _change_state_and_notify(self, new_state, exec_error: ExecutionError = None, *, use_global_lock=True):
         new_job_inst = self._change_state(new_state, exec_error, use_global_lock=use_global_lock)
         if new_job_inst:
-            self._notify_state_changed(new_job_inst)
-
-    def _notify_state_changed(self, job_inst: JobInst):
-        states = job_inst.lifecycle.states
-        previous_state = states[-2] if len(states) > 1 else ExecutionState.NONE
-        new_state = job_inst.state
-        changed = job_inst.lifecycle.last_changed_at
-
-        for observer in _gen_prioritized(self._state_observers, _state_observers):
-            # noinspection PyBroadException
-            try:
-                if isinstance(observer, InstanceStateObserver):
-                    observer.new_instance_state(job_inst, previous_state, new_state, changed)
-                elif callable(observer):
-                    observer(job_inst, previous_state, new_state, changed)
-                else:
-                    log.warning("event=[unsupported_state_observer] observer=[%s]", observer)
-            except BaseException:
-                log.exception("event=[state_observer_exception]")
+            self._state_notification.notify_state_changed(new_job_inst)
 
     def _notify_new_warning(self, job_inst: JobInst, warn_ctx: WarnEventCtx):
         for observer in _gen_prioritized(self._warning_observers, _warning_observers):
@@ -329,19 +313,18 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
                 log.exception("event=[output_observer_exception]")
 
 
-_state_observers: List[Union[Tuple[int, InstanceStateObserver], Tuple[int, Callable]]] = []
 _warning_observers: List[Union[Tuple[int, InstanceWarningObserver], Tuple[int, Callable]]] = []
 _output_observers: List[Union[Tuple[int, InstanceOutputObserver], Tuple[int, Callable]]] = []
 
 
 def register_state_observer(observer, priority=DEFAULT_OBSERVER_PRIORITY):
     global _state_observers
-    _state_observers = _add_prioritized(_state_observers, priority, observer)
+    _state_observers.add_observer(observer, priority)
 
 
 def deregister_state_observer(observer):
     global _state_observers
-    _state_observers = _remove_prioritized(_state_observers, observer)
+    _state_observers.remove_observer(observer)
 
 
 def register_warning_observer(observer, priority=DEFAULT_OBSERVER_PRIORITY):

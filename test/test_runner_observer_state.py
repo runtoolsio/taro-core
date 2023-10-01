@@ -51,7 +51,7 @@ def test_observer_raises_exception():
     """
     All exception raised by observer must be captured by runner and not to disrupt job execution
     """
-    observer = ExceptionRaisingObserver(BaseException('Should be captured by runner'))
+    observer = ExceptionRaisingObserver(Exception('Should be captured by runner'))
     execution = TestExecution(ExecutionState.COMPLETED)
     job_instance = RunnerJobInstance('j1', execution, state_locker=lock.NullStateLocker())
     job_instance.add_state_observer(observer)
@@ -61,7 +61,7 @@ def test_observer_raises_exception():
 
 class ExceptionRaisingObserver(InstanceStateObserver):
 
-    def __init__(self, raise_exc: BaseException):
+    def __init__(self, raise_exc: Exception):
         self.raise_exc = raise_exc
 
     def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):

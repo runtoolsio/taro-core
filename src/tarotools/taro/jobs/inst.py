@@ -1199,28 +1199,36 @@ class JobInstanceManager(ABC):
 
 class Notification:
 
-    def __init__(self, logger=None):
-        self.logger = logger
-        self.prioritized_observers = []
+    def __init__(self, joined_notification=None, logger=None):
+        self._joined_notification = joined_notification
+        self._logger = logger
+        self._prioritized_observers = []
 
     @property
     def observers(self):
-        return [o for _, o in self.prioritized_observers]
+        return [o for _, o in self._prioritized_observers]
+
+    @property
+    def prioritized_observers(self):
+        return list(self._prioritized_observers)
 
     def notify(self, observer, *args) -> bool:
         return False
 
     def add_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self.prioritized_observers = sorted(chain(self.prioritized_observers, [(priority, observer)]), key=itemgetter(0))
+        self._prioritized_observers = sorted(
+            chain(self._prioritized_observers, [(priority, observer)]),
+            key=itemgetter(0))
 
     def remove_observer(self, observer):
-        self.prioritized_observers = [(priority, o) for priority, o in self.prioritized_observers if o != observer]
+        self._prioritized_observers = [(priority, o) for priority, o in self._prioritized_observers if o != observer]
 
-    def notify_all(self, *args, **kwargs):
-        if 'more_observers' in kwargs:
-            all_observers = sorted(chain(self.prioritized_observers, kwargs['more_observers']), key=itemgetter(0))
+    def notify_all(self, *args):
+        if self._joined_notification:
+            all_observers = sorted(chain(
+                self._prioritized_observers, self._joined_notification._prioritized_observers), key=itemgetter(0))
         else:
-            all_observers = self.prioritized_observers
+            all_observers = self._prioritized_observers
 
         for _, observer in all_observers:
             # noinspection PyBroadException
@@ -1228,19 +1236,19 @@ class Notification:
                 if not self.notify(observer, *args):
                     observer(*args)
                 else:
-                    if self.logger:
-                        self.logger.warning("event=[unsupported_warning_observer] observer=[%s]", observer)
+                    if self._logger:
+                        self._logger.warning("event=[unsupported_warning_observer] observer=[%s]", observer)
             except Exception as e:
-                if self.logger:
-                    self.logger.exception("event=[warning_observer_exception]")
+                if self._logger:
+                    self._logger.exception("event=[warning_observer_exception]")
                 else:
                     print(e, file=sys.stderr)
 
 
 class InstanceStateNotification(Notification):
 
-    def __init__(self, logger=None):
-        super().__init__(logger=logger)
+    def __init__(self, joined_notification=None, logger=None):
+        super().__init__(joined_notification, logger)
 
     def notify_state_changed(self, job_inst: JobInst):
         states = job_inst.lifecycle.states
