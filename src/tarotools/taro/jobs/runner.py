@@ -5,42 +5,30 @@ import contextlib
 import copy
 import logging
 from collections import deque, Counter
-from itertools import chain
-from operator import itemgetter
 from threading import RLock
-from typing import List, Union, Callable, Tuple, Optional
+from typing import List, Union, Tuple, Optional
 
 from tarotools.taro import util
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, \
     ExecutionOutputObserver, \
     Phase, Flag, UnexpectedStateError
-from tarotools.taro.jobs.inst import JobInstance, JobInst, InstanceWarningObserver, \
-    InstanceOutputObserver, \
-    WarnEventCtx, JobInstanceID, DEFAULT_OBSERVER_PRIORITY, JobInstanceMetadata, InstanceStateNotification
+from tarotools.taro.jobs.inst import JobInstance, JobInst, WarnEventCtx, JobInstanceID, DEFAULT_OBSERVER_PRIORITY, \
+    JobInstanceMetadata, InstanceStateNotification, \
+    InstanceOutputNotification, InstanceWarningNotification
 from tarotools.taro.jobs.sync import NoSync, CompositeSync, Latch, Signal
 
 log = logging.getLogger(__name__)
 
 _state_observers = InstanceStateNotification(logger=log)
+_output_observers = InstanceOutputNotification(logger=log)
+_warning_observers = InstanceWarningNotification(logger=log)
 
 
 def run(job_id, execution, state_locker):
     instance = RunnerJobInstance(job_id, execution, state_locker=state_locker)
     instance.run()
     return instance
-
-
-def _add_prioritized(prioritized_seq, priority, item):
-    return sorted(chain(prioritized_seq, [(priority, item)]), key=itemgetter(0))
-
-
-def _remove_prioritized(prioritized_seq, item):
-    return [(priority, i) for priority, i in prioritized_seq if i != item]
-
-
-def _gen_prioritized(*prioritized_seq):
-    return (item for _, item in chain(*prioritized_seq))
 
 
 # TODO Consider rename as `runner` may create impression that the job is executed in background
@@ -67,9 +55,9 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._stopped_or_interrupted: bool = False
         self._state_lock: RLock = RLock()
         self._warnings = Counter()
-        self._state_notification = InstanceStateNotification(_state_observers, log)
-        self._warning_observers = []
-        self._output_observers = []
+        self._state_notification = InstanceStateNotification(log, _state_observers)
+        self._warning_notification = InstanceWarningNotification(log, _warning_observers)
+        self._output_notification = InstanceOutputNotification(log, _output_observers)
 
         self._change_state_and_notify(ExecutionState.CREATED)  # TODO Move somewhere post-init?
 
@@ -127,16 +115,16 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         self._state_notification.remove_observer(observer)
 
     def add_warning_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self._warning_observers = _add_prioritized(self._warning_observers, priority, observer)
+        self._warning_notification.add_observer(observer, priority)
 
     def remove_warning_observer(self, observer):
-        self._warning_observers = _remove_prioritized(self._warning_observers, observer)
+        self._warning_notification.remove_observer(observer)
 
     def add_output_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self._output_observers = _add_prioritized(self._output_observers, priority, observer)
+        self._output_notification.add_observer(observer, priority)
 
     def remove_output_observer(self, observer):
-        self._output_observers = _remove_prioritized(self._output_observers, observer)
+        self._output_notification.remove_observer(observer)
 
     def release(self):
         self._released = True
@@ -169,7 +157,8 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
     def add_warning(self, warning):
         self._warnings.update([warning.name])
         log.warning('event=[new_warning] warning=[%s]', warning)
-        self._notify_new_warning(self.create_snapshot(), WarnEventCtx(warning, self._warnings[warning.name]))  # Lock?
+        # Lock?
+        self._warning_notification.notify_all(self.create_snapshot(), WarnEventCtx(warning, self._warnings[warning.name]))
 
     def run(self):
         # TODO Check executed only once
@@ -279,42 +268,12 @@ class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
         if new_job_inst:
             self._state_notification.notify_state_changed(new_job_inst)
 
-    def _notify_new_warning(self, job_inst: JobInst, warn_ctx: WarnEventCtx):
-        for observer in _gen_prioritized(self._warning_observers, _warning_observers):
-            # noinspection PyBroadException
-            try:
-                if isinstance(observer, InstanceWarningObserver):
-                    observer.new_instance_warning(job_inst, warn_ctx)
-                elif callable(observer):
-                    observer(job_inst, warn_ctx)
-                else:
-                    log.warning("event=[unsupported_warning_observer] observer=[%s]", observer)
-            except BaseException:
-                log.exception("event=[warning_observer_exception]")
-
     def execution_output_update(self, output, is_error):
         """Executed when new output line is available"""
         self._last_output.append((output, is_error))
         if is_error:
             self._error_output.append(output)
-        self._notify_new_output(self.create_snapshot(), output, is_error)
-
-    def _notify_new_output(self, job_info: JobInst, output, is_error):
-        for observer in _gen_prioritized(self._output_observers, _output_observers):
-            # noinspection PyBroadException
-            try:
-                if isinstance(observer, InstanceOutputObserver):
-                    observer.new_instance_output(job_info, output, is_error)
-                elif callable(observer):
-                    observer(job_info, output, is_error)
-                else:
-                    log.warning("event=[unsupported_output_observer] observer=[%s]", observer)
-            except BaseException:
-                log.exception("event=[output_observer_exception]")
-
-
-_warning_observers: List[Union[Tuple[int, InstanceWarningObserver], Tuple[int, Callable]]] = []
-_output_observers: List[Union[Tuple[int, InstanceOutputObserver], Tuple[int, Callable]]] = []
+        self._output_notification.notify_all(self.create_snapshot(), output, is_error)
 
 
 def register_state_observer(observer, priority=DEFAULT_OBSERVER_PRIORITY):
@@ -329,19 +288,19 @@ def deregister_state_observer(observer):
 
 def register_warning_observer(observer, priority=DEFAULT_OBSERVER_PRIORITY):
     global _warning_observers
-    _warning_observers = _add_prioritized(_warning_observers, priority, observer)
+    _warning_observers.add_observer(observer, priority)
 
 
 def deregister_warning_observer(observer):
     global _warning_observers
-    _warning_observers = _remove_prioritized(_warning_observers, observer)
+    _warning_observers.remove_observer(observer)
 
 
 def register_output_observer(observer, priority=DEFAULT_OBSERVER_PRIORITY):
     global _output_observers
-    _output_observers = _add_prioritized(_output_observers, priority, observer)
+    _output_observers.add_observer(observer, priority)
 
 
 def deregister_output_observer(observer):
     global _output_observers
-    _output_observers = _remove_prioritized(_output_observers, observer)
+    _output_observers.remove_observer(observer)

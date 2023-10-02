@@ -1199,9 +1199,9 @@ class JobInstanceManager(ABC):
 
 class Notification:
 
-    def __init__(self, joined_notification=None, logger=None):
-        self._joined_notification = joined_notification
+    def __init__(self, logger=None, joined_notification=None):
         self._logger = logger
+        self._joined_notification = joined_notification
         self._prioritized_observers = []
 
     @property
@@ -1212,7 +1212,7 @@ class Notification:
     def prioritized_observers(self):
         return list(self._prioritized_observers)
 
-    def notify(self, observer, *args) -> bool:
+    def _notify(self, observer, *args) -> bool:
         return False
 
     def add_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
@@ -1233,7 +1233,7 @@ class Notification:
         for _, observer in all_observers:
             # noinspection PyBroadException
             try:
-                if not self.notify(observer, *args):
+                if not self._notify(observer, *args):
                     observer(*args)
                 else:
                     if self._logger:
@@ -1247,8 +1247,8 @@ class Notification:
 
 class InstanceStateNotification(Notification):
 
-    def __init__(self, joined_notification=None, logger=None):
-        super().__init__(joined_notification, logger)
+    def __init__(self, logger=None, joined_notification=None):
+        super().__init__(logger, joined_notification)
 
     def notify_state_changed(self, job_inst: JobInst):
         states = job_inst.lifecycle.states
@@ -1258,9 +1258,35 @@ class InstanceStateNotification(Notification):
 
         self.notify_all(job_inst, previous_state, new_state, changed)
 
-    def notify(self, observer, *args) -> bool:
+    def _notify(self, observer, *args) -> bool:
         if isinstance(observer, InstanceStateObserver):
             observer.new_instance_state(*args)
+            return True
+        else:
+            return False
+
+
+class InstanceOutputNotification(Notification):
+
+    def __init__(self, logger=None, joined_notification=None):
+        super().__init__(logger, joined_notification)
+
+    def _notify(self, observer, *args) -> bool:
+        if isinstance(observer, InstanceOutputObserver):
+            observer.new_instance_output(*args)
+            return True
+        else:
+            return False
+
+
+class InstanceWarningNotification(Notification):
+
+    def __init__(self, logger=None, joined_notification=None):
+        super().__init__(logger, joined_notification)
+
+    def _notify(self, observer, *args) -> bool:
+        if isinstance(observer, InstanceWarningObserver):
+            observer.new_instance_warning(*args)
             return True
         else:
             return False
