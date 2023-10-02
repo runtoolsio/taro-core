@@ -5,7 +5,7 @@ import time
 from threading import Thread
 
 import tarotools.taro.jobs.runner as runner
-from tarotools.taro import ProgramExecution, ProcessExecution
+from tarotools.taro import ProcessExecution
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.execution import ExecutionState as ExSt, ExecutionError
 from tarotools.taro.jobs.runner import RunnerJobInstance
@@ -117,8 +117,14 @@ def test_output_observer():
 
 
 def test_last_output():
-    execution = ProgramExecution('echo', "3\n2\n1\neveryone\nin\nthe\nworld\nis\ndoing\nsomething\nwithout\nme",
-                                 read_output=True)
+    def print_it():
+        text = "3\n2\n1\neveryone\nin\nthe\nworld\nis\ndoing\nsomething\nwithout\nme"
+        lines = text.split('\n')
+
+        for line in lines:
+            print(line)
+
+    execution = ProcessExecution(print_it)
     instance = RunnerJobInstance('j', execution, state_locker=lock.NullStateLocker())
     instance.run()
     assert [out for out, _ in instance.last_output] == "1 everyone in the world is doing something without me".split()
