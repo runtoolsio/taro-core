@@ -5,12 +5,13 @@ import time
 from threading import Thread
 
 import tarotools.taro.jobs.runner as runner
+from tarotools.taro import ProgramExecution, ProcessExecution
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.execution import ExecutionState as ExSt, ExecutionError
-from tarotools.taro import ProgramExecution
 from tarotools.taro.jobs.runner import RunnerJobInstance
 from tarotools.taro.jobs.sync import Latch
 from tarotools.taro.test.execution import TestExecution
+from tarotools.taro.test.observer import TestOutputObserver
 
 
 def test_executed():
@@ -99,6 +100,20 @@ def wait_for_pending_state(instance: RunnerJobInstance):
         wait_count += 1
         if wait_count > 10:
             assert False  # Hasn't reached PENDING state
+
+
+def test_output_observer():
+    def print_it():
+        print("Hello, lucky boy. Where are you today?")
+
+    execution = ProcessExecution(print_it)
+    instance = RunnerJobInstance('j', execution, state_locker=lock.NullStateLocker())
+    observer = TestOutputObserver()
+    instance.add_output_observer(observer)
+
+    instance.run()
+
+    assert observer.outputs[0][1] == "Hello, lucky boy. Where are you today?"
 
 
 def test_last_output():

@@ -46,10 +46,6 @@ class TestExecution(OutputExecution):
         self._raise_exc = exc
         return self
 
-    @property
-    def is_async(self) -> bool:
-        return False
-
     def release(self):
         if self._wait:
             self._wait.set()

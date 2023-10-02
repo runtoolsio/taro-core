@@ -1234,13 +1234,14 @@ class Notification:
             # noinspection PyBroadException
             try:
                 if not self._notify(observer, *args):
-                    observer(*args)
-                else:
-                    if self._logger:
-                        self._logger.warning("event=[unsupported_warning_observer] observer=[%s]", observer)
+                    if callable(observer):
+                        observer(*args)
+                    else:
+                        if self._logger:
+                            self._logger.warning("event=[unsupported_observer] observer=[%s]", observer)
             except Exception as e:
                 if self._logger:
-                    self._logger.exception("event=[warning_observer_exception]")
+                    self._logger.exception("event=[observer_exception]")
                 else:
                     print(e, file=sys.stderr)
 
