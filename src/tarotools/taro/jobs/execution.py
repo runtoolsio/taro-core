@@ -14,6 +14,7 @@ from typing import Tuple, List, Iterable, Set, Optional, Dict, Any
 
 from tarotools.taro import util
 from tarotools.taro.util import utc_now, format_dt_iso, is_empty
+from tarotools.taro.util.observer import Notification
 
 
 class ExecutionPhase(Enum):
@@ -378,3 +379,16 @@ class ExecutionOutputObserver(abc.ABC):
             output (str): The output text.
             is_error (bool): True when the text represents an error output.
         """
+
+
+class ExecutionOutputNotification(Notification):
+
+    def __init__(self, logger=None, joined_notification=None):
+        super().__init__(logger, joined_notification)
+
+    def _notify(self, observer, *args) -> bool:
+        if isinstance(observer, ExecutionOutputObserver):
+            observer.execution_output_update(*args)
+            return True
+        else:
+            return False

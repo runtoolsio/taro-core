@@ -11,7 +11,7 @@ from subprocess import Popen, PIPE
 from threading import Thread
 from typing import Union, Optional
 
-from tarotools.taro.jobs.execution import ExecutionState, ExecutionError, OutputExecution, ExecutionOutputObserver
+from tarotools.taro.jobs.execution import ExecutionState, ExecutionError, OutputExecution, ExecutionOutputNotification
 
 USE_SHELL = False  # For testing only
 
@@ -28,7 +28,7 @@ class ProgramExecution(OutputExecution):
         self._status = None
         self._stopped: bool = False
         self._interrupted: bool = False
-        self._output_observers = []
+        self._output_observers = ExecutionOutputNotification(log)
 
     @property
     def ret_code(self) -> Optional[int]:
@@ -104,10 +104,10 @@ class ProgramExecution(OutputExecution):
         self._interrupted = True
 
     def add_output_observer(self, observer):
-        self._output_observers.append(observer)
+        self._output_observers.add_observer(observer)
 
     def remove_output_observer(self, observer):
-        self._output_observers.remove(observer)
+        self._output_observers.remove_observer(observer)
 
     def _process_output(self, infile, is_err):
         with infile:
@@ -115,17 +115,4 @@ class ProgramExecution(OutputExecution):
                 line_stripped = line.rstrip()
                 self._status = line_stripped
                 print(line_stripped, file=sys.stderr if is_err else sys.stdout)
-                self._notify_output_observers(line_stripped, is_err)
-
-    def _notify_output_observers(self, output, is_error):
-        for observer in self._output_observers:
-            # noinspection PyBroadException
-            try:
-                if isinstance(observer, ExecutionOutputObserver):
-                    observer.execution_output_update(output, is_error)
-                elif callable(observer):
-                    observer(output, is_error)
-                else:
-                    log.warning("event=[unsupported_output_observer] observer=[%s]", observer)
-            except BaseException:
-                log.exception("event=[state_observer_exception]")
+                self._output_observers.notify_all(line_stripped, is_err)

@@ -13,10 +13,11 @@ from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, \
     ExecutionOutputObserver, \
     Phase, Flag, UnexpectedStateError
-from tarotools.taro.jobs.inst import JobInstance, JobInst, WarnEventCtx, JobInstanceID, DEFAULT_OBSERVER_PRIORITY, \
-    JobInstanceMetadata, InstanceStateNotification, \
+from tarotools.taro.jobs.inst import JobInstance, JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, \
+    InstanceStateNotification, \
     InstanceOutputNotification, InstanceWarningNotification
 from tarotools.taro.jobs.sync import NoSync, CompositeSync, Latch, Signal
+from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
 log = logging.getLogger(__name__)
 

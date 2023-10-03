@@ -14,7 +14,7 @@ from queue import Full
 from typing import Union, Tuple
 
 from tarotools.taro import ExecutionState
-from tarotools.taro.jobs.execution import OutputExecution, ExecutionError, ExecutionOutputObserver
+from tarotools.taro.jobs.execution import OutputExecution, ExecutionError, ExecutionOutputNotification
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class ProcessExecution(OutputExecution):
         self._status = None
         self._stopped: bool = False
         self._interrupted: bool = False
-        self._output_observers = []
+        self._output_observers = ExecutionOutputNotification(log)
 
     def execute(self) -> ExecutionState:
         if not self._stopped and not self._interrupted:
@@ -108,10 +108,10 @@ class ProcessExecution(OutputExecution):
         self._interrupted = True
 
     def add_output_observer(self, observer):
-        self._output_observers.append(observer)
+        self._output_observers.add_observer(observer)
 
     def remove_output_observer(self, observer):
-        self._output_observers.remove(observer)
+        self._output_observers.remove_observer(observer)
 
     def _read_output(self):
         while True:
@@ -119,20 +119,7 @@ class ProcessExecution(OutputExecution):
             if isinstance(output_text, _QueueStop):
                 break
             self._status = output_text
-            self._notify_output_observers(output_text, is_err)
-
-    def _notify_output_observers(self, output, is_err):
-        for observer in self._output_observers:
-            # noinspection PyBroadException
-            try:
-                if isinstance(observer, ExecutionOutputObserver):
-                    observer.execution_output_update(output, is_err)
-                elif callable(observer):
-                    observer(output)
-                else:
-                    log.warning("event=[unsupported_output_observer] observer=[%s]", observer)
-            except BaseException:
-                log.exception("event=[state_observer_exception]")
+            self._output_observers.notify_all(output_text, is_err)
 
 
 class _CapturingWriter:

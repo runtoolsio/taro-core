@@ -11,7 +11,6 @@ The main parts are:
 
 import abc
 import datetime
-import sys
 import textwrap
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -19,8 +18,6 @@ from datetime import timezone, time, timedelta
 from enum import Enum
 from fnmatch import fnmatch
 from functools import partial
-from itertools import chain
-from operator import itemgetter
 from typing import NamedTuple, Dict, Any, Optional, List, Tuple, Iterable, Set
 
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionLifecycle, ExecutionPhase, ExecutionStateFlag, \
@@ -29,8 +26,7 @@ from tarotools.taro.jobs.track import TrackedTaskInfo
 from tarotools.taro.util import and_, or_, MatchingStrategy, is_empty, to_list, format_dt_iso, remove_empty_values, \
     single_day_range, \
     days_range, parse
-
-DEFAULT_OBSERVER_PRIORITY = 100
+from tarotools.taro.util.observer import Notification, DEFAULT_OBSERVER_PRIORITY
 
 
 @dataclass
@@ -1195,55 +1191,6 @@ class JobInstanceManager(ABC):
             job_instance: The job instance to be unregistered.
         """
         pass
-
-
-class Notification:
-
-    def __init__(self, logger=None, joined_notification=None):
-        self._logger = logger
-        self._joined_notification = joined_notification
-        self._prioritized_observers = []
-
-    @property
-    def observers(self):
-        return [o for _, o in self._prioritized_observers]
-
-    @property
-    def prioritized_observers(self):
-        return list(self._prioritized_observers)
-
-    def _notify(self, observer, *args) -> bool:
-        return False
-
-    def add_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self._prioritized_observers = sorted(
-            chain(self._prioritized_observers, [(priority, observer)]),
-            key=itemgetter(0))
-
-    def remove_observer(self, observer):
-        self._prioritized_observers = [(priority, o) for priority, o in self._prioritized_observers if o != observer]
-
-    def notify_all(self, *args):
-        if self._joined_notification:
-            all_observers = sorted(chain(
-                self._prioritized_observers, self._joined_notification._prioritized_observers), key=itemgetter(0))
-        else:
-            all_observers = self._prioritized_observers
-
-        for _, observer in all_observers:
-            # noinspection PyBroadException
-            try:
-                if not self._notify(observer, *args):
-                    if callable(observer):
-                        observer(*args)
-                    else:
-                        if self._logger:
-                            self._logger.warning("event=[unsupported_observer] observer=[%s]", observer)
-            except Exception as e:
-                if self._logger:
-                    self._logger.exception("event=[observer_exception]")
-                else:
-                    print(e, file=sys.stderr)
 
 
 class InstanceStateNotification(Notification):
