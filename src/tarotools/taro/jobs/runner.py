@@ -1,5 +1,5 @@
 """
-Implementation of job management framework based on :mod:`job` module.
+This module contain implementation
 """
 import contextlib
 import copy
@@ -13,9 +13,9 @@ from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, \
     ExecutionOutputObserver, \
     Phase, Flag, UnexpectedStateError
-from tarotools.taro.jobs.inst import JobInstance, JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, \
+from tarotools.taro.jobs.inst import JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, \
     InstanceStateNotification, \
-    InstanceOutputNotification, InstanceWarningNotification
+    InstanceOutputNotification, InstanceWarningNotification, RunnableJobInstance
 from tarotools.taro.jobs.sync import NoSync, CompositeSync, Latch, Signal
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
@@ -33,7 +33,7 @@ def run(job_id, execution, state_locker):
 
 
 # TODO Consider rename as `runner` may create impression that the job is executed in background
-class RunnerJobInstance(JobInstance, ExecutionOutputObserver):
+class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
     def __init__(self, job_id, execution, sync=NoSync(), state_locker=lock.default_state_locker(),
                  *, instance_id=None, pending_group=None, **user_params):

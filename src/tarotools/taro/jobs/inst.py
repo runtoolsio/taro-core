@@ -619,14 +619,6 @@ class JobInstance(abc.ABC):
             JobInstanceMetadata: Descriptive information about this instance.
         """
 
-    @abc.abstractmethod
-    def run(self):
-        """
-        Run the job.
-
-        This method is not expected to raise any errors. In case of any failure the error details can be retrieved
-        by calling `exec_error` method.
-        """
 
     @abc.abstractmethod
     def release(self):
@@ -818,7 +810,19 @@ class JobInstance(abc.ABC):
         """
 
 
-class DelegatingJobInstance(JobInstance):
+class RunnableJobInstance(JobInstance):
+
+    @abc.abstractmethod
+    def run(self):
+        """
+        Run the job.
+
+        This method is not expected to raise any errors. In case of any failure the error details can be retrieved
+        by calling `exec_error` method.
+        """
+
+
+class DelegatingJobInstance(RunnableJobInstance):
 
     def __init__(self, delegated):
         self.delegated = delegated
