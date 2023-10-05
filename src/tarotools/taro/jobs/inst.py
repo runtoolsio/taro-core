@@ -7,6 +7,8 @@ The main parts are:
 2. Instance based criteria: Various criteria used to match job instances
 3. `JobInst` class: An immutable snapshot of a job instance
 4. Job instance observers
+
+Note: See the `runner` module for the default job instance implementation
 """
 
 import abc

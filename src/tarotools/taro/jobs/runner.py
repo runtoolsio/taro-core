@@ -1,6 +1,34 @@
 """
-This module contain implementation
+This module contains the default implementation of the `RunnableJobInstance` interface from the `inst` module.
+A job instance is executed by calling the `run` method. The method call returns after the instance terminates.
+This implementation adds a few features not explicitly defined in the interface:
+
+Coordination
+------------
+Job instances can be coordinated with each other or with any external logic. Coordinated instances are typically
+affected in ways that might require them to wait for a condition, or they might be discarded if necessary. The
+coordination logic heavily relies on global synchronization.
+
+Some examples of coordination include:
+  - Pending latch:
+    Several instances can be started simultaneously by sending a release request to the corresponding group.
+  - Serial execution:
+    Instances of the same job or group execute sequentially.
+  - Parallel execution limit:
+    Only N number of instances can execute in parallel.
+  - Overlap forbidden:
+    Parallel execution of instances of the same job can be restricted.
+  - Dependency:
+    An instance can start only if another specific instance is active.
+
+Global Synchronization
+----------------------
+For coordination to function correctly, a mechanism that allows the coordinator to utilize some form of
+shared lock is essential. Job instances attempt to acquire this lock each time the coordination logic runs and
+whenever there's a change in their state. Instances are permitted to change their state only after acquiring the lock.
+
 """
+
 import contextlib
 import copy
 import logging
