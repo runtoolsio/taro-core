@@ -11,16 +11,17 @@ from threading import Thread
 import tarotools.taro.cfg
 from tarotools.taro import cfg, client, log
 from tarotools.taro.hostinfo import read_hostinfo, HostinfoError
-from tarotools.taro.jobs import warning, persistence, plugins, repo, sync, runner
+from tarotools.taro.jobs import warning, persistence, plugins, repo, sync, runner, lock
 from tarotools.taro.jobs.execution import Flag, ExecutionState, ExecutionError, ExecutionLifecycle
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.jobs.inst import JobInstanceID, JobInstance, JobInst, InstanceStateObserver, Warn, \
     InstanceWarningObserver, \
-    WarnEventCtx
+    WarnEventCtx, RunnableJobInstance
 from tarotools.taro.jobs.plugins import Plugin, PluginDisabledError
 from tarotools.taro.jobs.process import ProcessExecution
 from tarotools.taro.jobs.program import ProgramExecution
-from tarotools.taro.jobs.runner import _RunnerJobInstance
+from tarotools.taro.jobs.runner import RunnerJobInstance, NoSync, RunnableJobInstance
+from tarotools.taro.jobs.sync import NoSync
 from tarotools.taro.paths import lookup_file_in_config_path
 from tarotools.taro.util import format_timedelta, read_toml_file_flatten
 
@@ -50,13 +51,13 @@ def configure(**kwargs):
 def execute(job_id, job_execution, instance_id=None, *, no_overlap=False, depends_on=None, pending_group=None):
     plugins_ = cfg.plugins_load if cfg.plugins_enabled else None
     with FeaturedContextBuilder().standard_features(plugins=plugins_).build() as ctx:
-        job_instance = ctx.add(runner.job_instance(
+        instance = ctx.add(job_instance(
             job_id,
             job_execution,
             sync.create_composite(no_overlap=no_overlap, depends_on=depends_on),
             instance_id=instance_id,
             pending_group=pending_group))
-        job_instance.run()
+        instance.run()
         return job_instance
 
 
@@ -66,3 +67,31 @@ def execute_in_new_thread(job_id, job_execution, no_overlap=False, depends_on=No
 
 def close():
     persistence.close()
+
+
+def job_instance(job_id, execution, sync_=NoSync(), state_locker=lock.default_state_locker(), *, instance_id=None,
+                 pending_group=None, **user_params) \
+        -> RunnableJobInstance:
+    return RunnerJobInstance(job_id, execution, sync_, state_locker, instance_id=instance_id,
+                             pending_group=pending_group, user_params=user_params)
+
+
+def run(job_id, execution, sync_=NoSync(), state_locker=lock.default_state_locker(), *, instance_id=None,
+        pending_group=None, **user_params) -> JobInstance:
+    instance = job_instance(job_id, execution, sync_, state_locker, instance_id=instance_id, pending_group=pending_group,
+                            user_params=user_params)
+    instance.run()
+    return instance
+
+
+def job_instance_uncoordinated(job_id, execution, *, instance_id=None, pending_group=None, **user_params) \
+        -> RunnableJobInstance:
+    return RunnerJobInstance(job_id, execution, state_locker=lock.NullStateLocker(), instance_id=instance_id,
+                             pending_group=pending_group, user_params=user_params)
+
+
+def run_uncoordinated(job_id, execution, *, instance_id=None, pending_group=None, **user_params) -> JobInstance:
+    instance = job_instance_uncoordinated(job_id, execution, instance_id=instance_id, pending_group=pending_group,
+                                          user_params=user_params)
+    instance.run()
+    return instance

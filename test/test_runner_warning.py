@@ -4,6 +4,7 @@ Tests that :mod:`runner` sends correct notification to warning observers.
 
 import pytest
 
+import tarotools.taro
 import tarotools.taro.jobs.runner as runner
 from tarotools.taro import Warn
 from tarotools.taro.jobs import lock
@@ -21,7 +22,7 @@ def observer():
 
 
 def test_warning_added(observer: TestWarningObserver):
-    job = runner.job_instance('j1', TestExecution(ExecutionState.COMPLETED), state_locker=lock.NullStateLocker())
+    job = tarotools.taro.job_instance('j1', TestExecution(ExecutionState.COMPLETED), state_locker=lock.NullStateLocker())
     warn = Warn('test_warn', None)
     job.add_warning(warn)
 
@@ -31,7 +32,7 @@ def test_warning_added(observer: TestWarningObserver):
 
 
 def test_warning_repeated(observer: TestWarningObserver):
-    job = runner.job_instance('j1', TestExecution(ExecutionState.COMPLETED), state_locker=lock.NullStateLocker())
+    job = tarotools.taro.job_instance('j1', TestExecution(ExecutionState.COMPLETED), state_locker=lock.NullStateLocker())
     warn = Warn('test_warn1', None)
     updated = Warn('test_warn1', {'p': 1})
     job.add_warning(warn)

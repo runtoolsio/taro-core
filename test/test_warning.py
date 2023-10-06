@@ -3,7 +3,8 @@ from threading import Thread
 
 import pytest
 
-from tarotools.taro.jobs import lock, warning, runner
+import tarotools.taro
+from tarotools.taro.jobs import lock, warning
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.observer import GenericObserver
 
@@ -15,7 +16,7 @@ def execution():
 
 @pytest.fixture
 def job(execution):
-    return runner.job_instance('j1', execution, state_locker=lock.NullStateLocker())
+    return tarotools.taro.job_instance('j1', execution, state_locker=lock.NullStateLocker())
 
 
 @pytest.fixture

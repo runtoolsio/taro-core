@@ -5,6 +5,7 @@ Tests that :mod:`runner` sends correct notification to state observers.
 
 import pytest
 
+import tarotools.taro
 import tarotools.taro.jobs.runner as runner
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.execution import ExecutionState
@@ -22,13 +23,13 @@ def observer():
 
 
 def test_job_passed(observer: TestStateObserver):
-    runner.run_uncoordinated('j1', TestExecution(ExecutionState.COMPLETED))
+    tarotools.taro.run_uncoordinated('j1', TestExecution(ExecutionState.COMPLETED))
 
     assert observer.last_job().job_id == 'j1'
 
 
 def test_execution_completed(observer: TestStateObserver):
-    runner.run_uncoordinated('j1', TestExecution(ExecutionState.COMPLETED))
+    tarotools.taro.run_uncoordinated('j1', TestExecution(ExecutionState.COMPLETED))
 
     assert observer.exec_state(0) == ExecutionState.CREATED
     assert observer.exec_state(1) == ExecutionState.RUNNING
@@ -37,7 +38,7 @@ def test_execution_completed(observer: TestStateObserver):
 
 def test_execution_raises_exc(observer: TestStateObserver):
     exc_to_raise = Exception()
-    runner.run_uncoordinated('j1', TestExecution(raise_exc=exc_to_raise))
+    tarotools.taro.run_uncoordinated('j1', TestExecution(raise_exc=exc_to_raise))
 
     assert observer.exec_state(0) == ExecutionState.CREATED
     assert observer.exec_state(1) == ExecutionState.RUNNING
@@ -52,7 +53,7 @@ def test_observer_raises_exception():
     """
     observer = ExceptionRaisingObserver(Exception('Should be captured by runner'))
     execution = TestExecution(ExecutionState.COMPLETED)
-    job_instance = runner.job_instance('j1', execution, state_locker=lock.NullStateLocker())
+    job_instance = tarotools.taro.job_instance('j1', execution, state_locker=lock.NullStateLocker())
     job_instance.add_state_observer(observer)
     job_instance.run()
     assert execution.executed_count() == 1  # No exception thrown before

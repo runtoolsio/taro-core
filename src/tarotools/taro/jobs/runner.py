@@ -39,7 +39,7 @@ from collections import deque, Counter
 from threading import RLock
 from typing import List, Union, Tuple, Optional
 
-from tarotools.taro import util, JobInstance
+from tarotools.taro import util
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, \
     ExecutionOutputObserver, \
@@ -57,39 +57,7 @@ _output_observers = InstanceOutputNotification(logger=log)
 _warning_observers = InstanceWarningNotification(logger=log)
 
 
-# TODO Move to the root package
-def job_instance(job_id, execution, sync=NoSync(), state_locker=lock.default_state_locker(), *, instance_id=None,
-                 pending_group=None, **user_params) \
-        -> RunnableJobInstance:
-    return _RunnerJobInstance(job_id, execution, sync, state_locker, instance_id=instance_id,
-                              pending_group=pending_group, user_params=user_params)
-
-
-# TODO Move to the root package
-def run(job_id, execution, sync=NoSync(), state_locker=lock.default_state_locker(), *, instance_id=None,
-        pending_group=None, **user_params) -> JobInstance:
-    instance = job_instance(job_id, execution, sync, state_locker, instance_id=instance_id, pending_group=pending_group,
-                            user_params=user_params)
-    instance.run()
-    return instance
-
-
-# TODO Move to the root package
-def job_instance_uncoordinated(job_id, execution, *, instance_id=None, pending_group=None, **user_params) \
-        -> RunnableJobInstance:
-    return _RunnerJobInstance(job_id, execution, state_locker=lock.NullStateLocker(), instance_id=instance_id,
-                              pending_group=pending_group, user_params=user_params)
-
-
-# TODO Move to the root package
-def run_uncoordinated(job_id, execution, *, instance_id=None, pending_group=None, **user_params) -> JobInstance:
-    instance = job_instance_uncoordinated(job_id, execution, instance_id=instance_id, pending_group=pending_group,
-                                          user_params=user_params)
-    instance.run()
-    return instance
-
-
-class _RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
+class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
     def __init__(self, job_id, execution, sync=NoSync(), state_locker=lock.default_state_locker(),
                  *, instance_id=None, pending_group=None, **user_params):
