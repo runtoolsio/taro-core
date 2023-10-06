@@ -11,7 +11,7 @@ from threading import Thread
 import tarotools.taro.cfg
 from tarotools.taro import cfg, client, log
 from tarotools.taro.hostinfo import read_hostinfo, HostinfoError
-from tarotools.taro.jobs import warning, persistence, plugins, repo, sync
+from tarotools.taro.jobs import warning, persistence, plugins, repo, sync, runner
 from tarotools.taro.jobs.execution import Flag, ExecutionState, ExecutionError, ExecutionLifecycle
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.jobs.inst import JobInstanceID, JobInstance, JobInst, InstanceStateObserver, Warn, \
@@ -20,7 +20,7 @@ from tarotools.taro.jobs.inst import JobInstanceID, JobInstance, JobInst, Instan
 from tarotools.taro.jobs.plugins import Plugin, PluginDisabledError
 from tarotools.taro.jobs.process import ProcessExecution
 from tarotools.taro.jobs.program import ProgramExecution
-from tarotools.taro.jobs.runner import RunnerJobInstance
+from tarotools.taro.jobs.runner import _RunnerJobInstance
 from tarotools.taro.paths import lookup_file_in_config_path
 from tarotools.taro.util import format_timedelta, read_toml_file_flatten
 
@@ -50,7 +50,7 @@ def configure(**kwargs):
 def execute(job_id, job_execution, instance_id=None, *, no_overlap=False, depends_on=None, pending_group=None):
     plugins_ = cfg.plugins_load if cfg.plugins_enabled else None
     with FeaturedContextBuilder().standard_features(plugins=plugins_).build() as ctx:
-        job_instance = ctx.add(RunnerJobInstance(
+        job_instance = ctx.add(runner.job_instance(
             job_id,
             job_execution,
             sync.create_composite(no_overlap=no_overlap, depends_on=depends_on),

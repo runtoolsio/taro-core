@@ -5,10 +5,9 @@ import time
 from threading import Thread
 
 import tarotools.taro.jobs.runner as runner
-from tarotools.taro import ProcessExecution
+from tarotools.taro import ProcessExecution, JobInstance
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.execution import ExecutionState as ExSt, ExecutionError
-from tarotools.taro.jobs.runner import RunnerJobInstance
 from tarotools.taro.jobs.sync import Latch
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.observer import TestOutputObserver
@@ -18,24 +17,24 @@ def test_executed():
     execution = TestExecution()
     assert execution.executed_count() == 0
 
-    runner.run('j', execution, lock.NullStateLocker())
+    runner.run_uncoordinated('j', execution)
     assert execution.executed_count() == 1
 
 
 def test_state_changes():
-    instance = runner.run('j', TestExecution(), lock.NullStateLocker())
+    instance = runner.run_uncoordinated('j', TestExecution())
     assert instance.lifecycle.state == ExSt.COMPLETED
     assert instance.lifecycle.states == [ExSt.CREATED, ExSt.RUNNING, ExSt.COMPLETED]
 
 
 def test_state_created():
-    instance = RunnerJobInstance('j', TestExecution(), state_locker=lock.NullStateLocker())
+    instance = runner.job_instance_uncoordinated('j', TestExecution())
     assert instance.lifecycle.state == ExSt.CREATED
 
 
 def test_pending():
     latch = Latch(ExSt.PENDING)
-    instance = RunnerJobInstance('j', TestExecution(), latch, state_locker=lock.NullStateLocker())
+    instance = runner.job_instance('j', TestExecution(), latch, state_locker=lock.NullStateLocker())
     t = Thread(target=instance.run)
     t.start()
 
@@ -52,7 +51,7 @@ def test_pending():
 
 def test_latch_cancellation():
     latch = Latch(ExSt.PENDING)
-    instance = RunnerJobInstance('j', TestExecution(), latch, state_locker=lock.NullStateLocker())
+    instance = runner.job_instance('j', TestExecution(), latch, state_locker=lock.NullStateLocker())
     t = Thread(target=instance.run)
     t.start()
 
@@ -67,7 +66,7 @@ def test_latch_cancellation():
 
 def test_cancellation_before_start():
     latch = Latch(ExSt.PENDING)
-    instance = RunnerJobInstance('j', TestExecution(), latch, state_locker=lock.NullStateLocker())
+    instance = runner.job_instance('j', TestExecution(), latch, state_locker=lock.NullStateLocker())
     t = Thread(target=instance.run)
 
     instance.stop()
@@ -82,7 +81,7 @@ def test_error():
     execution = TestExecution()
     exception = Exception()
     execution.raise_exception(exception)
-    instance = runner.run('j', execution, lock.NullStateLocker())
+    instance = runner.run_uncoordinated('j', execution)
 
     assert instance.lifecycle.state == ExSt.ERROR
     assert isinstance(instance.exec_error, ExecutionError)
@@ -90,7 +89,7 @@ def test_error():
     assert instance.exec_error.unexpected_error == exception
 
 
-def wait_for_pending_state(instance: RunnerJobInstance):
+def wait_for_pending_state(instance: JobInstance):
     """
     Wait for the job to reach waiting state
     """
@@ -107,7 +106,7 @@ def test_output_observer():
         print("Hello, lucky boy. Where are you today?")
 
     execution = ProcessExecution(print_it)
-    instance = RunnerJobInstance('j', execution, state_locker=lock.NullStateLocker())
+    instance = runner.job_instance_uncoordinated('j', execution)
     observer = TestOutputObserver()
     instance.add_output_observer(observer)
 
@@ -125,6 +124,6 @@ def test_last_output():
             print(line)
 
     execution = ProcessExecution(print_it)
-    instance = RunnerJobInstance('j', execution, state_locker=lock.NullStateLocker())
+    instance = runner.job_instance_uncoordinated('j', execution)
     instance.run()
     assert [out for out, _ in instance.last_output] == "1 everyone in the world is doing something without me".split()

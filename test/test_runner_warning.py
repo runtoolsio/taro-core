@@ -8,7 +8,6 @@ import tarotools.taro.jobs.runner as runner
 from tarotools.taro import Warn
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.execution import ExecutionState
-from tarotools.taro.jobs.runner import RunnerJobInstance
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.testutil import TestWarningObserver
 
@@ -22,7 +21,7 @@ def observer():
 
 
 def test_warning_added(observer: TestWarningObserver):
-    job = RunnerJobInstance('j1', TestExecution(ExecutionState.COMPLETED), state_locker=lock.NullStateLocker())
+    job = runner.job_instance('j1', TestExecution(ExecutionState.COMPLETED), state_locker=lock.NullStateLocker())
     warn = Warn('test_warn', None)
     job.add_warning(warn)
 
@@ -32,7 +31,7 @@ def test_warning_added(observer: TestWarningObserver):
 
 
 def test_warning_repeated(observer: TestWarningObserver):
-    job = RunnerJobInstance('j1', TestExecution(ExecutionState.COMPLETED), state_locker=lock.NullStateLocker())
+    job = runner.job_instance('j1', TestExecution(ExecutionState.COMPLETED), state_locker=lock.NullStateLocker())
     warn = Warn('test_warn1', None)
     updated = Warn('test_warn1', {'p': 1})
     job.add_warning(warn)

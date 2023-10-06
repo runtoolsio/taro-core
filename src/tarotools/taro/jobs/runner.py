@@ -1,6 +1,9 @@
 """
 This module contains the default implementation of the `RunnableJobInstance` interface from the `inst` module.
 A job instance is executed by calling the `run` method. The method call returns after the instance terminates.
+It is possible to register observers directly in the module. These are then notified about events from all
+job instances. An alternative for multi-observing is to use the featured context from the `featurize` module.
+
 This implementation adds a few features not explicitly defined in the interface:
 
 Coordination
@@ -36,7 +39,7 @@ from collections import deque, Counter
 from threading import RLock
 from typing import List, Union, Tuple, Optional
 
-from tarotools.taro import util
+from tarotools.taro import util, JobInstance
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, \
     ExecutionOutputObserver, \
@@ -54,14 +57,39 @@ _output_observers = InstanceOutputNotification(logger=log)
 _warning_observers = InstanceWarningNotification(logger=log)
 
 
-def run(job_id, execution, state_locker):
-    instance = RunnerJobInstance(job_id, execution, state_locker=state_locker)
+# TODO Move to the root package
+def job_instance(job_id, execution, sync=NoSync(), state_locker=lock.default_state_locker(), *, instance_id=None,
+                 pending_group=None, **user_params) \
+        -> RunnableJobInstance:
+    return _RunnerJobInstance(job_id, execution, sync, state_locker, instance_id=instance_id,
+                              pending_group=pending_group, user_params=user_params)
+
+
+# TODO Move to the root package
+def run(job_id, execution, sync=NoSync(), state_locker=lock.default_state_locker(), *, instance_id=None,
+        pending_group=None, **user_params) -> JobInstance:
+    instance = job_instance(job_id, execution, sync, state_locker, instance_id=instance_id, pending_group=pending_group,
+                            user_params=user_params)
     instance.run()
     return instance
 
 
-# TODO Consider rename as `runner` may create impression that the job is executed in background
-class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
+# TODO Move to the root package
+def job_instance_uncoordinated(job_id, execution, *, instance_id=None, pending_group=None, **user_params) \
+        -> RunnableJobInstance:
+    return _RunnerJobInstance(job_id, execution, state_locker=lock.NullStateLocker(), instance_id=instance_id,
+                              pending_group=pending_group, user_params=user_params)
+
+
+# TODO Move to the root package
+def run_uncoordinated(job_id, execution, *, instance_id=None, pending_group=None, **user_params) -> JobInstance:
+    instance = job_instance_uncoordinated(job_id, execution, instance_id=instance_id, pending_group=pending_group,
+                                          user_params=user_params)
+    instance.run()
+    return instance
+
+
+class _RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
     def __init__(self, job_id, execution, sync=NoSync(), state_locker=lock.default_state_locker(),
                  *, instance_id=None, pending_group=None, **user_params):
@@ -187,7 +215,8 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
         self._warnings.update([warning.name])
         log.warning('event=[new_warning] warning=[%s]', warning)
         # Lock?
-        self._warning_notification.notify_all(self.create_snapshot(), WarnEventCtx(warning, self._warnings[warning.name]))
+        self._warning_notification.notify_all(self.create_snapshot(),
+                                              WarnEventCtx(warning, self._warnings[warning.name]))
 
     def run(self):
         # TODO Check executed only once

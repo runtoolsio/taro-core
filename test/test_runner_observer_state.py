@@ -9,7 +9,6 @@ import tarotools.taro.jobs.runner as runner
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.execution import ExecutionState
 from tarotools.taro.jobs.inst import InstanceStateObserver, JobInst
-from tarotools.taro.jobs.runner import RunnerJobInstance
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.observer import TestStateObserver
 
@@ -23,13 +22,13 @@ def observer():
 
 
 def test_job_passed(observer: TestStateObserver):
-    runner.run('j1', TestExecution(ExecutionState.COMPLETED), lock.NullStateLocker())
+    runner.run_uncoordinated('j1', TestExecution(ExecutionState.COMPLETED))
 
     assert observer.last_job().job_id == 'j1'
 
 
 def test_execution_completed(observer: TestStateObserver):
-    runner.run('j1', TestExecution(ExecutionState.COMPLETED), lock.NullStateLocker())
+    runner.run_uncoordinated('j1', TestExecution(ExecutionState.COMPLETED))
 
     assert observer.exec_state(0) == ExecutionState.CREATED
     assert observer.exec_state(1) == ExecutionState.RUNNING
@@ -38,7 +37,7 @@ def test_execution_completed(observer: TestStateObserver):
 
 def test_execution_raises_exc(observer: TestStateObserver):
     exc_to_raise = Exception()
-    runner.run('j1', TestExecution(raise_exc=exc_to_raise), lock.NullStateLocker())
+    runner.run_uncoordinated('j1', TestExecution(raise_exc=exc_to_raise))
 
     assert observer.exec_state(0) == ExecutionState.CREATED
     assert observer.exec_state(1) == ExecutionState.RUNNING
@@ -53,7 +52,7 @@ def test_observer_raises_exception():
     """
     observer = ExceptionRaisingObserver(Exception('Should be captured by runner'))
     execution = TestExecution(ExecutionState.COMPLETED)
-    job_instance = RunnerJobInstance('j1', execution, state_locker=lock.NullStateLocker())
+    job_instance = runner.job_instance('j1', execution, state_locker=lock.NullStateLocker())
     job_instance.add_state_observer(observer)
     job_instance.run()
     assert execution.executed_count() == 1  # No exception thrown before
