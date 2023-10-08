@@ -621,7 +621,6 @@ class JobInstance(abc.ABC):
             JobInstanceMetadata: Descriptive information about this instance.
         """
 
-
     @abc.abstractmethod
     def release(self):
         """
@@ -742,17 +741,22 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
         """
-        Register an instance state observer.
+        Register an instance state observer. Optionally, trigger a notification with the last known state
+        upon registration.
 
-        The observer can be:
-            1. An instance of `InstanceStateObserver`.
-            2. A callable object with the signature of `InstanceStateObserver.instance_state_update`.
+        Notes for implementers: Prevent race-conditions when `notify_on_register` used.
 
         Args:
-            observer: The observer to register.
-            priority (int, optional): The observer's priority as a number. Lower numbers are notified first.
+            observer:
+                The observer to register. This can either be:
+                1. An instance of `InstanceStateObserver`.
+                2. A callable object with the signature of the `InstanceStateObserver.new_instance_state` method.
+            priority (int, optional):
+                Priority of the observer. Lower numbers are notified first.
+            notify_on_register (bool, optional):
+                If True, immediately notifies the observer about the last known instance state change upon registration.
         """
 
     @abc.abstractmethod
@@ -877,20 +881,20 @@ class DelegatingJobInstance(RunnableJobInstance):
     def interrupted(self):
         self.delegated.interrupted()
 
-    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self.delegated.add_state_observer(observer)
+    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
+        self.delegated.add_state_observer(observer, priority, notify_on_register)
 
     def remove_state_observer(self, observer):
         self.delegated.remove_state_observer(observer)
 
     def add_warning_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self.delegated.add_warning_observer(observer)
+        self.delegated.add_warning_observer(observer, priority)
 
     def remove_warning_observer(self, observer):
         self.delegated.remove_warning_observer(observer)
 
     def add_output_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self.delegated.add_output_observer(observer)
+        self.delegated.add_output_observer(observer, priority)
 
     def remove_output_observer(self, observer):
         self.delegated.remove_output_observer(observer)
@@ -1106,9 +1110,13 @@ class JobInstances(list):
 class InstanceStateObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
+    def new_instance_state(self, job_inst: JobInst, previous_state: ExecutionState, new_state: ExecutionState,
+                           changed: datetime.datetime):
         """
         Called when the instance execution state changes.
+
+        The notification can optionally happen also when this observer is registered with the instance
+        to make the observer aware about the current state of the instance.
 
         Args:
             job_inst (JobInst): The job instance whose state changed.
@@ -1154,7 +1162,7 @@ class InstanceWarningObserver(abc.ABC):
 class InstanceOutputObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_instance_output(self, job_info: JobInst, output, is_error):
+    def new_instance_output(self, job_info: JobInst, output: str, is_error: bool):
         """
         Executed when a new output line is available.
 
@@ -1199,18 +1207,25 @@ class JobInstanceManager(ABC):
         pass
 
 
+def _job_inst_to_args(job_inst):
+    states = job_inst.lifecycle.states
+    previous_state = states[-2] if len(states) > 1 else ExecutionState.NONE
+    new_state = job_inst.state
+    changed = job_inst.lifecycle.last_changed_at
+
+    return job_inst, previous_state, new_state, changed
+
+
 class InstanceStateNotification(Notification):
 
     def __init__(self, logger=None, joined_notification=None):
         super().__init__(logger, joined_notification)
 
-    def notify_state_changed(self, job_inst: JobInst):
-        states = job_inst.lifecycle.states
-        previous_state = states[-2] if len(states) > 1 else ExecutionState.NONE
-        new_state = job_inst.state
-        changed = job_inst.lifecycle.last_changed_at
+    def notify_state_changed(self, observer, job_inst):
+        self.notify(observer, *_job_inst_to_args(job_inst))
 
-        self.notify_all(job_inst, previous_state, new_state, changed)
+    def notify_all_state_changed(self, job_inst):
+        self.notify_all(*_job_inst_to_args(job_inst))
 
     def _notify(self, observer, *args) -> bool:
         if isinstance(observer, InstanceStateObserver):

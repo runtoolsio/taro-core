@@ -30,6 +30,10 @@ For coordination to function correctly, a mechanism that allows the coordinator 
 shared lock is essential. Job instances attempt to acquire this lock each time the coordination logic runs and
 whenever there's a change in their state. Instances are permitted to change their state only after acquiring the lock.
 
+Implementation notes:
+Always acquire locks in this order to prevent deadlocks: 1. State lock 2. State global lock
+State lock must be hold whole duration between state change and observers notification to ensure the observers are
+always notified in the correct order. Global lock can be released after the state change to unblock others ASAP.
 """
 
 import contextlib
@@ -84,7 +88,10 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
         self._warning_notification = InstanceWarningNotification(log, _warning_observers)
         self._output_notification = InstanceOutputNotification(log, _output_observers)
 
-        self._change_state_and_notify(ExecutionState.CREATED)  # TODO Move somewhere post-init?
+        self._change_state(ExecutionState.CREATED)
+
+    def _log(self, event: str, msg: str = '', *params):
+        return ("event=[{}] instance=[{}] " + msg).format(event, self._id, *params)
 
     @property
     def id(self):
@@ -133,8 +140,11 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
                 self.warnings,
                 self.exec_error)
 
-    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self._state_notification.add_observer(observer, priority)
+    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
+        with self._state_lock:
+            self._state_notification.add_observer(observer, priority)
+            if notify_on_register:
+                self._state_notification.notify_state_changed(observer, self.create_snapshot())
 
     def remove_state_observer(self, observer):
         self._state_notification.remove_observer(observer)
@@ -181,22 +191,23 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
     def add_warning(self, warning):
         self._warnings.update([warning.name])
-        log.warning('event=[new_warning] warning=[%s]', warning)
+        log.warning(self._log('new_warning', 'warning=[{}]', warning))
         # Lock?
         self._warning_notification.notify_all(self.create_snapshot(),
                                               WarnEventCtx(warning, self._warnings[warning.name]))
 
     def run(self):
-        # TODO Check executed only once
+        if self._lifecycle.state != ExecutionState.CREATED:
+            raise UnexpectedStateError("The run method can be called only once")
 
         try:
-            synchronized = self._synchronize()
+            coordinated = self._coordinate()
         except Exception as e:
-            log.error('event=[sync_error]', exc_info=e)
-            self._change_state_and_notify(ExecutionState.ERROR)
+            log.error(self._log('coord_error'), exc_info=e)
+            self._change_state(ExecutionState.ERROR)
             return
 
-        if synchronized:
+        if coordinated:
             self._executing = True
         else:
             return
@@ -206,55 +217,66 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
         try:
             new_state = self._execution.execute()
-            self._change_state_and_notify(new_state)
+            self._change_state(new_state)
         except Exception as e:
             exec_error = e if isinstance(e, ExecutionError) else ExecutionError.from_unexpected_error(e)
-            self._change_state_and_notify(exec_error.exec_state, exec_error)
+            self._change_state(exec_error.exec_state, exec_error)
         except KeyboardInterrupt:
-            log.warning("event=[keyboard_interruption]")
+            log.warning(self._log('keyboard_interruption'))
             # Assuming child processes received SIGINT, TODO different state on other platforms?
-            self._change_state_and_notify(ExecutionState.INTERRUPTED)
+            self._change_state(ExecutionState.INTERRUPTED)
             raise
         except SystemExit as e:
             # Consider UNKNOWN (or new state DETACHED?) if there is possibility the execution is not completed
             state = ExecutionState.COMPLETED if e.code == 0 else ExecutionState.FAILED
-            self._change_state_and_notify(state)
+            self._change_state(state)
             raise
         finally:
             self._execution.remove_output_observer(self)
 
-    def _synchronize(self) -> bool:
+    def _coordinate(self) -> bool:
         while True:
-            with self._global_state_locker() as state_lock:
-                if self._stopped_or_interrupted:
-                    signal = Signal.TERMINATE
-                    state = ExecutionState.CANCELLED
-                else:
-                    signal = self._sync.set_signal(self.create_snapshot())
-                    if signal is Signal.NONE:
-                        assert False  # TODO raise exception
-
-                    if signal is Signal.WAIT and self._released:
-                        signal = Signal.CONTINUE
-
-                    if signal is Signal.CONTINUE:
-                        state = ExecutionState.RUNNING
+            # Always keep this order to prevent deadlock: 1. Local state lock 2. Global state lock
+            try:
+                self._state_lock.acquire()
+                with self._global_state_locker() as global_lock:
+                    if self._stopped_or_interrupted:
+                        signal = Signal.TERMINATE
+                        state = ExecutionState.CANCELLED
                     else:
-                        state = self._sync.exec_state
-                        if not (state.has_flag(Flag.WAITING) or state.in_phase(Phase.TERMINAL)):
-                            raise UnexpectedStateError(f"Unsupported state returned from sync: {state}")
+                        signal = self._sync.set_signal(self.create_snapshot())
+                        if signal is Signal.NONE:
+                            raise UnexpectedStateError(f"Signal.NONE is not allowed value for signaling")
 
-                # If wait and not the same state then the state must be changed first,
-                # then -> release the lock + notify observers and repeat
-                if signal is Signal.WAIT and self.lifecycle.state == state:
-                    self._sync.wait_and_unlock(state_lock)  # Waiting state already set, now we can wait
-                    new_job_inst = None
-                else:
-                    new_job_inst: Optional[JobInst] = self._change_state(state, use_global_lock=False)
+                        if signal is Signal.WAIT and self._released:
+                            signal = Signal.CONTINUE
 
-            # Lock released -> do not hold lock when executing observers
-            if new_job_inst:
-                self._state_notification.notify_state_changed(new_job_inst)
+                        if signal is Signal.CONTINUE:
+                            state = ExecutionState.RUNNING
+                        else:
+                            state = self._sync.exec_state
+                            if not (state.has_flag(Flag.WAITING) or state.in_phase(Phase.TERMINAL)):
+                                raise UnexpectedStateError(f"Unsupported state returned from sync: {state}")
+
+                    if signal is Signal.WAIT and self.lifecycle.state == state:
+                        self._state_lock.release()  # Opposite release order + premature state lock release - be careful
+                        self._sync.wait_and_unlock(global_lock)  # Waiting state already set, now we can wait
+                        new_job_inst = None
+                        released = True
+                    else:
+                        # Shouldn't notify listener whilst holding the global lock, so first we only set the state...
+                        new_job_inst: Optional[JobInst] = self._change_state(state, notify=False, use_global_lock=False)
+                        released = False
+
+                if new_job_inst:
+                    # ...and now, when global lock is released (state lock still in hold), we can notify.
+                    # If signal is wait, the cycle will repeat and the instance will finally start waiting
+                    # (unless the condition for waiting changed meanwhile)
+                    self._state_notification.notify_all_state_changed(new_job_inst)
+            finally:
+                if not released:
+                    self._state_lock.release()
+
             if signal is Signal.WAIT:
                 continue
             if signal is Signal.TERMINATE:
@@ -262,37 +284,35 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
             return True
 
-    # Inline?
-    def _log(self, event: str, msg: str):
-        return "event=[{}] instance=[{}] {}".format(event, self._id, msg)
-
-    def _change_state(self, new_state, exec_error: ExecutionError = None, *, use_global_lock=True) -> Optional[JobInst]:
+    def _change_state(self, new_state, exec_error: ExecutionError = None, *, notify=True, use_global_lock=True) \
+            -> Optional[JobInst]:
         if exec_error:
             self._exec_error = exec_error
             if exec_error.exec_state == ExecutionState.ERROR or exec_error.unexpected_error:
-                log.exception(self._log('job_error', "reason=[{}]".format(exec_error)), exc_info=True)
+                log.exception(self._log('job_error', "reason=[{}]", exec_error), exc_info=True)
             else:
-                log.warning(self._log('job_not_completed', "reason=[{}]".format(exec_error)))
+                log.warning(self._log('job_not_completed', "reason=[{}]", exec_error))
 
         global_state_lock = self._global_state_locker() if use_global_lock else contextlib.nullcontext()
         # It is not necessary to lock all this code, but it would be if this method is not confined to one thread
-        # However locking is still needed for correct creation of job info when job_info method is called (anywhere)
-        with global_state_lock:  # Always keep order 1. Global state lock 2. Local state lock
-            with self._state_lock:
+        # However locking is still needed for correct creation of job info when create_snapshot method is called
+        with self._state_lock:  # Always keep this order to prevent deadlock: 1. Local state lock 2. Global state lock
+            with global_state_lock:
                 prev_state = self._lifecycle.state
                 if not self._lifecycle.set_state(new_state):
                     return None
 
                 level = logging.WARN if new_state.has_flag(Flag.NONSUCCESS) else logging.INFO
-                log.log(level, self._log('job_state_changed', "prev_state=[{}] new_state=[{}]".format(
-                    prev_state.name, new_state.name)))
+                log.log(level, self._log('job_state_changed', "prev_state=[{}] new_state=[{}]",
+                                         prev_state.name, new_state.name))
                 # Be sure both new_state and exec_error are already set
-                return self.create_snapshot()
+                new_job_inst = self.create_snapshot()
 
-    def _change_state_and_notify(self, new_state, exec_error: ExecutionError = None, *, use_global_lock=True):
-        new_job_inst = self._change_state(new_state, exec_error, use_global_lock=use_global_lock)
-        if new_job_inst:
-            self._state_notification.notify_state_changed(new_job_inst)
+            # Do not hold global lock during notification
+            if notify:
+                self._state_notification.notify_all_state_changed(new_job_inst)
+
+            return new_job_inst
 
     def execution_output_update(self, output, is_error):
         """Executed when new output line is available"""

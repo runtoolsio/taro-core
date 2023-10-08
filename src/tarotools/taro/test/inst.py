@@ -39,7 +39,7 @@ class TestJobInstance(RunnableJobInstance):
 
     def change_state(self, state):
         self.lifecycle.set_state(state)
-        self.state_notification.notify_state_changed(self.create_snapshot())
+        self.state_notification.notify_all_state_changed(self.create_snapshot())
 
     @property
     def id(self):
@@ -138,7 +138,7 @@ class TestJobInstance(RunnableJobInstance):
     def interrupted(self):
         self.interrupted = True
 
-    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
         self.state_notification.add_observer(observer, priority)
 
     def remove_state_observer(self, observer):

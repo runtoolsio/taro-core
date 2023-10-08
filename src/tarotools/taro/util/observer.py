@@ -35,21 +35,24 @@ class Notification:
     def notify_all(self, *args):
         if self._joined_notification:
             all_observers = sorted(chain(
-                self._prioritized_observers, self._joined_notification._prioritized_observers), key=itemgetter(0))
+                self._prioritized_observers, self._joined_notification.prioritized_observers), key=itemgetter(0))
         else:
             all_observers = self._prioritized_observers
 
         for _, observer in all_observers:
-            # noinspection PyBroadException
-            try:
-                if not self._notify(observer, *args):
-                    if callable(observer):
-                        observer(*args)
-                    else:
-                        if self._logger:
-                            self._logger.warning("event=[unsupported_observer] observer=[%s]", observer)
-            except Exception as e:
-                if self._logger:
-                    self._logger.exception("event=[observer_exception]")
+            self.notify(observer, *args)
+
+    def notify(self, observer, *args):
+        # noinspection PyBroadException
+        try:
+            if not self._notify(observer, *args):
+                if callable(observer):
+                    observer(*args)
                 else:
-                    print(e, file=sys.stderr)
+                    if self._logger:
+                        self._logger.warning("event=[unsupported_observer] observer=[%s]", observer)
+        except Exception as e:
+            if self._logger:
+                self._logger.exception("event=[observer_exception]")
+            else:
+                print(e, file=sys.stderr)
