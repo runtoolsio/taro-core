@@ -315,7 +315,9 @@ class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
     def wait_and_unlock(self, global_state_lock):
         self._event.clear()
         global_state_lock.unlock()
-        self._event.wait()
+        # Set a timeout value to cope with probably harmless race condition between unlock and wait.
+        # This prevents infinity wait in case of lost wakeup.
+        self._event.wait(5)
 
     @property
     def parameters(self):
