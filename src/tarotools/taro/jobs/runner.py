@@ -192,7 +192,6 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
     def add_warning(self, warning):
         self._warnings.update([warning.name])
         log.warning(self._log('new_warning', 'warning=[{}]', warning))
-        # Lock?
         self._warning_notification.notify_all(self.create_snapshot(),
                                               WarnEventCtx(warning, self._warnings[warning.name]))
 
@@ -302,11 +301,11 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
                 if not self._lifecycle.set_state(new_state):
                     return None
 
-                level = logging.WARN if new_state.has_flag(Flag.NONSUCCESS) else logging.INFO
-                log.log(level, self._log('job_state_changed', "prev_state=[{}] new_state=[{}]",
-                                         prev_state.name, new_state.name))
-                # Be sure both new_state and exec_error are already set
-                new_job_inst = self.create_snapshot()
+            level = logging.WARN if new_state.has_flag(Flag.NONSUCCESS) else logging.INFO
+            log.log(level, self._log('job_state_changed', "prev_state=[{}] new_state=[{}]",
+                                     prev_state.name, new_state.name))
+            # Be sure both new_state and exec_error are already set
+            new_job_inst = self.create_snapshot()
 
             # Do not hold global lock during notification
             if notify:
