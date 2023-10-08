@@ -63,16 +63,16 @@ _warning_observers = InstanceWarningNotification(logger=log)
 
 class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, sync=NoSync(), state_locker=lock.default_state_locker(),
+    def __init__(self, job_id, execution, coord=NoSync(), state_locker=lock.default_state_locker(),
                  *, instance_id=None, pending_group=None, **user_params):
         self._id = JobInstanceID(job_id, instance_id or util.unique_timestamp_hex())
         self._execution = execution
-        sync = sync or NoSync()
+        coord = coord or NoSync()
         if pending_group:
-            self._sync = CompositeSync(Latch(ExecutionState.PENDING), sync)
+            self._coord = CompositeSync(Latch(ExecutionState.PENDING), coord)
         else:
-            self._sync = sync
-        parameters = (execution.parameters or ()) + (sync.parameters or ())
+            self._coord = coord
+        parameters = (execution.parameters or ()) + (coord.parameters or ())
         self._metadata = JobInstanceMetadata(self._id, parameters, user_params, pending_group)
         self._global_state_locker = state_locker
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
@@ -163,7 +163,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
     def release(self):
         self._released = True
-        self._sync.release()
+        self._coord.release()
 
     def stop(self):
         """
@@ -173,7 +173,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
         """
         self._stopped_or_interrupted = True
 
-        self._sync.release()
+        self._coord.release()
         if self._executing:
             self._execution.stop()
 
@@ -185,7 +185,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
         """
         self._stopped_or_interrupted = True
 
-        self._sync.release()
+        self._coord.release()
         if self._executing:
             self._execution.interrupted()
 
@@ -244,7 +244,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
                         signal = Signal.TERMINATE
                         state = ExecutionState.CANCELLED
                     else:
-                        signal = self._sync.set_signal(self.create_snapshot())
+                        signal = self._coord.set_signal(self.create_snapshot())
                         if signal is Signal.NONE:
                             raise UnexpectedStateError(f"Signal.NONE is not allowed value for signaling")
 
@@ -254,13 +254,13 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
                         if signal is Signal.CONTINUE:
                             state = ExecutionState.RUNNING
                         else:
-                            state = self._sync.exec_state
+                            state = self._coord.exec_state
                             if not (state.has_flag(Flag.WAITING) or state.in_phase(Phase.TERMINAL)):
                                 raise UnexpectedStateError(f"Unsupported state returned from sync: {state}")
 
                     if signal is Signal.WAIT and self.lifecycle.state == state:
                         self._state_lock.release()  # Opposite release order + premature state lock release - be careful
-                        self._sync.wait_and_unlock(global_lock)  # Waiting state already set, now we can wait
+                        self._coord.wait_and_unlock(global_lock)  # Waiting state already set, now we can wait
                         new_job_inst = None
                         released = True
                     else:
@@ -293,11 +293,11 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
             else:
                 log.warning(self._log('job_not_completed', "reason=[{}]", exec_error))
 
-        global_state_lock = self._global_state_locker() if use_global_lock else contextlib.nullcontext()
+        global_state_lock = self._global_state_locker if use_global_lock else contextlib.nullcontext
         # It is not necessary to lock all this code, but it would be if this method is not confined to one thread
         # However locking is still needed for correct creation of job info when create_snapshot method is called
         with self._state_lock:  # Always keep this order to prevent deadlock: 1. Local state lock 2. Global state lock
-            with global_state_lock:
+            with global_state_lock():
                 prev_state = self._lifecycle.state
                 if not self._lifecycle.set_state(new_state):
                     return None
