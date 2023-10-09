@@ -52,7 +52,7 @@ class Sync(ABC):
         """
 
     @abstractmethod
-    def wait_and_unlock(self, global_state_lock):
+    def unlock_and_wait(self, global_state_lock):
         """
 
         :param global_state_lock: global execution state lock for unlocking
@@ -86,7 +86,7 @@ class NoSync(Sync):
         self._current_signal = Signal.CONTINUE
         return self.current_signal
 
-    def wait_and_unlock(self, global_state_lock):
+    def unlock_and_wait(self, global_state_lock):
         raise InvalidStateError('Wait is not supported and this method is not supposed to be called')
 
 
@@ -114,8 +114,8 @@ class CompositeSync(Sync):
 
         return self.current_signal
 
-    def wait_and_unlock(self, global_state_lock):
-        self._current.wait_and_unlock(global_state_lock)
+    def unlock_and_wait(self, global_state_lock):
+        self._current.unlock_and_wait(global_state_lock)
 
     @property
     def parameters(self):
@@ -155,7 +155,7 @@ class Latch(Sync):
 
         return self._signal
 
-    def wait_and_unlock(self, lock):
+    def unlock_and_wait(self, lock):
         if self._event.is_set():
             return
 
@@ -204,7 +204,7 @@ class NoOverlap(Sync):
 
         return self.current_signal
 
-    def wait_and_unlock(self, global_state_lock):
+    def unlock_and_wait(self, global_state_lock):
         raise InvalidStateError("Wait is not supported by no-overlap sync")
 
     @property
@@ -239,7 +239,7 @@ class Dependency(Sync):
 
         return self._signal
 
-    def wait_and_unlock(self, global_state_lock):
+    def unlock_and_wait(self, global_state_lock):
         raise InvalidStateError("Wait is not supported by no-overlap sync")
 
     @property
@@ -312,7 +312,7 @@ class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
         return instance_meta.id.job_id == self._group or \
                any(1 for name, value in instance_meta.parameters if name == 'execution_group' and value == self._group)
 
-    def wait_and_unlock(self, global_state_lock):
+    def unlock_and_wait(self, global_state_lock):
         self._event.clear()
         global_state_lock.unlock()
         # Set a timeout value to cope with probably harmless race condition between unlock and wait.
@@ -336,13 +336,13 @@ class WaitForStateWrapper(CompositeSync):
         super().__init__(*syncs)
         self._state_receiver_factory = state_receiver_factory
 
-    def wait_and_unlock(self, global_state_lock):
+    def unlock_and_wait(self, global_state_lock):
         """TODO Create sync.close() to be able to re-use single state receiver?"""
         receiver = self._state_receiver_factory()
         receiver.listeners.append(self._current)
         receiver.start()
         try:
-            super(WaitForStateWrapper, self).wait_and_unlock(global_state_lock)
+            super(WaitForStateWrapper, self).unlock_and_wait(global_state_lock)
         finally:
             receiver.close()
             receiver.listeners.remove(self._current)

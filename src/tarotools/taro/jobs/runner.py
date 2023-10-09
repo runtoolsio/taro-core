@@ -27,16 +27,10 @@ Some examples of coordination include:
 Global Synchronization
 ----------------------
 For coordination to function correctly, a mechanism that allows the coordinator to utilize some form of
-shared lock is essential. Job instances attempt to acquire this lock each time the coordination logic runs and
-whenever there's a change in their state. Instances are permitted to change their state only after acquiring the lock.
+shared lock is essential. Job instances attempt to acquire this lock each time the coordination logic runs.
 
-Implementation notes:
-Always acquire locks in this order to prevent deadlocks: 1. State lock 2. State global lock
-State lock must be hold whole duration between state change and observers notification to ensure the observers are
-always notified in the correct order. Global lock can be released after the state change to unblock others ASAP.
 """
 
-import contextlib
 import copy
 import logging
 from collections import deque, Counter
@@ -63,7 +57,7 @@ _warning_observers = InstanceWarningNotification(logger=log)
 
 class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, coord=NoSync(), state_locker=lock.default_state_locker(),
+    def __init__(self, job_id, execution, coord=NoSync(), coord_locker=lock.default_state_locker(),
                  *, instance_id=None, pending_group=None, **user_params):
         self._id = JobInstanceID(job_id, instance_id or util.unique_timestamp_hex())
         self._execution = execution
@@ -74,7 +68,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
             self._coord = coord
         parameters = (execution.parameters or ()) + (coord.parameters or ())
         self._metadata = JobInstanceMetadata(self._id, parameters, user_params, pending_group)
-        self._global_state_locker = state_locker
+        self._coord_locker = coord_locker
         self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
         self._released = False
         self._last_output = deque(maxlen=10)  # TODO Max len configurable
@@ -235,45 +229,48 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
     def _coordinate(self) -> bool:
         while True:
-            # Always keep this order to prevent deadlock: 1. Local state lock 2. Global state lock
+            with self._coord_locker() as coord_lock:
+                if self._stopped_or_interrupted:
+                    signal = Signal.TERMINATE
+                    state = ExecutionState.CANCELLED
+                else:
+                    signal = self._coord.set_signal(self.create_snapshot())
+                    if signal is Signal.NONE:
+                        raise UnexpectedStateError(f"Signal.NONE is not allowed value for signaling")
+
+                    if signal is Signal.WAIT and self._released:
+                        signal = Signal.CONTINUE
+
+                    if signal is Signal.CONTINUE:
+                        state = ExecutionState.RUNNING
+                    else:
+                        state = self._coord.exec_state
+                        if not (state.has_flag(Flag.WAITING) or state.in_phase(Phase.TERMINAL)):
+                            raise UnexpectedStateError(f"Unsupported state returned from sync: {state}")
+
+                state_lock_acquired = False
+                if signal is Signal.WAIT and self.lifecycle.state == state:
+                    # Waiting state already set, now we can wait
+                    self._coord.unlock_and_wait(coord_lock)
+                    new_job_inst = None
+                else:
+                    # Shouldn't notify listener whilst holding the coord lock, so first we only set the state...
+                    self._state_lock.acquire()
+                    state_lock_acquired = True
+                    try:
+                        new_job_inst: Optional[JobInst] = self._change_state(state, notify=False)
+                    except Exception:
+                        self._state_lock.release()
+                        raise
+
             try:
-                self._state_lock.acquire()
-                with self._global_state_locker() as global_lock:
-                    if self._stopped_or_interrupted:
-                        signal = Signal.TERMINATE
-                        state = ExecutionState.CANCELLED
-                    else:
-                        signal = self._coord.set_signal(self.create_snapshot())
-                        if signal is Signal.NONE:
-                            raise UnexpectedStateError(f"Signal.NONE is not allowed value for signaling")
-
-                        if signal is Signal.WAIT and self._released:
-                            signal = Signal.CONTINUE
-
-                        if signal is Signal.CONTINUE:
-                            state = ExecutionState.RUNNING
-                        else:
-                            state = self._coord.exec_state
-                            if not (state.has_flag(Flag.WAITING) or state.in_phase(Phase.TERMINAL)):
-                                raise UnexpectedStateError(f"Unsupported state returned from sync: {state}")
-
-                    if signal is Signal.WAIT and self.lifecycle.state == state:
-                        self._state_lock.release()  # Opposite release order + premature state lock release - be careful
-                        self._coord.wait_and_unlock(global_lock)  # Waiting state already set, now we can wait
-                        new_job_inst = None
-                        released = True
-                    else:
-                        # Shouldn't notify listener whilst holding the global lock, so first we only set the state...
-                        new_job_inst: Optional[JobInst] = self._change_state(state, notify=False, use_global_lock=False)
-                        released = False
-
                 if new_job_inst:
-                    # ...and now, when global lock is released (state lock still in hold), we can notify.
+                    # ...and now, when the coord lock is released (state lock still in hold), we can notify.
                     # If signal is wait, the cycle will repeat and the instance will finally start waiting
                     # (unless the condition for waiting changed meanwhile)
                     self._state_notification.notify_all_state_changed(new_job_inst)
             finally:
-                if not released:
+                if state_lock_acquired:
                     self._state_lock.release()
 
             if signal is Signal.WAIT:
@@ -283,31 +280,27 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
             return True
 
-    def _change_state(self, new_state, exec_error: ExecutionError = None, *, notify=True, use_global_lock=True) \
+    def _change_state(self, new_state: ExecutionState, exec_error: ExecutionError = None, *, notify=True) \
             -> Optional[JobInst]:
-        if exec_error:
-            self._exec_error = exec_error
-            if exec_error.exec_state == ExecutionState.ERROR or exec_error.unexpected_error:
-                log.exception(self._log('job_error', "reason=[{}]", exec_error), exc_info=True)
-            else:
-                log.warning(self._log('job_not_completed', "reason=[{}]", exec_error))
+        with self._state_lock:
+            # Locking here will ensure consistency between the execution error field and execution state
+            # when creating the snapshot
+            if exec_error:
+                self._exec_error = exec_error
+                if exec_error.exec_state == ExecutionState.ERROR or exec_error.unexpected_error:
+                    log.exception(self._log('job_error', "reason=[{}]", exec_error), exc_info=True)
+                else:
+                    log.warning(self._log('job_not_completed', "reason=[{}]", exec_error))
 
-        global_state_lock = self._global_state_locker if use_global_lock else contextlib.nullcontext
-        # It is not necessary to lock all this code, but it would be if this method is not confined to one thread
-        # However locking is still needed for correct creation of job info when create_snapshot method is called
-        with self._state_lock:  # Always keep this order to prevent deadlock: 1. Local state lock 2. Global state lock
-            with global_state_lock():
-                prev_state = self._lifecycle.state
-                if not self._lifecycle.set_state(new_state):
-                    return None
+            prev_state = self._lifecycle.state
+            if not self._lifecycle.set_state(new_state):
+                return None
 
             level = logging.WARN if new_state.has_flag(Flag.NONSUCCESS) else logging.INFO
             log.log(level, self._log('job_state_changed', "prev_state=[{}] new_state=[{}]",
                                      prev_state.name, new_state.name))
-            # Be sure both new_state and exec_error are already set
             new_job_inst = self.create_snapshot()
 
-            # Do not hold global lock during notification
             if notify:
                 self._state_notification.notify_all_state_changed(new_job_inst)
 

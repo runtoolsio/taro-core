@@ -86,7 +86,7 @@ def run(job_id, execution, sync_=NoSync(), state_locker=lock.default_state_locke
 
 def job_instance_uncoordinated(job_id, execution, *, instance_id=None, pending_group=None, **user_params) \
         -> RunnableJobInstance:
-    return RunnerJobInstance(job_id, execution, state_locker=lock.NullStateLocker(), instance_id=instance_id,
+    return RunnerJobInstance(job_id, execution, coord_locker=lock.NullStateLocker(), instance_id=instance_id,
                              pending_group=pending_group, user_params=user_params)
 
 
