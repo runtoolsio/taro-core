@@ -17,8 +17,8 @@ class Signal(Enum):
     """Initial state when signal is not yet set"""
     WAIT = auto()
     """Job must wait for a condition"""
-    TERMINATE = auto()
-    """Job must terminate due to a condition"""
+    REJECT = auto()
+    """Job must be rejected terminate due to not met condition"""
     CONTINUE = auto()
     """Job is free to proceed with its execution"""
 
@@ -188,7 +188,7 @@ class NoOverlap(Sync):
 
     @property
     def exec_state(self) -> ExecutionState:
-        if self._signal is Signal.TERMINATE:
+        if self._signal is Signal.REJECT:
             return ExecutionState.SKIPPED
 
         return ExecutionState.NONE
@@ -198,7 +198,7 @@ class NoOverlap(Sync):
 
         jobs, _ = taro.client.read_instances()
         if any(j for j in jobs if j.id != job_info.id and j.id.matches_pattern(job_instance)):
-            self._signal = Signal.TERMINATE
+            self._signal = Signal.REJECT
         else:
             self._signal = Signal.CONTINUE
 
@@ -225,7 +225,7 @@ class Dependency(Sync):
 
     @property
     def exec_state(self) -> ExecutionState:
-        if self._signal is Signal.TERMINATE:
+        if self._signal is Signal.REJECT:
             return ExecutionState.UNSATISFIED
 
         return ExecutionState.NONE
@@ -235,7 +235,7 @@ class Dependency(Sync):
         if any(j for j in jobs if any(j.id.matches_pattern(dependency) for dependency in self.dependencies)):
             self._signal = Signal.CONTINUE
         else:
-            self._signal = Signal.TERMINATE
+            self._signal = Signal.REJECT
 
         return self._signal
 

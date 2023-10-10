@@ -27,7 +27,19 @@ Some examples of coordination include:
 Global Synchronization
 ----------------------
 For coordination to function correctly, a mechanism that allows the coordinator to utilize some form of
-shared lock is essential. Job instances attempt to acquire this lock each time the coordination logic runs.
+shared lock is often essential. Job instances attempt to acquire this lock each time the coordination logic runs.
+The lock remains held when the execution state changes. This is crucial because the current state of coordinated
+instances often dictates the coordination action, and using a lock ensures that the 'check-then-act' sequence
+on the execution states is atomic, preventing race conditions.
+
+
+IMPLEMENTATION NOTES
+
+State lock
+----------
+1. Atomic update of the job instance state (i.e. error object + failure state)
+2. Consistent execution state notification order
+3. No race condition on state observer notify on register
 
 """
 
@@ -231,12 +243,12 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
         while True:
             with self._coord_locker() as coord_lock:
                 if self._stopped_or_interrupted:
-                    signal = Signal.TERMINATE
+                    signal = Signal.REJECT
                     state = ExecutionState.CANCELLED
                 else:
                     signal = self._coord.set_signal(self.create_snapshot())
                     if signal is Signal.NONE:
-                        raise UnexpectedStateError(f"Signal.NONE is not allowed value for signaling")
+                        raise UnexpectedStateError(f"{Signal.NONE} is not allowed value for signaling")
 
                     if signal is Signal.WAIT and self._released:
                         signal = Signal.CONTINUE
@@ -246,11 +258,11 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
                     else:
                         state = self._coord.exec_state
                         if not (state.has_flag(Flag.WAITING) or state.in_phase(Phase.TERMINAL)):
-                            raise UnexpectedStateError(f"Unsupported state returned from sync: {state}")
+                            raise UnexpectedStateError(f"Unsupported state {state} for signal {signal}")
 
                 state_lock_acquired = False
                 if signal is Signal.WAIT and self.lifecycle.state == state:
-                    # Waiting state already set, now we can wait
+                    # Waiting state already set and observers notified, now we can wait
                     self._coord.unlock_and_wait(coord_lock)
                     new_job_inst = None
                 else:
@@ -275,7 +287,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
             if signal is Signal.WAIT:
                 continue
-            if signal is Signal.TERMINATE:
+            if signal is Signal.REJECT:
                 return False
 
             return True
