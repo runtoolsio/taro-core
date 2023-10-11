@@ -20,6 +20,7 @@ from datetime import timezone, time, timedelta
 from enum import Enum
 from fnmatch import fnmatch
 from functools import partial
+from threading import Thread
 from typing import NamedTuple, Dict, Any, Optional, List, Tuple, Iterable, Set
 
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionLifecycle, ExecutionPhase, ExecutionStateFlag, \
@@ -833,17 +834,17 @@ class DelegatingJobInstance(RunnableJobInstance):
     def __init__(self, delegated):
         self.delegated = delegated
 
+    @abc.abstractmethod
+    def run(self):
+        """Run the job"""
+
     @property
     def id(self):
         return self.delegated.id
 
     @property
     def metadata(self):
-        return self.metadata
-
-    @abc.abstractmethod
-    def run(self):
-        """Run the job"""
+        return self.delegated.metadata
 
     @property
     def lifecycle(self):
@@ -852,6 +853,10 @@ class DelegatingJobInstance(RunnableJobInstance):
     @property
     def status(self):
         return self.delegated.status
+
+    @property
+    def tracking(self):
+        return self.delegated.tracking
 
     @property
     def last_output(self):
@@ -874,6 +879,9 @@ class DelegatingJobInstance(RunnableJobInstance):
 
     def create_snapshot(self):
         return self.delegated.create_snapshot()
+
+    def release(self):
+        self.delegated.release()
 
     def stop(self):
         self.delegated.stop()
@@ -898,6 +906,16 @@ class DelegatingJobInstance(RunnableJobInstance):
 
     def remove_output_observer(self, observer):
         self.delegated.remove_output_observer(observer)
+
+
+class RunInNewThreadJobInstance(DelegatingJobInstance):
+
+    def __init__(self, job_instance):
+        super().__init__(job_instance)
+
+    def run(self):
+        t = Thread(target=self.delegated.run)
+        t.start()
 
 
 class JobInst:

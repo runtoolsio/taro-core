@@ -6,6 +6,7 @@ import json
 import logging
 from dataclasses import dataclass
 from enum import Enum, auto
+from json import JSONDecodeError
 from typing import List, Any, Dict, NamedTuple, Optional, TypeVar, Generic, Callable
 
 from tarotools.taro.jobs.api import API_FILE_EXTENSION
@@ -399,7 +400,11 @@ def _process_responses(server_responses: List[ServerResponse], resp_mapper: Call
             errors.append(APIError(server_id, APIErrorType.SOCKET, error, None))
             continue
 
-        resp_body = json.loads(resp)
+        try:
+            resp_body = json.loads(resp)
+        except JSONDecodeError:
+            # TODO Mostly when the resp is too long (i.e. server with many instances)
+            raise
         resp_metadata = resp_body.get("response_metadata")
         if not resp_metadata:
             log.error("event=[api_error] type=[invalid_response] error=[missing_response_metadata]")

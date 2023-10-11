@@ -16,11 +16,11 @@ from tarotools.taro.jobs.execution import Flag, ExecutionState, ExecutionError, 
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.jobs.inst import JobInstanceID, JobInstance, JobInst, InstanceStateObserver, Warn, \
     InstanceWarningObserver, \
-    WarnEventCtx, RunnableJobInstance
+    WarnEventCtx, RunnableJobInstance, RunInNewThreadJobInstance
 from tarotools.taro.jobs.plugins import Plugin, PluginDisabledError
 from tarotools.taro.jobs.process import ProcessExecution
 from tarotools.taro.jobs.program import ProgramExecution
-from tarotools.taro.jobs.runner import RunnerJobInstance, NoSync, RunnableJobInstance
+from tarotools.taro.jobs.runner import RunnerJobInstance, NoSync, RunnableJobInstance, register_state_observer
 from tarotools.taro.jobs.sync import NoSync
 from tarotools.taro.paths import lookup_file_in_config_path
 from tarotools.taro.util import format_timedelta, read_toml_file_flatten
@@ -76,9 +76,18 @@ def job_instance(job_id, execution, sync_=NoSync(), state_locker=lock.default_st
                              pending_group=pending_group, user_params=user_params)
 
 
+def job_instance_background(job_id, execution, sync_=NoSync(), state_locker=lock.default_state_locker(), *,
+                            instance_id=None, pending_group=None, **user_params) \
+        -> RunnableJobInstance:
+    instance = RunnerJobInstance(job_id, execution, sync_, state_locker, instance_id=instance_id,
+                                 pending_group=pending_group, user_params=user_params)
+    return RunInNewThreadJobInstance(instance)
+
+
 def run(job_id, execution, sync_=NoSync(), state_locker=lock.default_state_locker(), *, instance_id=None,
         pending_group=None, **user_params) -> JobInstance:
-    instance = job_instance(job_id, execution, sync_, state_locker, instance_id=instance_id, pending_group=pending_group,
+    instance = job_instance(job_id, execution, sync_, state_locker, instance_id=instance_id,
+                            pending_group=pending_group,
                             user_params=user_params)
     instance.run()
     return instance

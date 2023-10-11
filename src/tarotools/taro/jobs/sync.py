@@ -1,3 +1,4 @@
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -10,6 +11,8 @@ from tarotools.taro.jobs.execution import ExecutionState, ExecutionPhase, Flag
 from tarotools.taro.jobs.inst import JobInstanceMetadata, JobInstances
 from tarotools.taro.listening import StateReceiver, ExecutionStateEventObserver
 from tarotools.taro.log import timing
+
+log = logging.getLogger(__name__)
 
 
 class Signal(Enum):
@@ -52,10 +55,9 @@ class Sync(ABC):
         """
 
     @abstractmethod
-    def unlock_and_wait(self, global_state_lock):
+    def wait(self):
         """
 
-        :param global_state_lock: global execution state lock for unlocking
         """
 
     @property
@@ -66,6 +68,11 @@ class Sync(ABC):
     def release(self):
         """
         Interrupt waiting
+        """
+
+    def close(self):
+        """
+        Close resources if needed
         """
 
 
@@ -86,7 +93,7 @@ class NoSync(Sync):
         self._current_signal = Signal.CONTINUE
         return self.current_signal
 
-    def unlock_and_wait(self, global_state_lock):
+    def wait(self):
         raise InvalidStateError('Wait is not supported and this method is not supposed to be called')
 
 
@@ -114,8 +121,8 @@ class CompositeSync(Sync):
 
         return self.current_signal
 
-    def unlock_and_wait(self, global_state_lock):
-        self._current.unlock_and_wait(global_state_lock)
+    def wait(self):
+        self._current.wait()
 
     @property
     def parameters(self):
@@ -155,11 +162,10 @@ class Latch(Sync):
 
         return self._signal
 
-    def unlock_and_wait(self, lock):
+    def wait(self):
         if self._event.is_set():
             return
 
-        lock.unlock()  # TODO Race condition?
         self._event.wait()
 
     def release(self):
@@ -204,7 +210,7 @@ class NoOverlap(Sync):
 
         return self.current_signal
 
-    def unlock_and_wait(self, global_state_lock):
+    def wait(self):
         raise InvalidStateError("Wait is not supported by no-overlap sync")
 
     @property
@@ -239,7 +245,7 @@ class Dependency(Sync):
 
         return self._signal
 
-    def unlock_and_wait(self, global_state_lock):
+    def wait(self):
         raise InvalidStateError("Wait is not supported by no-overlap sync")
 
     @property
@@ -249,13 +255,15 @@ class Dependency(Sync):
 
 class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
 
-    def __init__(self, execution_group, max_executions):
+    def __init__(self, execution_group, max_executions, state_receiver_factory=StateReceiver):
         if not execution_group:
             raise ValueError('Execution group must be specified')
         if max_executions < 1:
             raise ValueError('Max executions must be greater than zero')
         self._group = execution_group
         self._max = max_executions
+        self._state_receiver_factory = state_receiver_factory
+        self._state_receiver = None
         self._signal = Signal.NONE
         self._event = Event()
         self._parameters = (
@@ -288,36 +296,46 @@ class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
         return ExecutionState.NONE
 
     @timing('exec_limit_set_signal', args_idx=[1])
-    def set_signal(self, job_info) -> Signal:
+    def set_signal(self, job_inst) -> Signal:
+        # We must clear the signal first to not miss any updates after `read_instances()` is called
+        self._event.clear()
+
+        if not self._state_receiver:
+            self._state_receiver = self._state_receiver_factory()
+            self._state_receiver.listeners.append(self)
+            self._state_receiver.start()
+
         jobs, _ = taro.client.read_instances()
 
-        exec_group_jobs_sorted = JobInstances(sorted(
+        group_jobs_sorted = JobInstances(sorted(
             (job for job in jobs if self._is_same_exec_group(job.metadata)),
             key=lambda job: job.lifecycle.changed_at(ExecutionState.CREATED)
         ))
-        more_allowed = self.max_executions - len(exec_group_jobs_sorted.executing)
-        if more_allowed <= 0:
+        allowed_count = self.max_executions - len(group_jobs_sorted.executing)
+        if allowed_count <= 0:
             return self._set_signal(Signal.WAIT)
 
-        next_allowed = exec_group_jobs_sorted.scheduled[0:more_allowed] # TODO Important This doesn't look correct - should iterate only thru queued
-        job_created = job_info.lifecycle.changed_at(ExecutionState.CREATED)
+        next_allowed = group_jobs_sorted.scheduled[0:allowed_count]
+        job_created = job_inst.lifecycle.changed_at(ExecutionState.CREATED)
         for allowed in next_allowed:
-            if job_info.id == allowed.id or job_created <= allowed.lifecycle.changed_at(ExecutionState.CREATED):
-                # The second condition ensure this works even when the job is not contained in 'job' for any reasons
+            if job_inst.id == allowed.id or job_created <= allowed.lifecycle.changed_at(ExecutionState.CREATED):
+                # The second condition ensure this works even when the job is not contained in the list for any reasons
                 return self._set_signal(Signal.CONTINUE)
 
         return self._set_signal(Signal.WAIT)
 
     def _is_same_exec_group(self, instance_meta):
         return instance_meta.id.job_id == self._group or \
-               any(1 for name, value in instance_meta.parameters if name == 'execution_group' and value == self._group)
+            any(1 for name, value in instance_meta.parameters if name == 'execution_group' and value == self._group)
 
-    def unlock_and_wait(self, global_state_lock):
-        self._event.clear()
-        global_state_lock.unlock()
-        # Set a timeout value to cope with probably harmless race condition between unlock and wait.
-        # This prevents infinity wait in case of lost wakeup.
-        self._event.wait(5)
+    def wait(self):
+        log.debug("event=[exec_limit_coord_wait_starting]")
+        set_ = self._event.wait(60)
+
+        if set_:
+            log.debug("event=[exec_limit_coord_wait_finished]")
+        else:
+            log.warning("event=[exec_limit_coord_timeout]")
 
     @property
     def parameters(self):
@@ -330,22 +348,10 @@ class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
         if new_state.in_phase(ExecutionPhase.TERMINAL) and self._is_same_exec_group(instance_meta):
             self._event.set()
 
-
-class WaitForStateWrapper(CompositeSync):
-    def __init__(self, *syncs, state_receiver_factory=StateReceiver):
-        super().__init__(*syncs)
-        self._state_receiver_factory = state_receiver_factory
-
-    def unlock_and_wait(self, global_state_lock):
-        """TODO Create sync.close() to be able to re-use single state receiver?"""
-        receiver = self._state_receiver_factory()
-        receiver.listeners.append(self._current)
-        receiver.start()
-        try:
-            super(WaitForStateWrapper, self).unlock_and_wait(global_state_lock)
-        finally:
-            receiver.close()
-            receiver.listeners.remove(self._current)
+    def close(self):
+        if self._state_receiver:
+            self._state_receiver.close()
+            self._state_receiver.listeners.remove(self)
 
 
 @dataclass
@@ -354,12 +360,13 @@ class ExecutionsLimit:
     max_executions: int
 
 
-def create_composite(executions_limit: ExecutionsLimit = None, no_overlap: bool = False, depends_on: Sequence[str] = ()):
+def create_composite(executions_limit: ExecutionsLimit = None, no_overlap: bool = False,
+                     depends_on: Sequence[str] = ()):
     syncs = []
 
     if executions_limit:
         limitation = ExecutionsLimitation(executions_limit.execution_group, executions_limit.max_executions)
-        syncs.append(WaitForStateWrapper(limitation))
+        syncs.append(limitation)
     if no_overlap:
         syncs.append(NoOverlap())
     if depends_on:

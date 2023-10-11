@@ -47,6 +47,7 @@ FILE_HANDLER_NAME = 'file-handler'
 
 def configure(log_mode, log_stdout_level='warn', log_file_level='info', log_file_path=None):
     tarotools_logger.handlers.clear()
+    tarotools_logger.setLevel(logging.WARNING)
 
     if log_mode == LogMode.PROPAGATE:
         config_logger(enable=True, propagate=True)
@@ -59,11 +60,17 @@ def configure(log_mode, log_stdout_level='warn', log_file_level='info', log_file
     config_logger(enable=True, propagate=False)
 
     if log_stdout_level != 'off':
-        setup_console(log_stdout_level)
+        level = logging.getLevelName(log_stdout_level.upper())
+        setup_console(level)
+        if level < tarotools_logger.getEffectiveLevel():
+            tarotools_logger.setLevel(level)
 
     if log_file_level != 'off':
+        level = logging.getLevelName(log_file_level.upper())
         log_file_path = expand_user(log_file_path) or paths.log_file_path(create=True)
-        setup_file(log_file_level, log_file_path)
+        setup_file(level, log_file_path)
+        if level < tarotools_logger.getEffectiveLevel():
+            tarotools_logger.setLevel(level)
 
 
 def init_by_config():
@@ -77,14 +84,14 @@ def is_disabled():
 def setup_console(level):
     stdout_handler = logging.StreamHandler(sys.stdout)
     stdout_handler.set_name(STDOUT_HANDLER_NAME)
-    stdout_handler.setLevel(logging.getLevelName(level.upper()))
+    stdout_handler.setLevel(level)
     stdout_handler.setFormatter(DEF_FORMATTER)
     stdout_handler.addFilter(lambda record: record.levelno <= logging.INFO)
     register_handler(stdout_handler)
 
     stderr_handler = logging.StreamHandler(sys.stderr)
     stderr_handler.set_name(STDERR_HANDLER_NAME)
-    stderr_handler.setLevel(logging.getLevelName(level.upper()))
+    stderr_handler.setLevel(level)
     stderr_handler.setFormatter(DEF_FORMATTER)
     stderr_handler.addFilter(lambda record: record.levelno > logging.INFO)
     register_handler(stderr_handler)
@@ -97,7 +104,7 @@ def get_console_level():
 def setup_file(level, file):
     file_handler = logging.handlers.WatchedFileHandler(file)
     file_handler.set_name(FILE_HANDLER_NAME)
-    file_handler.setLevel(logging.getLevelName(level.upper()))
+    file_handler.setLevel(level)
     file_handler.setFormatter(DEF_FORMATTER)
     register_handler(file_handler)
 

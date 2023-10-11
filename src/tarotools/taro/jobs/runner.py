@@ -211,6 +211,8 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
             log.error(self._log('coord_error'), exc_info=e)
             self._change_state(ExecutionState.ERROR)
             return
+        finally:
+            self._coord.close()
 
         if coordinated:
             self._executing = True
@@ -263,7 +265,8 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
                 state_lock_acquired = False
                 if signal is Signal.WAIT and self.lifecycle.state == state:
                     # Waiting state already set and observers notified, now we can wait
-                    self._coord.unlock_and_wait(coord_lock)
+                    coord_lock.unlock()
+                    self._coord.wait()
                     new_job_inst = None
                 else:
                     # Shouldn't notify listener whilst holding the coord lock, so first we only set the state...
