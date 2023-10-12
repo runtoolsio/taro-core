@@ -2,13 +2,14 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, auto
-from threading import Event
+from threading import Event, Condition
 from typing import Sequence
+from weakref import WeakKeyDictionary
 
 from tarotools import taro
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.execution import ExecutionState, ExecutionPhase, Flag
-from tarotools.taro.jobs.inst import JobInstanceMetadata, JobInstances
+from tarotools.taro.jobs.inst import JobInstances
 from tarotools.taro.listening import StateReceiver, ExecutionStateEventObserver
 from tarotools.taro.log import timing
 
@@ -35,27 +36,26 @@ class Sync(ABC):
         :return: currently set signal on this object or NONE signal if the signal is not yet set
         """
 
-    @property
     @abstractmethod
-    def exec_state(self) -> ExecutionState:
+    def exec_state(self, signal) -> ExecutionState:
         """
         TODO return in tuple in set_signal?
         :return: execution state for the current signal or NONE state
         """
 
     @abstractmethod
-    def set_signal(self, job_info) -> Signal:
+    def set_signal(self, job_inst) -> Signal:
         """
         If returned signal is 'WAIT' then the job is obligated to call :func:`wait_and_release`
         which will likely suspend the job until an awaited condition is changed.
 
-        :param job_info:
+        :param job_inst:
         :param: job_info job for which the signal is being set
         :return: sync state for job
         """
 
     @abstractmethod
-    def wait(self):
+    def wait(self, job_inst):
         """
 
         """
@@ -85,15 +85,14 @@ class NoSync(Sync):
     def current_signal(self) -> Signal:
         return self._current_signal
 
-    @property
-    def exec_state(self) -> ExecutionState:
+    def exec_state(self, signal) -> ExecutionState:
         return ExecutionState.NONE
 
-    def set_signal(self, job_info) -> Signal:
+    def set_signal(self, job_inst) -> Signal:
         self._current_signal = Signal.CONTINUE
         return self.current_signal
 
-    def wait(self):
+    def wait(self, job_inst):
         raise InvalidStateError('Wait is not supported and this method is not supposed to be called')
 
 
@@ -108,21 +107,20 @@ class CompositeSync(Sync):
     def current_signal(self) -> Signal:
         return self._current.current_signal
 
-    @property
-    def exec_state(self) -> ExecutionState:
-        return self._current.exec_state
+    def exec_state(self, signal) -> ExecutionState:
+        return self._current.exec_state(signal)
 
-    def set_signal(self, job_info) -> Signal:
+    def set_signal(self, job_inst) -> Signal:
         for sync in self._syncs:
             self._current = sync
-            signal = sync.set_signal(job_info)
+            signal = sync.set_signal(job_inst)
             if signal is not Signal.CONTINUE:
                 break
 
         return self.current_signal
 
-    def wait(self):
-        self._current.wait()
+    def wait(self, job_inst):
+        self._current.wait(job_inst)
 
     @property
     def parameters(self):
@@ -147,14 +145,13 @@ class Latch(Sync):
     def current_signal(self) -> Signal:
         return self._signal
 
-    @property
-    def exec_state(self) -> ExecutionState:
+    def exec_state(self, signal) -> ExecutionState:
         if self._signal is Signal.WAIT:
             return self.waiting_state
 
         return ExecutionState.NONE
 
-    def set_signal(self, job_info) -> Signal:
+    def set_signal(self, job_inst) -> Signal:
         if self._event.is_set():
             self._signal = Signal.CONTINUE
         else:
@@ -162,7 +159,7 @@ class Latch(Sync):
 
         return self._signal
 
-    def wait(self):
+    def wait(self, job_inst):
         if self._event.is_set():
             return
 
@@ -192,25 +189,24 @@ class NoOverlap(Sync):
     def current_signal(self) -> Signal:
         return self._signal
 
-    @property
-    def exec_state(self) -> ExecutionState:
+    def exec_state(self, signal) -> ExecutionState:
         if self._signal is Signal.REJECT:
             return ExecutionState.SKIPPED
 
         return ExecutionState.NONE
 
-    def set_signal(self, job_info) -> Signal:
-        job_instance = self._job_instance or job_info.job_id
+    def set_signal(self, job_inst) -> Signal:
+        job_instance = self._job_instance or job_inst.job_id
 
         jobs, _ = taro.client.read_instances()
-        if any(j for j in jobs if j.id != job_info.id and j.id.matches_pattern(job_instance)):
+        if any(j for j in jobs if j.id != job_inst.id and j.id.matches_pattern(job_instance)):
             self._signal = Signal.REJECT
         else:
             self._signal = Signal.CONTINUE
 
         return self.current_signal
 
-    def wait(self):
+    def wait(self, job_inst):
         raise InvalidStateError("Wait is not supported by no-overlap sync")
 
     @property
@@ -229,14 +225,13 @@ class Dependency(Sync):
     def current_signal(self) -> Signal:
         return self._signal
 
-    @property
-    def exec_state(self) -> ExecutionState:
+    def exec_state(self, signal) -> ExecutionState:
         if self._signal is Signal.REJECT:
             return ExecutionState.UNSATISFIED
 
         return ExecutionState.NONE
 
-    def set_signal(self, job_info) -> Signal:
+    def set_signal(self, job_inst) -> Signal:
         jobs, _ = taro.client.read_instances()
         if any(j for j in jobs if any(j.id.matches_pattern(dependency) for dependency in self.dependencies)):
             self._signal = Signal.CONTINUE
@@ -245,7 +240,7 @@ class Dependency(Sync):
 
         return self._signal
 
-    def wait(self):
+    def wait(self, job_inst):
         raise InvalidStateError("Wait is not supported by no-overlap sync")
 
     @property
@@ -263,9 +258,16 @@ class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
         self._group = execution_group
         self._max = max_executions
         self._state_receiver_factory = state_receiver_factory
+        self._inst_to_wait_id = WeakKeyDictionary()
+
+        self._wait_guard = Condition()
+        # vv Guarding these fields vv
+        self._wait_counter = 0
+        self._current_wait = None
         self._state_receiver = None
+
         self._signal = Signal.NONE
-        self._event = Event()
+
         self._parameters = (
             ('sync', 'executions_limitation'),
             ('execution_group', execution_group),
@@ -288,23 +290,13 @@ class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
         self._signal = signal
         return signal
 
-    @property
-    def exec_state(self) -> ExecutionState:
-        if self._signal is Signal.WAIT:
+    def exec_state(self, signal) -> ExecutionState:
+        if signal is Signal.WAIT:
             return ExecutionState.QUEUED
 
         return ExecutionState.NONE
 
-    @timing('exec_limit_set_signal', args_idx=[1])
-    def set_signal(self, job_inst) -> Signal:
-        # We must clear the signal first to not miss any updates after `read_instances()` is called
-        self._event.clear()
-
-        if not self._state_receiver:
-            self._state_receiver = self._state_receiver_factory()
-            self._state_receiver.listeners.append(self)
-            self._state_receiver.start()
-
+    def _allowed_continue(self, job_inst) -> bool:
         jobs, _ = taro.client.read_instances()
 
         group_jobs_sorted = JobInstances(sorted(
@@ -313,45 +305,83 @@ class ExecutionsLimitation(Sync, ExecutionStateEventObserver):
         ))
         allowed_count = self.max_executions - len(group_jobs_sorted.executing)
         if allowed_count <= 0:
-            return self._set_signal(Signal.WAIT)
+            return False
 
         next_allowed = group_jobs_sorted.scheduled[0:allowed_count]
         job_created = job_inst.lifecycle.changed_at(ExecutionState.CREATED)
         for allowed in next_allowed:
             if job_inst.id == allowed.id or job_created <= allowed.lifecycle.changed_at(ExecutionState.CREATED):
                 # The second condition ensure this works even when the job is not contained in the list for any reasons
-                return self._set_signal(Signal.CONTINUE)
+                return True
 
-        return self._set_signal(Signal.WAIT)
+        return False
 
     def _is_same_exec_group(self, instance_meta):
         return instance_meta.id.job_id == self._group or \
             any(1 for name, value in instance_meta.parameters if name == 'execution_group' and value == self._group)
 
-    def wait(self):
-        log.debug("event=[exec_limit_coord_wait_starting]")
-        set_ = self._event.wait(60)
+    @timing('exec_limit_set_signal', args_idx=[1])
+    def set_signal(self, job_inst) -> Signal:
+        if self._allowed_continue(job_inst):
+            return Signal.CONTINUE
 
-        if set_:
-            log.debug("event=[exec_limit_coord_wait_finished]")
-        else:
-            log.warning("event=[exec_limit_coord_timeout]")
+        with self._wait_guard:
+            if not self._current_wait:
+                self._current_wait = self._setup_waiting()
+                if self._allowed_continue(job_inst):
+                    self._remove_waiting()
+                    return Signal.CONTINUE
+
+            self._inst_to_wait_id[job_inst] = self._current_wait
+
+        return Signal.WAIT
+
+    def _setup_waiting(self):
+        self._start_listening()
+        self._wait_counter += 1
+        return self._wait_counter
+
+    def _start_listening(self):
+        self._state_receiver = self._state_receiver_factory()
+        self._state_receiver.listeners.append(self)
+        self._state_receiver.start()
+
+    def wait(self, job_inst):
+        log.debug("event=[exec_limit_coord_wait_starting]")
+
+        wait_id = self._inst_to_wait_id.pop(job_inst)
+        with self._wait_guard:
+            if not self._current_wait or self._current_wait != wait_id:
+                return
+            self._wait_guard.wait()
+
+        log.debug("event=[exec_limit_coord_wait_finished]")
+
+    def state_update(self, instance_meta, _, new_state, __):
+        with self._wait_guard:
+            if not self._current_wait:
+                return
+            if new_state.in_phase(ExecutionPhase.TERMINAL) and self._is_same_exec_group(instance_meta):
+                self._remove_waiting()
+                self._wait_guard.notify_all()
+
+    def _remove_waiting(self):
+        self._current_wait = None
+        self._stop_listening()
+
+    def _stop_listening(self):
+        self._state_receiver.close()
+        self._state_receiver.listeners.remove(self)
+        self._state_receiver = None
 
     @property
     def parameters(self):
         return self._parameters
 
     def release(self):
-        self._event.set()
-
-    def state_update(self, instance_meta: JobInstanceMetadata, previous_state, new_state, changed):
-        if new_state.in_phase(ExecutionPhase.TERMINAL) and self._is_same_exec_group(instance_meta):
-            self._event.set()
-
-    def close(self):
-        if self._state_receiver:
-            self._state_receiver.close()
-            self._state_receiver.listeners.remove(self)
+        with self._wait_guard:
+            self._remove_waiting()
+            self._wait_guard.notify_all()
 
 
 @dataclass

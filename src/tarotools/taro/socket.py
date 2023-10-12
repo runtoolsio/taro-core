@@ -162,6 +162,8 @@ class SocketClient:
                     skip = True  # Ignore this one and continue with another one
                     break
                 except OSError as e:
+                    if e.errno == 2 or e.errno == 32:
+                        continue  # The server closed meanwhile
                     if e.errno == 90:
                         raise PayloadTooLarge(len(encoded))
                     raise e

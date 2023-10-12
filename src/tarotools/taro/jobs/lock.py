@@ -101,7 +101,7 @@ class PortalockerStateLocker(StateLocker):
         file_lock = portalocker.Lock(self.lock_file, timeout=self.timeout, check_interval=self._check_interval())
         start_time = time.time()
         file_lock.acquire()
-        log.debug(f'event=[state_lock_acquired] wait=[{(time.time() - start_time) * 1000 :.2f} ms]')
+        log.debug(f'event=[coord_lock_acquired] wait=[{(time.time() - start_time) * 1000 :.2f} ms]')
 
         lock = PortalockerStateLock(file_lock)
         try:
@@ -138,7 +138,7 @@ class PortalockerStateLock(StateLock):
         self.file_lock.release()
         self.unlocked_at = time.time()
         lock_time_ms = (self.unlocked_at - self.created_at) * 1000
-        log.debug(f'event=[state_lock_released] locked=[{lock_time_ms:.2f} ms]')
+        log.debug(f'event=[coord_lock_released] locked=[{lock_time_ms:.2f} ms]')
 
 
 class NullStateLocker(StateLocker, StateLock):

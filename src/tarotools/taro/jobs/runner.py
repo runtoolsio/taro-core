@@ -248,7 +248,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
                     signal = Signal.REJECT
                     state = ExecutionState.CANCELLED
                 else:
-                    signal = self._coord.set_signal(self.create_snapshot())
+                    signal = self._coord.set_signal(self)
                     if signal is Signal.NONE:
                         raise UnexpectedStateError(f"{Signal.NONE} is not allowed value for signaling")
 
@@ -258,7 +258,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
                     if signal is Signal.CONTINUE:
                         state = ExecutionState.RUNNING
                     else:
-                        state = self._coord.exec_state
+                        state = self._coord.exec_state(signal)
                         if not (state.has_flag(Flag.WAITING) or state.in_phase(Phase.TERMINAL)):
                             raise UnexpectedStateError(f"Unsupported state {state} for signal {signal}")
 
@@ -266,7 +266,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
                 if signal is Signal.WAIT and self.lifecycle.state == state:
                     # Waiting state already set and observers notified, now we can wait
                     coord_lock.unlock()
-                    self._coord.wait()
+                    self._coord.wait(self)
                     new_job_inst = None
                 else:
                     # Shouldn't notify listener whilst holding the coord lock, so first we only set the state...
