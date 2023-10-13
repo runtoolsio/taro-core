@@ -45,7 +45,7 @@ class IDMatchCriteria:
         strategy (MatchingStrategy): The strategy to use for matching. Default is `MatchingStrategy.EXACT`.
     """
     job_id: str
-    instance_id: str  # TODO consider default value too
+    instance_id: str = ''
     match_both_ids: bool = True
     strategy: MatchingStrategy = MatchingStrategy.EXACT
 

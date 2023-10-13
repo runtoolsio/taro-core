@@ -51,13 +51,13 @@ from typing import List, Union, Tuple, Optional
 
 from tarotools.taro import util
 from tarotools.taro.jobs import lock
+from tarotools.taro.jobs.coord import NoCoordination, CompositeCoordination, Latch, Signal
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, \
     ExecutionOutputObserver, \
     Phase, Flag, UnexpectedStateError
 from tarotools.taro.jobs.inst import JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, \
     InstanceStateNotification, \
     InstanceOutputNotification, InstanceWarningNotification, RunnableJobInstance
-from tarotools.taro.jobs.sync import NoSync, CompositeSync, Latch, Signal
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
 log = logging.getLogger(__name__)
@@ -69,13 +69,13 @@ _warning_observers = InstanceWarningNotification(logger=log)
 
 class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, coord=NoSync(), coord_locker=lock.default_state_locker(),
+    def __init__(self, job_id, execution, coord=NoCoordination(), coord_locker=lock.default_state_locker(),
                  *, instance_id=None, pending_group=None, **user_params):
         self._id = JobInstanceID(job_id, instance_id or util.unique_timestamp_hex())
         self._execution = execution
-        coord = coord or NoSync()
+        coord = coord or NoCoordination()
         if pending_group:
-            self._coord = CompositeSync(Latch(ExecutionState.PENDING), coord)
+            self._coord = CompositeCoordination(Latch(ExecutionState.PENDING), coord)
         else:
             self._coord = coord
         parameters = (execution.parameters or ()) + (coord.parameters or ())
@@ -248,7 +248,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
                     signal = Signal.REJECT
                     state = ExecutionState.CANCELLED
                 else:
-                    signal = self._coord.set_signal(self)
+                    signal = self._coord.coordinate(self)
                     if signal is Signal.NONE:
                         raise UnexpectedStateError(f"{Signal.NONE} is not allowed value for signaling")
 

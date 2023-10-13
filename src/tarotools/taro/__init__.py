@@ -11,7 +11,8 @@ from threading import Thread
 import tarotools.taro.cfg
 from tarotools.taro import cfg, client, log
 from tarotools.taro.hostinfo import read_hostinfo, HostinfoError
-from tarotools.taro.jobs import warning, persistence, plugins, repo, sync, runner, lock
+from tarotools.taro.jobs import warning, persistence, plugins, repo, coord, runner, lock
+from tarotools.taro.jobs.coord import NoCoordination
 from tarotools.taro.jobs.execution import Flag, ExecutionState, ExecutionError, ExecutionLifecycle
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.jobs.inst import JobInstanceID, JobInstance, JobInst, InstanceStateObserver, Warn, \
@@ -20,8 +21,7 @@ from tarotools.taro.jobs.inst import JobInstanceID, JobInstance, JobInst, Instan
 from tarotools.taro.jobs.plugins import Plugin, PluginDisabledError
 from tarotools.taro.jobs.process import ProcessExecution
 from tarotools.taro.jobs.program import ProgramExecution
-from tarotools.taro.jobs.runner import RunnerJobInstance, NoSync, RunnableJobInstance, register_state_observer
-from tarotools.taro.jobs.sync import NoSync
+from tarotools.taro.jobs.runner import RunnerJobInstance, NoCoordination, RunnableJobInstance, register_state_observer
 from tarotools.taro.paths import lookup_file_in_config_path
 from tarotools.taro.util import format_timedelta, read_toml_file_flatten
 
@@ -69,14 +69,14 @@ def close():
     persistence.close()
 
 
-def job_instance(job_id, execution, sync_=NoSync(), state_locker=lock.default_state_locker(), *, instance_id=None,
+def job_instance(job_id, execution, sync_=NoCoordination(), state_locker=lock.default_state_locker(), *, instance_id=None,
                  pending_group=None, **user_params) \
         -> RunnableJobInstance:
     return RunnerJobInstance(job_id, execution, sync_, state_locker, instance_id=instance_id,
                              pending_group=pending_group, user_params=user_params)
 
 
-def job_instance_background(job_id, execution, sync_=NoSync(), state_locker=lock.default_state_locker(), *,
+def job_instance_background(job_id, execution, sync_=NoCoordination(), state_locker=lock.default_state_locker(), *,
                             instance_id=None, pending_group=None, **user_params) \
         -> RunnableJobInstance:
     instance = RunnerJobInstance(job_id, execution, sync_, state_locker, instance_id=instance_id,
@@ -84,7 +84,7 @@ def job_instance_background(job_id, execution, sync_=NoSync(), state_locker=lock
     return RunInNewThreadJobInstance(instance)
 
 
-def run(job_id, execution, sync_=NoSync(), state_locker=lock.default_state_locker(), *, instance_id=None,
+def run(job_id, execution, sync_=NoCoordination(), state_locker=lock.default_state_locker(), *, instance_id=None,
         pending_group=None, **user_params) -> JobInstance:
     instance = job_instance(job_id, execution, sync_, state_locker, instance_id=instance_id,
                             pending_group=pending_group,
