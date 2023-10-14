@@ -46,15 +46,16 @@ State lock
 import copy
 import logging
 from collections import deque, Counter
+from dataclasses import dataclass
 from threading import RLock
 from typing import List, Union, Tuple, Optional
 
 from tarotools.taro import util
 from tarotools.taro.jobs import lock
-from tarotools.taro.jobs.coord import NoCoordination, CompositeCoordination, Latch, Signal
+from tarotools.taro.jobs.coord import Reject, Wait, Continue, CompositeCoord
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, \
     ExecutionOutputObserver, \
-    Phase, Flag, UnexpectedStateError
+    Flag, UnexpectedStateError
 from tarotools.taro.jobs.inst import JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, \
     InstanceStateNotification, \
     InstanceOutputNotification, InstanceWarningNotification, RunnableJobInstance
@@ -69,31 +70,27 @@ _warning_observers = InstanceWarningNotification(logger=log)
 
 class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, coord=NoCoordination(), coord_locker=lock.default_state_locker(),
-                 *, instance_id=None, pending_group=None, **user_params):
+    def __init__(self, job_id, execution, coordinations=(), coord_locker=lock.default_coord_locker(),
+                 *, instance_id=None, **user_params):
         self._id = JobInstanceID(job_id, instance_id or util.unique_timestamp_hex())
         self._execution = execution
-        coord = coord or NoCoordination()
-        if pending_group:
-            self._coord = CompositeCoordination(Latch(ExecutionState.PENDING), coord)
-        else:
-            self._coord = coord
-        parameters = (execution.parameters or ()) + (coord.parameters or ())
-        self._metadata = JobInstanceMetadata(self._id, parameters, user_params, pending_group)
+        self._coord = CompositeCoord(*coordinations) if coordinations else None
+        parameters = (execution.parameters or ()) + self._coord.parameters if self._coord else ()
+        self._metadata = JobInstanceMetadata(self._id, parameters, user_params)
         self._coord_locker = coord_locker
-        self._lifecycle: ExecutionLifecycleManagement = ExecutionLifecycleManagement()
-        self._released = False
+        self._lifecycle = ExecutionLifecycleManagement()
+        self._state_lock = RLock()
         self._last_output = deque(maxlen=10)  # TODO Max len configurable
         self._error_output = deque(maxlen=1000)  # TODO Max len configurable
-        self._exec_error = None
         self._executing = False
-        self._stopped_or_interrupted: bool = False
-        self._state_lock: RLock = RLock()
+        self._stopped_or_interrupted = False
+        self._exec_error = None
         self._warnings = Counter()
         self._state_notification = InstanceStateNotification(log, _state_observers)
         self._warning_notification = InstanceWarningNotification(log, _warning_observers)
         self._output_notification = InstanceOutputNotification(log, _output_observers)
 
+        # This will execute `create_snapshot` with not fully initialized instances
         self._change_state(ExecutionState.CREATED)
 
     def _log(self, event: str, msg: str = '', *params):
@@ -168,7 +165,6 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
         self._output_notification.remove_observer(observer)
 
     def release(self):
-        self._released = True
         self._coord.release()
 
     def stop(self):
@@ -211,8 +207,6 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
             log.error(self._log('coord_error'), exc_info=e)
             self._change_state(ExecutionState.ERROR)
             return
-        finally:
-            self._coord.close()
 
         if coordinated:
             self._executing = True
@@ -242,38 +236,35 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
             self._execution.remove_output_observer(self)
 
     def _coordinate(self) -> bool:
+        if not self._coord:
+            return True
+
+        @dataclass
+        class ContinueRunning(Continue):
+            state = ExecutionState.RUNNING
+
         while True:
             with self._coord_locker() as coord_lock:
                 if self._stopped_or_interrupted:
-                    signal = Signal.REJECT
-                    state = ExecutionState.CANCELLED
+                    directive = Reject(ExecutionState.CANCELLED)
                 else:
-                    signal = self._coord.coordinate(self)
-                    if signal is Signal.NONE:
-                        raise UnexpectedStateError(f"{Signal.NONE} is not allowed value for signaling")
+                    directive = self._coord.coordinate(self)
 
-                    if signal is Signal.WAIT and self._released:
-                        signal = Signal.CONTINUE
-
-                    if signal is Signal.CONTINUE:
-                        state = ExecutionState.RUNNING
-                    else:
-                        state = self._coord.exec_state(signal)
-                        if not (state.has_flag(Flag.WAITING) or state.in_phase(Phase.TERMINAL)):
-                            raise UnexpectedStateError(f"Unsupported state {state} for signal {signal}")
+                    if isinstance(directive, Continue):
+                        directive = ContinueRunning()
 
                 state_lock_acquired = False
-                if signal is Signal.WAIT and self.lifecycle.state == state:
+                if isinstance(directive, Wait) and self.lifecycle.state == directive.state:
                     # Waiting state already set and observers notified, now we can wait
                     coord_lock.unlock()
-                    self._coord.wait(self)
+                    self._coord.wait()
                     new_job_inst = None
                 else:
                     # Shouldn't notify listener whilst holding the coord lock, so first we only set the state...
                     self._state_lock.acquire()
                     state_lock_acquired = True
                     try:
-                        new_job_inst: Optional[JobInst] = self._change_state(state, notify=False)
+                        new_job_inst: Optional[JobInst] = self._change_state(directive.state, notify=False)
                     except Exception:
                         self._state_lock.release()
                         raise
@@ -288,9 +279,9 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
                 if state_lock_acquired:
                     self._state_lock.release()
 
-            if signal is Signal.WAIT:
+            if isinstance(directive, Wait):
                 continue
-            if signal is Signal.REJECT:
+            if isinstance(directive, Reject):
                 return False
 
             return True

@@ -545,28 +545,20 @@ class JobInstanceMetadata:
         user_params (Dict[str, Any]):
             A dictionary containing user-defined parameters associated with the instance.
             These are arbitrary parameters set by the user, and they do not affect the functionality.
-        pending_group (Optional[str]):
-            An optional string representing a group name where the job is pending, if applicable.
-            This is mainly used to identify that the instance belongs to the group when the release command is set.
     """
     id: JobInstanceID
     parameters: Tuple[Tuple[str, str]]
     user_params: Dict[str, Any]
-    pending_group: Optional[str] = None
 
     @classmethod
     def from_dict(cls, as_dict):
-        return cls(JobInstanceID.from_dict(as_dict['id']),
-                   as_dict['parameters'],
-                   as_dict['user_params'],
-                   as_dict['pending_group'])
+        return cls(JobInstanceID.from_dict(as_dict['id']), as_dict['parameters'], as_dict['user_params'])
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         d = {
             "id": self.id.to_dict(),
             "parameters": self.parameters,
             "user_params": self.user_params,
-            "pending_group": self.pending_group,
         }
         if include_empty:
             return d
@@ -578,8 +570,7 @@ class JobInstanceMetadata:
             f"{self.__class__.__name__}("
             f"job_id={self.id!r}, "
             f"parameters={self.parameters!r}, "
-            f"user_params={self.user_params!r},"
-            f"pending_group={self.pending_group!r})"
+            f"user_params={self.user_params!r})"
         )
 
 

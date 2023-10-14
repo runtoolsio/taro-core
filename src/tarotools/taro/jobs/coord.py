@@ -6,6 +6,7 @@ from typing import Sequence, Optional
 from weakref import WeakKeyDictionary
 
 from tarotools import taro
+from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.execution import ExecutionState, ExecutionPhase, Flag
 from tarotools.taro.jobs.inst import JobInstances, InstanceMatchCriteria, IDMatchCriteria
 from tarotools.taro.listening import StateReceiver, ExecutionStateEventObserver
@@ -23,15 +24,15 @@ class Directive(ABC):
     pass
 
 
-class ContinueDirective(Directive):
+class Continue(Directive):
     # TBA
     pass
 
 
-CONTINUE = ContinueDirective()
+CONTINUE = Continue()
 
 
-class WaitDirective(Directive):
+class Wait(Directive):
     def __init__(self, state: ExecutionState, wait_condition: str = None):
         self._wait_condition = wait_condition
         if not state.has_flag(Flag.WAITING):
@@ -55,7 +56,7 @@ class WaitDirective(Directive):
         pass
 
 
-class RejectDirective(Directive):
+class Reject(Directive):
     def __init__(self, state: ExecutionState):
         if not state.has_flag(Flag.REJECTED):
             raise ValueError("Not a rejected state as expected by reject directive: " + str(state))
@@ -63,6 +64,11 @@ class RejectDirective(Directive):
 
 
 class Coordination(ABC):
+
+    @property
+    def parameters(self):
+        """Sequence of tuples representing arbitrary immutable sync parameters"""
+        return None
 
     @abstractmethod
     def coordinate(self, instance) -> Directive:
@@ -75,16 +81,58 @@ class Coordination(ABC):
         :return: sync state for job
         """
 
-    @property
-    def parameters(self):
-        """Sequence of tuples representing arbitrary immutable sync parameters"""
-        return None
-
 
 class NoCoordination(Coordination):
 
     def coordinate(self, instance) -> Directive:
         return CONTINUE
+
+
+class CompositeCoord(Coordination):
+
+    def __init__(self, *coords):
+        self._coords = list(coords) or (NoCoordination(),)
+        self._parameters = tuple(p for c in coords if c.parameters for p in c.parameters)
+        self._current_lock = Lock()  # Lock for the fields below
+        self._current_coord = None
+        self._current_directive = None
+        self._released = False
+
+    @property
+    def parameters(self):
+        return self._parameters
+
+    def coordinate(self, instance) -> Directive:
+        with self._current_lock:
+            if self._released:
+                return CONTINUE
+            for coord in self._coords:
+                self._current_coord = coord
+                self._current_directive = coord.coordinate(instance)
+                if not isinstance(self._current_directive, Continue):
+                    break
+
+        return self._current_directive
+
+    def wait(self):
+        if not isinstance(self._current_directive, Wait):
+            raise InvalidStateError("Cannot wait on current directive: " + str(self._current_directive))
+        if not self._released:
+            self._current_directive.wait()
+
+    def remove_wait(self, predicate):
+        with self._current_lock:
+            cur_dir = self._current_directive
+            if isinstance(cur_dir, Wait) and predicate(cur_dir):
+                self._coords.remove(self._current_coord)
+                self._current_coord = self._current_directive = None
+                cur_dir.release()
+
+    def release(self):
+        with self._current_lock:
+            self._released = True
+            if isinstance(self._current_directive, Wait):
+                self._current_directive.release()
 
 
 class Latch(Coordination):
@@ -95,9 +143,9 @@ class Latch(Coordination):
         self._release_lock = Lock()
         self._released = False
         self._parameters = (('coordination', 'latch'), ('latch_waiting_state', str(waiting_state)))
-        self._wait_directive = Latch._LatchWaitDirective(self)
+        self._wait_directive = Latch._Wait(self)
 
-    class _LatchWaitDirective(WaitDirective):
+    class _Wait(Wait):
 
         def __init__(self, latch: "Latch"):
             super().__init__(latch._waiting_state, WaitCondition.LATCH)
@@ -157,7 +205,7 @@ class NoOverlap(Coordination):
 
         instances, _ = taro.client.read_instances()
         if any(i for i in instances if i.id != instance.id and inst_match.matches(i)):
-            return RejectDirective(ExecutionState.SKIPPED)
+            return Reject(ExecutionState.SKIPPED)
 
         return CONTINUE
 
@@ -179,7 +227,7 @@ class Dependency(Coordination):
     def coordinate(self, instance) -> Directive:
         instances, _ = taro.client.read_instances()
         if not any(i for i in instances if self._dependency_match.matches(i)):
-            return RejectDirective(ExecutionState.UNSATISFIED)
+            return Reject(ExecutionState.UNSATISFIED)
 
         return CONTINUE
 
@@ -208,7 +256,7 @@ class ExecutionsLimitation(Coordination, ExecutionStateEventObserver):
             ('max_executions', max_executions)
         )
 
-    class _WaitDirective(WaitDirective):
+    class _Wait(Wait):
 
         def __init__(self, outer: "ExecutionsLimitation", wait_id):
             super().__init__(ExecutionState.QUEUED, WaitCondition.EXEC_GROUP)
@@ -265,13 +313,14 @@ class ExecutionsLimitation(Coordination, ExecutionStateEventObserver):
             return CONTINUE
 
         with self._wait_guard:
-            if not self._current_wait:
+            current_wait = self._current_wait
+            if not current_wait:
                 current_wait = self._setup_waiting()
                 if self._allowed_continue(instance):
                     self._remove_waiting()
                     return CONTINUE
 
-        return self._WaitDirective(self, current_wait)
+        return self._Wait(self, current_wait)
 
     def _setup_waiting(self):
         self._start_listening()

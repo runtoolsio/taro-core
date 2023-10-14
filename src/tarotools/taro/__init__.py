@@ -21,7 +21,7 @@ from tarotools.taro.jobs.inst import JobInstanceID, JobInstance, JobInst, Instan
 from tarotools.taro.jobs.plugins import Plugin, PluginDisabledError
 from tarotools.taro.jobs.process import ProcessExecution
 from tarotools.taro.jobs.program import ProgramExecution
-from tarotools.taro.jobs.runner import RunnerJobInstance, NoCoordination, RunnableJobInstance, register_state_observer
+from tarotools.taro.jobs.runner import RunnerJobInstance, RunnableJobInstance, register_state_observer
 from tarotools.taro.paths import lookup_file_in_config_path
 from tarotools.taro.util import format_timedelta, read_toml_file_flatten
 
@@ -48,15 +48,14 @@ def configure(**kwargs):
     log.init_by_config()
 
 
-def execute(job_id, job_execution, instance_id=None, *, no_overlap=False, depends_on=None, pending_group=None):
+def execute(job_id, job_execution, coordinations=None, *, instance_id=None):
     plugins_ = cfg.plugins_load if cfg.plugins_enabled else None
     with FeaturedContextBuilder().standard_features(plugins=plugins_).build() as ctx:
         instance = ctx.add(job_instance(
             job_id,
             job_execution,
-            sync.create_composite(no_overlap=no_overlap, depends_on=depends_on),
-            instance_id=instance_id,
-            pending_group=pending_group))
+            coordinations,
+            instance_id=instance_id))
         instance.run()
         return job_instance
 
@@ -69,38 +68,35 @@ def close():
     persistence.close()
 
 
-def job_instance(job_id, execution, sync_=NoCoordination(), state_locker=lock.default_state_locker(), *, instance_id=None,
-                 pending_group=None, **user_params) \
+def job_instance(job_id, execution, sync_=NoCoordination(), state_locker=lock.default_coord_locker(), *,
+                 instance_id=None, **user_params) \
         -> RunnableJobInstance:
-    return RunnerJobInstance(job_id, execution, sync_, state_locker, instance_id=instance_id,
-                             pending_group=pending_group, user_params=user_params)
+    return RunnerJobInstance(job_id, execution, sync_, state_locker, instance_id=instance_id, user_params=user_params)
 
 
-def job_instance_background(job_id, execution, sync_=NoCoordination(), state_locker=lock.default_state_locker(), *,
-                            instance_id=None, pending_group=None, **user_params) \
+def job_instance_background(job_id, execution, sync_=None, state_locker=lock.default_coord_locker(), *,
+                            instance_id=None, **user_params) \
         -> RunnableJobInstance:
     instance = RunnerJobInstance(job_id, execution, sync_, state_locker, instance_id=instance_id,
-                                 pending_group=pending_group, user_params=user_params)
+                                 user_params=user_params)
     return RunInNewThreadJobInstance(instance)
 
 
-def run(job_id, execution, sync_=NoCoordination(), state_locker=lock.default_state_locker(), *, instance_id=None,
-        pending_group=None, **user_params) -> JobInstance:
-    instance = job_instance(job_id, execution, sync_, state_locker, instance_id=instance_id,
-                            pending_group=pending_group,
-                            user_params=user_params)
+def run(job_id, execution, sync_=NoCoordination(), state_locker=lock.default_coord_locker(), *, instance_id=None,
+        **user_params) -> JobInstance:
+    instance = job_instance(job_id, execution, sync_, state_locker, instance_id=instance_id, user_params=user_params)
     instance.run()
     return instance
 
 
-def job_instance_uncoordinated(job_id, execution, *, instance_id=None, pending_group=None, **user_params) \
+def job_instance_uncoordinated(job_id, execution, *, instance_id=None, **user_params) \
         -> RunnableJobInstance:
     return RunnerJobInstance(job_id, execution, coord_locker=lock.NullStateLocker(), instance_id=instance_id,
-                             pending_group=pending_group, user_params=user_params)
+                             user_params=user_params)
 
 
-def run_uncoordinated(job_id, execution, *, instance_id=None, pending_group=None, **user_params) -> JobInstance:
-    instance = job_instance_uncoordinated(job_id, execution, instance_id=instance_id, pending_group=pending_group,
+def run_uncoordinated(job_id, execution, *, instance_id=None, **user_params) -> JobInstance:
+    instance = job_instance_uncoordinated(job_id, execution, instance_id=instance_id,
                                           user_params=user_params)
     instance.run()
     return instance
