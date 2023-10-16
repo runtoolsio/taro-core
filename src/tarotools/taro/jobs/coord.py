@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from threading import Event, Condition, Lock
+from threading import Condition, Lock
 from typing import Sequence, Optional
 from weakref import WeakKeyDictionary
 
@@ -139,27 +139,28 @@ class Latch(Coordination):
 
     def __init__(self, waiting_state: ExecutionState):
         self._waiting_state = waiting_state
-        self._event = Event()
-        self._release_lock = Lock()
-        self._released = False
         self._parameters = (('coordination', 'latch'), ('latch_waiting_state', str(waiting_state)))
-        self._wait_directive = Latch._Wait(self)
+        self._condition = Condition()
+        self._released = False
 
-    class _Wait(Wait):
+    class _Waiter(Wait):
 
         def __init__(self, latch: "Latch"):
             super().__init__(latch._waiting_state, WaitCondition.LATCH)
             self.latch = latch
+            self.released = False
 
         def wait(self):
-            if self.latch._released:
-                return
-
-            self.latch._event.wait()
+            while True:
+                with self.latch._condition:
+                    if self.released or self.latch._released:
+                        return
+                    self.latch._condition.wait()
 
         def release(self):
-            # Released flag not set, it is expected that only the instance calling this method will be released
-            self.latch._event.set()
+            with self.latch._condition:
+                self.released = True
+                self.latch._condition.notify_all()
 
     @property
     def parameters(self):
@@ -170,19 +171,16 @@ class Latch(Coordination):
         return self._released
 
     def coordinate(self, instance) -> Directive:
-        if self._event.is_set():
-            with self._release_lock:
-                if self._released:
-                    return CONTINUE
-                else:
-                    self._event.clear()
+        with self._condition:
+            if self._released:
+                return CONTINUE
 
-        return self._wait_directive
+        return self._Waiter(self)
 
     def release(self):
-        with self._release_lock:
+        with self._condition:
             self._released = True
-            self._event.set()
+            self._condition.notify_all()
 
 
 class NoOverlap(Coordination):
