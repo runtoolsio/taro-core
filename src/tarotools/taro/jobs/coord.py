@@ -1,6 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from enum import Enum, auto
 from threading import Condition, Lock
 from typing import Sequence, Optional
 from weakref import WeakKeyDictionary
@@ -14,6 +15,295 @@ from tarotools.taro.log import timing
 
 log = logging.getLogger(__name__)
 
+
+@dataclass
+class Identifier:
+    """
+    Represents a unique identifier for a coordination component.
+
+    Attributes:
+        type_ (str): Specifies the type of the coordination object.
+        id (str): A value for distinguishing between objects of the same type.
+    """
+    type_: str
+    id: str
+
+
+class Identifiable(ABC):
+
+    def __init__(self, type_, id_):
+        self._type = type_
+        self._id = id_
+
+    @property
+    def identifier(self):
+        """
+        Returns the unique identifier associated with this coordination object.
+
+        Returns:
+            Identifier: The identifier of the this object.
+        """
+        return Identifier(type_=self._type, id=self._id)
+
+
+class Pending(Identifiable):
+    """
+    Abstract base class representing a generic pending condition.
+
+    A "pending" allows job instances to enter a pending phase before they actually start executing.
+    Derived classes should provide specific implementations of the pending behavior.
+
+    Pending either encapsulates a WAITING condition and automatically signals all associated waiters
+    when this condition is SATISFIED, or it expects manual action for RELEASE when an external condition is met.
+    This manual release can target all waiters simultaneously or handle each waiter individually.
+    """
+
+    @abstractmethod
+    def create_waiter(self, job_instance):
+        """
+        Creates and returns a new waiter associated with this pending object and the provided job instance.
+
+        A waiter allows job instances to enter their pending phase, where they might wait for a specific condition
+        encapsulated by the pending object. Multiple waiters (job instances) can be associated with a single pending,
+        allowing multiple job instances to await their specific conditions concurrently. Each waiter is tied
+        to a specific job instance. All waiters associated with a pending can be released simultaneously
+        when the main condition of the pending is met, or each waiter can be manually released individually.
+
+        Parameters:
+            job_instance: The job instance that will hold and utilize the created waiter.
+
+        Returns:
+            PendingWaiter: A new waiter object designed to be held by the provided job instance.
+        """
+        pass
+
+    @abstractmethod
+    def release_all(self) -> None:
+        """
+        Releases all waiters associated with this pending object.
+        """
+        pass
+
+
+class WaiterState(Enum):
+    """
+    Enum representing the various states a waiter can be in.
+
+    Attributes:
+        WAITING: The waiter is actively waiting for its associated condition or to be manually released.
+        RELEASED: The waiter has been manually released, either as an expected action or to override the wait condition.
+        SATISFIED: The main condition the waiter was waiting for has been met.
+    """
+    WAITING = auto()
+    RELEASED = auto()
+    SATISFIED = auto()
+
+
+class PendingWaiter(ABC):
+    """
+    Abstract base class representing a (child) waiter associated with a specific (parent) pending object.
+
+    A waiter is designed to be held by a job instance, enabling the job to enter its pending phase
+    before actual execution. This allows for synchronization between different parts of the system.
+    Depending on the parent pending, the waiter can either be manually released, or all associated
+    waiters can be released simultaneously when the main condition of the pending is met.
+    """
+
+    @property
+    @abstractmethod
+    def parent_pending(self):
+        """
+        Returns the parent pending object with which this waiter is associated.
+
+        The parent pending object encapsulates the specific condition or conditions that job instances,
+        holding this waiter, might await before starting their execution.
+
+        Returns:
+            Pending: The associated parent pending object.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def state(self):
+        """
+        Returns:
+            WaiterState: The current state of the waiter.
+        """
+        pass
+
+    @abstractmethod
+    def wait(self) -> None:
+        """
+        Instructs the waiter to begin waiting on its associated condition.
+
+        When invoked by a job instance, the job enters its pending phase, potentially waiting for
+        the overarching pending condition to be met or for a manual release.
+        """
+        pass
+
+    @abstractmethod
+    def release(self) -> None:
+        """
+        Manually releases the waiter, even if the overarching pending condition is not met.
+        """
+        pass
+
+    # TODO unblock method
+
+
+class Latch(Pending):
+
+    def __init__(self, latch_id):
+        super().__init__("LATCH", latch_id)
+        self._condition = Condition()
+        self._released = False
+
+    def create_waiter(self, instance) -> "Latch._Waiter":
+        return self._Waiter(latch=self)
+
+    def release_all(self):
+        with self._condition:
+            self._released = True
+            self._condition.notify_all()
+
+    class _Waiter(PendingWaiter):
+
+        def __init__(self, latch: "Latch"):
+            self.latch = latch
+            self.released = False
+
+        @property
+        def parent_pending(self):
+            return self.latch
+
+        @property
+        def state(self):
+            if self.released:
+                return WaiterState.RELEASED
+            if self.latch._released:
+                return WaiterState.SATISFIED
+
+            return WaiterState.WAITING
+
+        def wait(self):
+            while True:
+                with self.latch._condition:
+                    if self.released or self.latch._released:
+                        return
+                    self.latch._condition.wait()
+
+        def release(self):
+            with self.latch._condition:
+                self.released = True
+                self.latch._condition.notify_all()
+
+
+class PreExecCondition(ABC):
+    """
+    Represents a pre-executing condition that must be satisfied before a job instance can transition
+    to the EXECUTING phase. The condition can be evaluated multiple times. For each evaluation an evaluator
+    must be created.
+    """
+
+    @abstractmethod
+    def create_evaluator(self, job_instance):
+        """
+        Creates and returns a new evaluator associated with this pre-execution condition and the provided job instance.
+
+        Parameters:
+            job_instance: The job instance that will utilize the created evaluator.
+
+        Returns:
+            PreExecEvaluator: A new evaluator object designed for the provided job instance.
+        """
+        pass
+
+
+class ConditionState(Enum):
+    """
+    Enum representing the various states an evaluation can be in.
+
+    Attributes:
+        NOT_EVALUATED: The condition has not been evaluated yet.
+        SATISFIED: The condition is satisfied.
+        UNSATISFIED: The condition is not satisfied.
+        EVALUATION_ERROR: The condition could not be evaluated due to an error in the evaluation logic.
+    """
+    NOT_EVALUATED = auto()
+    SATISFIED = auto()
+    UNSATISFIED = auto()
+    EVALUATION_ERROR = auto()
+
+
+class PreExecEvaluator(ABC):
+    """
+    Represents an individual evaluation instance for a pre-executing condition. Allows for independent
+    assessment of the condition across different job instances to determine if they can proceed to the EXECUTING phase.
+    """
+
+    @property
+    @abstractmethod
+    def state(self):
+        """
+        Returns:
+            ConditionState: The current state of the evaluation.
+        """
+        pass
+
+    @abstractmethod
+    def evaluate(self):
+        """
+        Evaluates the associated pre-execution condition.
+
+        Returns:
+            bool: True if the condition is satisfied, False otherwise.
+        """
+        pass
+
+
+class NoOverlap(PreExecCondition):
+
+    def __init__(self, instance_match=None):
+        self._instance_match = instance_match
+        no_overlap = str(instance_match.to_dict(False)) if instance_match else 'same_job_id'
+        self._parameters = (('condition', 'no_overlap'), ('no_overlap', no_overlap))
+
+    @property
+    def instance_match(self):
+        return self._instance_match
+
+    @property
+    def parameters(self):
+        return self._parameters
+
+    def create_evaluator(self, instance) -> PreExecEvaluator:
+        return self._Evaluator(self, instance)
+
+    class _Evaluator(PreExecEvaluator):
+
+        def __init__(self, condition: "NoOverlap", instance):
+            self.condition = condition
+            self.instance = instance
+            self._state = ConditionState.NOT_EVALUATED
+
+        @property
+        def state(self):
+            return self._state
+
+        def evaluate(self) -> bool:
+            inst_match = self.condition._instance_match or InstanceMatchCriteria(IDMatchCriteria(self.instance.job_id))
+
+            instances, _ = taro.client.read_instances()
+            if any(i for i in instances if i.id != self.instance.id and inst_match.matches(i)):
+                self._state = ConditionState.UNSATISFIED
+                return False
+
+            self._state = ConditionState.SATISFIED
+            return True
+
+
+# --------------------- OLD DESIGN BELOW ------------------------ #
 
 class WaitCondition:
     LATCH = "LATCH"
