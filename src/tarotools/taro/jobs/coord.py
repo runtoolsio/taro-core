@@ -199,7 +199,7 @@ class Latch(Pending):
                 self.latch._condition.notify_all()
 
 
-class PreExecCondition(ABC):
+class PreExecCondition(Identifiable):
     """
     Represents a pre-executing condition that must be satisfied before a job instance can transition
     to the EXECUTING phase. The condition can be evaluated multiple times. For each evaluation an evaluator
@@ -265,8 +265,9 @@ class PreExecEvaluator(ABC):
 class NoOverlap(PreExecCondition):
 
     def __init__(self, instance_match=None):
-        self._instance_match = instance_match
         no_overlap = str(instance_match.to_dict(False)) if instance_match else 'same_job_id'
+        super().__init__("NO_OVERLAP", no_overlap)
+        self._instance_match = instance_match
         self._parameters = (('condition', 'no_overlap'), ('no_overlap', no_overlap))
 
     @property
@@ -301,6 +302,49 @@ class NoOverlap(PreExecCondition):
 
             self._state = ConditionState.SATISFIED
             return True
+
+
+class Dependency(PreExecCondition):
+
+    def __init__(self, dependency_match):
+        dependency = str(dependency_match.to_dict(False))
+        super().__init__("DEPENDENCY", dependency)
+        self._dependency_match = dependency_match
+        self._parameters = (
+            ('coord', 'dependency'),
+            ('coord_type', 'pre_exec_condition'),
+            ('dependency', dependency),
+        )
+
+    @property
+    def dependency_match(self):
+        return self._dependency_match
+
+    @property
+    def parameters(self):
+        return self._parameters
+
+    def create_evaluator(self, instance) -> PreExecEvaluator:
+        return self._Evaluator(self)
+
+    class _Evaluator(PreExecEvaluator):
+
+        def __init__(self, dependency: "Dependency"):
+            self._dependency = dependency
+            self._evaluated_state = ConditionState.NOT_EVALUATED
+
+        def evaluate(self) -> bool:
+            instances, _ = taro.client.read_instances()
+            if not any(i for i in instances if self._dependency._dependency_match.matches(i)):
+                self._evaluated_state = ConditionState.UNSATISFIED
+                return False
+
+            self._evaluated_state = ConditionState.SATISFIED
+            return True
+
+        @property
+        def state(self) -> ConditionState:
+            return self._evaluated_state
 
 
 # --------------------- OLD DESIGN BELOW ------------------------ #
