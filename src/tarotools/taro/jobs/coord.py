@@ -2,12 +2,11 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, auto
-from threading import Condition, Lock
+from threading import Condition
 from typing import Sequence, Optional
-from weakref import WeakKeyDictionary
 
 from tarotools import taro
-from tarotools.taro.err import InvalidStateError
+from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.execution import ExecutionState, ExecutionPhase, Flag
 from tarotools.taro.jobs.inst import JobInstances, InstanceMatchCriteria, IDMatchCriteria
 from tarotools.taro.listening import StateReceiver, ExecutionStateEventObserver
@@ -85,7 +84,7 @@ class Pending(Identifiable):
         pass
 
 
-class WaiterState(Enum):
+class PendingWaiterState(Enum):
     """
     Enum representing the various states a waiter can be in.
 
@@ -128,7 +127,7 @@ class PendingWaiter(ABC):
     def state(self):
         """
         Returns:
-            WaiterState: The current state of the waiter.
+            PendingWaiterState: The current state of the waiter.
         """
         pass
 
@@ -159,7 +158,7 @@ class Latch(Pending):
         self._condition = Condition()
         self._released = False
 
-    def create_waiter(self, instance) -> "Latch._Waiter":
+    def create_waiter(self, instance) -> "PendingWaiter":
         return self._Waiter(latch=self)
 
     def release_all(self):
@@ -180,11 +179,11 @@ class Latch(Pending):
         @property
         def state(self):
             if self.released:
-                return WaiterState.RELEASED
+                return PendingWaiterState.RELEASED
             if self.latch._released:
-                return WaiterState.SATISFIED
+                return PendingWaiterState.SATISFIED
 
-            return WaiterState.WAITING
+            return PendingWaiterState.WAITING
 
         def wait(self):
             while True:
@@ -263,6 +262,9 @@ class PreExecEvaluator(ABC):
 
 
 class NoOverlap(PreExecCondition):
+    """
+    TODO Sync
+    """
 
     def __init__(self, instance_match=None):
         no_overlap = str(instance_match.to_dict(False)) if instance_match else 'same_job_id'
@@ -347,6 +349,168 @@ class Dependency(PreExecCondition):
             return self._evaluated_state
 
 
+class Queue(Identifiable):
+
+    @abstractmethod
+    def create_waiter(self, job_instance, state_on_dequeue):
+        pass
+
+
+class QueueWaiterState(Enum):
+    BEFORE_QUEUING = auto()
+    QUEUING = auto()
+    EXECUTED = auto()
+    CANCELLED = auto()
+    REJECTED = auto()
+    UNKNOWN = auto()
+
+    @classmethod
+    def from_str(cls, value: str):
+        try:
+            return cls[value.upper()]
+        except KeyError:
+            return cls.UNKNOWN
+
+
+class QueueWaiter:
+    @property
+    @abstractmethod
+    def state(self):
+        """
+        Returns:
+            QueueWaiterState: The current state of the waiter.
+        """
+        pass
+
+    @abstractmethod
+    def wait(self):
+        pass
+
+    @abstractmethod
+    def release(self):
+        pass
+
+    @abstractmethod
+    def signal_ready(self):
+        pass
+
+
+class ExecutionQueue(Queue, ExecutionStateEventObserver):
+
+    def __init__(self, execution_group, max_executions, global_locker=lock.default_coord_locker(),
+                 state_receiver_factory=StateReceiver):
+        super().__init__("QUEUE", f"{execution_group}<={max_executions}")
+        if not execution_group:
+            raise ValueError('Execution group must be specified')
+        if max_executions < 1:
+            raise ValueError('Max executions must be greater than zero')
+        self._group = execution_group
+        self._max_executions = max_executions
+        self._locker = global_locker
+        self._state_receiver_factory = state_receiver_factory
+
+        self._wait_guard = Condition()
+        # vv Guarding these fields vv
+        self._wait_counter = 0
+        self._current_wait = None
+        self._state_receiver = None
+
+        self._parameters = (
+            ('coord', 'execution_queue'),
+            ('execution_group', execution_group),
+            ('max_executions', max_executions)
+        )
+
+    def create_waiter(self, instance, state_on_dequeue):
+        return self._Waiter(instance, state_on_dequeue)
+
+    class _Waiter(QueueWaiter):
+        def __init__(self, queue: "ExecutionQueue", instance, state_on_dequeue):
+            self.queue = queue
+            self.instance = instance
+            self.state_on_dequeue = state_on_dequeue
+            self._state = QueueWaiterState.BEFORE_QUEUING
+
+        @property
+        def state(self):
+            return self._state
+
+        def wait(self):
+            if self._state == QueueWaiterState.BEFORE_QUEUING:
+                self._state = QueueWaiterState.QUEUING
+
+            with self.queue._wait_guard:
+                if self.queue._current_wait:
+                    while True:
+                        self.queue._wait_guard.wait()
+
+
+                with self.queue._locker() as queue_lock:
+                    self.queue._start_listening()
+                    self.queue._schedule_next()
+                    if self._state == QueueWaiterState.QUEUING:
+                        queue_lock.unlock()
+                        # TODO wait
+
+        def release(self):
+            pass
+
+        def signal_ready(self):
+            new_state = self.state_on_dequeue()
+            if new_state.in_phase(ExecutionPhase.EXECUTING):
+                self._state = QueueWaiterState.EXECUTED
+            else:
+                self._state = QueueWaiterState.REJECTED
+            # TODO Release wait
+
+    def _setup_waiting(self):
+        self._start_listening()
+
+        self._wait_counter += 1
+        self._current_wait = self._wait_counter
+        return self._current_wait
+
+    def _start_listening(self):
+        self._state_receiver = self._state_receiver_factory()
+        self._state_receiver.listeners.append(self)
+        self._state_receiver.start()
+
+    def _schedule_next(self):
+
+        jobs, _ = taro.client.read_instances()
+
+        group_jobs_sorted = JobInstances(sorted(jobs, key=lambda job: job.lifecycle.changed_at(ExecutionState.CREATED)))
+        next_count = self._max_executions - len(group_jobs_sorted.executing)
+        if next_count <= 0:
+            return False
+
+        for next_ready in group_jobs_sorted.scheduled:
+            signal_resp = taro.client.signal_ready(InstanceMatchCriteria(IDMatchCriteria.for_instance(next_ready)))
+            for r in signal_resp.responses:
+                if QueueWaiterState.from_str(r.after_signal_state) == QueueWaiterState.EXECUTED:
+                    next_count -= 1
+                    if next_count <= 0:
+                        return
+    def state_update(self, instance_meta, previous_state, new_state, changed):
+        with self._wait_guard:
+            if not self._current_wait:
+                return
+            # TO O Exec group instance matcher
+            if new_state.in_phase(ExecutionPhase.TERMINAL) and self._is_same_exec_group(instance_meta):
+                self._remove_waiting()
+                self._wait_guard.notify_all()
+
+
+    def _remove_waiting(self):
+        self._current_wait = None
+        self._stop_listening()
+
+    def _stop_listening(self):
+        self._state_receiver.close()
+        self._state_receiver.listeners.remove(self)
+        self._state_receiver = None
+
+
 # --------------------- OLD DESIGN BELOW ------------------------ #
 
 class WaitCondition:
@@ -416,154 +580,6 @@ class Coordination(ABC):
         """
 
 
-class NoCoordination(Coordination):
-
-    def coordinate(self, instance) -> Directive:
-        return CONTINUE
-
-
-class CompositeCoord(Coordination):
-
-    def __init__(self, *coords):
-        self._coords = list(coords) or (NoCoordination(),)
-        self._parameters = tuple(p for c in coords if c.parameters for p in c.parameters)
-        self._current_lock = Lock()  # Lock for the fields below
-        self._current_coord = None
-        self._current_directive = None
-        self._released = False
-
-    @property
-    def parameters(self):
-        return self._parameters
-
-    def coordinate(self, instance) -> Directive:
-        with self._current_lock:
-            if self._released:
-                return CONTINUE
-            for coord in self._coords:
-                self._current_coord = coord
-                self._current_directive = coord.coordinate(instance)
-                if not isinstance(self._current_directive, Continue):
-                    break
-
-        return self._current_directive
-
-    def wait(self):
-        if not isinstance(self._current_directive, Wait):
-            raise InvalidStateError("Cannot wait on current directive: " + str(self._current_directive))
-        if not self._released:
-            self._current_directive.wait()
-
-    def remove_wait(self, predicate):
-        with self._current_lock:
-            cur_dir = self._current_directive
-            if isinstance(cur_dir, Wait) and predicate(cur_dir):
-                self._coords.remove(self._current_coord)
-                self._current_coord = self._current_directive = None
-                cur_dir.release()
-
-    def release(self):
-        with self._current_lock:
-            self._released = True
-            if isinstance(self._current_directive, Wait):
-                self._current_directive.release()
-
-
-class Latch(Coordination):
-
-    def __init__(self, waiting_state: ExecutionState):
-        self._waiting_state = waiting_state
-        self._parameters = (('coordination', 'latch'), ('latch_waiting_state', str(waiting_state)))
-        self._condition = Condition()
-        self._released = False
-
-    class _Waiter(Wait):
-
-        def __init__(self, latch: "Latch"):
-            super().__init__(latch._waiting_state, WaitCondition.LATCH)
-            self.latch = latch
-            self.released = False
-
-        def wait(self):
-            while True:
-                with self.latch._condition:
-                    if self.released or self.latch._released:
-                        return
-                    self.latch._condition.wait()
-
-        def release(self):
-            with self.latch._condition:
-                self.released = True
-                self.latch._condition.notify_all()
-
-    @property
-    def parameters(self):
-        return self._parameters
-
-    @property
-    def released(self):
-        return self._released
-
-    def coordinate(self, instance) -> Directive:
-        with self._condition:
-            if self._released:
-                return CONTINUE
-
-        return self._Waiter(self)
-
-    def release(self):
-        with self._condition:
-            self._released = True
-            self._condition.notify_all()
-
-
-class NoOverlap(Coordination):
-
-    def __init__(self, instance_match=None):
-        self._instance_match = instance_match
-        no_overlap = str(instance_match.to_dict(False)) if instance_match else 'same_job_id'
-        self._parameters = (('coordination', 'no_overlap'), ('no_overlap', no_overlap))
-
-    @property
-    def instance_match(self):
-        return self._instance_match
-
-    @property
-    def parameters(self):
-        return self._parameters
-
-    def coordinate(self, instance) -> Directive:
-        inst_match = self._instance_match or InstanceMatchCriteria(IDMatchCriteria(instance.job_id))
-
-        instances, _ = taro.client.read_instances()
-        if any(i for i in instances if i.id != instance.id and inst_match.matches(i)):
-            return Reject(ExecutionState.SKIPPED)
-
-        return CONTINUE
-
-
-class Dependency(Coordination):
-
-    def __init__(self, dependency_match):
-        self._dependency_match = dependency_match
-        self._parameters = (('sync', 'dependency'), ('dependency', str(dependency_match.to_dict(False))))
-
-    @property
-    def dependency_match(self):
-        return self._dependency_match
-
-    @property
-    def parameters(self):
-        return self._parameters
-
-    def coordinate(self, instance) -> Directive:
-        instances, _ = taro.client.read_instances()
-        if not any(i for i in instances if self._dependency_match.matches(i)):
-            return Reject(ExecutionState.UNSATISFIED)
-
-        return CONTINUE
-
-
 class ExecutionsLimitation(Coordination, ExecutionStateEventObserver):
 
     def __init__(self, execution_group, max_executions, state_receiver_factory=StateReceiver):
@@ -574,7 +590,6 @@ class ExecutionsLimitation(Coordination, ExecutionStateEventObserver):
         self._group = execution_group
         self._max = max_executions
         self._state_receiver_factory = state_receiver_factory
-        self._inst_to_wait_id = WeakKeyDictionary()
 
         self._wait_guard = Condition()
         # vv Guarding these fields vv
@@ -616,28 +631,23 @@ class ExecutionsLimitation(Coordination, ExecutionStateEventObserver):
         return self._parameters
 
     def _allowed_continue(self, job_inst) -> bool:
+        # TODO Set phase filters + params filters
         jobs, _ = taro.client.read_instances()
 
-        group_jobs_sorted = JobInstances(sorted(
-            (job for job in jobs if self._is_same_exec_group(job.metadata)),
-            key=lambda job: job.lifecycle.changed_at(ExecutionState.CREATED)
-        ))
-        allowed_count = self.max_executions - len(group_jobs_sorted.executing)
-        if allowed_count <= 0:
+        group_jobs_sorted = JobInstances(sorted(jobs, key=lambda job: job.lifecycle.changed_at(ExecutionState.CREATED)))
+        next_count = self.max_executions - len(group_jobs_sorted.executing)
+        if next_count <= 0:
             return False
 
-        next_allowed = group_jobs_sorted.scheduled[0:allowed_count]
+        for next_ready in group_jobs_sorted.scheduled[0:next_count]:  # TODO Change to queued
+
         job_created = job_inst.lifecycle.changed_at(ExecutionState.CREATED)
-        for allowed in next_allowed:
+        for allowed in next_ready:
             if job_inst.id == allowed.id or job_created <= allowed.lifecycle.changed_at(ExecutionState.CREATED):
                 # The second condition ensure this works even when the job is not contained in the list for any reasons
                 return True
 
         return False
-
-    def _is_same_exec_group(self, instance_meta):
-        return instance_meta.id.job_id == self._group or \
-            any(1 for name, value in instance_meta.parameters if name == 'execution_group' and value == self._group)
 
     @timing('exec_limit_set_signal', args_idx=[1])
     def coordinate(self, instance) -> Directive:

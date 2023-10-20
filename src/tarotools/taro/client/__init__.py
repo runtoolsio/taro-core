@@ -143,6 +143,12 @@ class TailResponse(JobInstanceResponse):
     tail: List[str]
 
 
+@dataclass
+class SignalReadyResponse(JobInstanceResponse):
+    waiter_found: bool
+    after_signal_state: str
+
+
 def read_instances(instance_match=None) -> AggregatedResponse[JobInst]:
     """
     Retrieves instance information for all active job instances for the current user.
@@ -241,6 +247,11 @@ def read_tail(instance_match=None) -> AggregatedResponse[TailResponse]:
 
     with APIClient() as client:
         return client.read_tail(instance_match)
+
+
+def signal_ready(instance_match) -> AggregatedResponse[SignalReadyResponse]:
+    with APIClient() as client:
+        return client.signal_ready(instance_match)
 
 
 def _no_resp_mapper(api_instance_response: InstanceResponse) -> InstanceResponse:
@@ -387,6 +398,13 @@ class APIClient(SocketClient):
             return TailResponse(inst_resp.instance_meta, inst_resp.body["tail"])
 
         return self.send_request('/instances/tail', instance_match, resp_mapper=resp_mapper)
+
+    def signal_ready(self, instance_match) -> AggregatedResponse[SignalReadyResponse]:
+        def resp_mapper(inst_resp: InstanceResponse) -> SignalReadyResponse:
+            return SignalReadyResponse(
+                inst_resp.instance_meta, inst_resp.body["waiter_found"], inst_resp.body["after_signal_state"])
+        
+        return self.send_request('/instances/_signal/ready', instance_match, resp_mapper=resp_mapper)
 
 
 def _process_responses(server_responses: List[ServerResponse], resp_mapper: Callable[[InstanceResponse], T]) \

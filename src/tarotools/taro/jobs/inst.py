@@ -53,6 +53,19 @@ class IDMatchCriteria:
     def none_match(cls):
         return cls('', '', True, MatchingStrategy.ALWAYS_FALSE)
 
+    @staticmethod
+    def for_instance(job_inst):
+        """
+        Creates an IDMatchCriteria object that matches the provided job instance.
+
+        Args:
+            job_inst: The specific job instance to create a match for.
+
+        Returns:
+            IDMatchCriteria: An IDMatchCriteria object that will match the given job_instance.
+        """
+        return IDMatchCriteria(job_id=job_inst.id.job_id, instance_id=job_inst.id.instance_id)
+
     @classmethod
     def parse_pattern(cls, pattern: str, strategy=MatchingStrategy.EXACT):
         """
@@ -582,7 +595,23 @@ class JobInstance(abc.ABC):
     """
 
     @property
-    def job_id(self) -> str:
+    @abc.abstractmethod
+    def metadata(self):
+        """
+        Returns:
+            JobInstanceMetadata: Descriptive information about this instance.
+        """
+
+    @property
+    def id(self):
+        """
+        Returns:
+            JobInstanceID: Identifier of this instance.
+        """
+        return self.metadata.id
+
+    @property
+    def job_id(self):
         """
         Returns:
             str: Job part of the instance identifier.
@@ -590,40 +619,12 @@ class JobInstance(abc.ABC):
         return self.id.job_id
 
     @property
-    def instance_id(self) -> str:
+    def instance_id(self):
         """
         Returns:
             str: Instance part of the instance identifier.
         """
         return self.id.instance_id
-
-    @property
-    @abc.abstractmethod
-    def id(self) -> 'JobInstanceID':
-        """
-        Returns:
-            JobInstanceID: Identifier of this instance.
-        """
-
-    @property
-    @abc.abstractmethod
-    def metadata(self) -> 'JobInstanceMetadata':
-        """
-        Returns:
-            JobInstanceMetadata: Descriptive information about this instance.
-        """
-
-    @abc.abstractmethod
-    def release(self):
-        """
-        Releases the instance if it's in the pre-execution phase, waiting for a specific condition to be met
-        before it begins execution.
-
-        This method is intended for two primary scenarios:
-        1. When the job is awaiting an external condition and relies on the user to signal when that condition is met.
-        2. When the user, understanding the implications, chooses to bypass the waiting condition and releases
-           the instance prematurely.
-        """
 
     @property
     @abc.abstractmethod
@@ -687,15 +688,6 @@ class JobInstance(abc.ABC):
             Dict[str, int]: A dictionary mapping warning names to their occurrence count.
         """
 
-    @abc.abstractmethod
-    def add_warning(self, warning):
-        """
-        Adds a warning to the job instance.
-
-        Args:
-            warning (Warn): The warning to be added.
-        """
-
     @property
     @abc.abstractmethod
     def exec_error(self):
@@ -707,6 +699,14 @@ class JobInstance(abc.ABC):
             ExecutionError: The details of the execution error or None if the job executed successfully.
         """
 
+    @property
+    @abc.abstractmethod
+    def queue_waiter(self):
+        """
+        Returns:
+            Optional[QueueWaiter]: Queue waiter if the instance has been assigned to an execution queue
+        """
+
     @abc.abstractmethod
     def create_snapshot(self):
         """
@@ -714,6 +714,18 @@ class JobInstance(abc.ABC):
 
         Returns:
             JobInst: A snapshot representing the current state of the job instance.
+        """
+
+    @abc.abstractmethod
+    def release(self):
+        """
+        Releases the instance if it's in the pre-execution phase, waiting for a specific condition to be met
+        before it begins execution.
+
+        This method is intended for two primary scenarios:
+        1. When the job is awaiting an external condition and relies on the user to signal when that condition is met.
+        2. When the user, understanding the implications, chooses to bypass the waiting condition and releases
+           the instance prematurely.
         """
 
     @abc.abstractmethod
@@ -730,6 +742,15 @@ class JobInstance(abc.ABC):
     def interrupted(self):
         """
         TODO: Notify about keyboard interruption signal
+        """
+
+    @abc.abstractmethod
+    def add_warning(self, warning):
+        """
+        Adds a warning to the job instance.
+
+        Args:
+            warning (Warn): The warning to be added.
         """
 
     @abc.abstractmethod
