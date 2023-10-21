@@ -333,8 +333,10 @@ class StateCriteria:
     For the criteria to match, all set matching properties must be met.
 
     Properties:
+        phases (Set[ExecutionPhase]):
+            The criterion match if the instance is in any provided phases.
         flag_groups (Iterable[Set[ExecutionStateFlag]]):
-            An iterable of sets, where each set contains flags that define a group. The criteria match if any of
+            An iterable of sets, where each set contains flags that define a group. The criterion match if any of
             the provided groups match the state, and a group matches when all flags in the group match the state.
         warning (Optional[bool]):
             A boolean value to filter job instances based on warnings.
@@ -344,28 +346,28 @@ class StateCriteria:
             Default is None.
     """
 
-    def __init__(self, *, flag_groups: Iterable[Set[ExecutionStateFlag]] = (), warning: Optional[bool] = None):
-        self._flags = flag_groups
-        self._warning = warning
+    def __init__(self, *,
+                 phases: Set[ExecutionPhase] = (),
+                 flag_groups: Iterable[Set[ExecutionStateFlag]] = (),
+                 warning: Optional[bool] = None):
+        self.phases = phases
+        self.flag_groups = flag_groups
+        self.warning = warning
 
     @classmethod
     def from_dict(cls, data):
+        phases = data.get('phases', ())
         flag_groups = data.get('flag_groups', ())
         warning = data.get('warning', None)
-        return cls(flag_groups=flag_groups, warning=warning)
-
-    @property
-    def flag_groups(self):
-        return self._flags
-
-    @property
-    def warning(self):
-        return self._warning
+        return cls(phases=phases, flag_groups=flag_groups, warning=warning)
 
     def __call__(self, instance):
         return self.matches(instance)
 
     def matches(self, instance):
+        if self.phases and instance.lifecycle.state.phase not in self.phases:
+            return False
+
         if self.flag_groups and \
                 not any(all(f in instance.lifecycle.state.flags for f in g) for g in self.flag_groups):
             return False
@@ -376,10 +378,11 @@ class StateCriteria:
         return True
 
     def __bool__(self):
-        return bool(self.flag_groups) or self.warning is not None
+        return bool(self.phases) or bool(self.flag_groups) or self.warning is not None
 
     def to_dict(self, include_empty=True):
         d = {
+            "phases": self.phases,
             "flag_groups": self.flag_groups,
             "warning": self.warning,
         }

@@ -122,6 +122,10 @@ class TestJobInstance(RunnableJobInstance):
     def exec_error(self, value):
         self._exec_error = value
 
+    @property
+    def queue_waiter(self):
+        return None
+
     def create_snapshot(self):
         return JobInst(
             self.metadata,
