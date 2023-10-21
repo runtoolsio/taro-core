@@ -9,6 +9,7 @@ The main parts are:
 4. Job instance observers
 
 Note: See the `runner` module for the default job instance implementation
+TODO: Remove immutable properties
 """
 
 import abc
@@ -405,13 +406,17 @@ class InstanceMatchCriteria:
             A condition for matching based on job instance state.
         job_ids (Optional[Union[Job, Iterable[Job]]]):
             A job ID or an iterable of IDs for an exact match against specific job instances.
+        param_sets (Iterable[Set[Tuple[str, str]]):
+            Collection of set of parameters to match. An instance matches if any of the sets matches.
+            All tuples in a set must match.
     """
 
-    def __init__(self, id_criteria=None, interval_criteria=None, state_criteria=None, jobs=None):
+    def __init__(self, id_criteria=None, interval_criteria=None, state_criteria=None, jobs=None, param_sets=None):
         self._id_criteria = to_list(id_criteria)
         self._interval_criteria = to_list(interval_criteria)
         self._state_criteria = state_criteria
         self._job_ids = to_list(jobs)
+        self._param_sets = param_sets
 
     @classmethod
     def parse_pattern(cls, pattern: str, strategy: MatchingStrategy = MatchingStrategy.EXACT):
@@ -424,7 +429,8 @@ class InstanceMatchCriteria:
         sc = as_dict.get('state_criteria')
         state_criteria = StateCriteria.from_dict(sc) if sc else None
         jobs = as_dict.get('jobs', ())
-        return cls(id_criteria, interval_criteria, state_criteria, jobs)
+        param_sets = as_dict.get('param_sets', ())
+        return cls(id_criteria, interval_criteria, state_criteria, jobs, param_sets)
 
     @property
     def id_criteria(self):
@@ -455,8 +461,16 @@ class InstanceMatchCriteria:
         return self._job_ids
 
     @job_ids.setter
-    def job_ids(self, criteria):
-        self._job_ids = to_list(criteria)
+    def job_ids(self, jobs):
+        self._job_ids = to_list(jobs)
+
+    @property
+    def param_sets(self):
+        return self._param_sets
+
+    @param_sets.setter
+    def param_sets(self, param_sets):
+        self._param_sets = param_sets
 
     def matches_id(self, job_instance):
         return not self.id_criteria or compound_id_filter(self.id_criteria)(job_instance)
@@ -470,6 +484,13 @@ class InstanceMatchCriteria:
     def matches_job_ids(self, job_instance):
         return not self.job_ids or job_instance.job_id in self.job_ids
 
+    def matches_parameters(self, job_instance):
+        return (not self.param_sets or
+                any(job_instance.metadata.contains_parameters(*param_set) for param_set in self.param_sets))
+
+    def __call__(self, job_instance):
+        return self.matches(job_instance)
+
     def matches(self, job_instance):
         """
         Args:
@@ -480,7 +501,8 @@ class InstanceMatchCriteria:
         return self.matches_id(job_instance) \
             and self.matches_interval(job_instance) \
             and self.matches_state(job_instance) \
-            and self.matches_job_ids(job_instance)
+            and self.matches_job_ids(job_instance) \
+            and self.matches_parameters(job_instance)
 
     def to_dict(self, include_empty=True):
         d = {
@@ -488,18 +510,21 @@ class InstanceMatchCriteria:
             'interval_criteria': [c.to_dict(include_empty) for c in self.interval_criteria],
             'state_criteria': self.state_criteria.to_dict(include_empty) if self.state_criteria else None,
             'jobs': self.job_ids,
+            'param_sets': self.param_sets,
         }
         return remove_empty_values(d) if include_empty else d
 
     def __bool__(self):
-        return bool(self.id_criteria) or bool(self.interval_criteria) or bool(self.state_criteria) or bool(self.job_ids)
+        return (bool(self.id_criteria) or bool(self.interval_criteria) or bool(self.state_criteria)
+                or bool(self.job_ids) or bool(self.param_sets))
 
     def __repr__(self):
         return f"{self.__class__.__name__}(" \
                f"id_criteria={self._id_criteria}," \
                f"interval_criteria={self._interval_criteria}, " \
-               f"state_criteria={self.state_criteria}" \
-               f"jobs={self.job_ids})"
+               f"state_criteria={self.state_criteria}," \
+               f"jobs={self.job_ids}," \
+               f"param_sets={self.param_sets})"
 
 
 def parse_criteria(pattern: str, strategy: MatchingStrategy = MatchingStrategy.EXACT):
@@ -582,6 +607,9 @@ class JobInstanceMetadata:
             return d
         else:
             return {k: v for k, v in d.items() if not is_empty(v)}
+
+    def contains_parameters(self, *params):
+        return all(param in self.parameters for param in params)
 
     def __repr__(self):
         return (

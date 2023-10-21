@@ -31,6 +31,7 @@ def create_persistence():
 
 
 def _build_where_clause(instance_match, alias=''):
+    # TODO Post fetch filter for criteria not supported in WHERE (instance parameters, etc.)
     if not instance_match:
         return ""
 
@@ -94,11 +95,13 @@ def _build_where_clause(instance_match, alias=''):
 
     state_conditions = []
     if instance_match.state_criteria:
+        if instance_match.phases and (Phase.TERMINAL not in instance_match.phases or len(instance_match.phases) > 1):
+            raise ValueError("Phase matching was requested but it is not supported: " + str(instance_match.phases))
         if instance_match.state_criteria.warning:
             state_conditions.append(f"{alias}warnings IS NOT NULL")
         if flag_groups := instance_match.state_criteria.flag_groups:
             states = ",".join(f"'{s.name}'" for group in flag_groups
-                                            for s in ExecutionState.get_states_by_flags(*group))
+                              for s in ExecutionState.get_states_by_flags(*group))
             state_conditions.append(f"{alias}terminal_state IN ({states})")
 
     all_conditions_list = (job_conditions, id_conditions, int_conditions, state_conditions)
@@ -261,7 +264,8 @@ class SQLite(InstanceStateObserver):
                     round(j.lifecycle.execution_time.total_seconds(), 3) if j.lifecycle.execution_time else None,
                     json.dumps(
                         [(state.name, float(changed.timestamp())) for state, changed in j.lifecycle.state_changes]),
-                    j.lifecycle.state.name if j.lifecycle.state.in_phase(ExecutionPhase.TERMINAL) else ExecutionState.UNKNOWN.name,
+                    j.lifecycle.state.name if j.lifecycle.state.in_phase(
+                        ExecutionPhase.TERMINAL) else ExecutionState.UNKNOWN.name,
                     json.dumps(j.tracking.to_dict(include_empty=False)) if j.tracking else None,
                     j.status,
                     json.dumps(j.error_output) if j.error_output else None,

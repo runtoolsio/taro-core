@@ -7,8 +7,8 @@ from typing import Sequence, Optional
 
 from tarotools import taro
 from tarotools.taro.jobs import lock
-from tarotools.taro.jobs.execution import ExecutionState, ExecutionPhase, Flag
-from tarotools.taro.jobs.inst import JobInstances, InstanceMatchCriteria, IDMatchCriteria
+from tarotools.taro.jobs.execution import ExecutionState, ExecutionPhase, Flag, Phase
+from tarotools.taro.jobs.inst import JobInstances, InstanceMatchCriteria, IDMatchCriteria, StateCriteria
 from tarotools.taro.listening import StateReceiver, ExecutionStateEventObserver
 from tarotools.taro.log import timing
 
@@ -488,8 +488,11 @@ class ExecutionQueue(Queue, ExecutionStateEventObserver):
         self._state_receiver.start()
 
     def _dispatch_next(self):
-        # TODO Set phase filters + params criteria
-        jobs, _ = taro.client.read_instances()
+        criteria = InstanceMatchCriteria(
+            state_criteria=StateCriteria(phases={Phase.QUEUED, Phase.EXECUTING}),
+            param_sets=set(self._parameters)
+        )
+        jobs, _ = taro.client.read_instances(criteria)
 
         group_jobs_sorted = JobInstances(sorted(jobs, key=lambda job: job.lifecycle.changed_at(ExecutionState.CREATED)))
         next_count = self._max_executions - len(group_jobs_sorted.executing)
@@ -509,12 +512,11 @@ class ExecutionQueue(Queue, ExecutionStateEventObserver):
         with self._wait_guard:
             if not self._current_wait:
                 return
-            # TO O Exec group instance matcher
-            if new_state.in_phase(ExecutionPhase.TERMINAL) and self._in_exec_group(instance_meta):
+            if new_state.in_phase(ExecutionPhase.TERMINAL) and instance_meta.contains_parameters(self._parameters):
                 self._current_wait = False
                 self._stop_listening()
                 self._wait_guard.notify()
-                
+
     def _in_exec_group(self, instance_meta):
         return instance_meta.id.job_id == self._group or \
             any(1 for name, value in instance_meta.parameters if name == 'execution_group' and value == self._group)
