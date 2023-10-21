@@ -20,6 +20,8 @@ from tarotools.taro.util.observer import Notification
 class ExecutionPhase(Enum):
     NONE = auto()
     SCHEDULED = auto()
+    PENDING = auto()
+    QUEUED = auto()
     EXECUTING = auto()
     TERMINAL = auto()
 
@@ -28,7 +30,8 @@ Phase = ExecutionPhase
 
 
 class ExecutionStateFlag(Enum):
-    UNEXECUTED = auto()  # Not yet executed.
+    BEFORE_EXECUTION = auto()  # Not yet executed
+    UNEXECUTED = auto()  # Not yet executed or reached terminal phase without execution.
     WAITING = auto()     # Waiting for a condition before execution.
     DISCARDED = auto()   # Discarded automatically or by the user before execution.
     REJECTED = auto()    # Automatically rejected before execution.
@@ -57,10 +60,10 @@ class ExecutionState(Enum, metaclass=ExecutionStateMeta):
     NONE =    Phase.NONE, {}
     UNKNOWN = Phase.NONE, {}
 
-    CREATED = Phase.SCHEDULED, {Flag.UNEXECUTED}
+    CREATED = Phase.SCHEDULED, {Flag.BEFORE_EXECUTION, Flag.UNEXECUTED}
 
-    PENDING = Phase.SCHEDULED, {Flag.UNEXECUTED, Flag.WAITING}  # Until released
-    QUEUED =  Phase.SCHEDULED, {Flag.UNEXECUTED, Flag.WAITING}  # Wait for another job
+    PENDING = Phase.PENDING, {Flag.BEFORE_EXECUTION, Flag.UNEXECUTED, Flag.WAITING}  # Until released
+    QUEUED =  Phase.QUEUED, {Flag.BEFORE_EXECUTION, Flag.UNEXECUTED, Flag.WAITING}  # Wait for another job
 
     CANCELLED =   Phase.TERMINAL, {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.ABORTED}
     SKIPPED =     Phase.TERMINAL, {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.REJECTED}

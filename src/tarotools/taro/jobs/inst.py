@@ -1131,6 +1131,14 @@ class JobInstances(list):
         return self.in_phase(ExecutionPhase.SCHEDULED)
 
     @property
+    def pending(self):
+        return self.in_phase(ExecutionPhase.PENDING)
+
+    @property
+    def queued(self):
+        return self.in_phase(ExecutionPhase.QUEUED)
+
+    @property
     def executing(self):
         return self.in_phase(ExecutionPhase.EXECUTING)
 

@@ -496,7 +496,7 @@ class ExecutionQueue(Queue, ExecutionStateEventObserver):
         if next_count <= 0:
             return False
 
-        for next_proceed in group_jobs_sorted.in_state(ExecutionState.QUEUED):
+        for next_proceed in group_jobs_sorted.queued:
             # TODO Use identity ID
             signal_resp = taro.client.signal_proceed(InstanceMatchCriteria(IDMatchCriteria.for_instance(next_proceed)))
             for r in signal_resp.responses:
