@@ -357,12 +357,17 @@ class Queue(Identifiable):
 
 
 class QueueWaiterState(Enum):
-    BEFORE_QUEUING = auto()
-    QUEUING = auto()
-    EXECUTED = auto()
-    CANCELLED = auto()
-    REJECTED = auto()
-    UNKNOWN = auto()
+    BEFORE_QUEUING = auto(), False
+    QUEUING = auto(), False
+    DISPATCHED = auto(), True
+    CANCELLED = auto(), True
+    UNKNOWN = auto(), False
+
+    def __new__(cls, value, dequeued):
+        obj = object.__new__(cls)
+        obj._value_ = value
+        obj.dequeued = dequeued
+        return obj
 
     @classmethod
     def from_str(cls, value: str):
@@ -373,6 +378,7 @@ class QueueWaiterState(Enum):
 
 
 class QueueWaiter:
+
     @property
     @abstractmethod
     def state(self):
@@ -391,13 +397,19 @@ class QueueWaiter:
         pass
 
     @abstractmethod
-    def signal_ready(self):
+    def signal_proceed(self):
         pass
+
+
+@dataclass
+class ExecutionGroupLimit:
+    group: str
+    max_executions: int
 
 
 class ExecutionQueue(Queue, ExecutionStateEventObserver):
 
-    def __init__(self, execution_group, max_executions, global_locker=lock.default_coord_locker(),
+    def __init__(self, execution_group, max_executions, queue_locker=lock.default_queue_locker(),
                  state_receiver_factory=StateReceiver):
         super().__init__("QUEUE", f"{execution_group}<={max_executions}")
         if not execution_group:
@@ -406,13 +418,13 @@ class ExecutionQueue(Queue, ExecutionStateEventObserver):
             raise ValueError('Max executions must be greater than zero')
         self._group = execution_group
         self._max_executions = max_executions
-        self._locker = global_locker
+        self._locker = queue_locker
         self._state_receiver_factory = state_receiver_factory
 
         self._wait_guard = Condition()
         # vv Guarding these fields vv
         self._wait_counter = 0
-        self._current_wait = None
+        self._current_wait = False
         self._state_receiver = None
 
         self._parameters = (
@@ -421,62 +433,62 @@ class ExecutionQueue(Queue, ExecutionStateEventObserver):
             ('max_executions', max_executions)
         )
 
-    def create_waiter(self, instance, state_on_dequeue):
-        return self._Waiter(instance, state_on_dequeue)
+    def create_waiter(self, instance, dequeue_state_resolver):
+        return self._Waiter(self, instance, dequeue_state_resolver)
 
     class _Waiter(QueueWaiter):
-        def __init__(self, queue: "ExecutionQueue", instance, state_on_dequeue):
+
+        def __init__(self, queue: "ExecutionQueue", instance, dispatch_state_resolver):
             self.queue = queue
             self.instance = instance
-            self.state_on_dequeue = state_on_dequeue
+            self.dispatch_state_resolver = dispatch_state_resolver
             self._state = QueueWaiterState.BEFORE_QUEUING
+            self.dispatch_exec_state = ExecutionState.NONE
 
         @property
         def state(self):
             return self._state
 
         def wait(self):
-            if self._state == QueueWaiterState.BEFORE_QUEUING:
-                self._state = QueueWaiterState.QUEUING
+            while True:
+                with self.queue._wait_guard:
+                    if self._state == QueueWaiterState.BEFORE_QUEUING:
+                        # Should new waiter run scheduler?
+                        self._state = QueueWaiterState.QUEUING
 
-            with self.queue._wait_guard:
-                if self.queue._current_wait:
-                    while True:
+                    if self._state.dequeued:
+                        return
+
+                    if self.queue._current_wait:
                         self.queue._wait_guard.wait()
+                        continue
 
-
-                with self.queue._locker() as queue_lock:
+                    self.queue._current_wait = True
                     self.queue._start_listening()
-                    self.queue._schedule_next()
-                    if self._state == QueueWaiterState.QUEUING:
-                        queue_lock.unlock()
-                        # TODO wait
+
+                with self.queue._locker():
+                    self.queue._dispatch_next()
+
+                continue
 
         def release(self):
             pass
 
-        def signal_ready(self):
-            new_state = self.state_on_dequeue()
-            if new_state.in_phase(ExecutionPhase.EXECUTING):
-                self._state = QueueWaiterState.EXECUTED
-            else:
-                self._state = QueueWaiterState.REJECTED
-            # TODO Release wait
+        def signal_proceed(self):
+            with self.queue._wait_guard:
+                self._state = QueueWaiterState.DISPATCHED
+                self.dispatch_exec_state = self.dispatch_state_resolver()
+                self.queue._wait_guard.notify_all()
 
-    def _setup_waiting(self):
-        self._start_listening()
-
-        self._wait_counter += 1
-        self._current_wait = self._wait_counter
-        return self._current_wait
+            return self.dispatch_exec_state.in_phase(ExecutionPhase.EXECUTING)
 
     def _start_listening(self):
         self._state_receiver = self._state_receiver_factory()
         self._state_receiver.listeners.append(self)
         self._state_receiver.start()
 
-    def _schedule_next(self):
-
+    def _dispatch_next(self):
+        # TODO Set phase filters + params criteria
         jobs, _ = taro.client.read_instances()
 
         group_jobs_sorted = JobInstances(sorted(jobs, key=lambda job: job.lifecycle.changed_at(ExecutionState.CREATED)))
@@ -484,26 +496,28 @@ class ExecutionQueue(Queue, ExecutionStateEventObserver):
         if next_count <= 0:
             return False
 
-        for next_ready in group_jobs_sorted.scheduled:
-            signal_resp = taro.client.signal_ready(InstanceMatchCriteria(IDMatchCriteria.for_instance(next_ready)))
+        for next_proceed in group_jobs_sorted.in_state(ExecutionState.QUEUED):
+            # TODO Use identity ID
+            signal_resp = taro.client.signal_proceed(InstanceMatchCriteria(IDMatchCriteria.for_instance(next_proceed)))
             for r in signal_resp.responses:
-                if QueueWaiterState.from_str(r.after_signal_state) == QueueWaiterState.EXECUTED:
+                if r.executed:
                     next_count -= 1
                     if next_count <= 0:
                         return
+
     def state_update(self, instance_meta, previous_state, new_state, changed):
         with self._wait_guard:
             if not self._current_wait:
                 return
             # TO O Exec group instance matcher
-            if new_state.in_phase(ExecutionPhase.TERMINAL) and self._is_same_exec_group(instance_meta):
-                self._remove_waiting()
-                self._wait_guard.notify_all()
-
-
-    def _remove_waiting(self):
-        self._current_wait = None
-        self._stop_listening()
+            if new_state.in_phase(ExecutionPhase.TERMINAL) and self._in_exec_group(instance_meta):
+                self._current_wait = False
+                self._stop_listening()
+                self._wait_guard.notify()
+                
+    def _in_exec_group(self, instance_meta):
+        return instance_meta.id.job_id == self._group or \
+            any(1 for name, value in instance_meta.parameters if name == 'execution_group' and value == self._group)
 
     def _stop_listening(self):
         self._state_receiver.close()
@@ -641,7 +655,7 @@ class ExecutionsLimitation(Coordination, ExecutionStateEventObserver):
 
         for next_ready in group_jobs_sorted.scheduled[0:next_count]:  # TODO Change to queued
 
-        job_created = job_inst.lifecycle.changed_at(ExecutionState.CREATED)
+            job_created = job_inst.lifecycle.changed_at(ExecutionState.CREATED)
         for allowed in next_ready:
             if job_inst.id == allowed.id or job_created <= allowed.lifecycle.changed_at(ExecutionState.CREATED):
                 # The second condition ensure this works even when the job is not contained in the list for any reasons
@@ -709,19 +723,13 @@ class ExecutionsLimitation(Coordination, ExecutionStateEventObserver):
             self._wait_guard.notify_all()
 
 
-@dataclass
-class ExecutionsLimit:
-    execution_group: str
-    max_executions: int
-
-
 # TODO delete
-def create_composite(executions_limit: ExecutionsLimit = None, no_overlap: bool = False,
+def create_composite(executions_limit: ExecutionGroupLimit = None, no_overlap: bool = False,
                      depends_on: Sequence[str] = ()):
     syncs = []
 
     if executions_limit:
-        limitation = ExecutionsLimitation(executions_limit.execution_group, executions_limit.max_executions)
+        limitation = ExecutionsLimitation(executions_limit.group, executions_limit.max_executions)
         syncs.append(limitation)
     if no_overlap:
         syncs.append(NoOverlap())

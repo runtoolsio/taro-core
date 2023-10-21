@@ -509,7 +509,9 @@ class JobInstanceID(NamedTuple):
         job_id (str): The ID of the job to which the instance belongs.
         instance_id (str): The ID of the individual instance.
 
-    TODO: Create a method that returns a match and a no-match for this ID.
+    TODO:
+        1. Identity or reference ID.
+        2. Create a method that returns a match and a no-match for this ID.
     """
     job_id: str
     instance_id: str
@@ -1118,20 +1120,23 @@ class JobInstances(list):
     def job_ids(self) -> List[str]:
         return [j.id.job_id for j in self]
 
-    def filtered_by_phase(self, execution_phase):
+    def in_phase(self, execution_phase):
         return [j for j in self if j.lifecycle.state.phase is execution_phase]
+
+    def in_state(self, execution_state):
+        return [j for j in self if j.lifecycle.state is execution_state]
 
     @property
     def scheduled(self):
-        return self.filtered_by_phase(ExecutionPhase.SCHEDULED)
+        return self.in_phase(ExecutionPhase.SCHEDULED)
 
     @property
     def executing(self):
-        return self.filtered_by_phase(ExecutionPhase.EXECUTING)
+        return self.in_phase(ExecutionPhase.EXECUTING)
 
     @property
     def terminal(self):
-        return self.filtered_by_phase(ExecutionPhase.TERMINAL)
+        return self.in_phase(ExecutionPhase.TERMINAL)
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         return {"jobs": [job.to_dict(include_empty=include_empty) for job in self]}

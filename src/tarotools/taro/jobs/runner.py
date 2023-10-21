@@ -70,7 +70,7 @@ _warning_observers = InstanceWarningNotification(logger=log)
 
 class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, coordinations=(), coord_locker=lock.default_coord_locker(),
+    def __init__(self, job_id, execution, coordinations=(), coord_locker=lock.default_queue_locker(),
                  *, instance_id=None, **user_params):
         self._id = JobInstanceID(job_id, instance_id or util.unique_timestamp_hex())
         self._execution = execution

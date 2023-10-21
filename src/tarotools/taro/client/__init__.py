@@ -144,9 +144,9 @@ class TailResponse(JobInstanceResponse):
 
 
 @dataclass
-class SignalReadyResponse(JobInstanceResponse):
+class SignalProceedResponse(JobInstanceResponse):
     waiter_found: bool
-    after_signal_state: str
+    executed: bool
 
 
 def read_instances(instance_match=None) -> AggregatedResponse[JobInst]:
@@ -249,7 +249,7 @@ def read_tail(instance_match=None) -> AggregatedResponse[TailResponse]:
         return client.read_tail(instance_match)
 
 
-def signal_ready(instance_match) -> AggregatedResponse[SignalReadyResponse]:
+def signal_proceed(instance_match) -> AggregatedResponse[SignalProceedResponse]:
     with APIClient() as client:
         return client.signal_ready(instance_match)
 
@@ -399,12 +399,12 @@ class APIClient(SocketClient):
 
         return self.send_request('/instances/tail', instance_match, resp_mapper=resp_mapper)
 
-    def signal_ready(self, instance_match) -> AggregatedResponse[SignalReadyResponse]:
-        def resp_mapper(inst_resp: InstanceResponse) -> SignalReadyResponse:
-            return SignalReadyResponse(
-                inst_resp.instance_meta, inst_resp.body["waiter_found"], inst_resp.body["after_signal_state"])
+    def signal_ready(self, instance_match) -> AggregatedResponse[SignalProceedResponse]:
+        def resp_mapper(inst_resp: InstanceResponse) -> SignalProceedResponse:
+            return SignalProceedResponse(
+                inst_resp.instance_meta, inst_resp.body["waiter_found"], inst_resp.body["executed"])
         
-        return self.send_request('/instances/_signal/ready', instance_match, resp_mapper=resp_mapper)
+        return self.send_request('/instances/_signal/proceed', instance_match, resp_mapper=resp_mapper)
 
 
 def _process_responses(server_responses: List[ServerResponse], resp_mapper: Callable[[InstanceResponse], T]) \

@@ -122,20 +122,20 @@ class TailResource(APIResource):
         return {"tail": job_instance.last_output}
 
 
-class SignalReadyResource(APIResource):
+class SignalProceedResource(APIResource):
 
     @property
     def path(self):
-        return '/instances/_signal/ready'
+        return '/instances/_signal/proceed'
 
     def handle(self, job_instance, req_body):
         waiter = job_instance.queue_waiter
         if waiter:
-            after_signal_state = waiter.signal_ready()
+            executed = waiter.signal_proceed()
         else:
-            after_signal_state = None
+            executed = False
 
-        return {"waiter_found": waiter is not None, "after_signal_state": after_signal_state}
+        return {"waiter_found": waiter is not None, "executed": executed}
 
 
 DEFAULT_RESOURCES = (
@@ -144,7 +144,7 @@ DEFAULT_RESOURCES = (
     ReleasePendingResource(),
     StopResource(),
     TailResource(),
-    SignalReadyResource())
+    SignalProceedResource())
 
 
 class APIServer(SocketServer, JobInstanceManager):

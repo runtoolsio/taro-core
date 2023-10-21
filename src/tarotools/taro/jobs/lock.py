@@ -160,5 +160,5 @@ class NullStateLocker(StateLocker, StateLock):
         pass
 
 
-def default_coord_locker():
+def default_queue_locker():
     return PortalockerStateLocker(paths.lock_path('state0.lock', True))
