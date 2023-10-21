@@ -7,7 +7,7 @@ from threading import Thread
 import tarotools.taro
 from tarotools.taro import ProcessExecution, JobInstance
 from tarotools.taro.jobs import lock
-from tarotools.taro.jobs.coord import Latch
+from tarotools.taro.jobs.coordination import Latch
 from tarotools.taro.jobs.execution import ExecutionState as ExSt, ExecutionError
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.observer import TestOutputObserver

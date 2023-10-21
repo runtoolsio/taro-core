@@ -52,7 +52,7 @@ from typing import List, Union, Tuple, Optional
 
 from tarotools.taro import util
 from tarotools.taro.jobs import lock
-from tarotools.taro.jobs.coord import Reject, Wait, Continue, CompositeCoord
+from tarotools.taro.jobs.coordination import Reject, Wait, Continue, CompositeCoord
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, \
     ExecutionOutputObserver, \
     Flag, UnexpectedStateError

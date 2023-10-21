@@ -11,8 +11,8 @@ from threading import Thread
 import tarotools.taro.cfg
 from tarotools.taro import cfg, client, log
 from tarotools.taro.hostinfo import read_hostinfo, HostinfoError
-from tarotools.taro.jobs import warning, persistence, plugins, repo, coord, runner, lock
-from tarotools.taro.jobs.coord import NoCoordination
+from tarotools.taro.jobs import warning, persistence, plugins, repo, coordination, runner, lock
+from tarotools.taro.jobs.coordination import NoCoordination
 from tarotools.taro.jobs.execution import Flag, ExecutionState, ExecutionError, ExecutionLifecycle
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.jobs.inst import JobInstanceID, JobInstance, JobInst, InstanceStateObserver, Warn, \
