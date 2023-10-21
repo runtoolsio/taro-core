@@ -126,12 +126,12 @@ class SignalProceedResource(APIResource):
 
     @property
     def path(self):
-        return '/instances/_signal/proceed'
+        return '/instances/_signal/dispatch'
 
     def handle(self, job_instance, req_body):
         waiter = job_instance.queue_waiter
         if waiter:
-            executed = waiter.signal_proceed()
+            executed = waiter.signal_dispatch()
         else:
             executed = False
 

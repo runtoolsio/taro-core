@@ -4,6 +4,8 @@ During its lifecycle, an execution is expected to transition through various exe
 by the `ExecutionState` enum. Each state belongs to a single phase represented by the `ExecutionPhase` enum and
 can be associated with multiple execution flags, represented by the `ExecutionStateFlag` enum.
 The flags can be viewed as attributes that characterize the state.
+
+TODO: Remove execution prefix where appropriate
 """
 
 import abc

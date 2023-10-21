@@ -404,7 +404,7 @@ class APIClient(SocketClient):
             return SignalProceedResponse(
                 inst_resp.instance_meta, inst_resp.body["waiter_found"], inst_resp.body["executed"])
         
-        return self.send_request('/instances/_signal/proceed', instance_match, resp_mapper=resp_mapper)
+        return self.send_request('/instances/_signal/dispatch', instance_match, resp_mapper=resp_mapper)
 
 
 def _process_responses(server_responses: List[ServerResponse], resp_mapper: Callable[[InstanceResponse], T]) \
