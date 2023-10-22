@@ -9,7 +9,7 @@ import tarotools.taro
 import tarotools.taro.jobs.runner as runner
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.execution import ExecutionState
-from tarotools.taro.jobs.inst import InstanceStateObserver, JobInst
+from tarotools.taro.jobs.instance import InstanceStateObserver, JobInst
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.observer import TestStateObserver
 

@@ -8,7 +8,7 @@ from json import JSONDecodeError
 from tarotools.taro import util
 from tarotools.taro.jobs.events import STATE_LISTENER_FILE_EXTENSION, OUTPUT_LISTENER_FILE_EXTENSION
 from tarotools.taro.jobs.execution import ExecutionState
-from tarotools.taro.jobs.inst import JobInstanceMetadata
+from tarotools.taro.jobs.instance import JobInstanceMetadata
 from tarotools.taro.socket import SocketServer
 
 log = logging.getLogger(__name__)

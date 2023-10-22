@@ -39,7 +39,7 @@ from tarotools.taro import util, cfg
 from tarotools.taro.err import TaroException
 from tarotools.taro.jobs import db
 from tarotools.taro.jobs.execution import ExecutionState
-from tarotools.taro.jobs.inst import JobInstances
+from tarotools.taro.jobs.instance import JobInstances
 from tarotools.taro.jobs.job import JobStats
 
 

@@ -10,7 +10,7 @@ from json import JSONDecodeError
 from typing import List, Any, Dict, NamedTuple, Optional, TypeVar, Generic, Callable
 
 from tarotools.taro.jobs.api import API_FILE_EXTENSION
-from tarotools.taro.jobs.inst import JobInst, JobInstanceMetadata
+from tarotools.taro.jobs.instance import JobInst, JobInstanceMetadata
 from tarotools.taro.socket import SocketClient, ServerResponse, Error
 
 log = logging.getLogger(__name__)

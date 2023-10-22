@@ -21,8 +21,8 @@ from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.events import StateDispatcher, OutputDispatcher
 from tarotools.taro.jobs.execution import ExecutionPhase
-from tarotools.taro.jobs.inst import (InstanceStateObserver, JobInst, JobInstance, JobInstanceManager,
-                                      InstanceOutputObserver, JobInstanceID)
+from tarotools.taro.jobs.instance import (InstanceStateObserver, JobInst, JobInstance, JobInstanceManager,
+                                          InstanceOutputObserver, JobInstanceID)
 from tarotools.taro.jobs.plugins import Plugin
 
 log = logging.getLogger(__name__)

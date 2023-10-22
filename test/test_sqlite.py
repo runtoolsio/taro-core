@@ -4,9 +4,9 @@ from datetime import datetime as dt
 import pytest
 
 from tarotools.taro import ExecutionState, ExecutionError
+from tarotools.taro.jobs.criteria import IntervalCriteria, StateCriteria, InstanceMatchCriteria, parse_criteria
 from tarotools.taro.jobs.db.sqlite import SQLite
-from tarotools.taro.jobs.inst import parse_criteria, InstanceMatchCriteria, IntervalCriteria, LifecycleEvent, \
-    StateCriteria
+from tarotools.taro.jobs.instance import LifecycleEvent
 from tarotools.taro.jobs.track import MutableTrackedTask
 from tarotools.taro.test.execution import lc_failed, lc_completed
 from tarotools.taro.test.inst import i

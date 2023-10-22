@@ -15,7 +15,7 @@ from tarotools.taro.jobs import warning, persistence, plugins, repo, coordinatio
 from tarotools.taro.jobs.coordination import NoCoordination
 from tarotools.taro.jobs.execution import Flag, ExecutionState, ExecutionError, ExecutionLifecycle
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
-from tarotools.taro.jobs.inst import JobInstanceID, JobInstance, JobInst, InstanceStateObserver, Warn, \
+from tarotools.taro.jobs.instance import JobInstanceID, JobInstance, JobInst, InstanceStateObserver, Warn, \
     InstanceWarningObserver, \
     WarnEventCtx, RunnableJobInstance, RunInNewThreadJobInstance
 from tarotools.taro.jobs.plugins import Plugin, PluginDisabledError

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from tarotools.taro import JobInst, JobInstanceID, ExecutionError, ExecutionState
 from tarotools.taro import util
 from tarotools.taro.jobs.execution import ExecutionLifecycleManagement
-from tarotools.taro.jobs.inst import JobInstanceMetadata, JobInstanceManager, \
+from tarotools.taro.jobs.instance import JobInstanceMetadata, JobInstanceManager, \
     InstanceStateNotification, RunnableJobInstance
 from tarotools.taro.jobs.track import MutableTrackedTask
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY

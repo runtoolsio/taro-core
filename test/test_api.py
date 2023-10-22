@@ -3,7 +3,7 @@ import pytest
 from tarotools.taro import ExecutionState
 from tarotools.taro.client import APIClient, APIErrorType, ErrorCode, ReleaseResult, StopResult
 from tarotools.taro.jobs.api import APIServer
-from tarotools.taro.jobs.inst import InstanceMatchCriteria, IDMatchCriteria
+from tarotools.taro.jobs.criteria import IDMatchCriteria, InstanceMatchCriteria
 from tarotools.taro.test.inst import TestJobInstance
 
 

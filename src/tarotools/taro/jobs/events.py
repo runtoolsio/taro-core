@@ -12,7 +12,7 @@ import json
 import logging
 
 from tarotools.taro import util
-from tarotools.taro.jobs.inst import InstanceStateObserver, JobInst, InstanceOutputObserver
+from tarotools.taro.jobs.instance import InstanceStateObserver, JobInst, InstanceOutputObserver
 from tarotools.taro.socket import SocketClient, PayloadTooLarge
 from tarotools.taro.util import format_dt_iso
 

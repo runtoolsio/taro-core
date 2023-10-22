@@ -47,7 +47,7 @@ from types import ModuleType
 from typing import Dict, Type
 
 import tarotools.plugins
-from tarotools.taro.jobs.inst import JobInstanceManager
+from tarotools.taro.jobs.instance import JobInstanceManager
 
 log = logging.getLogger(__name__)
 

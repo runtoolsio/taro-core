@@ -6,7 +6,7 @@ import tomli_w
 
 from tarotools.taro import cfg
 from tarotools.taro import paths, JobInst, InstanceWarningObserver, InstanceStateObserver
-from tarotools.taro.jobs.inst import WarnEventCtx
+from tarotools.taro.jobs.instance import WarnEventCtx
 
 
 def reset_config():

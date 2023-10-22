@@ -6,8 +6,9 @@ from threading import Condition
 
 from tarotools import taro
 from tarotools.taro.jobs import lock
+from tarotools.taro.jobs.criteria import IDMatchCriteria, StateCriteria, InstanceMatchCriteria
 from tarotools.taro.jobs.execution import ExecutionState, ExecutionPhase, Phase
-from tarotools.taro.jobs.inst import JobInstances, InstanceMatchCriteria, IDMatchCriteria, StateCriteria
+from tarotools.taro.jobs.instance import JobInstances
 from tarotools.taro.listening import StateReceiver, ExecutionStateEventObserver
 
 log = logging.getLogger(__name__)

@@ -13,7 +13,7 @@ from threading import Condition
 from typing import Tuple, List, Callable
 
 from tarotools.taro.jobs.execution import ExecutionState, ExecutionError, ExecutionPhase
-from tarotools.taro.jobs.inst import JobInst, InstanceOutputObserver, InstanceStateObserver
+from tarotools.taro.jobs.instance import JobInst, InstanceOutputObserver, InstanceStateObserver
 
 log = logging.getLogger(__name__)
 

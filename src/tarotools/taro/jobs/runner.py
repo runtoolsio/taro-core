@@ -56,7 +56,7 @@ from tarotools.taro.jobs.coordination import Reject, Wait, Continue, CompositeCo
 from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, \
     ExecutionOutputObserver, \
     Flag, UnexpectedStateError
-from tarotools.taro.jobs.inst import JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, \
+from tarotools.taro.jobs.instance import JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, \
     InstanceStateNotification, \
     InstanceOutputNotification, InstanceWarningNotification, RunnableJobInstance
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY

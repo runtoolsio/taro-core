@@ -13,8 +13,8 @@ from tarotools.taro import cfg
 from tarotools.taro import paths
 from tarotools.taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle, ExecutionPhase, Flag, \
     Phase
-from tarotools.taro.jobs.inst import (InstanceStateObserver, JobInst, JobInstances, JobInstanceID, LifecycleEvent,
-                                      JobInstanceMetadata)
+from tarotools.taro.jobs.instance import (InstanceStateObserver, JobInst, JobInstances, JobInstanceID, LifecycleEvent,
+                                          JobInstanceMetadata)
 from tarotools.taro.jobs.job import JobStats
 from tarotools.taro.jobs.persistence import SortCriteria
 from tarotools.taro.jobs.track import TrackedTaskInfo
