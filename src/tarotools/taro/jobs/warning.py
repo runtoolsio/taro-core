@@ -3,8 +3,8 @@ from threading import Timer
 from typing import Sequence
 
 from tarotools.taro import util
-from tarotools.taro.jobs.execution import ExecutionPhase
-from tarotools.taro.jobs.instance import JobInstance, JobInst, InstanceStateObserver, Warn, InstanceOutputObserver
+from tarotools.taro.jobs.instance import JobInstance, JobInst, InstancePhaseObserver, Warn, InstanceOutputObserver, \
+    InstancePhase
 
 
 def exec_time_exceeded(job_instance: JobInstance, warning_name: str, time: float):
@@ -24,7 +24,7 @@ def register(job_instance: JobInstance, *, warn_times: Sequence[str] = (), warn_
         output_matches(job_instance, f"output=~{warn_output}", warn_output)
 
 
-class _ExecTimeWarning(InstanceStateObserver):
+class _ExecTimeWarning(InstancePhaseObserver):
 
     def __init__(self, job_instance, name, time: float):
         self.job_instance = job_instance
@@ -32,16 +32,16 @@ class _ExecTimeWarning(InstanceStateObserver):
         self.time = time
         self.timer = None
 
-    def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
-        if new_state.in_phase(ExecutionPhase.EXECUTING):
+    def new_instance_phase(self, job_inst: JobInst, previous_phase, new_phase, changed):
+        if new_phase.in_phase(InstancePhase.EXECUTING):
             assert self.timer is None
             self.timer = Timer(self.time, self._check)
             self.timer.start()
-        elif new_state.in_phase(ExecutionPhase.TERMINAL) and self.timer is not None:
+        elif new_phase.in_phase(InstancePhase.TERMINAL) and self.timer is not None:
             self.timer.cancel()
 
     def _check(self):
-        if not self.job_instance.lifecycle.state.in_phase(ExecutionPhase.TERMINAL):
+        if not self.job_instance.lifecycle.phase.in_phase(InstancePhase.TERMINAL):
             warn = Warn(self.name, {'exceeded_sec': self.time})
             self.job_instance.add_warning(warn)
 

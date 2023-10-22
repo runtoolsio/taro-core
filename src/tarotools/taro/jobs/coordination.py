@@ -7,9 +7,9 @@ from threading import Condition
 from tarotools import taro
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.criteria import IDMatchCriteria, StateCriteria, InstanceMatchCriteria
-from tarotools.taro.jobs.execution import ExecutionState, ExecutionPhase, Phase
-from tarotools.taro.jobs.instance import JobInstances
-from tarotools.taro.listening import StateReceiver, ExecutionStateEventObserver
+from tarotools.taro.jobs.execution import TerminationStatus, Phase
+from tarotools.taro.jobs.instance import JobInstances, InstancePhase
+from tarotools.taro.listening import PhaseReceiver, InstancePhaseEventObserver
 
 log = logging.getLogger(__name__)
 
@@ -406,10 +406,10 @@ class ExecutionGroupLimit:
     max_executions: int
 
 
-class ExecutionQueue(Queue, ExecutionStateEventObserver):
+class ExecutionQueue(Queue, InstancePhaseEventObserver):
 
     def __init__(self, execution_group, max_executions, queue_locker=lock.default_queue_locker(),
-                 state_receiver_factory=StateReceiver):
+                 state_receiver_factory=PhaseReceiver):
         super().__init__("QUEUE", f"{execution_group}<={max_executions}")
         if not execution_group:
             raise ValueError('Execution group must be specified')
@@ -442,7 +442,7 @@ class ExecutionQueue(Queue, ExecutionStateEventObserver):
             self.instance = instance
             self.dispatch_state_resolver = dispatch_state_resolver
             self._state = QueueWaiterState.BEFORE_QUEUING
-            self.dispatch_exec_state = ExecutionState.NONE
+            self.dispatch_exec_state = TerminationStatus.NONE
 
         @property
         def state(self):
@@ -480,7 +480,7 @@ class ExecutionQueue(Queue, ExecutionStateEventObserver):
                 self.dispatch_exec_state = self.dispatch_state_resolver()
                 self.queue._wait_guard.notify_all()
 
-            return self.dispatch_exec_state.in_phase(ExecutionPhase.EXECUTING)
+            return self.dispatch_exec_state.in_phase(InstancePhase.EXECUTING)
 
     def _start_listening(self):
         self._state_receiver = self._state_receiver_factory()
@@ -494,7 +494,7 @@ class ExecutionQueue(Queue, ExecutionStateEventObserver):
         )
         jobs, _ = taro.client.read_instances(criteria)
 
-        group_jobs_sorted = JobInstances(sorted(jobs, key=lambda job: job.lifecycle.changed_at(ExecutionState.CREATED)))
+        group_jobs_sorted = JobInstances(sorted(jobs, key=lambda job: job.lifecycle.changed_at(TerminationStatus.CREATED)))
         next_count = self._max_executions - len(group_jobs_sorted.executing)
         if next_count <= 0:
             return False
@@ -508,11 +508,11 @@ class ExecutionQueue(Queue, ExecutionStateEventObserver):
                     if next_count <= 0:
                         return
 
-    def state_update(self, instance_meta, previous_state, new_state, changed):
+    def state_update(self, instance_meta, previous_phase, new_phase, changed):
         with self._wait_guard:
             if not self._current_wait:
                 return
-            if new_state.in_phase(ExecutionPhase.TERMINAL) and instance_meta.contains_parameters(self._parameters):
+            if new_phase.in_phase(InstancePhase.TERMINAL) and instance_meta.contains_parameters(self._parameters):
                 self._current_wait = False
                 self._stop_listening()
                 self._wait_guard.notify()

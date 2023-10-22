@@ -9,12 +9,12 @@ import sqlite3
 from datetime import timezone
 from typing import List
 
-from tarotools.taro import cfg
+from tarotools.taro import cfg, InstanceLifecycle
 from tarotools.taro import paths
-from tarotools.taro.jobs.execution import ExecutionState, ExecutionError, ExecutionLifecycle, ExecutionPhase, Flag, \
+from tarotools.taro.jobs.execution import TerminationStatus, ExecutionError, Flag, \
     Phase
-from tarotools.taro.jobs.instance import (InstanceStateObserver, JobInst, JobInstances, JobInstanceID, LifecycleEvent,
-                                          JobInstanceMetadata)
+from tarotools.taro.jobs.instance import (InstancePhaseObserver, JobInst, JobInstances, JobInstanceID, LifecycleEvent,
+                                          JobInstanceMetadata, InstancePhase)
 from tarotools.taro.jobs.job import JobStats
 from tarotools.taro.jobs.persistence import SortCriteria
 from tarotools.taro.jobs.track import TrackedTaskInfo
@@ -101,7 +101,7 @@ def _build_where_clause(instance_match, alias=''):
             state_conditions.append(f"{alias}warnings IS NOT NULL")
         if flag_groups := instance_match.state_criteria.flag_groups:
             states = ",".join(f"'{s.name}'" for group in flag_groups
-                              for s in ExecutionState.get_states_by_flags(*group))
+                              for s in TerminationStatus.with_flags(*group))
             state_conditions.append(f"{alias}terminal_state IN ({states})")
 
     all_conditions_list = (job_conditions, id_conditions, int_conditions, state_conditions)
@@ -110,13 +110,13 @@ def _build_where_clause(instance_match, alias=''):
     return " WHERE {conditions}".format(conditions=" AND ".join(all_conditions_str))
 
 
-class SQLite(InstanceStateObserver):
+class SQLite(InstancePhaseObserver):
 
     def __init__(self, connection):
         self._conn = connection
 
-    def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
-        if new_state.in_phase(Phase.TERMINAL):
+    def new_instance_phase(self, job_inst: JobInst, previous_phase, new_phase, changed):
+        if new_phase.in_phase(Phase.TERMINAL):
             self.store_instances(job_inst)
 
     def check_tables_exist(self):
@@ -171,9 +171,9 @@ class SQLite(InstanceStateObserver):
         c = self._conn.execute(statement, (limit, offset))
 
         def to_job_info(t):
-            state_changes = ((ExecutionState[state], datetime.datetime.fromtimestamp(changed, tz=timezone.utc))
-                             for state, changed in json.loads(t[5]))
-            lifecycle = ExecutionLifecycle(*state_changes)
+            phase_changes = ((InstancePhase[phase], datetime.datetime.fromtimestamp(changed, tz=timezone.utc))
+                             for phase, changed in json.loads(t[5]))
+            lifecycle = InstanceLifecycle(*phase_changes)
             tracking = TrackedTaskInfo.from_dict(json.loads(t[7])) if t[7] else None
             status = t[8]
             error_output = json.loads(t[9]) if t[9] else tuple()
@@ -210,7 +210,7 @@ class SQLite(InstanceStateObserver):
 
     def read_stats(self, instance_match=None) -> List[JobStats]:
         where = _build_where_clause(instance_match, alias='h')
-        failure_states = ",".join([f"'{s.name}'" for s in ExecutionState.get_states_by_flags(Flag.FAILURE)])
+        failure_statuses = ",".join([f"'{s.name}'" for s in TerminationStatus.with_flags(Flag.FAILURE)])
         sql = f'''
             SELECT
                 h.job_id,
@@ -221,8 +221,8 @@ class SQLite(InstanceStateObserver):
                 avg(h.exec_time) AS "average_time",
                 max(h.exec_time) AS "slowest_time",
                 last.exec_time AS "last_time",
-                last.terminal_state AS "last_state",
-                COUNT(CASE WHEN h.terminal_state IN ({failure_states}) THEN 1 ELSE NULL END) AS failed,
+                last.terminal_state AS "last_term_status",
+                COUNT(CASE WHEN h.terminal_state IN ({failure_statuses}) THEN 1 ELSE NULL END) AS failed,
                 COUNT(h.warnings) AS warnings
             FROM
                 history h
@@ -244,12 +244,12 @@ class SQLite(InstanceStateObserver):
             average = datetime.timedelta(seconds=t[5]) if t[5] else None
             slowest = datetime.timedelta(seconds=t[6]) if t[6] else None
             last_time = datetime.timedelta(seconds=t[7]) if t[7] else None
-            last_state = ExecutionState[t[8]] if t[8] else ExecutionState.UNKNOWN
+            last_term_status = TerminationStatus[t[8]] if t[8] else TerminationStatus.UNKNOWN
             failed_count = t[9]
             warn_count = t[10]
 
             return JobStats(
-                job_id, count, first_at, last_at, fastest, average, slowest, last_time, last_state, failed_count,
+                job_id, count, first_at, last_at, fastest, average, slowest, last_time, last_term_status, failed_count,
                 warn_count
             )
 
@@ -263,9 +263,9 @@ class SQLite(InstanceStateObserver):
                     format_dt_sql(j.lifecycle.last_changed_at),
                     round(j.lifecycle.execution_time.total_seconds(), 3) if j.lifecycle.execution_time else None,
                     json.dumps(
-                        [(state.name, float(changed.timestamp())) for state, changed in j.lifecycle.state_changes]),
-                    j.lifecycle.state.name if j.lifecycle.state.in_phase(
-                        ExecutionPhase.TERMINAL) else ExecutionState.UNKNOWN.name,
+                        [(phase.name, float(changed.timestamp())) for phase, changed in j.lifecycle.phase_changes]),
+                    j.lifecycle.phase.name if j.lifecycle.phase.in_phase(
+                        InstancePhase.TERMINAL) else TerminationStatus.UNKNOWN.name,
                     json.dumps(j.tracking.to_dict(include_empty=False)) if j.tracking else None,
                     j.status,
                     json.dumps(j.error_output) if j.error_output else None,

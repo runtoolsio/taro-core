@@ -13,11 +13,11 @@ from tarotools.taro import cfg, client, log
 from tarotools.taro.hostinfo import read_hostinfo, HostinfoError
 from tarotools.taro.jobs import warning, persistence, plugins, repo, coordination, runner, lock
 from tarotools.taro.jobs.coordination import NoCoordination
-from tarotools.taro.jobs.execution import Flag, ExecutionState, ExecutionError, ExecutionLifecycle
+from tarotools.taro.jobs.execution import Flag, TerminationStatus, ExecutionError
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
-from tarotools.taro.jobs.instance import JobInstanceID, JobInstance, JobInst, InstanceStateObserver, Warn, \
+from tarotools.taro.jobs.instance import JobInstanceID, JobInstance, JobInst, InstancePhaseObserver, Warn, \
     InstanceWarningObserver, \
-    WarnEventCtx, RunnableJobInstance, RunInNewThreadJobInstance
+    WarnEventCtx, RunnableJobInstance, RunInNewThreadJobInstance, InstanceLifecycle
 from tarotools.taro.jobs.plugins import Plugin, PluginDisabledError
 from tarotools.taro.jobs.process import ProcessExecution
 from tarotools.taro.jobs.program import ProgramExecution

@@ -1,7 +1,7 @@
-from tarotools.taro import ExecutionState
+from tarotools.taro import TerminationStatus
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.test.inst import TestJobInstanceManager, TestJobInstance
-from tarotools.taro.test.observer import TestStateObserver, TestOutputObserver
+from tarotools.taro.test.observer import TestPhaseObserver, TestOutputObserver
 
 
 class FeatHelper:
@@ -28,7 +28,7 @@ class TestEnv:
     def __init__(self, *, transient=True):
         self.instance_manager = FeatHelper(TestJobInstanceManager)
         self.instance_manager_volatile = FeatHelper(TestJobInstanceManager)
-        self.state_observer = FeatHelper(TestStateObserver)
+        self.state_observer = FeatHelper(TestPhaseObserver)
         self.output_observer = FeatHelper(TestOutputObserver)
         self.all_features = (self.instance_manager, self.state_observer, self.output_observer)
         self.ctx = (FeaturedContextBuilder(transient=transient)
@@ -83,8 +83,8 @@ def test_instance_management():
     assert env.instance_registered(inst)
     assert env.instance_contained(inst)  # Instance removed only after is terminated
 
-    inst.change_state(ExecutionState.COMPLETED)  # Terminated
-    assert env.state_observer.feature.last_state_any_job == ExecutionState.COMPLETED
+    inst.change_phase(TerminationStatus.COMPLETED)  # Terminated
+    assert env.state_observer.feature.last_state_any_job == TerminationStatus.COMPLETED
     assert env.closed()
     assert not env.instance_registered(inst)
     assert not env.instance_contained(inst)
@@ -99,7 +99,7 @@ def test_removed_when_terminated_before_closed():
         assert env.instance_registered(inst)
         assert env.instance_contained(inst)
 
-        inst.change_state(ExecutionState.COMPLETED)  # Terminated
+        inst.change_phase(TerminationStatus.COMPLETED)  # Terminated
         assert not env.instance_registered(inst)
         assert not env.instance_contained(inst)
 
@@ -113,7 +113,7 @@ def test_keep_removed():
         assert env.instance_contained(inst)
         assert env.instance_manager_volatile.feature.instances
 
-        inst.change_state(ExecutionState.COMPLETED)  # Terminated
+        inst.change_phase(TerminationStatus.COMPLETED)  # Terminated
         assert not env.instance_registered(inst)
         assert env.instance_contained(inst)
         assert not env.instance_manager_volatile.feature.instances  # Set to unregister terminated

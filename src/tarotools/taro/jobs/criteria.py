@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from datetime import timezone, time, timedelta
 from typing import Dict, Any, Set, Iterable, Optional
 
-from tarotools.taro.jobs.execution import ExecutionPhase, ExecutionStateFlag
-from tarotools.taro.jobs.instance import LifecycleEvent
+from tarotools.taro.jobs.execution import TerminationStatusFlag
+from tarotools.taro.jobs.instance import LifecycleEvent, InstancePhase
 from tarotools.taro.util import MatchingStrategy, and_, or_, is_empty, parse, single_day_range, days_range, \
     format_dt_iso, remove_empty_values, to_list
 
@@ -296,10 +296,10 @@ class IntervalCriteria:
 
 class StateCriteria:
     """
-    This object can be used to filter job instances based on their state, such as execution state or warnings.
-    For the criteria to match, all set matching properties must be met.
+    This object can be used to filter job instances based on their state, such as instance phase or warnings.
+    For the whole criteria to match, all provided filters must be met.
 
-    Properties:
+    Properties (filters):
         phases (Set[ExecutionPhase]):
             The criterion match if the instance is in any provided phases.
         flag_groups (Iterable[Set[ExecutionStateFlag]]):
@@ -314,8 +314,8 @@ class StateCriteria:
     """
 
     def __init__(self, *,
-                 phases: Set[ExecutionPhase] = (),
-                 flag_groups: Iterable[Set[ExecutionStateFlag]] = (),
+                 phases: Set[InstancePhase] = (),
+                 flag_groups: Iterable[Set[TerminationStatusFlag]] = (),
                  warning: Optional[bool] = None):
         self.phases = phases
         self.flag_groups = flag_groups
@@ -332,11 +332,11 @@ class StateCriteria:
         return self.matches(instance)
 
     def matches(self, instance):
-        if self.phases and instance.lifecycle.state.phase not in self.phases:
+        if self.phases and instance.lifecycle.phase.phase not in self.phases:
             return False
 
         if self.flag_groups and \
-                not any(all(f in instance.lifecycle.state.flags for f in g) for g in self.flag_groups):
+                not any(all(f in instance.lifecycle.phase.flags for f in g) for g in self.flag_groups):
             return False
 
         if self.warning is not None and self.warning != bool(instance.warnings):

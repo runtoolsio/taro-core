@@ -53,17 +53,16 @@ from typing import List, Union, Tuple, Optional
 from tarotools.taro import util
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.coordination import Reject, Wait, Continue, CompositeCoord
-from tarotools.taro.jobs.execution import ExecutionError, ExecutionState, ExecutionLifecycleManagement, \
-    ExecutionOutputObserver, \
+from tarotools.taro.jobs.execution import ExecutionError, TerminationStatus, ExecutionOutputObserver, \
     Flag, UnexpectedStateError
 from tarotools.taro.jobs.instance import JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, \
-    InstanceStateNotification, \
-    InstanceOutputNotification, InstanceWarningNotification, RunnableJobInstance
+    InstancePhaseNotification, \
+    InstanceOutputNotification, InstanceWarningNotification, RunnableJobInstance, MutableInstanceLifecycle
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
 log = logging.getLogger(__name__)
 
-_state_observers = InstanceStateNotification(logger=log)
+_state_observers = InstancePhaseNotification(logger=log)
 _output_observers = InstanceOutputNotification(logger=log)
 _warning_observers = InstanceWarningNotification(logger=log)
 
@@ -78,7 +77,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
         parameters = (execution.parameters or ()) + self._coord.parameters if self._coord else ()
         self._metadata = JobInstanceMetadata(self._id, parameters, user_params)
         self._coord_locker = coord_locker
-        self._lifecycle = ExecutionLifecycleManagement()
+        self._lifecycle = MutableInstanceLifecycle()
         self._state_lock = RLock()
         self._last_output = deque(maxlen=10)  # TODO Max len configurable
         self._error_output = deque(maxlen=1000)  # TODO Max len configurable
@@ -86,12 +85,12 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
         self._stopped_or_interrupted = False
         self._exec_error = None
         self._warnings = Counter()
-        self._state_notification = InstanceStateNotification(log, _state_observers)
+        self._state_notification = InstancePhaseNotification(log, _state_observers)
         self._warning_notification = InstanceWarningNotification(log, _warning_observers)
         self._output_notification = InstanceOutputNotification(log, _output_observers)
 
         # This will execute `create_snapshot` with not fully initialized instances
-        self._change_state(ExecutionState.CREATED)
+        self._change_state(TerminationStatus.CREATED)
 
     def _log(self, event: str, msg: str = '', *params):
         return ("event=[{}] instance=[{}] " + msg).format(event, self._id, *params)
@@ -147,7 +146,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
         with self._state_lock:
             self._state_notification.add_observer(observer, priority)
             if notify_on_register:
-                self._state_notification.notify_state_changed(observer, self.create_snapshot())
+                self._state_notification.notify_phase_changed(observer, self.create_snapshot())
 
     def remove_state_observer(self, observer):
         self._state_notification.remove_observer(observer)
@@ -198,14 +197,14 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
                                               WarnEventCtx(warning, self._warnings[warning.name]))
 
     def run(self):
-        if self._lifecycle.state != ExecutionState.CREATED:
+        if self._lifecycle.phase != TerminationStatus.CREATED:
             raise UnexpectedStateError("The run method can be called only once")
 
         try:
             coordinated = self._coordinate()
         except Exception as e:
             log.error(self._log('coord_error'), exc_info=e)
-            self._change_state(ExecutionState.ERROR)
+            self._change_state(TerminationStatus.ERROR)
             return
 
         if coordinated:
@@ -225,11 +224,11 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
         except KeyboardInterrupt:
             log.warning(self._log('keyboard_interruption'))
             # Assuming child processes received SIGINT, TODO different state on other platforms?
-            self._change_state(ExecutionState.INTERRUPTED)
+            self._change_state(TerminationStatus.INTERRUPTED)
             raise
         except SystemExit as e:
             # Consider UNKNOWN (or new state DETACHED?) if there is possibility the execution is not completed
-            state = ExecutionState.COMPLETED if e.code == 0 else ExecutionState.FAILED
+            state = TerminationStatus.COMPLETED if e.code == 0 else TerminationStatus.FAILED
             self._change_state(state)
             raise
         finally:
@@ -241,12 +240,12 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
         @dataclass
         class ContinueRunning(Continue):
-            state = ExecutionState.RUNNING
+            state = TerminationStatus.RUNNING
 
         while True:
             with self._coord_locker() as coord_lock:
                 if self._stopped_or_interrupted:
-                    directive = Reject(ExecutionState.CANCELLED)
+                    directive = Reject(TerminationStatus.CANCELLED)
                 else:
                     directive = self._coord.coordinate(self)
 
@@ -254,7 +253,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
                         directive = ContinueRunning()
 
                 state_lock_acquired = False
-                if isinstance(directive, Wait) and self.lifecycle.state == directive.state:
+                if isinstance(directive, Wait) and self.lifecycle.phase == directive.state:
                     # Waiting state already set and observers notified, now we can wait
                     coord_lock.unlock()
                     self._coord.wait()
@@ -274,7 +273,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
                     # ...and now, when the coord lock is released (state lock still in hold), we can notify.
                     # If signal is wait, the cycle will repeat and the instance will finally start waiting
                     # (unless the condition for waiting changed meanwhile)
-                    self._state_notification.notify_all_state_changed(new_job_inst)
+                    self._state_notification.notify_all_phase_changed(new_job_inst)
             finally:
                 if state_lock_acquired:
                     self._state_lock.release()
@@ -286,20 +285,20 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
             return True
 
-    def _change_state(self, new_state: ExecutionState, exec_error: ExecutionError = None, *, notify=True) \
+    def _change_state(self, new_state: TerminationStatus, exec_error: ExecutionError = None, *, notify=True) \
             -> Optional[JobInst]:
         with self._state_lock:
             # Locking here will ensure consistency between the execution error field and execution state
             # when creating the snapshot
             if exec_error:
                 self._exec_error = exec_error
-                if exec_error.exec_state == ExecutionState.ERROR or exec_error.unexpected_error:
+                if exec_error.exec_state == TerminationStatus.ERROR or exec_error.unexpected_error:
                     log.exception(self._log('job_error', "reason=[{}]", exec_error), exc_info=True)
                 else:
                     log.warning(self._log('job_not_completed', "reason=[{}]", exec_error))
 
-            prev_state = self._lifecycle.state
-            if not self._lifecycle.set_state(new_state):
+            prev_state = self._lifecycle.phase
+            if not self._lifecycle.new_phase(new_state):
                 return None
 
             level = logging.WARN if new_state.has_flag(Flag.NONSUCCESS) else logging.INFO
@@ -308,7 +307,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
             new_job_inst = self.create_snapshot()
 
             if notify:
-                self._state_notification.notify_all_state_changed(new_job_inst)
+                self._state_notification.notify_all_phase_changed(new_job_inst)
 
             return new_job_inst
 

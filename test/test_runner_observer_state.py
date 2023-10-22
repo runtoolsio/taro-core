@@ -8,41 +8,41 @@ import pytest
 import tarotools.taro
 import tarotools.taro.jobs.runner as runner
 from tarotools.taro.jobs import lock
-from tarotools.taro.jobs.execution import ExecutionState
-from tarotools.taro.jobs.instance import InstanceStateObserver, JobInst
+from tarotools.taro.jobs.execution import TerminationStatus
+from tarotools.taro.jobs.instance import InstancePhaseObserver, JobInst
 from tarotools.taro.test.execution import TestExecution
-from tarotools.taro.test.observer import TestStateObserver
+from tarotools.taro.test.observer import TestPhaseObserver
 
 
 @pytest.fixture
 def observer():
-    observer = TestStateObserver()
+    observer = TestPhaseObserver()
     runner.register_state_observer(observer)
     yield observer
     runner.deregister_state_observer(observer)
 
 
-def test_job_passed(observer: TestStateObserver):
-    tarotools.taro.run_uncoordinated('j1', TestExecution(ExecutionState.COMPLETED))
+def test_job_passed(observer: TestPhaseObserver):
+    tarotools.taro.run_uncoordinated('j1', TestExecution(TerminationStatus.COMPLETED))
 
     assert observer.last_job().job_id == 'j1'
 
 
-def test_execution_completed(observer: TestStateObserver):
-    tarotools.taro.run_uncoordinated('j1', TestExecution(ExecutionState.COMPLETED))
+def test_execution_completed(observer: TestPhaseObserver):
+    tarotools.taro.run_uncoordinated('j1', TestExecution(TerminationStatus.COMPLETED))
 
-    assert observer.exec_state(0) == ExecutionState.CREATED
-    assert observer.exec_state(1) == ExecutionState.RUNNING
-    assert observer.exec_state(2) == ExecutionState.COMPLETED
+    assert observer.exec_state(0) == TerminationStatus.CREATED
+    assert observer.exec_state(1) == TerminationStatus.RUNNING
+    assert observer.exec_state(2) == TerminationStatus.COMPLETED
 
 
-def test_execution_raises_exc(observer: TestStateObserver):
+def test_execution_raises_exc(observer: TestPhaseObserver):
     exc_to_raise = Exception()
     tarotools.taro.run_uncoordinated('j1', TestExecution(raise_exc=exc_to_raise))
 
-    assert observer.exec_state(0) == ExecutionState.CREATED
-    assert observer.exec_state(1) == ExecutionState.RUNNING
-    assert observer.exec_state(2) == ExecutionState.ERROR
+    assert observer.exec_state(0) == TerminationStatus.CREATED
+    assert observer.exec_state(1) == TerminationStatus.RUNNING
+    assert observer.exec_state(2) == TerminationStatus.ERROR
     assert not observer.exec_error(0)
     assert observer.exec_error(2).unexpected_error == exc_to_raise
 
@@ -52,17 +52,17 @@ def test_observer_raises_exception():
     All exception raised by observer must be captured by runner and not to disrupt job execution
     """
     observer = ExceptionRaisingObserver(Exception('Should be captured by runner'))
-    execution = TestExecution(ExecutionState.COMPLETED)
+    execution = TestExecution(TerminationStatus.COMPLETED)
     job_instance = tarotools.taro.job_instance('j1', execution, state_locker=lock.NullStateLocker())
     job_instance.add_state_observer(observer)
     job_instance.run()
     assert execution.executed_count() == 1  # No exception thrown before
 
 
-class ExceptionRaisingObserver(InstanceStateObserver):
+class ExceptionRaisingObserver(InstancePhaseObserver):
 
     def __init__(self, raise_exc: Exception):
         self.raise_exc = raise_exc
 
-    def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
+    def new_instance_phase(self, job_inst: JobInst, previous_phase, new_phase, changed):
         raise self.raise_exc

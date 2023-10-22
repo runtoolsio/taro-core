@@ -8,27 +8,44 @@ The main parts are:
 3. Job instance observers
 
 Note: See the `runner` module for the default job instance implementation
+TODO:
+1. Add `labels`
 """
 
 import abc
 import datetime
 import textwrap
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, auto
 from fnmatch import fnmatch
 from functools import partial
 from threading import Thread
-from typing import NamedTuple, Dict, Any, Optional, List, Tuple
+from typing import NamedTuple, Dict, Any, Optional, List, Tuple, Iterable
 
+from tarotools.taro import util
 from tarotools.taro.jobs.criteria import IDMatchCriteria
-from tarotools.taro.jobs.execution import ExecutionError, ExecutionLifecycle, ExecutionPhase, ExecutionState
+from tarotools.taro.jobs.execution import ExecutionError, TerminationStatus
 from tarotools.taro.jobs.track import TrackedTaskInfo
-from tarotools.taro.util import is_empty
+from tarotools.taro.util import is_empty, format_dt_iso, utc_now
 from tarotools.taro.util.observer import Notification, DEFAULT_OBSERVER_PRIORITY
 
 
+class InstancePhase(Enum):
+    NONE = auto()
+    CREATED = auto()
+    PENDING = auto()
+    QUEUED = auto()
+    EXECUTING = auto()
+    TERMINAL = auto()
+
+    def is_after(self, other_phase):
+        return self.value > other_phase.value
+
+
 class LifecycleEvent(Enum):
+    # TODO Remove and use phase instead
     CREATED = partial(lambda l: l.created_at)
     EXECUTED = partial(lambda l: l.executed_at)
     ENDED = partial(lambda l: l.ended_at)
@@ -42,6 +59,128 @@ class LifecycleEvent(Enum):
 
     def encode(self):
         return self.name
+
+
+class InstanceLifecycle:
+    """
+    This class represents the lifecycle of an instance. A lifecycle consists of a chronological sequence of
+    instance phases. Each phase has a timestamp that indicates when the instance transitioned to that phase.
+    """
+
+    def __init__(self, *phase_changes: Tuple[InstancePhase, datetime.datetime],
+                 termination_status: TerminationStatus = TerminationStatus.NONE):
+        self._phase_changes: OrderedDict[InstancePhase, datetime.datetime] = OrderedDict(phase_changes)
+        self._terminal_status = termination_status
+
+    @classmethod
+    def from_dict(cls, as_dict):
+        phase_changes = ((InstancePhase[state_change['phase']], util.parse_datetime(state_change['changed']))
+                         for state_change in as_dict['phase_changes'])
+        return cls(*phase_changes)
+
+    @property
+    def phase(self):
+        return next(reversed(self._phase_changes.keys()), InstancePhase.NONE)
+
+    @property
+    def phases(self) -> List[InstancePhase]:
+        return list(self._phase_changes.keys())
+
+    @property
+    def phase_changes(self) -> Iterable[Tuple[InstancePhase, datetime.datetime]]:
+        return ((phase, changed) for phase, changed in self._phase_changes.items())
+
+    def changed_at(self, phase: InstancePhase) -> datetime.datetime:
+        return self._phase_changes[phase]
+
+    @property
+    def last_changed_at(self) -> Optional[datetime.datetime]:
+        return next(reversed(self._phase_changes.values()), None)
+
+    @property
+    def created_at(self) -> datetime.datetime:
+        return self.changed_at(InstancePhase.CREATED)
+
+    @property
+    def is_executed(self) -> bool:
+        return InstancePhase.EXECUTING in self._phase_changes
+
+    @property
+    def executed_at(self) -> Optional[datetime.datetime]:
+        return self._phase_changes.get(InstancePhase.EXECUTING)
+
+    @property
+    def is_ended(self):
+        return InstancePhase.TERMINAL in self._phase_changes
+
+    @property
+    def ended_at(self) -> Optional[datetime.datetime]:
+        return self.changed_at(InstancePhase.TERMINAL)
+
+    @property
+    def execution_time(self) -> Optional[datetime.timedelta]:
+        start = self.executed_at
+        if not start:
+            return None
+
+        end = self.ended_at or util.utc_now()
+        return end - start
+
+    def to_dict(self, include_empty=True) -> Dict[str, Any]:
+        d = {
+            "phase_changes": [{"state": state.name, "changed": format_dt_iso(change)} for state, change in
+                              self.phase_changes],
+            "phase": self.phase.name,
+            "last_changed_at": format_dt_iso(self.last_changed_at),
+            "created_at": format_dt_iso(self.created_at),
+            "executed_at": format_dt_iso(self.executed_at),
+            "ended_at": format_dt_iso(self.ended_at),
+            "execution_time": self.execution_time.total_seconds() if self.executed_at else None,
+        }
+        if include_empty:
+            return d
+        else:
+            return {k: v for k, v in d.items() if not is_empty(v)}
+
+    def __copy__(self):
+        copied = InstanceLifecycle()
+        copied._phase_changes = self._phase_changes
+        return copied
+
+    def __deepcopy__(self, memo):
+        return InstanceLifecycle(*self.phase_changes)
+
+    def __eq__(self, other):
+        if not isinstance(other, InstanceLifecycle):
+            return NotImplemented
+        return self._phase_changes == other._phase_changes
+
+    def __hash__(self):
+        return hash(tuple(self._phase_changes.items()))
+
+    def __repr__(self) -> str:
+        return "{}({!r})".format(
+            self.__class__.__name__, self._phase_changes)
+
+
+class MutableInstanceLifecycle(InstanceLifecycle):
+    """
+    Mutable version of `InstanceLifecycle`
+    """
+
+    def __init__(self, *phase_changes: Tuple[InstancePhase, datetime.datetime]):
+        super().__init__(*phase_changes)
+
+    def new_phase(self, new_phase: InstancePhase, terminal_status=TerminationStatus.NONE) -> bool:
+        if not new_phase or new_phase == InstancePhase.NONE or self.phase == new_phase:
+            return False
+
+        if not new_phase.is_after(self.phase):
+            raise ValueError(f"Invalid phase transition from {self.phase} to {new_phase}")
+
+        self._phase_changes[new_phase] = utc_now()
+        self._terminal_status = terminal_status
+        return True
 
 
 class JobInstanceID(NamedTuple):
@@ -182,7 +321,7 @@ class JobInstance(abc.ABC):
         each associated with a timestamp indicating when that state was reached.
 
         Returns:
-            ExecutionLifecycle: The lifecycle of this job instance.
+            InstanceLifecycle: The lifecycle of this job instance.
         """
 
     @property
@@ -495,7 +634,7 @@ class JobInst:
 
         return cls(
             JobInstanceMetadata.from_dict(as_dict['metadata']),
-            ExecutionLifecycle.from_dict(as_dict['lifecycle']),
+            InstanceLifecycle.from_dict(as_dict['lifecycle']),
             tracking,
             as_dict['status'],
             as_dict['error_output'],
@@ -560,7 +699,7 @@ class JobInst:
         each associated with a timestamp indicating when that state was reached.
 
         Returns:
-            ExecutionLifecycle: The lifecycle of this job instance.
+            InstanceLifecycle: The lifecycle of this job instance.
         """
         return self._lifecycle
 
@@ -570,7 +709,7 @@ class JobInst:
         Returns:
             The current execution state of the instance
         """
-        return self._lifecycle.state
+        return self._lifecycle.phase
 
     @property
     def tracking(self):
@@ -665,51 +804,51 @@ class JobInstances(list):
         return [j.id.job_id for j in self]
 
     def in_phase(self, execution_phase):
-        return [j for j in self if j.lifecycle.state.phase is execution_phase]
+        return [j for j in self if j.lifecycle.phase.phase is execution_phase]
 
     def in_state(self, execution_state):
-        return [j for j in self if j.lifecycle.state is execution_state]
+        return [j for j in self if j.lifecycle.phase is execution_state]
 
     @property
     def scheduled(self):
-        return self.in_phase(ExecutionPhase.SCHEDULED)
+        return self.in_phase(InstancePhase.CREATED)
 
     @property
     def pending(self):
-        return self.in_phase(ExecutionPhase.PENDING)
+        return self.in_phase(InstancePhase.PENDING)
 
     @property
     def queued(self):
-        return self.in_phase(ExecutionPhase.QUEUED)
+        return self.in_phase(InstancePhase.QUEUED)
 
     @property
     def executing(self):
-        return self.in_phase(ExecutionPhase.EXECUTING)
+        return self.in_phase(InstancePhase.EXECUTING)
 
     @property
     def terminal(self):
-        return self.in_phase(ExecutionPhase.TERMINAL)
+        return self.in_phase(InstancePhase.TERMINAL)
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         return {"jobs": [job.to_dict(include_empty=include_empty) for job in self]}
 
 
-class InstanceStateObserver(abc.ABC):
+class InstancePhaseObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_instance_state(self, job_inst: JobInst, previous_state: ExecutionState, new_state: ExecutionState,
+    def new_instance_phase(self, job_inst: JobInst, previous_phase: TerminationStatus, new_phase: TerminationStatus,
                            changed: datetime.datetime):
         """
-        Called when the instance execution state changes.
+        Called when the instance transitions to a new phase.
 
         The notification can optionally happen also when this observer is registered with the instance
-        to make the observer aware about the current state of the instance.
+        to make the observer aware about the current phase of the instance.
 
         Args:
-            job_inst (JobInst): The job instance whose state changed.
-            previous_state (ExecutionState): The previous execution state of the job instance.
-            new_state (ExecutionState): The new/current execution state of the job instance.
-            changed (datetime.datetime): The timestamp of when the state change occurred.
+            job_inst (JobInst): The job instance that transitioned to a new phase.
+            previous_phase (TerminationStatus): The previous phase of the job instance.
+            new_phase (TerminationStatus): The new/current phase state of the job instance.
+            changed (datetime.datetime): The timestamp of when the transition.
         """
 
 
@@ -795,28 +934,28 @@ class JobInstanceManager(ABC):
 
 
 def _job_inst_to_args(job_inst):
-    states = job_inst.lifecycle.states
-    previous_state = states[-2] if len(states) > 1 else ExecutionState.NONE
-    new_state = job_inst.state
+    states = job_inst.lifecycle.phases
+    previous_state = states[-2] if len(states) > 1 else TerminationStatus.NONE
+    new_state = job_inst.phase
     changed = job_inst.lifecycle.last_changed_at
 
     return job_inst, previous_state, new_state, changed
 
 
-class InstanceStateNotification(Notification):
+class InstancePhaseNotification(Notification):
 
     def __init__(self, logger=None, joined_notification=None):
         super().__init__(logger, joined_notification)
 
-    def notify_state_changed(self, observer, job_inst):
+    def notify_phase_changed(self, observer, job_inst):
         self.notify(observer, *_job_inst_to_args(job_inst))
 
-    def notify_all_state_changed(self, job_inst):
+    def notify_all_phase_changed(self, job_inst):
         self.notify_all(*_job_inst_to_args(job_inst))
 
     def _notify(self, observer, *args) -> bool:
-        if isinstance(observer, InstanceStateObserver):
-            observer.new_instance_state(*args)
+        if isinstance(observer, InstancePhaseObserver):
+            observer.new_instance_phase(*args)
             return True
         else:
             return False

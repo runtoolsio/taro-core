@@ -6,9 +6,9 @@ from abc import abstractmethod
 from json import JSONDecodeError
 
 from tarotools.taro import util
-from tarotools.taro.jobs.events import STATE_LISTENER_FILE_EXTENSION, OUTPUT_LISTENER_FILE_EXTENSION
-from tarotools.taro.jobs.execution import ExecutionState
-from tarotools.taro.jobs.instance import JobInstanceMetadata
+from tarotools.taro.jobs.events import PHASE_LISTENER_FILE_EXTENSION, OUTPUT_LISTENER_FILE_EXTENSION
+from tarotools.taro.jobs.execution import TerminationStatus
+from tarotools.taro.jobs.instance import JobInstanceMetadata, InstancePhase
 from tarotools.taro.socket import SocketServer
 
 log = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class EventReceiver(SocketServer):
             log.warning(e)
             return
 
-        if (self.event_types and event_type not in self.event_types) or\
+        if (self.event_types and event_type not in self.event_types) or \
                 (self.id_match and not self.id_match(instance_meta.id)):
             return
 
@@ -69,42 +69,45 @@ class EventReceiver(SocketServer):
         pass
 
 
-class StateReceiver(EventReceiver):
+class PhaseReceiver(EventReceiver):
 
-    def __init__(self, id_match=None, states=()):
-        super().__init__(_listener_socket_name(STATE_LISTENER_FILE_EXTENSION), id_match)
-        self.states = states
+    def __init__(self, id_match=None, phases=()):
+        super().__init__(_listener_socket_name(PHASE_LISTENER_FILE_EXTENSION), id_match)
+        self.phases = phases
         self.listeners = []
 
     def handle_event(self, _, instance_meta, event):
-        new_state = ExecutionState[event["new_state"]]
+        new_phase = InstancePhase[event["new_phase"]]
 
-        if self.states and new_state not in self.states:
+        if self.phases and new_phase not in self.phases:
             return
 
-        previous_state = ExecutionState[event['previous_state']]
+        previous_phase = InstancePhase[event['previous_phase']]
         changed = util.parse_datetime(event["changed"])
+        termination_status = TerminationStatus[
+            "termination_status"] if "termination_status" in event else TerminationStatus.NONE
 
         for listener in self.listeners:
-            if isinstance(listener, ExecutionStateEventObserver):
-                listener.state_update(instance_meta, previous_state, new_state, changed)
+            if isinstance(listener, InstancePhaseEventObserver):
+                listener.state_update(instance_meta, previous_phase, new_phase, changed, termination_status)
             elif callable(listener):
-                listener(instance_meta, previous_state, new_state, changed)
+                listener(instance_meta, previous_phase, new_phase, changed, termination_status)
             else:
-                log.warning("event=[unsupported_state_observer] observer=[%s]", listener)
+                log.warning("event=[unsupported_phase_observer] observer=[%s]", listener)
 
 
-class ExecutionStateEventObserver(abc.ABC):
+class InstancePhaseEventObserver(abc.ABC):
 
     @abc.abstractmethod
-    def state_update(self, instance_meta, previous_state, new_state, changed):
+    def state_update(self, instance_meta, previous_phase, new_phase, changed, termination_status):
         """
-        This method is called when a job instance's state has changed.
+        This method is called when a job instance's transitioned to a new phase.
 
         :param instance_meta: job instance metadata
-        :param previous_state: state before
-        :param new_state: new state
-        :param changed: timestamp of the change
+        :param previous_phase: phase before
+        :param new_phase: new phase
+        :param changed: timestamp of the transition
+        :param termination_status: termination status of the new phase is TERMINAL
         """
 
 

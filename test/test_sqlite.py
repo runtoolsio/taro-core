@@ -3,7 +3,7 @@ from datetime import datetime as dt
 
 import pytest
 
-from tarotools.taro import ExecutionState, ExecutionError
+from tarotools.taro import TerminationStatus, ExecutionError
 from tarotools.taro.jobs.criteria import IntervalCriteria, StateCriteria, InstanceMatchCriteria, parse_criteria
 from tarotools.taro.jobs.db.sqlite import SQLite
 from tarotools.taro.jobs.instance import LifecycleEvent
@@ -23,7 +23,7 @@ def sut():
 
 
 def test_store_and_fetch(sut):
-    error = ExecutionError('e1', ExecutionState.FAILED)
+    error = ExecutionError('e1', TerminationStatus.FAILED)
     inst = i('j1', 'i1', (('p1', 'v1'),), {'u1': 'v2'}, lc_failed(), MutableTrackedTask('task1'), exec_error=error)  # TODO add more fields
 
     sut.store_instances(inst)

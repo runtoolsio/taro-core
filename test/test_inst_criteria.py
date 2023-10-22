@@ -1,6 +1,6 @@
 from collections import Counter
 
-from tarotools.taro import ExecutionState, Flag
+from tarotools.taro import TerminationStatus, Flag
 from tarotools.taro.jobs.criteria import IntervalCriteria, StateCriteria
 from tarotools.taro.jobs.execution import Phase
 from tarotools.taro.jobs.instance import LifecycleEvent
@@ -12,8 +12,8 @@ def test_interval_utc_conversion():
     assert c.from_dt.hour == 7
 
 
-def test_state_criteria():
-    inst = TestJobInstance('skipped', '', ExecutionState.SKIPPED)
+def test_phase_criteria():
+    inst = TestJobInstance('skipped', '', TerminationStatus.SKIPPED)
     inst.warnings = Counter(['error_output'])
     matching1 = StateCriteria(flag_groups=[{Flag.SUCCESS}, {Flag.UNEXECUTED, Flag.NONSUCCESS}])
     not_matching1 = StateCriteria(flag_groups=[{Flag.SUCCESS}, {Flag.UNEXECUTED, Flag.ABORTED}])
@@ -27,12 +27,12 @@ def test_state_criteria():
     assert not not_matching2(inst)
 
 
-def test_state_criteria_phases():
+def test_phase_criteria_phases():
     c = StateCriteria(phases={Phase.PENDING, Phase.QUEUED})
 
-    assert c(TestJobInstance(state=ExecutionState.PENDING))
-    assert c(TestJobInstance(state=ExecutionState.QUEUED))
-    assert not c(TestJobInstance(state=ExecutionState.CREATED))
-    assert not c(TestJobInstance(state=ExecutionState.RUNNING))
-    assert not c(TestJobInstance(state=ExecutionState.SKIPPED))
+    assert c(TestJobInstance(phase=TerminationStatus.PENDING))
+    assert c(TestJobInstance(phase=TerminationStatus.QUEUED))
+    assert not c(TestJobInstance(phase=TerminationStatus.CREATED))
+    assert not c(TestJobInstance(phase=TerminationStatus.RUNNING))
+    assert not c(TestJobInstance(phase=TerminationStatus.SKIPPED))
 

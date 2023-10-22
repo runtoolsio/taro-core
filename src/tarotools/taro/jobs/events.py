@@ -12,11 +12,11 @@ import json
 import logging
 
 from tarotools.taro import util
-from tarotools.taro.jobs.instance import InstanceStateObserver, JobInst, InstanceOutputObserver
+from tarotools.taro.jobs.instance import InstancePhaseObserver, JobInst, InstanceOutputObserver
 from tarotools.taro.socket import SocketClient, PayloadTooLarge
 from tarotools.taro.util import format_dt_iso
 
-STATE_LISTENER_FILE_EXTENSION = '.slistener'
+PHASE_LISTENER_FILE_EXTENSION = '.slistener'
 OUTPUT_LISTENER_FILE_EXTENSION = '.olistener'
 
 log = logging.getLogger(__name__)
@@ -49,19 +49,19 @@ class EventDispatcher(abc.ABC):
         self._client.close()
 
 
-class StateDispatcher(EventDispatcher, InstanceStateObserver):
+class PhaseDispatcher(EventDispatcher, InstancePhaseObserver):
     """
     This producer emits an event when the state of a job instance changes. This dispatcher should be registered to
     the job instance as an `InstanceStateObserver`.
     """
 
     def __init__(self):
-        super(StateDispatcher, self).__init__(SocketClient(STATE_LISTENER_FILE_EXTENSION, bidirectional=False))
+        super(PhaseDispatcher, self).__init__(SocketClient(PHASE_LISTENER_FILE_EXTENSION, bidirectional=False))
 
-    def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
+    def new_instance_phase(self, job_inst: JobInst, previous_phase, new_phase, changed):
         event = {
-            "new_state": new_state.name,
-            "previous_state": previous_state.name,
+            "new_state": new_phase.name,
+            "previous_state": previous_phase.name,
             "changed": format_dt_iso(changed),
         }
         self._send_event("new_instance_state", job_inst.metadata, event)

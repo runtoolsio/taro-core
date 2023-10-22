@@ -19,10 +19,9 @@ from tarotools.taro import persistence as persistence_mod
 from tarotools.taro import plugins as plugins_mod
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.api import APIServer
-from tarotools.taro.jobs.events import StateDispatcher, OutputDispatcher
-from tarotools.taro.jobs.execution import ExecutionPhase
-from tarotools.taro.jobs.instance import (InstanceStateObserver, JobInst, JobInstance, JobInstanceManager,
-                                          InstanceOutputObserver, JobInstanceID)
+from tarotools.taro.jobs.events import PhaseDispatcher, OutputDispatcher
+from tarotools.taro.jobs.instance import (InstancePhaseObserver, JobInst, JobInstance, JobInstanceManager,
+                                          InstanceOutputObserver, JobInstanceID, InstancePhase)
 from tarotools.taro.jobs.plugins import Plugin
 
 log = logging.getLogger(__name__)
@@ -160,7 +159,7 @@ class FeaturedContextBuilder:
         return self
 
     def state_dispatcher(self):
-        self.add_state_observer(StateDispatcher, close_hook=lambda dispatcher: dispatcher.close())
+        self.add_state_observer(PhaseDispatcher, close_hook=lambda dispatcher: dispatcher.close())
         return self
 
     def output_dispatcher(self):
@@ -202,7 +201,7 @@ class _ManagedInstance:
     released: bool = False
 
 
-class FeaturedContext(InstanceStateObserver):
+class FeaturedContext(InstancePhaseObserver):
     """
     Represents a specialized context for job instances enriched with features.
 
@@ -239,7 +238,7 @@ class FeaturedContext(InstanceStateObserver):
 
     def __init__(self, instance_managers=(), state_observers=(), output_observers=(), *, transient=False):
         self._instance_managers: Tuple[ManagerFeature[JobInstanceManager]] = tuple(instance_managers)
-        self._state_observers: Tuple[ObserverFeature[InstanceStateObserver]] = tuple(state_observers)
+        self._state_observers: Tuple[ObserverFeature[InstancePhaseObserver]] = tuple(state_observers)
         self._output_observers: Tuple[ObserverFeature[InstanceOutputObserver]] = tuple(output_observers)
         self._keep_removed = not transient
         self._managed_instances: Dict[JobInstanceID, _ManagedInstance] = {}
@@ -340,7 +339,7 @@ class FeaturedContext(InstanceStateObserver):
         #      will work regardless of the priority as the removal of the observers doesn't affect
         #      iteration/notification (`Notification` class)
         job_instance.add_state_observer(self, ctx_observer_priority + 1)
-        if job_instance.lifecycle.ended:
+        if job_instance.lifecycle.is_ended:
             self._release_instance(job_instance.id, not self._keep_removed)
 
         return job_instance
@@ -357,11 +356,11 @@ class FeaturedContext(InstanceStateObserver):
         """
         return self._release_instance(job_instance_id, True)
 
-    def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
+    def new_instance_phase(self, job_inst: JobInst, previous_phase, new_phase, changed):
         """
         DO NOT EXECUTE THIS METHOD! It is part of the internal mechanism.
         """
-        if new_state.in_phase(ExecutionPhase.TERMINAL):
+        if new_phase.in_phase(InstancePhase.TERMINAL):
             self._release_instance(job_inst.id, not self._keep_removed)
 
     def _release_instance(self, job_instance_id, remove):

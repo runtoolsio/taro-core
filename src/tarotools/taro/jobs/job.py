@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Dict, Any, List, Optional
 
-from tarotools.taro.jobs.execution import ExecutionState
+from tarotools.taro.jobs.execution import TerminationStatus
 from tarotools.taro.util import MatchingStrategy, format_dt_iso
 
 
@@ -145,7 +145,7 @@ class JobStats:
         average_time (timedelta): Average execution time across all instances in the interval.
         slowest_time (timedelta): Longest execution time among all instances in the interval.
         last_time (timedelta): Execution time of the most recent instance in the interval.
-        last_state (ExecutionState): State of the last executed instance in the interval.
+        last_state (TerminationStatus): State of the last executed instance in the interval.
         failed_count (int): Number of instances that failed during the time interval.
         warning_count (int): Number of instances with at least one warning during the time interval.
     """
@@ -158,7 +158,7 @@ class JobStats:
     average_time: Optional[timedelta] = None
     slowest_time: Optional[timedelta] = None
     last_time: Optional[timedelta] = None
-    last_state: ExecutionState = ExecutionState.NONE
+    last_state: TerminationStatus = TerminationStatus.NONE
     failed_count: int = 0
     warning_count: int = 0
 

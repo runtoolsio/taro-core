@@ -38,8 +38,7 @@ from tarotools.taro import paths
 from tarotools.taro import util, cfg
 from tarotools.taro.err import TaroException
 from tarotools.taro.jobs import db
-from tarotools.taro.jobs.execution import ExecutionState
-from tarotools.taro.jobs.instance import JobInstances
+from tarotools.taro.jobs.instance import JobInstances, InstancePhase
 from tarotools.taro.jobs.job import JobStats
 
 
@@ -231,7 +230,7 @@ def close():
 def _sort_key(sort: SortCriteria):
     def key(j):
         if sort == SortCriteria.CREATED:
-            return j.lifecycle.changed_at(ExecutionState.CREATED)
+            return j.lifecycle.changed_at(InstancePhase.CREATED)
         if sort == SortCriteria.ENDED:
             return j.lifecycle.ended_at
         if sort == SortCriteria.TIME:

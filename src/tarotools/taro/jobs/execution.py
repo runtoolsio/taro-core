@@ -9,29 +9,17 @@ TODO: Remove execution prefix where appropriate
 """
 
 import abc
-import datetime
-from collections import OrderedDict
 from enum import Enum, auto, EnumMeta
-from typing import Tuple, List, Iterable, Set, Optional, Dict, Any
+from typing import Tuple, Set, Dict, Any
 
-from tarotools.taro import util
-from tarotools.taro.util import utc_now, format_dt_iso, is_empty
+from tarotools.taro.jobs.instance import InstancePhase
+from tarotools.taro.util import is_empty
 from tarotools.taro.util.observer import Notification
 
-
-class ExecutionPhase(Enum):
-    NONE = auto()
-    SCHEDULED = auto()
-    PENDING = auto()
-    QUEUED = auto()
-    EXECUTING = auto()
-    TERMINAL = auto()
+Phase = InstancePhase
 
 
-Phase = ExecutionPhase
-
-
-class ExecutionStateFlag(Enum):
+class TerminationStatusFlag(Enum):
     BEFORE_EXECUTION = auto()  # Not yet executed
     UNEXECUTED = auto()  # Not yet executed or reached terminal phase without execution.
     WAITING = auto()     # Waiting for a condition before execution.
@@ -45,24 +33,24 @@ class ExecutionStateFlag(Enum):
     ABORTED = auto()     # Interrupted by the user after or before execution.
 
 
-Flag = ExecutionStateFlag
+Flag = TerminationStatusFlag
 
 
-class ExecutionStateMeta(EnumMeta):
+class TerminationStatusMeta(EnumMeta):
     def __getitem__(self, name):
         if not name:
-            return ExecutionState.NONE
+            return TerminationStatus.NONE
         try:
             return super().__getitem__(name.upper())
         except KeyError:
-            return ExecutionState.UNKNOWN
+            return TerminationStatus.UNKNOWN
 
 
-class ExecutionState(Enum, metaclass=ExecutionStateMeta):
+class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
     NONE =    Phase.NONE, {}
     UNKNOWN = Phase.NONE, {}
 
-    CREATED = Phase.SCHEDULED, {Flag.BEFORE_EXECUTION, Flag.UNEXECUTED}
+    CREATED = Phase.CREATED, {Flag.BEFORE_EXECUTION, Flag.UNEXECUTED}
 
     PENDING = Phase.PENDING, {Flag.BEFORE_EXECUTION, Flag.UNEXECUTED, Flag.WAITING}  # Until released
     QUEUED =  Phase.QUEUED, {Flag.BEFORE_EXECUTION, Flag.UNEXECUTED, Flag.WAITING}  # Wait for another job
@@ -91,17 +79,17 @@ class ExecutionState(Enum, metaclass=ExecutionStateMeta):
         return obj
 
     @classmethod
-    def get_states_by_flags(cls, *flags):
+    def with_flags(cls, *flags):
         return [state for state in cls if all(flag in state.flags for flag in flags)]
 
-    def __init__(self, phase: ExecutionPhase, groups: Set[ExecutionStateFlag]):
+    def __init__(self, phase: InstancePhase, groups: Set[TerminationStatusFlag]):
         self.phase = phase
         self.flags = groups
 
-    def in_phase(self, phase: ExecutionPhase) -> bool:
+    def in_phase(self, phase: InstancePhase) -> bool:
         return self.phase == phase
 
-    def has_flag(self, flag: ExecutionStateFlag):
+    def has_flag(self, flag: TerminationStatusFlag):
         return flag in self.flags
 
 
@@ -119,13 +107,13 @@ class ExecutionError(Exception):
 
     @classmethod
     def from_unexpected_error(cls, e: Exception):
-        return cls("Unexpected error: " + str(e), ExecutionState.ERROR, unexpected_error=e)
+        return cls("Unexpected error: " + str(e), TerminationStatus.ERROR, unexpected_error=e)
 
     @classmethod
     def from_dict(cls, as_dict):
-        return cls(as_dict['message'], ExecutionState[as_dict['state']])  # TODO Add kwargs
+        return cls(as_dict['message'], TerminationStatus[as_dict['state']])  # TODO Add kwargs
 
-    def __init__(self, message: str, exec_state: ExecutionState, unexpected_error: Exception = None, **kwargs):
+    def __init__(self, message: str, exec_state: TerminationStatus, unexpected_error: Exception = None, **kwargs):
         if not exec_state.has_flag(Flag.FAILURE):
             raise ValueError('exec_state must be flagged as failure', exec_state)
         super().__init__(message)
@@ -167,7 +155,7 @@ class Execution(abc.ABC):
     """
 
     @abc.abstractmethod
-    def execute(self) -> ExecutionState:
+    def execute(self) -> TerminationStatus:
         """
         For the caller of this method:
             This execution instance must be in `Phase.EXECUTING` phase when this method is called.
@@ -225,129 +213,6 @@ class Execution(abc.ABC):
         Keyboard interruption signal received
         Up to the implementation how to handle it
         """
-
-
-class ExecutionLifecycle:
-    """
-    This class represents the lifecycle of a task execution. A lifecycle consists of a chronological sequence of
-    execution states. Each state has a timestamp assigned, which is the datetime when the state was set
-    for the execution.
-    """
-
-    def __init__(self, *state_changes: Tuple[ExecutionState, datetime.datetime]):
-        self._state_changes: OrderedDict[ExecutionState, datetime.datetime] = OrderedDict(state_changes)
-
-    @classmethod
-    def from_dict(cls, as_dict):
-        state_changes = ((ExecutionState[state_change['state']], util.parse_datetime(state_change['changed']))
-                         for state_change in as_dict['state_changes'])
-        return cls(*state_changes)
-
-    @property
-    def state(self):
-        return next(reversed(self._state_changes.keys()), ExecutionState.NONE)
-
-    @property
-    def states(self) -> List[ExecutionState]:
-        return list(self._state_changes.keys())
-
-    @property
-    def state_changes(self) -> Iterable[Tuple[ExecutionState, datetime.datetime]]:
-        return ((state, changed) for state, changed in self._state_changes.items())
-
-    def changed_at(self, state: ExecutionState) -> datetime.datetime:
-        return self._state_changes[state]
-
-    @property
-    def last_changed_at(self) -> Optional[datetime.datetime]:
-        return next(reversed(self._state_changes.values()), None)
-
-    @property
-    def created_at(self) -> datetime.datetime:
-        return self.changed_at(ExecutionState.CREATED)
-
-    @property
-    def first_executing_state(self) -> Optional[ExecutionState]:
-        return next((state for state in self._state_changes if state.in_phase(ExecutionPhase.EXECUTING)), None)
-
-    def executed(self) -> bool:
-        return self.first_executing_state is not None
-
-    @property
-    def executed_at(self) -> Optional[datetime.datetime]:
-        return self._state_changes.get(self.first_executing_state)
-
-    @property
-    def ended(self):
-        return self.state.in_phase(ExecutionPhase.TERMINAL)
-
-    @property
-    def ended_at(self) -> Optional[datetime.datetime]:
-        state = self.state
-        if not state.in_phase(ExecutionPhase.TERMINAL):
-            return None
-        return self.changed_at(state)
-
-    @property
-    def execution_time(self) -> Optional[datetime.timedelta]:
-        start = self.executed_at
-        if not start:
-            return None
-
-        end = self.ended_at or util.utc_now()
-        return end - start
-
-    def to_dict(self, include_empty=True) -> Dict[str, Any]:
-        d = {
-            "state_changes": [{"state": state.name, "changed": format_dt_iso(change)} for state, change in
-                              self.state_changes],
-            "state": self.state.name,
-            "last_changed_at": format_dt_iso(self.last_changed_at),
-            "created_at": format_dt_iso(self.created_at),
-            "executed_at": format_dt_iso(self.executed_at),
-            "ended_at": format_dt_iso(self.ended_at),
-            "execution_time": self.execution_time.total_seconds() if self.executed_at else None,
-        }
-        if include_empty:
-            return d
-        else:
-            return {k: v for k, v in d.items() if not is_empty(v)}
-
-    def __copy__(self):
-        copied = ExecutionLifecycle()
-        copied._state_changes = self._state_changes
-        return copied
-
-    def __deepcopy__(self, memo):
-        return ExecutionLifecycle(*self.state_changes)
-
-    def __eq__(self, other):
-        if not isinstance(other, ExecutionLifecycle):
-            return NotImplemented
-        return self._state_changes == other._state_changes
-
-    def __hash__(self):
-        return hash(tuple(self._state_changes.items()))
-
-    def __repr__(self) -> str:
-        return "{}({!r})".format(
-            self.__class__.__name__, self._state_changes)
-
-
-class ExecutionLifecycleManagement(ExecutionLifecycle):
-    """
-    Mutable version of `ExecutionLifecycle`
-    """
-
-    def __init__(self, *state_changes: Tuple[ExecutionState, datetime.datetime]):
-        super().__init__(*state_changes)
-
-    def set_state(self, new_state) -> bool:
-        if not new_state or new_state == ExecutionState.NONE or self.state == new_state:
-            return False
-        else:
-            self._state_changes[new_state] = utc_now()
-            return True
 
 
 class OutputExecution(Execution):

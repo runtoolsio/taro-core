@@ -13,7 +13,7 @@ from multiprocessing.context import Process
 from queue import Full
 from typing import Union, Tuple
 
-from tarotools.taro import ExecutionState
+from tarotools.taro import TerminationStatus
 from tarotools.taro.jobs.execution import OutputExecution, ExecutionError, ExecutionOutputNotification
 
 log = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class ProcessExecution(OutputExecution):
         self._interrupted: bool = False
         self._output_observers = ExecutionOutputNotification(log)
 
-    def execute(self) -> ExecutionState:
+    def execute(self) -> TerminationStatus:
         if not self._stopped and not self._interrupted:
             self._process = Process(target=self._run)
 
@@ -44,14 +44,14 @@ class ProcessExecution(OutputExecution):
                 self.output_queue.close()
 
             if self._process.exitcode == 0:
-                return ExecutionState.COMPLETED
+                return TerminationStatus.COMPLETED
 
         if self._interrupted or self._process.exitcode == -signal.SIGINT:
             # Exit code is -SIGINT only when SIGINT handler is set back to DFL (KeyboardInterrupt gets exit code 1)
-            return ExecutionState.INTERRUPTED
+            return TerminationStatus.INTERRUPTED
         if self._stopped or self._process.exitcode < 0:  # Negative exit code means terminated by a signal
-            return ExecutionState.STOPPED
-        raise ExecutionError("Process returned non-zero code " + str(self._process.exitcode), ExecutionState.FAILED)
+            return TerminationStatus.STOPPED
+        raise ExecutionError("Process returned non-zero code " + str(self._process.exitcode), TerminationStatus.FAILED)
 
     def _run(self):
         with self._capture_stdout():

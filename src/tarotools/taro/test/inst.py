@@ -1,11 +1,10 @@
 from collections import Counter
 from dataclasses import dataclass
 
-from tarotools.taro import JobInst, JobInstanceID, ExecutionError, ExecutionState
+from tarotools.taro import JobInst, JobInstanceID, ExecutionError, TerminationStatus
 from tarotools.taro import util
-from tarotools.taro.jobs.execution import ExecutionLifecycleManagement
 from tarotools.taro.jobs.instance import JobInstanceMetadata, JobInstanceManager, \
-    InstanceStateNotification, RunnableJobInstance
+    InstancePhaseNotification, RunnableJobInstance, MutableInstanceLifecycle, InstancePhase
 from tarotools.taro.jobs.track import MutableTrackedTask
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
@@ -18,28 +17,28 @@ def i(job_id, instance_id=None, params=None, user_params=None, lifecycle=None, t
 
 class TestJobInstance(RunnableJobInstance):
 
-    def __init__(self, job_id="", instance_id="", state=ExecutionState.CREATED):
+    def __init__(self, job_id="", instance_id="", phase=TerminationStatus.CREATED):
         self._id = JobInstanceID(job_id, instance_id)
         self._metadata = JobInstanceMetadata(self._id, (), {})
-        self._lifecycle = ExecutionLifecycleManagement()
+        self._lifecycle = MutableInstanceLifecycle()
         self._tracking = MutableTrackedTask()
         self._status = None
         self._last_output = None
         self._warnings = Counter()
         self._exec_error = None
         self._error_output = None
-        self.state_notification = InstanceStateNotification()
+        self.state_notification = InstancePhaseNotification()
         self.ran = False
         self.released = False
         self.stopped = False
         self.interrupted = False
 
-        self.change_state(ExecutionState.CREATED)
-        self.change_state(state)
+        self.change_phase(InstancePhase.CREATED)
+        self.change_phase(phase)
 
-    def change_state(self, state):
-        self.lifecycle.set_state(state)
-        self.state_notification.notify_all_state_changed(self.create_snapshot())
+    def change_phase(self, phase):
+        self.lifecycle.new_phase(phase)
+        self.state_notification.notify_all_phase_changed(self.create_snapshot())
 
     @property
     def id(self):

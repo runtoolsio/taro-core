@@ -12,8 +12,8 @@ from queue import Queue
 from threading import Condition
 from typing import Tuple, List, Callable
 
-from tarotools.taro.jobs.execution import ExecutionState, ExecutionError, ExecutionPhase
-from tarotools.taro.jobs.instance import JobInst, InstanceOutputObserver, InstanceStateObserver
+from tarotools.taro.jobs.execution import TerminationStatus, ExecutionError
+from tarotools.taro.jobs.instance import JobInst, InstanceOutputObserver, InstancePhaseObserver, InstancePhase
 
 log = logging.getLogger(__name__)
 
@@ -29,15 +29,15 @@ class GenericObserver:
         self.updates.put_nowait(args)
 
 
-class TestStateObserver(InstanceStateObserver):
+class TestPhaseObserver(InstancePhaseObserver):
     __test__ = False  # To tell pytest it isn't a test class
 
     def __init__(self):
-        self._events: List[Tuple[datetime, JobInst, ExecutionState, ExecutionError]] = []
+        self._events: List[Tuple[datetime, JobInst, TerminationStatus, ExecutionError]] = []
         self.completion_lock = Condition()
 
-    def new_instance_state(self, job_inst: JobInst, previous_state, new_state, changed):
-        self._events.append((datetime.now(), job_inst, new_state, job_inst.exec_error))
+    def new_instance_phase(self, job_inst: JobInst, previous_phase, new_phase, changed):
+        self._events.append((datetime.now(), job_inst, new_phase, job_inst.exec_error))
         log.info("event=[state_changed] job_info=[{}]".format(job_inst))
         self._release_state_waiter()
 
@@ -48,16 +48,16 @@ class TestStateObserver(InstanceStateObserver):
         return self._events[-1][1]
 
     @property
-    def last_state_any_job(self) -> ExecutionState:
+    def last_state_any_job(self) -> TerminationStatus:
         return self._events[-1][2]
 
-    def last_state(self, job_id) -> ExecutionState:
+    def last_state(self, job_id) -> TerminationStatus:
         """
         :return: last state of the specified job
         """
         return next(e[2] for e in reversed(self._events) if e[1].job_id == job_id)
 
-    def exec_state(self, event_idx: int) -> ExecutionState:
+    def exec_state(self, event_idx: int) -> TerminationStatus:
         """
         :param event_idx: event index
         :return: execution state of the event on given index
@@ -75,7 +75,7 @@ class TestStateObserver(InstanceStateObserver):
         with self.completion_lock:
             self.completion_lock.notify()  # Support only one-to-one thread sync to keep things simple
 
-    def wait_for_state(self, exec_state: ExecutionState, timeout: float = 1) -> bool:
+    def wait_for_state(self, exec_state: TerminationStatus, timeout: float = 1) -> bool:
         """
         Wait for receiving notification with the specified state
 
@@ -92,7 +92,7 @@ class TestStateObserver(InstanceStateObserver):
         :param timeout: Waiting interval in seconds
         :return: True when terminal state received False when timed out
         """
-        terminal_condition = lambda: any((e for e in self._events if e[2].in_phase(ExecutionPhase.TERMINAL)))
+        terminal_condition = lambda: any((e for e in self._events if e[2].in_phase(InstancePhase.TERMINAL)))
         return self._wait_for_state_condition(terminal_condition, timeout)
 
     def _wait_for_state_condition(self, state_condition: Callable[[], bool], timeout: float):

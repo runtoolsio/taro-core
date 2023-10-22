@@ -12,9 +12,10 @@ from threading import Event
 from time import sleep
 from typing import List
 
-from tarotools.taro import ExecutionLifecycle
+from tarotools.taro import InstanceLifecycle
 from tarotools.taro.err import InvalidStateError
-from tarotools.taro.jobs.execution import ExecutionState, OutputExecution, ExecutionPhase
+from tarotools.taro.jobs.execution import TerminationStatus, OutputExecution
+from tarotools.taro.jobs.instance import InstancePhase
 from tarotools.taro.util import utc_now
 
 log = logging.getLogger(__name__)
@@ -23,10 +24,10 @@ log = logging.getLogger(__name__)
 class TestExecution(OutputExecution):
     __test__ = False  # To tell pytest it isn't a test class
 
-    def __init__(self, after_exec_state: ExecutionState = None, raise_exc: Exception = None, *, wait: bool = False):
+    def __init__(self, after_exec_state: TerminationStatus = None, raise_exc: Exception = None, *, wait: bool = False):
         if after_exec_state and raise_exc:
             raise ValueError("either after_exec_state or throw_exc must be set", after_exec_state, raise_exc)
-        self._after_exec_state = after_exec_state or (None if raise_exc else ExecutionState.COMPLETED)
+        self._after_exec_state = after_exec_state or (None if raise_exc else TerminationStatus.COMPLETED)
         self._raise_exc = raise_exc
         self._wait = Event() if wait else None
         self._execution_occurrences: List[datetime] = []
@@ -36,7 +37,7 @@ class TestExecution(OutputExecution):
         return "{}(ExecutionState.{}, {!r})".format(
             self.__class__.__name__, self._after_exec_state.name, self._raise_exc)
 
-    def after_exec_state(self, state: ExecutionState):
+    def after_exec_state(self, state: TerminationStatus):
         self._after_exec_state = state
         self._raise_exc = None
         return self
@@ -52,7 +53,7 @@ class TestExecution(OutputExecution):
         else:
             raise InvalidStateError('Wait not set')
 
-    def execute(self) -> ExecutionState:
+    def execute(self) -> TerminationStatus:
         self._execution_occurrences.append(datetime.now())
         if self._wait:
             self._wait.wait(5)
@@ -98,52 +99,53 @@ class TestExecution(OutputExecution):
         pass
 
 
-def lc_active(active_state: ExecutionState, delta=0):
+def lc_active(active_state: TerminationStatus, delta=0):
     sleep(0.001)  # Ensure when executed sequentially the states are chronological
-    assert not active_state.in_phase(ExecutionPhase.TERMINAL), "The state must not be terminal"
+    assert not active_state.in_phase(InstancePhase.TERMINAL), "The state must not be terminal"
     start_date = utc_now() + timedelta(minutes=delta)
 
-    return ExecutionLifecycle(
-        (ExecutionState.CREATED, start_date),
+    return InstanceLifecycle(
+        (InstancePhase.CREATED, start_date),
         (active_state, start_date + timedelta(minutes=delta) + timedelta(seconds=1)))
 
 
-def lc_ended(terminal_state: ExecutionState, *, start_date=None, end_date=None, delta=0, term_delta=0):
-    assert terminal_state.in_phase(ExecutionPhase.TERMINAL), "The state must be terminal"
+def lc_ended(termination_status: TerminationStatus, *, start_date=None, end_date=None, delta=0, term_delta=0):
+    assert termination_status.in_phase(InstancePhase.TERMINAL), "The state must be terminal"
 
     if not start_date and not end_date:
         sleep(0.001)  # Ensure when executed sequentially the states are chronological
     start_date = (start_date or utc_now()) + timedelta(minutes=delta)
     end_date = (end_date or (start_date + timedelta(seconds=2))) + timedelta(minutes=term_delta + delta)
 
-    return ExecutionLifecycle(
-        (ExecutionState.CREATED, start_date),
-        (ExecutionState.RUNNING, start_date + timedelta(minutes=delta) + timedelta(seconds=1)),
-        (terminal_state, end_date)
+    return InstanceLifecycle(
+        (InstancePhase.CREATED, start_date),
+        (InstancePhase.EXECUTING, start_date + timedelta(minutes=delta) + timedelta(seconds=1)),
+        (InstancePhase.TERMINAL, end_date),
+        termination_status=termination_status
     )
 
 
 def lc_pending(*, delta=0):
-    return lc_active(ExecutionState.PENDING, delta=delta)
+    return lc_active(TerminationStatus.PENDING, delta=delta)
 
 
 def lc_queued(*, delta=0):
-    return lc_active(ExecutionState.QUEUED, delta=delta)
+    return lc_active(TerminationStatus.QUEUED, delta=delta)
 
 
 def lc_running():
-    return lc_active(ExecutionState.RUNNING)
+    return lc_active(TerminationStatus.RUNNING)
 
 
 def lc_completed(*, start_date=None, end_date=None, delta=0, term_delta=0):
-    return lc_ended(ExecutionState.COMPLETED, start_date=start_date, end_date=end_date, delta=delta,
+    return lc_ended(TerminationStatus.COMPLETED, start_date=start_date, end_date=end_date, delta=delta,
                     term_delta=term_delta)
 
 
 def lc_failed(*, start_date=None, end_date=None, delta=0, term_delta=0):
-    return lc_ended(ExecutionState.FAILED, start_date=start_date, end_date=end_date, delta=delta, term_delta=term_delta)
+    return lc_ended(TerminationStatus.FAILED, start_date=start_date, end_date=end_date, delta=delta, term_delta=term_delta)
 
 
 def lc_stopped(*, start_date=None, end_date=None, delta=0, term_delta=0):
-    return lc_ended(ExecutionState.STOPPED, start_date=start_date, end_date=end_date, delta=delta,
+    return lc_ended(TerminationStatus.STOPPED, start_date=start_date, end_date=end_date, delta=delta,
                     term_delta=term_delta)

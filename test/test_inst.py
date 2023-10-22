@@ -1,4 +1,4 @@
-from tarotools.taro import ExecutionState
+from tarotools.taro import TerminationStatus
 from tarotools.taro.test.inst import TestJobInstance
 
 
@@ -16,6 +16,6 @@ def test_notification_priority():
     i.add_state_observer(observer(1), 1)
     i.add_state_observer(observer(3), 3)
 
-    i.change_state(ExecutionState.RUNNING)
+    i.change_phase(TerminationStatus.RUNNING)
 
     assert notified == [1, 2, 3, 4]

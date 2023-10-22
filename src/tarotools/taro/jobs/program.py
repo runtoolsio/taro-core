@@ -11,7 +11,8 @@ from subprocess import Popen, PIPE
 from threading import Thread
 from typing import Union, Optional
 
-from tarotools.taro.jobs.execution import ExecutionState, ExecutionError, OutputExecution, ExecutionOutputNotification
+from tarotools.taro.jobs.execution import TerminationStatus, ExecutionError, OutputExecution, \
+    ExecutionOutputNotification
 
 USE_SHELL = False  # For testing only
 
@@ -37,7 +38,7 @@ class ProgramExecution(OutputExecution):
 
         return self._popen.returncode
 
-    def execute(self) -> ExecutionState:
+    def execute(self) -> TerminationStatus:
         if not self._stopped and not self._interrupted:
             stdout = PIPE if self.read_output else None
             stderr = PIPE if self.read_output else None
@@ -55,16 +56,16 @@ class ProgramExecution(OutputExecution):
                     stdout_reader.join(timeout=1)
                     stderr_reader.join(timeout=1)
                 if self.ret_code == 0:
-                    return ExecutionState.COMPLETED
+                    return TerminationStatus.COMPLETED
             except FileNotFoundError as e:
                 sys.stderr.write(str(e) + "\n")
-                raise ExecutionError(str(e), ExecutionState.FAILED) from e
+                raise ExecutionError(str(e), TerminationStatus.FAILED) from e
 
         if self._interrupted or self.ret_code == -signal.SIGINT:
-            return ExecutionState.INTERRUPTED
+            return TerminationStatus.INTERRUPTED
         if self._stopped or self.ret_code < 0:  # Negative exit code means terminated by a signal
-            return ExecutionState.STOPPED
-        raise ExecutionError("Process returned non-zero code " + str(self.ret_code), ExecutionState.FAILED)
+            return TerminationStatus.STOPPED
+        raise ExecutionError("Process returned non-zero code " + str(self.ret_code), TerminationStatus.FAILED)
 
     def _start_output_reader(self, infile, is_err):
         name = 'Stderr-Reader' if is_err else 'Stdout-Reader'

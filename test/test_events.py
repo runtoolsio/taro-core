@@ -1,23 +1,23 @@
 from datetime import datetime
 
-from tarotools.taro import ExecutionState
-from tarotools.taro.jobs.events import StateDispatcher, OutputDispatcher
-from tarotools.taro.listening import StateReceiver, OutputReceiver
+from tarotools.taro import TerminationStatus
+from tarotools.taro.jobs.events import PhaseDispatcher, OutputDispatcher
+from tarotools.taro.listening import PhaseReceiver, OutputReceiver
 from tarotools.taro.test.inst import TestJobInstance
 from tarotools.taro.test.observer import GenericObserver
 
 
 def test_state_dispatching():
-    dispatcher = StateDispatcher()
-    receiver = StateReceiver()
+    dispatcher = PhaseDispatcher()
+    receiver = PhaseReceiver()
     observer = GenericObserver()
     receiver.listeners.append(observer)
     receiver.start()
     try:
-        dispatcher.new_instance_state(
+        dispatcher.new_instance_phase(
             TestJobInstance('j1').create_snapshot(),
-            ExecutionState.NONE,
-            ExecutionState.CREATED,
+            TerminationStatus.NONE,
+            TerminationStatus.CREATED,
             datetime(2023, 8, 6))
     finally:
         dispatcher.close()
@@ -25,8 +25,8 @@ def test_state_dispatching():
 
     instance_meta, prev_state, new_state, changed = observer.updates.get(timeout=2)
     assert instance_meta.id.job_id == 'j1'
-    assert prev_state == ExecutionState.NONE
-    assert new_state == ExecutionState.CREATED
+    assert prev_state == TerminationStatus.NONE
+    assert new_state == TerminationStatus.CREATED
     assert changed == datetime(2023, 8, 6)
 
 
