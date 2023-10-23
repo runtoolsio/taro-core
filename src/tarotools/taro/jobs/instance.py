@@ -40,8 +40,17 @@ class InstancePhase(Enum):
     EXECUTING = auto()
     TERMINAL = auto()
 
+    def is_before(self, other_phase):
+        return self.value < other_phase.value
+
     def is_after(self, other_phase):
         return self.value > other_phase.value
+
+    def __call__(self, lifecycle):
+        return self.transitioned_at(lifecycle)
+
+    def transitioned_at(self, lifecycle) -> Optional[datetime.datetime]:
+        return lifecycle.changed_at(self)
 
 
 class LifecycleEvent(Enum):
@@ -242,7 +251,7 @@ class JobInstanceMetadata:
             These are arbitrary parameters set by the user, and they do not affect the functionality.
     """
     id: JobInstanceID
-    parameters: Tuple[Tuple[str, str]]
+    parameters: Tuple[Tuple[str, str]]  # TODO Rename to system_params
     user_params: Dict[str, Any]
 
     @classmethod

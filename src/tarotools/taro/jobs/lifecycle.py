@@ -80,3 +80,38 @@ class Phaser:
 
         if run_term:
             self._term_phase.execute()
+
+
+class PendingPhase(PhaseAction):
+
+    def __init__(self, waiters):
+        self._waiters = waiters
+
+    def execute(self):
+        for waiter in self._waiters:
+            waiter.wait()
+        return TerminationStatus.NONE
+
+    def stop(self):
+        for waiter in self._waiters:
+            waiter.cancel()
+
+    @property
+    def stop_status(self):
+        return TerminationStatus.CANCELLED
+
+
+class QueuePhase(PhaseAction):
+
+    def __init__(self, queue_waiter):
+        self._queue_waiter = queue_waiter
+
+    def execute(self):
+        return self._queue_waiter.wait()
+
+    def stop(self):
+        self._queue_waiter.cancel()
+
+    @property
+    def stop_status(self):
+        return TerminationStatus.CANCELLED

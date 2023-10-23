@@ -86,6 +86,9 @@ class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
         self.phase = phase
         self.flags = groups
 
+    def __bool__(self):
+        return self != TerminationStatus.NONE
+
     def in_phase(self, phase: InstancePhase) -> bool:
         return self.phase == phase
 

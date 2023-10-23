@@ -249,9 +249,9 @@ def read_tail(instance_match=None) -> AggregatedResponse[TailResponse]:
         return client.read_tail(instance_match)
 
 
-def signal_proceed(instance_match) -> AggregatedResponse[SignalProceedResponse]:
+def signal_dispatch(instance_match) -> AggregatedResponse[SignalProceedResponse]:
     with APIClient() as client:
-        return client.signal_ready(instance_match)
+        return client.signal_dispatch(instance_match)
 
 
 def _no_resp_mapper(api_instance_response: InstanceResponse) -> InstanceResponse:
@@ -399,7 +399,7 @@ class APIClient(SocketClient):
 
         return self.send_request('/instances/tail', instance_match, resp_mapper=resp_mapper)
 
-    def signal_ready(self, instance_match) -> AggregatedResponse[SignalProceedResponse]:
+    def signal_dispatch(self, instance_match) -> AggregatedResponse[SignalProceedResponse]:
         def resp_mapper(inst_resp: InstanceResponse) -> SignalProceedResponse:
             return SignalProceedResponse(
                 inst_resp.instance_meta, inst_resp.body["waiter_found"], inst_resp.body["executed"])

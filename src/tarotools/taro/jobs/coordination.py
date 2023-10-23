@@ -7,7 +7,7 @@ from threading import Condition
 from tarotools import taro
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.criteria import IDMatchCriteria, StateCriteria, InstanceMatchCriteria
-from tarotools.taro.jobs.execution import TerminationStatus, Phase
+from tarotools.taro.jobs.execution import Phase
 from tarotools.taro.jobs.instance import JobInstances, InstancePhase
 from tarotools.taro.listening import PhaseReceiver, InstancePhaseEventObserver
 
@@ -83,18 +83,29 @@ class Pending(Identifiable):
         pass
 
 
-class PendingWaiterState(Enum):
+class PendingState(Enum):
     """
     Enum representing the various states a waiter can be in.
+    TODO: Rename to PendingState
 
     Attributes:
         WAITING: The waiter is actively waiting for its associated condition or to be manually released.
         RELEASED: The waiter has been manually released, either as an expected action or to override the wait condition.
         SATISFIED: The main condition the waiter was waiting for has been met.
+        CANCELLED: The wait condition was terminated before it could be satisfied or released.
     """
-    WAITING = auto()
-    RELEASED = auto()
-    SATISFIED = auto()
+
+    NONE = (auto(), False)
+    WAITING = (auto(), False)
+    RELEASED = (auto(), True)
+    SATISFIED = (auto(), True)
+    CANCELLED = (auto(), True)
+
+    def __new__(cls, value, unlocked):
+        obj = object.__new__(cls)
+        obj._value_ = value
+        obj.unlocked = unlocked
+        return obj
 
 
 class PendingWaiter(ABC):
@@ -126,7 +137,7 @@ class PendingWaiter(ABC):
     def state(self):
         """
         Returns:
-            PendingWaiterState: The current state of the waiter.
+            PendingState: The current state of the waiter.
         """
         pass
 
@@ -147,7 +158,12 @@ class PendingWaiter(ABC):
         """
         pass
 
-    # TODO unblock method
+    @abstractmethod
+    def cancel(self) -> None:
+        """
+        Manually releases the waiter as a result of cancellation process.
+        """
+        pass
 
 
 class Latch(Pending):
@@ -169,7 +185,7 @@ class Latch(Pending):
 
         def __init__(self, latch: "Latch"):
             self.latch = latch
-            self.released = False
+            self._state = PendingState.NONE
 
         @property
         def parent_pending(self):
@@ -177,23 +193,32 @@ class Latch(Pending):
 
         @property
         def state(self):
-            if self.released:
-                return PendingWaiterState.RELEASED
-            if self.latch._released:
-                return PendingWaiterState.SATISFIED
-
-            return PendingWaiterState.WAITING
+            return self._state
 
         def wait(self):
             while True:
                 with self.latch._condition:
-                    if self.released or self.latch._released:
+                    if self.state.unlocked:
                         return
+                    if self._state == PendingState.NONE:
+                        self._state = PendingState.WAITING
+
                     self.latch._condition.wait()
 
         def release(self):
+            self._unlock(PendingState.RELEASED)
+
+        def cancel(self) -> None:
+            self._unlock(PendingState.CANCELLED)
+
+        def _unlock(self, unlocked_state) -> None:
+            assert unlocked_state.unlocked
+
             with self.latch._condition:
-                self.released = True
+                if self._state.unlocked:
+                    return
+
+                self._state = unlocked_state
                 self.latch._condition.notify_all()
 
 
@@ -355,9 +380,9 @@ class Queue(Identifiable):
         pass
 
 
-class QueueWaiterState(Enum):
-    BEFORE_QUEUING = auto(), False
-    QUEUING = auto(), False
+class QueuedState(Enum):
+    NONE = auto(), False
+    IN_QUEUE = auto(), False
     DISPATCHED = auto(), True
     CANCELLED = auto(), True
     UNKNOWN = auto(), False
@@ -383,7 +408,7 @@ class QueueWaiter:
     def state(self):
         """
         Returns:
-            QueueWaiterState: The current state of the waiter.
+            QueuedState: The current state of the waiter.
         """
         pass
 
@@ -392,7 +417,7 @@ class QueueWaiter:
         pass
 
     @abstractmethod
-    def release(self):
+    def cancel(self):
         pass
 
     @abstractmethod
@@ -433,16 +458,15 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
         )
 
     def create_waiter(self, instance, dequeue_state_resolver):
-        return self._Waiter(self, instance, dequeue_state_resolver)
+        return self._Waiter(self, dequeue_state_resolver)
 
     class _Waiter(QueueWaiter):
 
-        def __init__(self, queue: "ExecutionQueue", instance, dispatch_state_resolver):
+        def __init__(self, queue: "ExecutionQueue", dispatch_status_resolver):
             self.queue = queue
-            self.instance = instance
-            self.dispatch_state_resolver = dispatch_state_resolver
-            self._state = QueueWaiterState.BEFORE_QUEUING
-            self.dispatch_exec_state = TerminationStatus.NONE
+            self.dispatch_status_resolver = dispatch_status_resolver
+            self.term_status = None
+            self._state = QueuedState.NONE
 
         @property
         def state(self):
@@ -451,12 +475,12 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
         def wait(self):
             while True:
                 with self.queue._wait_guard:
-                    if self._state == QueueWaiterState.BEFORE_QUEUING:
+                    if self._state == QueuedState.NONE:
                         # Should new waiter run scheduler?
-                        self._state = QueueWaiterState.QUEUING
+                        self._state = QueuedState.IN_QUEUE
 
                     if self._state.dequeued:
-                        return
+                        return self.term_status
 
                     if self.queue._current_wait:
                         self.queue._wait_guard.wait()
@@ -470,17 +494,24 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
 
                 continue
 
-        def release(self):
-            # TODO
-            pass
+        def cancel(self):
+            with self.queue._wait_guard:
+                if self._state.dequeued:
+                    return
+
+                self._state = QueuedState.CANCELLED
+                self.queue._wait_guard.notify_all()
 
         def signal_dispatch(self):
             with self.queue._wait_guard:
-                self._state = QueueWaiterState.DISPATCHED
-                self.dispatch_exec_state = self.dispatch_state_resolver()
+                if self._state.dequeued:
+                    return False  # Cancelled
+
+                self._state = QueuedState.DISPATCHED
+                self.term_status = self.dispatch_status_resolver()
                 self.queue._wait_guard.notify_all()
 
-            return self.dispatch_exec_state.in_phase(InstancePhase.EXECUTING)
+            return not bool(self.term_status)
 
     def _start_listening(self):
         self._state_receiver = self._state_receiver_factory()
@@ -494,25 +525,25 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
         )
         jobs, _ = taro.client.read_instances(criteria)
 
-        group_jobs_sorted = JobInstances(sorted(jobs, key=lambda job: job.lifecycle.changed_at(TerminationStatus.CREATED)))
+        group_jobs_sorted = JobInstances(sorted(jobs, key=InstancePhase.CREATED))
         next_count = self._max_executions - len(group_jobs_sorted.executing)
         if next_count <= 0:
             return False
 
         for next_proceed in group_jobs_sorted.queued:
             # TODO Use identity ID
-            signal_resp = taro.client.signal_proceed(InstanceMatchCriteria(IDMatchCriteria.for_instance(next_proceed)))
+            signal_resp = taro.client.signal_dispatch(InstanceMatchCriteria(IDMatchCriteria.for_instance(next_proceed)))
             for r in signal_resp.responses:
                 if r.executed:
                     next_count -= 1
                     if next_count <= 0:
                         return
 
-    def state_update(self, instance_meta, previous_phase, new_phase, changed):
+    def state_update(self, instance_meta, previous_phase, new_phase, changed, termination_status):
         with self._wait_guard:
             if not self._current_wait:
                 return
-            if new_phase.in_phase(InstancePhase.TERMINAL) and instance_meta.contains_parameters(self._parameters):
+            if new_phase == InstancePhase.TERMINAL and instance_meta.contains_parameters(self._parameters):
                 self._current_wait = False
                 self._stop_listening()
                 self._wait_guard.notify()
