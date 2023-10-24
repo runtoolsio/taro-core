@@ -98,6 +98,7 @@ class PendingState(Enum):
     NONE = (auto(), False)
     WAITING = (auto(), False)
     RELEASED = (auto(), True)
+    DENIED = (auto(), True)
     SATISFIED = (auto(), True)
     CANCELLED = (auto(), True)
 
@@ -222,7 +223,7 @@ class Latch(Pending):
                 self.latch._condition.notify_all()
 
 
-class PreExecCondition(Identifiable):
+class PreCondition(Identifiable):
     """
     Represents a pre-executing condition that must be satisfied before a job instance can transition
     to the EXECUTING phase. The condition can be evaluated multiple times. For each evaluation an evaluator
@@ -238,7 +239,7 @@ class PreExecCondition(Identifiable):
             job_instance: The job instance that will utilize the created evaluator.
 
         Returns:
-            PreExecEvaluator: A new evaluator object designed for the provided job instance.
+            ConditionEvaluator: A new evaluator object designed for the provided job instance.
         """
         pass
 
@@ -259,7 +260,7 @@ class ConditionState(Enum):
     EVALUATION_ERROR = auto()
 
 
-class PreExecEvaluator(ABC):
+class ConditionEvaluator(ABC):
     """
     Represents an individual evaluation instance for a pre-executing condition. Allows for independent
     assessment of the condition across different job instances to determine if they can proceed to the EXECUTING phase.
@@ -277,7 +278,7 @@ class PreExecEvaluator(ABC):
     @abstractmethod
     def evaluate(self):
         """
-        Evaluates the associated pre-execution condition.
+        Evaluates the associated pre-condition.
 
         Returns:
             bool: True if the condition is satisfied, False otherwise.
@@ -285,7 +286,7 @@ class PreExecEvaluator(ABC):
         pass
 
 
-class NoOverlap(PreExecCondition):
+class NoOverlap(PreCondition):
     """
     TODO Sync
     """
@@ -304,10 +305,10 @@ class NoOverlap(PreExecCondition):
     def parameters(self):
         return self._parameters
 
-    def create_evaluator(self, instance) -> PreExecEvaluator:
+    def create_evaluator(self, instance) -> ConditionEvaluator:
         return self._Evaluator(self, instance)
 
-    class _Evaluator(PreExecEvaluator):
+    class _Evaluator(ConditionEvaluator):
 
         def __init__(self, condition: "NoOverlap", instance):
             self.condition = condition
@@ -330,7 +331,7 @@ class NoOverlap(PreExecCondition):
             return True
 
 
-class Dependency(PreExecCondition):
+class Dependency(PreCondition):
 
     def __init__(self, dependency_match):
         dependency = str(dependency_match.to_dict(False))
@@ -350,10 +351,10 @@ class Dependency(PreExecCondition):
     def parameters(self):
         return self._parameters
 
-    def create_evaluator(self, instance) -> PreExecEvaluator:
+    def create_evaluator(self, instance) -> ConditionEvaluator:
         return self._Evaluator(self)
 
-    class _Evaluator(PreExecEvaluator):
+    class _Evaluator(ConditionEvaluator):
 
         def __init__(self, dependency: "Dependency"):
             self._dependency = dependency
