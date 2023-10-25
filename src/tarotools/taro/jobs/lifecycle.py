@@ -8,7 +8,7 @@ from typing import Tuple, Optional, List, Iterable, Dict, Any
 
 from tarotools.taro import TerminationStatus, util
 from tarotools.taro.jobs.instance import Phase
-from tarotools.taro.util import format_dt_iso, is_empty
+from tarotools.taro.util import format_dt_iso, is_empty, utc_now
 
 
 class InstanceState(Enum):
@@ -35,10 +35,10 @@ class Phase:
     state: InstanceState
 
     @classmethod
-    def from_dict(cls, as_dict):
-        cls(as_dict['name'], InstanceState.from_str(as_dict['state']))
+    def from_dict(cls, as_dict) -> Phase:
+        return cls(as_dict['name'], InstanceState.from_str(as_dict['state']))
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {"name": self.name, "state": str(self.state)}
 
 
@@ -62,12 +62,14 @@ class Lifecycle:
     def from_dict(cls, as_dict):
         phase_transitions = ((Phase.from_dict(phase_change['phase']), util.parse_datetime(phase_change['transitioned']))
                              for phase_change in as_dict['phase_transitions'])
-        return cls(*phase_transitions)
+        term_status = TerminationStatus.from_str(as_dict['termination_status'])
+        return cls(*phase_transitions, termination_status=term_status)
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         d = {
             "phase_transitions": [{"phase": phase.to_dict(), "transitioned": format_dt_iso(transitioned)}
                                   for phase, transitioned in self.phase_transitions],
+            "termination_status": str(self._terminal_status),
             "phase": self.phase.to_dict(),
             "last_transition_at": format_dt_iso(self.last_transition_at),
             "created_at": format_dt_iso(self.created_at),
@@ -83,6 +85,16 @@ class Lifecycle:
     @property
     def phase(self):
         return next(reversed(self._phase_transitions.keys()), StandardPhase.NONE)
+
+    @property
+    def phase_count(self):
+        return len(self._phase_transitions)
+
+    def get_ordinal(self, phase: Phase) -> int:
+        for index, current_phase in enumerate(self._phase_transitions.keys()):
+            if current_phase == phase:
+                return index
+        raise ValueError(f"Phase {phase} not found in lifecycle")
 
     @property
     def phases(self) -> List[Phase]:
@@ -121,12 +133,12 @@ class Lifecycle:
         return self.state_first_at(InstanceState.EXECUTING)
 
     @property
-    def is_terminated(self):
-        return bool(self._terminal_status)
-
-    @property
     def ended_at(self) -> Optional[datetime.datetime]:
         return self.state_last_at(InstanceState.ENDED)
+
+    @property
+    def is_terminated(self):
+        return bool(self._terminal_status)
 
     @property
     def execution_time(self) -> Optional[datetime.timedelta]:
@@ -145,20 +157,25 @@ class Lifecycle:
     def __deepcopy__(self, memo):
         return Lifecycle(*self.phase_transitions)
 
-    def __eq__(self, other):
-        if not isinstance(other, Lifecycle):
-            return NotImplemented
-        return self._phase_transitions == other._phase_transitions
 
-    def __hash__(self):
-        return hash(tuple(self._phase_transitions.items()))
+class MutableLifecycle(Lifecycle):
+    """
+    Mutable version of `InstanceLifecycle`
+    """
 
-    def __repr__(self) -> str:
-        return "{}({!r})".format(
-            self.__class__.__name__, self._phase_transitions)
+    def __init__(self, *phase_changes: Tuple[Phase, datetime.datetime], termination_status=TerminationStatus.NONE):
+        super().__init__(*phase_changes, termination_status=termination_status)
+
+    def new_phase(self, new_phase: Phase, terminal_status=TerminationStatus.NONE) -> bool:
+        if not new_phase or new_phase == StandardPhase.NONE or self.phase == new_phase:
+            return False
+
+        self._phase_transitions[new_phase] = utc_now()
+        self._terminal_status = terminal_status
+        return True
 
 
-class PhaseAction(ABC):
+class PhaseStep(ABC):
     """
     TODO:
     1. Preconditions
@@ -183,16 +200,51 @@ class PhaseAction(ABC):
         pass
 
 
+class InitStep(PhaseStep):
+
+    @property
+    def phase(self):
+        return StandardPhase.INIT
+
+    def execute(self):
+        pass
+
+    def stop(self):
+        pass
+
+    @property
+    def stop_status(self):
+        return TerminationStatus.STOPPED
+
+
+class TerminalStep(PhaseStep):
+
+    @property
+    def phase(self):
+        return StandardPhase.TERMINAL
+
+    def execute(self):
+        pass
+
+    def stop(self):
+        pass
+
+    @property
+    def stop_status(self):
+        return TerminationStatus.NONE
+
+
 class Phaser:
 
-    def __init__(self, lifecycle, phases):
-        self._lifecycle = lifecycle
-        self._phases = phases
+    def __init__(self, lifecycle, steps):
+        self.transition_hook = None
+        self._steps = steps
         self._phase_lock = Lock()
 
         # Guarded by the lock:
+        self._current_step = None
+        self._lifecycle = lifecycle
         self._abort = False
-        self._current_phase = None
         self._term_status = TerminationStatus.NONE
 
     def prime(self):
@@ -204,42 +256,51 @@ class Phaser:
     def run(self):
         # TODO prime check
         term_status = None
-        for phase in self._phases:
+        for step in self._steps:
             with self._phase_lock:
                 if self._abort:
                     return
                 if term_status and not self._term_status:
                     self._term_status = term_status
                 if self._term_status:
-                    self.next_phase(StandardPhase.TERMINAL)
+                    self.next_step(TerminalStep())
                     return
 
-                self.next_phase(phase)
+                self.next_step(step)
 
-            term_status = phase.execute()
+            term_status = step.execute()
 
-        self.next_phase(StandardPhase.TERMINAL)
+        self.next_step(TerminalStep())
 
-    def next_phase(self, phase):
-        self._current_phase = phase
-        # notify listeners
+    def next_step(self, step):
+        """
+        Impl note: The execution must be guarded by the phase lock (except terminal step)
+        """
+        assert self._current_step != step
+
+        prev_phase = self._lifecycle.phase
+        self._current_step = step
+        self._lifecycle.new_phase(step.phase)
+        ordinal = self._lifecycle.phase_count
+        if self.transition_hook:
+            self.transition_hook(self._lifecycle.phases, prev_phase, self._lifecycle.phase, ordinal)
 
     def stop(self):
         with self._phase_lock:
             if self._term_status:
                 return
 
-            self._term_status = self._current_phase.stop_status
+            self._term_status = self._current_step.stop_status
             assert self._term_status
-            if self._current_phase == StandardPhase.INIT:
+            if self._current_step.phase == StandardPhase.INIT:
                 # Not started yet
                 self._abort = True  # Prevent phase transition...
-                self.next_phase(StandardPhase.TERMINAL)
+                self.next_step(TerminalStep())
 
-        self._current_phase.stop()
+        self._current_step.stop()
 
 
-class PendingPhase(PhaseAction):
+class PendingPhase(PhaseStep):
 
     def __init__(self, waiters):
         self._waiters = waiters
@@ -262,7 +323,7 @@ class PendingPhase(PhaseAction):
         return TerminationStatus.CANCELLED
 
 
-class QueuePhase(PhaseAction):
+class QueuePhase(PhaseStep):
 
     def __init__(self, queue_waiter):
         self._queue_waiter = queue_waiter

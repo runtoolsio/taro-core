@@ -79,6 +79,13 @@ class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
         return obj
 
     @classmethod
+    def from_str(cls, value: str):
+        try:
+            return cls[value.upper()]
+        except KeyError:
+            return cls.UNKNOWN
+
+    @classmethod
     def with_flags(cls, *flags):
         return [state for state in cls if all(flag in state.flags for flag in flags)]
 
