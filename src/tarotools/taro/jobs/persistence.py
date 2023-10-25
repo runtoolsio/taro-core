@@ -230,7 +230,7 @@ def close():
 def _sort_key(sort: SortCriteria):
     def key(j):
         if sort == SortCriteria.CREATED:
-            return j.lifecycle.changed_at(InstancePhase.CREATED)
+            return j.lifecycle.transitioned_at(InstancePhase.CREATED)
         if sort == SortCriteria.ENDED:
             return j.lifecycle.ended_at
         if sort == SortCriteria.TIME:

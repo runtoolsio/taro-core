@@ -260,10 +260,10 @@ class SQLite(InstancePhaseObserver):
             return (j.job_id,
                     j.instance_id,
                     format_dt_sql(j.lifecycle.created_at),
-                    format_dt_sql(j.lifecycle.last_changed_at),
+                    format_dt_sql(j.lifecycle.last_transition_at),
                     round(j.lifecycle.execution_time.total_seconds(), 3) if j.lifecycle.execution_time else None,
                     json.dumps(
-                        [(phase.name, float(changed.timestamp())) for phase, changed in j.lifecycle.phase_changes]),
+                        [(phase.name, float(changed.timestamp())) for phase, changed in j.lifecycle.phase_transitions]),
                     j.lifecycle.phase.name if j.lifecycle.phase.in_phase(
                         InstancePhase.TERMINAL) else TerminationStatus.UNKNOWN.name,
                     json.dumps(j.tracking.to_dict(include_empty=False)) if j.tracking else None,

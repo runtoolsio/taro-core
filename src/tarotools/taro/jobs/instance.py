@@ -50,7 +50,7 @@ class InstancePhase(Enum):
         return self.transitioned_at(lifecycle)
 
     def transitioned_at(self, lifecycle) -> Optional[datetime.datetime]:
-        return lifecycle.changed_at(self)
+        return lifecycle.transitioned_at(self)
 
 
 class LifecycleEvent(Enum):
@@ -946,7 +946,7 @@ def _job_inst_to_args(job_inst):
     states = job_inst.lifecycle.phases
     previous_state = states[-2] if len(states) > 1 else TerminationStatus.NONE
     new_state = job_inst.phase
-    changed = job_inst.lifecycle.last_changed_at
+    changed = job_inst.lifecycle.last_transition_at
 
     return job_inst, previous_state, new_state, changed
 

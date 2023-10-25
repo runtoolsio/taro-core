@@ -21,7 +21,7 @@ def job(execution):
 
 @pytest.fixture
 def observer(job):
-    observer = GenericObserver()
+    observer = GenericObserver()from
     job.add_warning_observer(observer)
     return observer
 
