@@ -7,6 +7,7 @@ from threading import Lock
 from typing import Tuple, Optional, List, Iterable, Dict, Any
 
 from tarotools.taro import TerminationStatus, util
+from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.instance import Phase
 from tarotools.taro.util import format_dt_iso, is_empty, utc_now
 
@@ -239,22 +240,23 @@ class Phaser:
     def __init__(self, lifecycle, steps):
         self.transition_hook = None
         self._steps = steps
-        self._phase_lock = Lock()
 
-        # Guarded by the lock:
-        self._current_step = None
+        self._phase_lock = Lock()
+        # Guarded by the phase lock:
         self._lifecycle = lifecycle
+        self._current_step = None
         self._abort = False
         self._term_status = TerminationStatus.NONE
 
     def prime(self):
-        """
-        TODO Impl
-        """
-        pass
+        with self._phase_lock:
+            if self._current_step:
+                raise InvalidStateError("Primed already")
+            self.next_step(InitStep())
 
     def run(self):
-        # TODO prime check
+        if not self._current_step:
+            raise InvalidStateError('Prime not executed before run')
         term_status = None
         for step in self._steps:
             with self._phase_lock:
@@ -280,7 +282,7 @@ class Phaser:
 
         prev_phase = self._lifecycle.phase
         self._current_step = step
-        self._lifecycle.new_phase(step.phase)
+        self._lifecycle.new_phase(step.phase, self._term_status)
         ordinal = self._lifecycle.phase_count
         if self.transition_hook:
             self.transition_hook(self._lifecycle.phases, prev_phase, self._lifecycle.phase, ordinal)
