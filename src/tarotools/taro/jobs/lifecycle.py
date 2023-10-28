@@ -8,7 +8,6 @@ from typing import Tuple, Optional, List, Iterable, Dict, Any
 
 from tarotools.taro import TerminationStatus, util
 from tarotools.taro.err import InvalidStateError
-from tarotools.taro.jobs.instance import Phase
 from tarotools.taro.util import format_dt_iso, is_empty, utc_now
 
 
@@ -17,7 +16,8 @@ class InstanceState(Enum):
     UNKNOWN = auto()
     CREATED = auto()
     PENDING = auto()
-    AWAITING_APPROVAL = auto()
+    WAITING = auto()
+    EVALUATING = auto()
     IN_QUEUE = auto()
     EXECUTING = auto()
     ENDED = auto()
@@ -36,7 +36,7 @@ class Phase:
     state: InstanceState
 
     @classmethod
-    def from_dict(cls, as_dict) -> Phase:
+    def from_dict(cls, as_dict) -> 'Phase':
         return cls(as_dict['name'], InstanceState.from_str(as_dict['state']))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -252,7 +252,7 @@ class Phaser:
         with self._phase_lock:
             if self._current_step:
                 raise InvalidStateError("Primed already")
-            self.next_step(InitStep())
+            self._next_step(InitStep())
 
     def run(self):
         if not self._current_step:
@@ -265,16 +265,16 @@ class Phaser:
                 if term_status and not self._term_status:
                     self._term_status = term_status
                 if self._term_status:
-                    self.next_step(TerminalStep())
+                    self._next_step(TerminalStep())
                     return
 
-                self.next_step(step)
+                self._next_step(step)
 
             term_status = step.execute()
 
-        self.next_step(TerminalStep())
+        self._next_step(TerminalStep())
 
-    def next_step(self, step):
+    def _next_step(self, step):
         """
         Impl note: The execution must be guarded by the phase lock (except terminal step)
         """
@@ -297,49 +297,6 @@ class Phaser:
             if self._current_step.phase == StandardPhase.INIT:
                 # Not started yet
                 self._abort = True  # Prevent phase transition...
-                self.next_step(TerminalStep())
+                self._next_step(TerminalStep())
 
         self._current_step.stop()
-
-
-class PendingPhase(PhaseStep):
-
-    def __init__(self, waiters):
-        self._waiters = waiters
-
-    @property
-    def phase(self):
-        return Phase.PENDING
-
-    def execute(self):
-        for waiter in self._waiters:
-            waiter.wait()
-        return TerminationStatus.NONE
-
-    def stop(self):
-        for waiter in self._waiters:
-            waiter.cancel()
-
-    @property
-    def stop_status(self):
-        return TerminationStatus.CANCELLED
-
-
-class QueuePhase(PhaseStep):
-
-    def __init__(self, queue_waiter):
-        self._queue_waiter = queue_waiter
-
-    @property
-    def phase(self):
-        return Phase.QUEUED
-
-    def execute(self):
-        return self._queue_waiter.wait()
-
-    def stop(self):
-        self._queue_waiter.cancel()
-
-    @property
-    def stop_status(self):
-        return TerminationStatus.CANCELLED

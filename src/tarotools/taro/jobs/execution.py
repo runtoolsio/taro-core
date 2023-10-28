@@ -56,6 +56,7 @@ class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
     QUEUED =  Phase.QUEUED, {Flag.BEFORE_EXECUTION, Flag.UNEXECUTED, Flag.WAITING}  # Wait for another job
 
     CANCELLED =   Phase.TERMINAL, {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.ABORTED}
+    TIMEOUT =     Phase.TERMINAL, {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.REJECTED}
     SKIPPED =     Phase.TERMINAL, {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.REJECTED}
     UNSATISFIED = Phase.TERMINAL, {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.REJECTED}
     # More possible discarded states: DISABLED, SUSPENDED

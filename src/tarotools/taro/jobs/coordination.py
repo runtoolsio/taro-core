@@ -2,346 +2,96 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, auto
-from threading import Condition
+from threading import Condition, Event, Lock
 
 from tarotools import taro
+from tarotools.taro import TerminationStatus
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.criteria import IDMatchCriteria, StateCriteria, InstanceMatchCriteria
-from tarotools.taro.jobs.execution import Phase
 from tarotools.taro.jobs.instance import JobInstances, InstancePhase
+from tarotools.taro.jobs.lifecycle import PhaseStep, InstanceState, Phase
 from tarotools.taro.listening import PhaseReceiver, InstancePhaseEventObserver
 
 log = logging.getLogger(__name__)
 
 
-@dataclass
-class Identifier:
+class ApprovalPhase(PhaseStep):
     """
-    Represents a unique identifier for a coordination component.
-
-    Attributes:
-        type_ (str): Specifies the type of the coordination object.
-        id (str): A value for distinguishing between objects of the same type.
+    Approval parameters (incl. timeout) + approval eval as separate objects
     """
-    type_: str
-    id: str
 
-
-class Identifiable(ABC):
-
-    def __init__(self, type_, id_):
-        self._type = type_
-        self._id = id_
+    def __init__(self, phase_name, timeout=0):
+        self._name = phase_name
+        self._timeout = timeout
+        self._event = Event()
 
     @property
-    def identifier(self):
-        """
-        Returns the unique identifier associated with this coordination object.
+    def phase(self):
+        return Phase(self._name, InstanceState.PENDING)
 
-        Returns:
-            Identifier: The identifier of the this object.
-        """
-        return Identifier(type_=self._type, id=self._id)
+    def execute(self) -> TerminationStatus:
+        resolved = self._event.wait(self._timeout or None)
+        if resolved:
+            return TerminationStatus.NONE
+        else:
+            return TerminationStatus.TIMEOUT
 
+    def approve(self):
+        self._event.set()
 
-class Pending(Identifiable):
-    """
-    Abstract base class representing a generic pending condition.
-
-    A "pending" allows job instances to enter a pending phase before they actually start executing.
-    Derived classes should provide specific implementations of the pending behavior.
-
-    Pending either encapsulates a WAITING condition and automatically signals all associated waiters
-    when this condition is SATISFIED, or it expects manual action for RELEASE when an external condition is met.
-    This manual release can target all waiters simultaneously or handle each waiter individually.
-    """
-
-    @abstractmethod
-    def create_waiter(self, job_instance):
-        """
-        Creates and returns a new waiter associated with this pending object and the provided job instance.
-
-        A waiter allows job instances to enter their pending phase, where they might wait for a specific condition
-        encapsulated by the pending object. Multiple waiters (job instances) can be associated with a single pending,
-        allowing multiple job instances to await their specific conditions concurrently. Each waiter is tied
-        to a specific job instance. All waiters associated with a pending can be released simultaneously
-        when the main condition of the pending is met, or each waiter can be manually released individually.
-
-        Parameters:
-            job_instance: The job instance that will hold and utilize the created waiter.
-
-        Returns:
-            PendingWaiter: A new waiter object designed to be held by the provided job instance.
-        """
-        pass
-
-    @abstractmethod
-    def release_all(self) -> None:
-        """
-        Releases all waiters associated with this pending object.
-        """
-        pass
-
-
-class PendingState(Enum):
-    """
-    Enum representing the various states a waiter can be in.
-    TODO: Rename to PendingState
-
-    Attributes:
-        WAITING: The waiter is actively waiting for its associated condition or to be manually released.
-        RELEASED: The waiter has been manually released, either as an expected action or to override the wait condition.
-        SATISFIED: The main condition the waiter was waiting for has been met.
-        CANCELLED: The wait condition was terminated before it could be satisfied or released.
-    """
-
-    NONE = (auto(), False)
-    WAITING = (auto(), False)
-    RELEASED = (auto(), True)
-    DENIED = (auto(), True)
-    SATISFIED = (auto(), True)
-    CANCELLED = (auto(), True)
-
-    def __new__(cls, value, unlocked):
-        obj = object.__new__(cls)
-        obj._value_ = value
-        obj.unlocked = unlocked
-        return obj
-
-
-class PendingWaiter(ABC):
-    """
-    Abstract base class representing a (child) waiter associated with a specific (parent) pending object.
-
-    A waiter is designed to be held by a job instance, enabling the job to enter its pending phase
-    before actual execution. This allows for synchronization between different parts of the system.
-    Depending on the parent pending, the waiter can either be manually released, or all associated
-    waiters can be released simultaneously when the main condition of the pending is met.
-    """
+    def stop(self):
+        self._event.set()
 
     @property
-    @abstractmethod
-    def parent_pending(self):
-        """
-        Returns the parent pending object with which this waiter is associated.
+    def stop_status(self):
+        return TerminationStatus.CANCELLED
 
-        The parent pending object encapsulates the specific condition or conditions that job instances,
-        holding this waiter, might await before starting their execution.
 
-        Returns:
-            Pending: The associated parent pending object.
-        """
-        pass
+class NoOverlapPhase(PhaseStep):
+    """
+    TODO Global lock
+    """
+    def __init__(self, phase_name, no_overlap_id, until_phase=None):
+        self._phase_name = phase_name
+        self._parameters = (('phase', 'no_overlap'), ('no_overlap_id', no_overlap_id), ('until_phase', until_phase))
 
     @property
-    @abstractmethod
-    def state(self):
-        """
-        Returns:
-            PendingState: The current state of the waiter.
-        """
-        pass
-
-    @abstractmethod
-    def wait(self) -> None:
-        """
-        Instructs the waiter to begin waiting on its associated condition.
-
-        When invoked by a job instance, the job enters its pending phase, potentially waiting for
-        the overarching pending condition to be met or for a manual release.
-        """
-        pass
-
-    @abstractmethod
-    def release(self) -> None:
-        """
-        Manually releases the waiter, even if the overarching pending condition is not met.
-        """
-        pass
-
-    @abstractmethod
-    def cancel(self) -> None:
-        """
-        Manually releases the waiter as a result of cancellation process.
-        """
-        pass
-
-
-class Latch(Pending):
-
-    def __init__(self, latch_id):
-        super().__init__("LATCH", latch_id)
-        self._condition = Condition()
-        self._released = False
-
-    def create_waiter(self, instance) -> "PendingWaiter":
-        return self._Waiter(latch=self)
-
-    def release_all(self):
-        with self._condition:
-            self._released = True
-            self._condition.notify_all()
-
-    class _Waiter(PendingWaiter):
-
-        def __init__(self, latch: "Latch"):
-            self.latch = latch
-            self._state = PendingState.NONE
-
-        @property
-        def parent_pending(self):
-            return self.latch
-
-        @property
-        def state(self):
-            return self._state
-
-        def wait(self):
-            while True:
-                with self.latch._condition:
-                    if self.state.unlocked:
-                        return
-                    if self._state == PendingState.NONE:
-                        self._state = PendingState.WAITING
-
-                    self.latch._condition.wait()
-
-        def release(self):
-            self._unlock(PendingState.RELEASED)
-
-        def cancel(self) -> None:
-            self._unlock(PendingState.CANCELLED)
-
-        def _unlock(self, unlocked_state) -> None:
-            assert unlocked_state.unlocked
-
-            with self.latch._condition:
-                if self._state.unlocked:
-                    return
-
-                self._state = unlocked_state
-                self.latch._condition.notify_all()
-
-
-class PreCondition(Identifiable):
-    """
-    Represents a pre-executing condition that must be satisfied before a job instance can transition
-    to the EXECUTING phase. The condition can be evaluated multiple times. For each evaluation an evaluator
-    must be created.
-    """
-
-    @abstractmethod
-    def create_evaluator(self, job_instance):
-        """
-        Creates and returns a new evaluator associated with this pre-execution condition and the provided job instance.
-
-        Parameters:
-            job_instance: The job instance that will utilize the created evaluator.
-
-        Returns:
-            ConditionEvaluator: A new evaluator object designed for the provided job instance.
-        """
-        pass
-
-
-class ConditionState(Enum):
-    """
-    Enum representing the various states an evaluation can be in.
-
-    Attributes:
-        NOT_EVALUATED: The condition has not been evaluated yet.
-        SATISFIED: The condition is satisfied.
-        UNSATISFIED: The condition is not satisfied.
-        EVALUATION_ERROR: The condition could not be evaluated due to an error in the evaluation logic.
-    """
-    NOT_EVALUATED = auto()
-    SATISFIED = auto()
-    UNSATISFIED = auto()
-    EVALUATION_ERROR = auto()
-
-
-class ConditionEvaluator(ABC):
-    """
-    Represents an individual evaluation instance for a pre-executing condition. Allows for independent
-    assessment of the condition across different job instances to determine if they can proceed to the EXECUTING phase.
-    """
-
-    @property
-    @abstractmethod
-    def state(self):
-        """
-        Returns:
-            ConditionState: The current state of the evaluation.
-        """
-        pass
-
-    @abstractmethod
-    def evaluate(self):
-        """
-        Evaluates the associated pre-condition.
-
-        Returns:
-            bool: True if the condition is satisfied, False otherwise.
-        """
-        pass
-
-
-class NoOverlap(PreCondition):
-    """
-    TODO Sync
-    """
-
-    def __init__(self, instance_match=None):
-        no_overlap = str(instance_match.to_dict(False)) if instance_match else 'same_job_id'
-        super().__init__("NO_OVERLAP", no_overlap)
-        self._instance_match = instance_match
-        self._parameters = (('condition', 'no_overlap'), ('no_overlap', no_overlap))
-
-    @property
-    def instance_match(self):
-        return self._instance_match
+    def phase(self):
+        return Phase(self._phase_name, InstanceState.EVALUATING)
 
     @property
     def parameters(self):
         return self._parameters
 
-    def create_evaluator(self, instance) -> ConditionEvaluator:
-        return self._Evaluator(self, instance)
+    def execute(self):
+        instances, _ = taro.client.read_instances()
+        # TODO Check No instance with same overlap ID in protected phase
+        if any(i for i in instances if i.id != self.instance.id and self._phase_group.matches(i)):
+            return TerminationStatus.SKIPPED
 
-    class _Evaluator(ConditionEvaluator):
+        return TerminationStatus.NONE
 
-        def __init__(self, condition: "NoOverlap", instance):
-            self.condition = condition
-            self.instance = instance
-            self._state = ConditionState.NOT_EVALUATED
+    def stop(self):
+        pass
 
-        @property
-        def state(self):
-            return self._state
-
-        def evaluate(self) -> bool:
-            inst_match = self.condition._instance_match or InstanceMatchCriteria(IDMatchCriteria(self.instance.job_id))
-
-            instances, _ = taro.client.read_instances()
-            if any(i for i in instances if i.id != self.instance.id and inst_match.matches(i)):
-                self._state = ConditionState.UNSATISFIED
-                return False
-
-            self._state = ConditionState.SATISFIED
-            return True
+    @property
+    def stop_status(self):
+        return TerminationStatus.CANCELLED
 
 
-class Dependency(PreCondition):
+class DependencyPhase(PhaseStep):
 
-    def __init__(self, dependency_match):
-        dependency = str(dependency_match.to_dict(False))
-        super().__init__("DEPENDENCY", dependency)
+    def __init__(self, phase_name, dependency_match):
+        self._phase_name = phase_name
         self._dependency_match = dependency_match
         self._parameters = (
-            ('coord', 'dependency'),
-            ('coord_type', 'pre_exec_condition'),
-            ('dependency', dependency),
+            ('phase', 'dependency'),
+            ('dependency', (str(dependency_match.to_dict(False)))),
         )
+
+    @property
+    def phase(self):
+        return Phase(self._phase_name, InstanceState.EVALUATING)
 
     @property
     def dependency_match(self):
@@ -351,30 +101,146 @@ class Dependency(PreCondition):
     def parameters(self):
         return self._parameters
 
-    def create_evaluator(self, instance) -> ConditionEvaluator:
-        return self._Evaluator(self)
+    def execute(self):
+        instances, _ = taro.client.read_instances()
+        if not any(i for i in instances if self._dependency_match.matches(i)):
+            return TerminationStatus.UNSATISFIED
 
-    class _Evaluator(ConditionEvaluator):
+        return TerminationStatus.NONE
 
-        def __init__(self, dependency: "Dependency"):
-            self._dependency = dependency
-            self._evaluated_state = ConditionState.NOT_EVALUATED
+    def stop(self):
+        pass
 
-        def evaluate(self) -> bool:
-            instances, _ = taro.client.read_instances()
-            if not any(i for i in instances if self._dependency._dependency_match.matches(i)):
-                self._evaluated_state = ConditionState.UNSATISFIED
-                return False
-
-            self._evaluated_state = ConditionState.SATISFIED
-            return True
-
-        @property
-        def state(self) -> ConditionState:
-            return self._evaluated_state
+    @property
+    def stop_status(self):
+        return TerminationStatus.CANCELLED
 
 
-class Queue(Identifiable):
+class WaitingPhase(PhaseStep):
+    """
+    """
+
+    def __init__(self, phase_name, observable_conditions, timeout=0):
+        self._phase_name = phase_name
+        self._observable_conditions = observable_conditions
+        self._timeout = timeout
+        self._conditions_lock = Lock()
+        self._event = Event()
+        self._term_status = TerminationStatus.NONE
+
+    @property
+    def phase(self):
+        return Phase(self._phase_name, InstanceState.WAITING)
+
+    def execute(self):
+        for condition in self._observable_conditions:
+            condition.add_result_listener(self._result_observer)
+            condition.start_evaluating()
+
+        resolved = self._event.wait(self._timeout or None)
+        if not resolved:
+            self._term_status = TerminationStatus.TIMEOUT
+
+        self._stop_all()
+        return self._term_status
+
+    def _result_observer(self, *_):
+        wait = False
+        with self._conditions_lock:
+            for condition in self._observable_conditions:
+                if not condition.result:
+                    wait = True
+                elif not condition.result.success:
+                    self._term_status = TerminationStatus.UNSATISFIED
+                    wait = False
+                    break
+
+        if not wait:
+            self._event.set()
+
+    def stop(self):
+        self._stop_all()
+        self._event.set()
+
+    @property
+    def stop_status(self):
+        return TerminationStatus.CANCELLED
+
+    def _stop_all(self):
+        for condition in self._observable_conditions:
+            condition.stop()
+
+
+class ConditionResult(Enum):
+    """
+    Enum representing the result of a condition evaluation.
+
+    Attributes:
+        NONE: The condition has not been evaluated yet.
+        SATISFIED: The condition is satisfied.
+        UNSATISFIED: The condition is not satisfied.
+        EVALUATION_ERROR: The condition could not be evaluated due to an error in the evaluation logic.
+    """
+    NONE = (auto(), False)
+    SATISFIED = (auto(), True)
+    UNSATISFIED = (auto(), False)
+    EVALUATION_ERROR = (auto(), False)
+
+    def __new__(cls, value, success):
+        obj = object.__new__(cls)
+        obj._value_ = value
+        obj.success = success
+        return obj
+
+    def __bool__(self):
+        return self != ConditionResult.NONE
+
+
+class ObservableCondition(ABC):
+    """
+    Abstract base class representing a (child) waiter associated with a specific (parent) pending object.
+
+    A waiter is designed to be held by a job instance, enabling the job to enter its waiting phase
+    before actual execution. This allows for synchronization between different parts of the system.
+    Depending on the parent waiting, the waiter can either be manually released, or all associated
+    waiters can be released simultaneously when the main condition of the waiting is met.
+
+    TODO:
+    1. Add notifications to this class
+    """
+
+    @abstractmethod
+    def start_evaluation(self) -> None:
+        """
+        Instructs the waiter to begin waiting on its associated condition.
+
+        When invoked by a job instance, the job enters its pending phase, potentially waiting for
+        the overarching pending condition to be met or for a manual release.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def result(self):
+        """
+        Returns:
+            ConditionResult: The result of the evaluation or NONE if not yet evaluated.
+        """
+        pass
+
+    @abstractmethod
+    def add_result_listener(self, listener):
+        pass
+
+    @abstractmethod
+    def remove_result_listener(self, listener):
+        pass
+
+    def stop(self):
+        pass
+
+
+class Queue:
 
     @abstractmethod
     def create_waiter(self, job_instance, state_on_dequeue):
@@ -434,14 +300,14 @@ class ExecutionGroupLimit:
 
 class ExecutionQueue(Queue, InstancePhaseEventObserver):
 
-    def __init__(self, execution_group, max_executions, queue_locker=lock.default_queue_locker(),
+    def __init__(self, queue_id, max_executions, queue_locker=lock.default_queue_locker(),
                  state_receiver_factory=PhaseReceiver):
-        super().__init__("QUEUE", f"{execution_group}<={max_executions}")
-        if not execution_group:
-            raise ValueError('Execution group must be specified')
+        super().__init__("QUEUE", f"{queue_id}<={max_executions}")
+        if not queue_id:
+            raise ValueError('Queue ID must be specified')
         if max_executions < 1:
             raise ValueError('Max executions must be greater than zero')
-        self._group = execution_group
+        self._queue_id = queue_id
         self._max_executions = max_executions
         self._locker = queue_locker
         self._state_receiver_factory = state_receiver_factory
@@ -454,7 +320,7 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
 
         self._parameters = (
             ('coord', 'execution_queue'),
-            ('execution_group', execution_group),
+            ('execution_group', queue_id),
             ('max_executions', max_executions)
         )
 
