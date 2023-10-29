@@ -2,27 +2,27 @@ import datetime
 
 import pytest
 
-from tarotools.taro.run import PhaseTransition, Phase, StandardPhase, RunState, Lifecycle
+from tarotools.taro.run import PhaseTransition, Phase, StandardPhase, RunState, Lifecycle, TerminationStatus
+from tarotools.taro.util import utc_now
+
+PENDING = Phase("PENDING", RunState.PENDING)
+EXECUTING = Phase("EXECUTING", RunState.EXECUTING)
 
 
 @pytest.fixture
-def sut():
-    base = datetime.datetime(2023, 1, 1)
-
+def sut() -> Lifecycle:
     # Initial transition
+    base = datetime.datetime(2023, 1, 1)
     init_transition = PhaseTransition(StandardPhase.INIT.value, base)
     lifecycle = Lifecycle(init_transition)
 
-    # Adding more transitions
     # 10 minutes after initialization, it goes to PENDING state
-    lifecycle.add_transition(PhaseTransition(Phase("PENDING", RunState.PENDING), base + datetime.timedelta(minutes=10)))
-
+    lifecycle.add_transition(PhaseTransition(PENDING, base + datetime.timedelta(minutes=10)))
     # 20 minutes after initialization, it goes to EXECUTING state
-    lifecycle.add_transition(
-        PhaseTransition(Phase("EXECUTING", RunState.EXECUTING), base + datetime.timedelta(minutes=20)))
-
+    lifecycle.add_transition(PhaseTransition(EXECUTING, base + datetime.timedelta(minutes=20)))
     # 50 minutes after initialization, it terminates
-    lifecycle.add_transition(PhaseTransition(StandardPhase.TERMINAL.value, base + datetime.timedelta(minutes=50)))
+    lifecycle.add_transition(PhaseTransition(StandardPhase.TERMINAL.value, base + datetime.timedelta(minutes=50)),
+                             termination_status=TerminationStatus.COMPLETED)
 
     return lifecycle
 
@@ -30,10 +30,35 @@ def sut():
 def test_phases(sut):
     assert sut.phases == [
         StandardPhase.INIT.value,
-        Phase("PENDING", RunState.PENDING),
-        Phase("EXECUTING", RunState.EXECUTING),
+        PENDING,
+        EXECUTING,
         StandardPhase.TERMINAL.value
     ]
+    assert sut.phase == StandardPhase.TERMINAL.value
+    assert sut.phase_count == 4
+
+
+def test_ordinal(sut):
+    assert sut.get_ordinal(PENDING) == 2
+
+
+def test_transitions(sut):
+    assert sut.transitioned_at(EXECUTING) == datetime.datetime(2023, 1, 1, 0, 20)
+    assert sut.last_transition_at == datetime.datetime(2023, 1, 1, 0, 50)
+
+
+def test_states(sut):
+    assert sut.state_first_at(RunState.EXECUTING) == datetime.datetime(2023, 1, 1, 0, 20)
+    assert sut.state_last_at(RunState.ENDED) == datetime.datetime(2023, 1, 1, 0, 50)
+    assert sut.contains_state(RunState.CREATED)
+    assert not sut.contains_state(RunState.IN_QUEUE)
+    assert sut.created_at == datetime.datetime(2023, 1, 1, 0, 0)
+    assert sut.executed_at == datetime.datetime(2023, 1, 1, 0, 20)
+    assert sut.ended_at == datetime.datetime(2023, 1, 1, 0, 50)
+
+
+def test_current_phase(sut):
+    assert sut.phase == StandardPhase.TERMINAL.value
 
 
 def test_phase_run(sut):
@@ -41,6 +66,11 @@ def test_phase_run(sut):
     assert init_phase_run.started_at == datetime.datetime(2023, 1, 1)
     assert init_phase_run.ended_at == datetime.datetime(2023, 1, 1, 0, 10)
     assert init_phase_run.execution_time == datetime.timedelta(minutes=10)
+
+
+def test_termination(sut):
+    assert sut.is_terminated
+    assert not Lifecycle(PhaseTransition(StandardPhase.INIT.value, utc_now())).is_terminated
 
 
 def test_execution_time(sut):

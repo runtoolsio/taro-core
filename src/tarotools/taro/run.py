@@ -193,6 +193,9 @@ class Lifecycle:
         if new_transition.phase == StandardPhase.NONE or new_transition.phase == self.phase:
             return False
 
+        if new_transition.phase.state == RunState.ENDED and not termination_status:
+            raise ValueError("Termination status is mandatory for ended state phase")
+
         if self._transitions:
             last_phase_run = self._phase_runs[-1]
             ended_at = new_transition.transitioned
@@ -247,7 +250,7 @@ class Lifecycle:
     def get_ordinal(self, phase: Phase) -> int:
         for index, current_phase in enumerate(self._transitions.keys()):
             if current_phase == phase:
-                return index
+                return index + 1
         raise ValueError(f"Phase {phase} not found in lifecycle")
 
     @property
