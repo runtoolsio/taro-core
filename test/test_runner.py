@@ -5,10 +5,10 @@ import time
 from threading import Thread
 
 import tarotools.taro
-from tarotools.taro import ProcessExecution, JobInstance
+from tarotools.taro import ProcessExecution, JobInstance, TerminationStatus as ExSt
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.coordination import Latch
-from tarotools.taro.jobs.execution import TerminationStatus as ExSt, ExecutionError
+from tarotools.taro.jobs.lifecycle import ExecutionError
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.observer import TestOutputObserver
 
@@ -85,7 +85,7 @@ def test_error():
 
     assert instance.lifecycle.phase == ExSt.ERROR
     assert isinstance(instance.exec_error, ExecutionError)
-    assert instance.exec_error.exec_state == ExSt.ERROR
+    assert instance.exec_error.termination_status == ExSt.ERROR
     assert instance.exec_error.unexpected_error == exception
 
 

@@ -9,8 +9,7 @@ from dataclasses import dataclass
 from datetime import timezone, time, timedelta
 from typing import Dict, Any, Set, Iterable, Optional
 
-from tarotools.taro.jobs.execution import TerminationStatusFlag
-from tarotools.taro.jobs.instance import LifecycleEvent, InstancePhase
+from tarotools.taro.jobs.lifecycle import TerminationStatusFlag, RunState, Phase
 from tarotools.taro.util import MatchingStrategy, and_, or_, is_empty, parse, single_day_range, days_range, \
     format_dt_iso, remove_empty_values, to_list
 
@@ -146,24 +145,33 @@ class IntervalCriteria:
         ValueError: If neither 'from_dt' nor 'to_dt' is provided or if 'event' is not provided.
     """
 
-    def __init__(self, event: LifecycleEvent, from_dt=None, to_dt=None, *, include_to=True):
-        if not event:
-            raise ValueError('Interval criteria event must be provided')
+    def __init__(self, run_state: RunState, from_dt=None, to_dt=None, *, include_to=True):
+        if not run_state:
+            raise ValueError('Interval criteria run state must be provided')
         if not from_dt and not to_dt:
             raise ValueError('Interval cannot be empty')
 
-        self._event = event
+        self._event = run_state
         self._from_dt = from_dt
         self._to_dt = to_dt
         self._include_to = include_to
 
     @classmethod
     def from_dict(cls, data):
-        event = LifecycleEvent.decode(data['event'])
+        event = RunState[data['run_state']]
         from_dt = data.get("from_dt", None)
         to_dt = data.get("to_dt", '')
         include_to = data['include_to']
         return cls(event, from_dt, to_dt, include_to=include_to)
+
+    def to_dict(self, include_empty=True) -> Dict[str, Any]:
+        d = {
+            "run_state": str(self.run_state),
+            "from_dt": format_dt_iso(self.from_dt),
+            "to_dt": format_dt_iso(self.to_dt),
+            "include_to": self.include_to,
+        }
+        return remove_empty_values(d) if include_empty else d
 
     @classmethod
     def to_utc(cls, event, from_val, to_val):
@@ -247,7 +255,7 @@ class IntervalCriteria:
         return cls.days_interval(event, -7, to_utc=to_utc)
 
     @property
-    def event(self):
+    def run_state(self):
         return self._event
 
     @property
@@ -266,7 +274,7 @@ class IntervalCriteria:
         return self.matches(lifecycle)
 
     def matches(self, lifecycle):
-        event_dt = self.event(lifecycle)
+        event_dt = self.run_state(lifecycle)
         if not event_dt:
             return False
         if self.from_dt and event_dt < self.from_dt:
@@ -281,17 +289,8 @@ class IntervalCriteria:
 
         return True
 
-    def to_dict(self, include_empty=True) -> Dict[str, Any]:
-        d = {
-            "event": self.event.encode(),
-            "from_dt": format_dt_iso(self.from_dt),
-            "to_dt": format_dt_iso(self.to_dt),
-            "include_to": self.include_to,
-        }
-        return remove_empty_values(d) if include_empty else d
-
     def __str__(self):
-        return f"Event: {self.event}, From: {self.from_dt}, To: {self.to_dt}, Include To: {self.include_to}"
+        return f"Event: {self.run_state}, From: {self.from_dt}, To: {self.to_dt}, Include To: {self.include_to}"
 
 
 class StateCriteria:
@@ -314,7 +313,7 @@ class StateCriteria:
     """
 
     def __init__(self, *,
-                 phases: Set[InstancePhase] = (),
+                 phases: Set[Phase] = (),
                  flag_groups: Iterable[Set[TerminationStatusFlag]] = (),
                  warning: Optional[bool] = None):
         self.phases = phases

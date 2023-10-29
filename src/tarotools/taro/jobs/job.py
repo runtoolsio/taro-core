@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Dict, Any, List, Optional
 
-from tarotools.taro.jobs.execution import TerminationStatus
+from tarotools.taro.jobs.lifecycle import TerminationStatus
 from tarotools.taro.util import MatchingStrategy, format_dt_iso
 
 

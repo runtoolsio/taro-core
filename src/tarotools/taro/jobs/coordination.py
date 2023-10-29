@@ -5,11 +5,10 @@ from enum import Enum, auto
 from threading import Condition, Event, Lock
 
 from tarotools import taro
-from tarotools.taro import TerminationStatus
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.criteria import IDMatchCriteria, StateCriteria, InstanceMatchCriteria
 from tarotools.taro.jobs.instance import JobInstances, InstancePhase
-from tarotools.taro.jobs.lifecycle import PhaseStep, InstanceState, Phase
+from tarotools.taro.jobs.lifecycle import PhaseStep, RunState, Phase, TerminationStatus
 from tarotools.taro.listening import PhaseReceiver, InstancePhaseEventObserver
 
 log = logging.getLogger(__name__)
@@ -27,9 +26,9 @@ class ApprovalPhase(PhaseStep):
 
     @property
     def phase(self):
-        return Phase(self._name, InstanceState.PENDING)
+        return Phase(self._name, RunState.PENDING)
 
-    def execute(self) -> TerminationStatus:
+    def run(self) -> TerminationStatus:
         resolved = self._event.wait(self._timeout or None)
         if resolved:
             return TerminationStatus.NONE
@@ -57,13 +56,13 @@ class NoOverlapPhase(PhaseStep):
 
     @property
     def phase(self):
-        return Phase(self._phase_name, InstanceState.EVALUATING)
+        return Phase(self._phase_name, RunState.EVALUATING)
 
     @property
     def parameters(self):
         return self._parameters
 
-    def execute(self):
+    def run(self):
         instances, _ = taro.client.read_instances()
         # TODO Check No instance with same overlap ID in protected phase
         if any(i for i in instances if i.id != self.instance.id and self._phase_group.matches(i)):
@@ -91,7 +90,7 @@ class DependencyPhase(PhaseStep):
 
     @property
     def phase(self):
-        return Phase(self._phase_name, InstanceState.EVALUATING)
+        return Phase(self._phase_name, RunState.EVALUATING)
 
     @property
     def dependency_match(self):
@@ -101,7 +100,7 @@ class DependencyPhase(PhaseStep):
     def parameters(self):
         return self._parameters
 
-    def execute(self):
+    def run(self):
         instances, _ = taro.client.read_instances()
         if not any(i for i in instances if self._dependency_match.matches(i)):
             return TerminationStatus.UNSATISFIED
@@ -130,9 +129,9 @@ class WaitingPhase(PhaseStep):
 
     @property
     def phase(self):
-        return Phase(self._phase_name, InstanceState.WAITING)
+        return Phase(self._phase_name, RunState.WAITING)
 
-    def execute(self):
+    def run(self):
         for condition in self._observable_conditions:
             condition.add_result_listener(self._result_observer)
             condition.start_evaluating()

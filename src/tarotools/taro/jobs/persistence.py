@@ -228,6 +228,7 @@ def close():
 
 
 def _sort_key(sort: SortCriteria):
+    """TODO To remove?"""
     def key(j):
         if sort == SortCriteria.CREATED:
             return j.lifecycle.transitioned_at(InstancePhase.CREATED)

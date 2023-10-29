@@ -109,19 +109,19 @@ def test_interval(sut):
     sut.store_instances(j(2, created=dt(2023, 4, 22), completed=dt(2023, 4, 22, 23, 59, 59)))
     sut.store_instances(j(3, created=dt(2023, 4, 22), completed=dt(2023, 4, 22, 23, 59, 58)))
 
-    ic = IntervalCriteria(event=LifecycleEvent.ENDED, from_dt=dt(2023, 4, 23))
+    ic = IntervalCriteria(run_state=LifecycleEvent.ENDED, from_dt=dt(2023, 4, 23))
     jobs = sut.read_instances(InstanceMatchCriteria(interval_criteria=ic))
     assert jobs.job_ids == ['j1']
 
-    ic = IntervalCriteria(event=LifecycleEvent.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59))
+    ic = IntervalCriteria(run_state=LifecycleEvent.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59))
     jobs = sut.read_instances(InstanceMatchCriteria(interval_criteria=ic))
     assert sorted(jobs.job_ids) == ['j2', 'j3']
 
-    ic = IntervalCriteria(event=LifecycleEvent.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59), include_to=False)
+    ic = IntervalCriteria(run_state=LifecycleEvent.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59), include_to=False)
     jobs = sut.read_instances(InstanceMatchCriteria(interval_criteria=ic))
     assert jobs.job_ids == ['j3']
 
-    ic = IntervalCriteria(event=LifecycleEvent.ENDED, from_dt=dt(2023, 4, 22, 23, 59, 59), to_dt=dt(2023, 4, 23))
+    ic = IntervalCriteria(run_state=LifecycleEvent.ENDED, from_dt=dt(2023, 4, 22, 23, 59, 59), to_dt=dt(2023, 4, 23))
     jobs = sut.read_instances(InstanceMatchCriteria(interval_criteria=ic))
     assert sorted(jobs.job_ids) == ['j1', 'j2']
 

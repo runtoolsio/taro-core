@@ -46,18 +46,14 @@ State lock
 import copy
 import logging
 from collections import deque, Counter
-from dataclasses import dataclass
-from threading import RLock
-from typing import List, Union, Tuple, Optional
+from typing import List, Union, Tuple
 
 from tarotools.taro import util
-from tarotools.taro.jobs import lock
-from tarotools.taro.jobs.coordination import Reject, Wait, Continue, CompositeCoord
-from tarotools.taro.jobs.execution import ExecutionError, TerminationStatus, ExecutionOutputObserver, \
-    Flag, UnexpectedStateError
+from tarotools.taro.jobs.execution import ExecutionOutputObserver
 from tarotools.taro.jobs.instance import JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, \
     InstancePhaseNotification, \
-    InstanceOutputNotification, InstanceWarningNotification, RunnableJobInstance, MutableInstanceLifecycle
+    InstanceOutputNotification, InstanceWarningNotification, RunnableJobInstance
+from tarotools.taro.jobs.lifecycle import Phaser, MutableLifecycle, TerminationStatus, Flag, ExecutionError
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
 log = logging.getLogger(__name__)
@@ -69,28 +65,20 @@ _warning_observers = InstanceWarningNotification(logger=log)
 
 class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
-    def __init__(self, job_id, execution, coordinations=(), coord_locker=lock.default_queue_locker(),
-                 *, instance_id=None, **user_params):
+    def __init__(self, job_id, phase_steps, *, instance_id=None, **user_params):
         self._id = JobInstanceID(job_id, instance_id or util.unique_timestamp_hex())
-        self._execution = execution
-        self._coord = CompositeCoord(*coordinations) if coordinations else None
-        parameters = (execution.parameters or ()) + self._coord.parameters if self._coord else ()
+        self._phases = phase_steps
+        self._phaser = Phaser(MutableLifecycle(), phase_steps)
+        parameters = ()  # TODO
         self._metadata = JobInstanceMetadata(self._id, parameters, user_params)
-        self._coord_locker = coord_locker
-        self._lifecycle = MutableInstanceLifecycle()
-        self._state_lock = RLock()
         self._last_output = deque(maxlen=10)  # TODO Max len configurable
         self._error_output = deque(maxlen=1000)  # TODO Max len configurable
         self._executing = False
-        self._stopped_or_interrupted = False
         self._exec_error = None
         self._warnings = Counter()
         self._state_notification = InstancePhaseNotification(log, _state_observers)
         self._warning_notification = InstanceWarningNotification(log, _warning_observers)
         self._output_notification = InstanceOutputNotification(log, _output_observers)
-
-        # This will execute `create_snapshot` with not fully initialized instances
-        self._change_state(TerminationStatus.CREATED)
 
     def _log(self, event: str, msg: str = '', *params):
         return ("event=[{}] instance=[{}] " + msg).format(event, self._id, *params)
@@ -105,7 +93,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
     @property
     def lifecycle(self):
-        return self._lifecycle
+        return self._phaser.lifecycle
 
     @property
     def tracking(self):
@@ -135,7 +123,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
         with self._state_lock:
             return JobInst(
                 self.metadata,
-                copy.deepcopy(self._lifecycle),
+                copy.deepcopy(self.lifecycle),
                 self.tracking.copy() if self.tracking else None,
                 self.status,
                 self.error_output,
@@ -172,11 +160,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
         Due to synchronous design there is a small window when an execution can be stopped before it is started.
         All execution implementations must cope with such scenario.
         """
-        self._stopped_or_interrupted = True
-
-        self._coord.release()
-        if self._executing:
-            self._execution.stop()
+        self._phaser.stop()
 
     def interrupted(self):
         """
@@ -184,11 +168,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
         Due to synchronous design there is a small window when an execution can be interrupted before it is started.
         All execution implementations must cope with such scenario.
         """
-        self._stopped_or_interrupted = True
-
-        self._coord.release()
-        if self._executing:
-            self._execution.interrupted()
+        self._phaser.stop()  # TODO Interrupt
 
     def add_warning(self, warning):
         self._warnings.update([warning.name])
@@ -197,119 +177,26 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
                                               WarnEventCtx(warning, self._warnings[warning.name]))
 
     def run(self):
-        if self._lifecycle.phase != TerminationStatus.CREATED:
-            raise UnexpectedStateError("The run method can be called only once")
-
-        try:
-            coordinated = self._coordinate()
-        except Exception as e:
-            log.error(self._log('coord_error'), exc_info=e)
-            self._change_state(TerminationStatus.ERROR)
-            return
-
-        if coordinated:
-            self._executing = True
-        else:
-            return
-
         # Forward output from execution to the job instance for the instance's output listeners
         self._execution.add_output_observer(self)
 
         try:
-            new_state = self._execution.execute()
-            self._change_state(new_state)
-        except Exception as e:
-            exec_error = e if isinstance(e, ExecutionError) else ExecutionError.from_unexpected_error(e)
-            self._change_state(exec_error.exec_state, exec_error)
-        except KeyboardInterrupt:
-            log.warning(self._log('keyboard_interruption'))
-            # Assuming child processes received SIGINT, TODO different state on other platforms?
-            self._change_state(TerminationStatus.INTERRUPTED)
-            raise
-        except SystemExit as e:
-            # Consider UNKNOWN (or new state DETACHED?) if there is possibility the execution is not completed
-            state = TerminationStatus.COMPLETED if e.code == 0 else TerminationStatus.FAILED
-            self._change_state(state)
-            raise
+            self._phaser.run()
         finally:
             self._execution.remove_output_observer(self)
 
-    def _coordinate(self) -> bool:
-        if not self._coord:
-            return True
+    def _phase_change(self, prev_phase, new_phase, ordinal):
+        if self._phaser.run_error:
+            if self._phaser.termination_status == TerminationStatus.ERROR:
+                log.exception(self._log('unexpected_error', "reason=[{}]", self._phaser.run_error))
+            else:
+                log.warning(self._log('job_not_completed', "reason=[{}]", self._phaser.run_error))
 
-        @dataclass
-        class ContinueRunning(Continue):
-            state = TerminationStatus.RUNNING
+        level = logging.WARN if self._phaser.termination_status.has_flag(Flag.NONSUCCESS) else logging.INFO
+        log.log(level, self._log('phase_changed', "prev_phase=[{}] new_phase=[{}] ordinal=[{}]",
+                                 prev_phase.name, new_phase.name, ordinal))
 
-        while True:
-            with self._coord_locker() as coord_lock:
-                if self._stopped_or_interrupted:
-                    directive = Reject(TerminationStatus.CANCELLED)
-                else:
-                    directive = self._coord.coordinate(self)
-
-                    if isinstance(directive, Continue):
-                        directive = ContinueRunning()
-
-                state_lock_acquired = False
-                if isinstance(directive, Wait) and self.lifecycle.phase == directive.state:
-                    # Waiting state already set and observers notified, now we can wait
-                    coord_lock.unlock()
-                    self._coord.wait()
-                    new_job_inst = None
-                else:
-                    # Shouldn't notify listener whilst holding the coord lock, so first we only set the state...
-                    self._state_lock.acquire()
-                    state_lock_acquired = True
-                    try:
-                        new_job_inst: Optional[JobInst] = self._change_state(directive.state, notify=False)
-                    except Exception:
-                        self._state_lock.release()
-                        raise
-
-            try:
-                if new_job_inst:
-                    # ...and now, when the coord lock is released (state lock still in hold), we can notify.
-                    # If signal is wait, the cycle will repeat and the instance will finally start waiting
-                    # (unless the condition for waiting changed meanwhile)
-                    self._state_notification.notify_all_phase_changed(new_job_inst)
-            finally:
-                if state_lock_acquired:
-                    self._state_lock.release()
-
-            if isinstance(directive, Wait):
-                continue
-            if isinstance(directive, Reject):
-                return False
-
-            return True
-
-    def _change_state(self, new_state: TerminationStatus, exec_error: ExecutionError = None, *, notify=True) \
-            -> Optional[JobInst]:
-        with self._state_lock:
-            # Locking here will ensure consistency between the execution error field and execution state
-            # when creating the snapshot
-            if exec_error:
-                self._exec_error = exec_error
-                if exec_error.exec_state == TerminationStatus.ERROR or exec_error.unexpected_error:
-                    log.exception(self._log('job_error', "reason=[{}]", exec_error), exc_info=True)
-                else:
-                    log.warning(self._log('job_not_completed', "reason=[{}]", exec_error))
-
-            prev_state = self._lifecycle.phase
-            if not self._lifecycle.new_phase(new_state):
-                return None
-
-            level = logging.WARN if new_state.has_flag(Flag.NONSUCCESS) else logging.INFO
-            log.log(level, self._log('job_state_changed', "prev_state=[{}] new_state=[{}]",
-                                     prev_state.name, new_state.name))
-            new_job_inst = self.create_snapshot()
-
-            if notify:
-                self._state_notification.notify_all_phase_changed(new_job_inst)
-
-            return new_job_inst
+        self._state_notification.notify_all_phase_changed(self.create_snapshot())
 
     def execution_output_update(self, output, is_error):
         """Executed when new output line is available"""

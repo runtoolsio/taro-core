@@ -26,9 +26,9 @@ from typing import NamedTuple, Dict, Any, Optional, List, Tuple, Iterable
 
 from tarotools.taro import util
 from tarotools.taro.jobs.criteria import IDMatchCriteria
-from tarotools.taro.jobs.execution import ExecutionError, TerminationStatus
+from tarotools.taro.jobs.lifecycle import TerminationStatus, ExecutionError
 from tarotools.taro.jobs.track import TrackedTaskInfo
-from tarotools.taro.util import is_empty, format_dt_iso, utc_now
+from tarotools.taro.util import is_empty, format_dt_iso
 from tarotools.taro.util.observer import Notification, DEFAULT_OBSERVER_PRIORITY
 
 
@@ -170,26 +170,6 @@ class InstanceLifecycle:
     def __repr__(self) -> str:
         return "{}({!r})".format(
             self.__class__.__name__, self._phase_changes)
-
-
-class MutableInstanceLifecycle(InstanceLifecycle):
-    """
-    Mutable version of `InstanceLifecycle`
-    """
-
-    def __init__(self, *phase_changes: Tuple[InstancePhase, datetime.datetime]):
-        super().__init__(*phase_changes)
-
-    def new_phase(self, new_phase: InstancePhase, terminal_status=TerminationStatus.NONE) -> bool:
-        if not new_phase or new_phase == InstancePhase.NONE or self.phase == new_phase:
-            return False
-
-        if not new_phase.is_after(self.phase):
-            raise ValueError(f"Invalid phase transition from {self.phase} to {new_phase}")
-
-        self._phase_changes[new_phase] = utc_now()
-        self._terminal_status = terminal_status
-        return True
 
 
 class JobInstanceID(NamedTuple):
@@ -390,7 +370,7 @@ class JobInstance(abc.ABC):
         If no errors occurred during the execution of the job, this property returns None.
 
         Returns:
-            ExecutionError: The details of the execution error or None if the job executed successfully.
+            tarotools.taro.jobs.lifecycle.ExecutionError: The details of the execution error or None if the job executed successfully.
         """
 
     @property
@@ -765,7 +745,7 @@ class JobInst:
         If no errors occurred during the execution of the job, this property returns None.
 
         Returns:
-            ExecutionError: The details of the execution error or None if the job executed successfully.
+            tarotools.taro.jobs.lifecycle.ExecutionError: The details of the execution error or None if the job executed successfully.
         """
         return self._exec_error
 

@@ -12,8 +12,9 @@ from queue import Queue
 from threading import Condition
 from typing import Tuple, List, Callable
 
-from tarotools.taro.jobs.execution import TerminationStatus, ExecutionError
+from tarotools.taro import TerminationStatus
 from tarotools.taro.jobs.instance import JobInst, InstanceOutputObserver, InstancePhaseObserver, InstancePhase
+from tarotools.taro.jobs.lifecycle import ExecutionError
 
 log = logging.getLogger(__name__)
 

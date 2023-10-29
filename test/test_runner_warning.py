@@ -6,9 +6,8 @@ import pytest
 
 import tarotools.taro
 import tarotools.taro.jobs.runner as runner
-from tarotools.taro import Warn
+from tarotools.taro import Warn, TerminationStatus
 from tarotools.taro.jobs import lock
-from tarotools.taro.jobs.execution import TerminationStatus
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.testutil import TestWarningObserver
 

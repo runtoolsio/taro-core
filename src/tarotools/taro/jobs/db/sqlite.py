@@ -9,13 +9,14 @@ import sqlite3
 from datetime import timezone
 from typing import List
 
-from tarotools.taro import cfg, InstanceLifecycle
+from tarotools.taro import cfg, InstanceLifecycle, TerminationStatus
 from tarotools.taro import paths
-from tarotools.taro.jobs.execution import TerminationStatus, ExecutionError, Flag, \
+from tarotools.taro.jobs.execution import Flag, \
     Phase
 from tarotools.taro.jobs.instance import (InstancePhaseObserver, JobInst, JobInstances, JobInstanceID, LifecycleEvent,
                                           JobInstanceMetadata, InstancePhase)
 from tarotools.taro.jobs.job import JobStats
+from tarotools.taro.jobs.lifecycle import ExecutionError
 from tarotools.taro.jobs.persistence import SortCriteria
 from tarotools.taro.jobs.track import TrackedTaskInfo
 from tarotools.taro.util import MatchingStrategy, format_dt_sql, parse_dt_sql
@@ -75,9 +76,9 @@ def _build_where_clause(instance_match, alias=''):
     int_criteria = instance_match.interval_criteria
     int_conditions = []
     for c in int_criteria:
-        if c.event == LifecycleEvent.CREATED:
+        if c.run_state == LifecycleEvent.CREATED:
             e = f'{alias}created'
-        elif c.event == LifecycleEvent.ENDED:
+        elif c.run_state == LifecycleEvent.ENDED:
             e = f'{alias}ended'
         else:
             continue

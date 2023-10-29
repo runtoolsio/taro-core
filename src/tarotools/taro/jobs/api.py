@@ -12,10 +12,9 @@ import logging
 from abc import ABC, abstractmethod
 from json import JSONDecodeError
 
-from tarotools.taro import util
 from tarotools.taro.jobs.criteria import InstanceMatchCriteria
-from tarotools.taro.jobs.execution import TerminationStatus, Flag
 from tarotools.taro.jobs.instance import JobInstanceManager
+from tarotools.taro.jobs.lifecycle import util, Flag, TerminationStatus
 from tarotools.taro.socket import SocketServer
 
 log = logging.getLogger(__name__)

@@ -7,8 +7,8 @@ import pytest
 
 import tarotools.taro
 import tarotools.taro.jobs.runner as runner
+from tarotools.taro import TerminationStatus
 from tarotools.taro.jobs import lock
-from tarotools.taro.jobs.execution import TerminationStatus
 from tarotools.taro.jobs.instance import InstancePhaseObserver, JobInst
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.observer import TestPhaseObserver
