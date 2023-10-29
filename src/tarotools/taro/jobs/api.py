@@ -14,7 +14,7 @@ from json import JSONDecodeError
 
 from tarotools.taro.jobs.criteria import InstanceMatchCriteria
 from tarotools.taro.jobs.instance import JobInstanceManager
-from tarotools.taro.jobs.lifecycle import util, Flag, TerminationStatus
+from tarotools.taro.run import util, Flag, TerminationStatus
 from tarotools.taro.socket import SocketServer
 
 log = logging.getLogger(__name__)

@@ -49,11 +49,11 @@ from collections import deque, Counter
 from typing import List, Union, Tuple
 
 from tarotools.taro import util
-from tarotools.taro.jobs.execution import ExecutionOutputObserver
+from tarotools.taro.execution import ExecutionOutputObserver
 from tarotools.taro.jobs.instance import JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, \
     InstancePhaseNotification, \
     InstanceOutputNotification, InstanceWarningNotification, RunnableJobInstance
-from tarotools.taro.jobs.lifecycle import Phaser, MutableLifecycle, TerminationStatus, Flag, ExecutionError
+from tarotools.taro.run import Phaser, MutableLifecycle, TerminationStatus, Flag, ExecutionError
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
 log = logging.getLogger(__name__)

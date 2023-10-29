@@ -11,7 +11,7 @@ TODO: Remove execution prefix where appropriate
 import abc
 from typing import Tuple
 
-from tarotools.taro.jobs.lifecycle import TerminationStatus, PhaseStep, Phase, RunState
+from tarotools.taro.run import TerminationStatus, PhaseStep, Phase, RunState
 from tarotools.taro.util.observer import Notification
 
 

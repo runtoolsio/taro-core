@@ -17,10 +17,9 @@ from tarotools.taro.jobs.instance import JobInstanceID, JobInstance, JobInst, In
     InstanceWarningObserver, \
     WarnEventCtx, RunnableJobInstance, RunInNewThreadJobInstance, InstanceLifecycle
 from tarotools.taro.jobs.plugins import Plugin, PluginDisabledError
-from tarotools.taro.jobs.process import ProcessExecution
-from tarotools.taro.jobs.program import ProgramExecution
 from tarotools.taro.jobs.runner import RunnerJobInstance, RunnableJobInstance, register_state_observer
 from tarotools.taro.paths import lookup_file_in_config_path
+from tarotools.taro.process import ProcessExecution
 from tarotools.taro.util import format_timedelta, read_toml_file_flatten
 
 __version__ = "0.11.0"

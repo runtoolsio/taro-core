@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import timezone, time, timedelta
 from typing import Dict, Any, Set, Iterable, Optional
 
-from tarotools.taro.jobs.lifecycle import TerminationStatusFlag, RunState, Phase
+from tarotools.taro.run import TerminationStatusFlag, RunState, Phase
 from tarotools.taro.util import MatchingStrategy, and_, or_, is_empty, parse, single_day_range, days_range, \
     format_dt_iso, remove_empty_values, to_list
 

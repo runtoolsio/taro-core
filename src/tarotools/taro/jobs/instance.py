@@ -26,8 +26,8 @@ from typing import NamedTuple, Dict, Any, Optional, List, Tuple, Iterable
 
 from tarotools.taro import util
 from tarotools.taro.jobs.criteria import IDMatchCriteria
-from tarotools.taro.jobs.lifecycle import TerminationStatus, ExecutionError
 from tarotools.taro.jobs.track import TrackedTaskInfo
+from tarotools.taro.run import TerminationStatus, ExecutionError
 from tarotools.taro.util import is_empty, format_dt_iso
 from tarotools.taro.util.observer import Notification, DEFAULT_OBSERVER_PRIORITY
 

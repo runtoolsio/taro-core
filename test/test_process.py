@@ -8,7 +8,7 @@ from time import sleep
 import pytest
 
 from tarotools.taro import TerminationStatus, ExecutionError
-from tarotools.taro.jobs.process import ProcessExecution
+from tarotools.taro.process import ProcessExecution
 
 
 def test_exec():

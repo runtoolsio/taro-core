@@ -11,14 +11,14 @@ from typing import List
 
 from tarotools.taro import cfg, InstanceLifecycle, TerminationStatus
 from tarotools.taro import paths
-from tarotools.taro.jobs.execution import Flag, \
+from tarotools.taro.execution import Flag, \
     Phase
 from tarotools.taro.jobs.instance import (InstancePhaseObserver, JobInst, JobInstances, JobInstanceID, LifecycleEvent,
                                           JobInstanceMetadata, InstancePhase)
 from tarotools.taro.jobs.job import JobStats
-from tarotools.taro.jobs.lifecycle import ExecutionError
 from tarotools.taro.jobs.persistence import SortCriteria
 from tarotools.taro.jobs.track import TrackedTaskInfo
+from tarotools.taro.run import ExecutionError
 from tarotools.taro.util import MatchingStrategy, format_dt_sql, parse_dt_sql
 
 log = logging.getLogger(__name__)

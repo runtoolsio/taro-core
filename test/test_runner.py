@@ -8,7 +8,7 @@ import tarotools.taro
 from tarotools.taro import ProcessExecution, JobInstance, TerminationStatus as ExSt
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.coordination import Latch
-from tarotools.taro.jobs.lifecycle import ExecutionError
+from tarotools.taro.run import ExecutionError
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.observer import TestOutputObserver
 

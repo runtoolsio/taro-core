@@ -1,9 +1,12 @@
 """
-A run is an abstract concept consisting of a sequence of individual phase runs where each phase has its unique name
-and defines its run state. A terminated run has an information describing the cause of the termination in a form
-of one of the predefined termination statuses. This module has a class Phaser which implements the run concept
-by orchestrating provided phase implementations. The phaser expect an implementation of a phase to be an instance
-of the PhaseStep interface.
+A run is an abstract concept that consists of a sequence of individual phase runs. A 'run' refers to any sequence of
+phases, whether they are processes, programs, tasks, conditions, or other constructs, executed in a specific order.
+Each phase has a unique name and defines its run state, which determines the nature of the phase's activity during
+its run (like waiting, evaluating, executing, etc.). Phases operate in a predefined order; when one phase ends, the
+subsequent phase begins. However, if a phase ends and signals premature termination by providing a status other than
+'COMPLETED,' the next phase may not commence. Regardless of how the entire run finishes, the final phase must be a
+termination phase, and a termination status must be provided. This module includes a class, 'Phaser,' which represents
+the run concept by orchestrating the given phase steps. Each phase step represents an implementation of a phase.
 """
 
 import datetime

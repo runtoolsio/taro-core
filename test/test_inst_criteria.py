@@ -1,8 +1,8 @@
 from collections import Counter
 
 from tarotools.taro import TerminationStatus, Flag
+from tarotools.taro.execution import Phase
 from tarotools.taro.jobs.criteria import IntervalCriteria, StateCriteria
-from tarotools.taro.jobs.execution import Phase
 from tarotools.taro.jobs.instance import LifecycleEvent
 from tarotools.taro.test.inst import TestJobInstance
 

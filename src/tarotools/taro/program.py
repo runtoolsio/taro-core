@@ -11,9 +11,9 @@ from subprocess import Popen, PIPE
 from threading import Thread
 from typing import Union, Optional
 
-from tarotools.taro.jobs.execution import OutputExecution, \
+from tarotools.taro.execution import OutputExecution, \
     ExecutionOutputNotification
-from tarotools.taro.jobs.lifecycle import ExecutionError, TerminationStatus
+from tarotools.taro.run import ExecutionError, TerminationStatus
 
 USE_SHELL = False  # For testing only
 

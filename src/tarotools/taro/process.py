@@ -13,8 +13,8 @@ from multiprocessing.context import Process
 from queue import Full
 from typing import Union, Tuple
 
-from tarotools.taro.jobs.execution import OutputExecution, ExecutionOutputNotification
-from tarotools.taro.jobs.lifecycle import ExecutionError, TerminationStatus
+from tarotools.taro.execution import OutputExecution, ExecutionOutputNotification
+from tarotools.taro.run import ExecutionError, TerminationStatus
 
 log = logging.getLogger(__name__)
 

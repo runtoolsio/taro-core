@@ -8,8 +8,8 @@ from tarotools import taro
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.criteria import IDMatchCriteria, StateCriteria, InstanceMatchCriteria
 from tarotools.taro.jobs.instance import JobInstances, InstancePhase
-from tarotools.taro.jobs.lifecycle import PhaseStep, RunState, Phase, TerminationStatus
 from tarotools.taro.listening import PhaseReceiver, InstancePhaseEventObserver
+from tarotools.taro.run import PhaseStep, RunState, Phase, TerminationStatus
 
 log = logging.getLogger(__name__)
 

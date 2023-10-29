@@ -14,7 +14,7 @@ from typing import List
 
 from tarotools.taro import InstanceLifecycle, TerminationStatus
 from tarotools.taro.err import InvalidStateError
-from tarotools.taro.jobs.execution import OutputExecution
+from tarotools.taro.execution import OutputExecution
 from tarotools.taro.jobs.instance import InstancePhase
 from tarotools.taro.util import utc_now
 

@@ -14,7 +14,7 @@ from typing import Tuple, List, Callable
 
 from tarotools.taro import TerminationStatus
 from tarotools.taro.jobs.instance import JobInst, InstanceOutputObserver, InstancePhaseObserver, InstancePhase
-from tarotools.taro.jobs.lifecycle import ExecutionError
+from tarotools.taro.run import ExecutionError
 
 log = logging.getLogger(__name__)
 
