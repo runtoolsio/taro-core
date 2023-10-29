@@ -53,7 +53,7 @@ from tarotools.taro.execution import ExecutionOutputObserver
 from tarotools.taro.jobs.instance import JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, \
     InstancePhaseNotification, \
     InstanceOutputNotification, InstanceWarningNotification, RunnableJobInstance
-from tarotools.taro.run import Phaser, MutableLifecycle, TerminationStatus, Flag, ExecutionError
+from tarotools.taro.run import Phaser, Lifecycle, TerminationStatus, Flag, ExecutionError
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
 log = logging.getLogger(__name__)
@@ -68,7 +68,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
     def __init__(self, job_id, phase_steps, *, instance_id=None, **user_params):
         self._id = JobInstanceID(job_id, instance_id or util.unique_timestamp_hex())
         self._phases = phase_steps
-        self._phaser = Phaser(MutableLifecycle(), phase_steps)
+        self._phaser = Phaser(Lifecycle(), phase_steps)
         parameters = ()  # TODO
         self._metadata = JobInstanceMetadata(self._id, parameters, user_params)
         self._last_output = deque(maxlen=10)  # TODO Max len configurable

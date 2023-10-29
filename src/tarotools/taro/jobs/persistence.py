@@ -235,7 +235,7 @@ def _sort_key(sort: SortCriteria):
         if sort == SortCriteria.ENDED:
             return j.lifecycle.ended_at
         if sort == SortCriteria.TIME:
-            return j.lifecycle.execution_time
+            return j.lifecycle.total_executing_time
         raise ValueError(sort)
 
     return key
