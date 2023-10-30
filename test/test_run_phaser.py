@@ -33,10 +33,15 @@ def test_run_with_approval(sut):
     sut.prime()
     run_thread = Thread(target=sut.run)
     run_thread.start()
+    # The below code will be released once the run starts pending in the approval phase
+    wait_wrapper = sut.get_typed_phase_step(WaitWrapperStep, 'APPROVAL')
 
-    sut.get_typed_phase_step(WaitWrapperStep, 'APPROVAL').wrapped_step.approve()
+    wait_wrapper.wait(1)
+    assert sut.lifecycle.phase == Phase('APPROVAL', RunState.PENDING)
+    assert sut.lifecycle.state == RunState.PENDING
+
+    wait_wrapper.wrapped_step.approve()
     run_thread.join(1)
-
     assert (sut.lifecycle.phases ==
             [
                 StandardPhase.INIT.value,

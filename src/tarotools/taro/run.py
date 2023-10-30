@@ -244,6 +244,10 @@ class Lifecycle:
         return next(reversed(self._transitions.keys()), StandardPhase.NONE.value)
 
     @property
+    def state(self):
+        return self.phase.state
+
+    @property
     def phase_count(self):
         return len(self._transitions)
 
