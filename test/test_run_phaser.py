@@ -29,6 +29,23 @@ def sut():
     return phaser
 
 
+def test_run_with_approval(sut):
+    sut.prime()
+    run_thread = Thread(target=sut.run)
+    run_thread.start()
+
+    sut.get_typed_phase_step(WaitWrapperStep, 'APPROVAL').wrapped_step.approve()
+    run_thread.join(1)
+
+    assert (sut.lifecycle.phases ==
+            [
+                StandardPhase.INIT.value,
+                Phase('APPROVAL', RunState.PENDING),
+                Phase('EXEC', RunState.EXECUTING),
+                StandardPhase.TERMINAL.value
+            ])
+
+
 def test_empty_phaser():
     empty = Phaser([])
     empty.prime()
