@@ -51,6 +51,12 @@ def test_run_with_approval(sut):
             ])
 
 
+def test_post_prime(sut):
+    sut.prime()
+    assert sut.lifecycle.phase == StandardPhase.INIT.value
+    assert sut.lifecycle.state == RunState.CREATED
+
+
 def test_empty_phaser():
     empty = Phaser([])
     empty.prime()
