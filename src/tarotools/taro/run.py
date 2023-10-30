@@ -16,7 +16,7 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum, auto, EnumMeta
 from threading import Lock, Event
-from typing import Optional, List, Dict, Any, Set, TypeVar, Type
+from typing import Optional, List, Dict, Any, Set, TypeVar, Type, Callable
 
 from tarotools.taro import util
 from tarotools.taro.err import InvalidStateError
@@ -428,7 +428,7 @@ class Phaser:
     def __init__(self, steps, lifecycle=None, *, timestamp_generator=util.utc_now):
         self._name_to_step = unique_steps_to_dict(steps)
         self._timestamp_generator = timestamp_generator
-        self.transition_hook = None
+        self.transition_hook: Optional[Callable[[Phase, Phase, int], None]] = None
 
         self._phase_lock = Lock()
         # Guarded by the phase lock:

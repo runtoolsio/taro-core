@@ -8,12 +8,16 @@ from tarotools.taro.run import Phaser, StandardPhase, TerminationStatus, PhaseSt
 
 class ExecTestPhase(PhaseStep):
 
+    def __init__(self, name, *, fail=False):
+        self.name = name
+        self.fail = fail
+
     @property
     def phase(self):
-        return Phase('EXEC', RunState.EXECUTING)
+        return Phase(self.name, RunState.EXECUTING)
 
     def run(self):
-        pass
+        return TerminationStatus.FAILED if self.fail else TerminationStatus.NONE
 
     def stop(self):
         pass
@@ -25,24 +29,30 @@ class ExecTestPhase(PhaseStep):
 
 @pytest.fixture
 def sut():
-    phaser = Phaser([WaitWrapperStep(ApprovalPhase('APPROVAL')), ExecTestPhase()])
+    phaser = Phaser([ExecTestPhase('EXEC1'), ExecTestPhase('EXEC2')])
     return phaser
 
 
-def test_run_with_approval(sut):
-    sut.prime()
-    run_thread = Thread(target=sut.run)
+@pytest.fixture
+def sut_approve():
+    phaser = Phaser([WaitWrapperStep(ApprovalPhase('APPROVAL')), ExecTestPhase('EXEC')])
+    return phaser
+
+
+def test_run_with_approval(sut_approve):
+    sut_approve.prime()
+    run_thread = Thread(target=sut_approve.run)
     run_thread.start()
     # The below code will be released once the run starts pending in the approval phase
-    wait_wrapper = sut.get_typed_phase_step(WaitWrapperStep, 'APPROVAL')
+    wait_wrapper = sut_approve.get_typed_phase_step(WaitWrapperStep, 'APPROVAL')
 
     wait_wrapper.wait(1)
-    assert sut.lifecycle.phase == Phase('APPROVAL', RunState.PENDING)
-    assert sut.lifecycle.state == RunState.PENDING
+    assert sut_approve.lifecycle.phase == Phase('APPROVAL', RunState.PENDING)
+    assert sut_approve.lifecycle.state == RunState.PENDING
 
     wait_wrapper.wrapped_step.approve()
     run_thread.join(1)
-    assert (sut.lifecycle.phases ==
+    assert (sut_approve.lifecycle.phases ==
             [
                 StandardPhase.INIT.value,
                 Phase('APPROVAL', RunState.PENDING),
@@ -68,6 +78,12 @@ def test_empty_phaser():
     assert empty.lifecycle.termination_status == TerminationStatus.COMPLETED
 
 
+def test_stop_before_prime(sut):
+    sut.stop()
+    assert sut.lifecycle.phases == [StandardPhase.TERMINAL.value]
+    assert sut.termination_status == TerminationStatus.STOPPED
+
+
 def test_stop_before_run(sut):
     sut.prime()
     sut.stop()
@@ -75,21 +91,48 @@ def test_stop_before_run(sut):
     assert sut.termination_status == TerminationStatus.STOPPED
 
 
-def test_stop_before_prime(sut):
-    sut.stop()
-    assert sut.lifecycle.phases == [StandardPhase.TERMINAL.value]
-    assert sut.termination_status == TerminationStatus.STOPPED
-
-
-def test_stop_after_run(sut):
-    sut.prime()
-    run_thread = Thread(target=sut.run)
+def test_stop_in_run(sut_approve):
+    sut_approve.prime()
+    run_thread = Thread(target=sut_approve.run)
     run_thread.start()
     # The below code will be released once the run starts pending in the approval phase
-    sut.get_typed_phase_step(WaitWrapperStep, 'APPROVAL').wait(1)
+    sut_approve.get_typed_phase_step(WaitWrapperStep, 'APPROVAL').wait(1)
 
-    sut.stop()
+    sut_approve.stop()
     run_thread.join(1)  # Let the run end
-    assert (sut.lifecycle.phases ==
+    assert (sut_approve.lifecycle.phases ==
             [StandardPhase.INIT.value, Phase('APPROVAL', RunState.PENDING), StandardPhase.TERMINAL.value])
-    assert sut.termination_status == TerminationStatus.CANCELLED
+    assert sut_approve.termination_status == TerminationStatus.CANCELLED
+
+
+def test_premature_termination(sut):
+    sut.get_typed_phase_step(ExecTestPhase, 'EXEC1').fail = True
+    sut.prime()
+    sut.run()
+
+    assert sut.termination_status == TerminationStatus.FAILED
+    assert sut.lifecycle.termination_status == TerminationStatus.FAILED
+    assert (sut.lifecycle.phases ==
+            [
+                StandardPhase.INIT.value,
+                Phase('EXEC1', RunState.EXECUTING),
+                StandardPhase.TERMINAL.value
+            ])
+
+
+def test_transition_hook(sut):
+    transitions = []
+
+    def hook(*args):
+        transitions.append(args)
+
+    sut.transition_hook = hook
+
+    sut.prime()
+
+    assert len(transitions) == 1
+    assert transitions[0] == (StandardPhase.NONE.value, StandardPhase.INIT.value, 1)
+
+    sut.run()
+
+    assert len(transitions) == 4
