@@ -15,8 +15,8 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum, auto, EnumMeta
-from threading import Lock
-from typing import Optional, List, Dict, Any, Set
+from threading import Lock, Event
+from typing import Optional, List, Dict, Any, Set, TypeVar, Type
 
 from tarotools.taro import util
 from tarotools.taro.err import InvalidStateError
@@ -159,7 +159,7 @@ class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
 @dataclass(frozen=True)
 class PhaseTransition:
     phase: Phase
-    transitioned: datetime
+    transitioned: datetime.datetime
 
 
 @dataclass(frozen=True)
@@ -172,8 +172,8 @@ class PhaseRun:
 
 class Lifecycle:
     """
-    This class represents the lifecycle of an instance. A lifecycle consists of a chronological sequence of
-    lifecycle phases. Each phase has a timestamp that indicates when the transition to that phase occurred.
+    This class represents the lifecycle of a run. A lifecycle consists of a chronological sequence of phase transitions.
+    Each phase has a timestamp that indicates when the transition to that phase occurred.
     """
 
     def __init__(self, *transitions: PhaseTransition, termination_status=TerminationStatus.NONE):
@@ -190,7 +190,7 @@ class Lifecycle:
         1. Check phase name not already present
         2. Check termination status not already set
         """
-        if new_transition.phase == StandardPhase.NONE or new_transition.phase == self.phase:
+        if new_transition.phase == StandardPhase.NONE.value or new_transition.phase == self.phase:
             return False
 
         if new_transition.phase.state == RunState.ENDED and not termination_status:
@@ -241,7 +241,7 @@ class Lifecycle:
 
     @property
     def phase(self):
-        return next(reversed(self._transitions.keys()), StandardPhase.NONE)
+        return next(reversed(self._transitions.keys()), StandardPhase.NONE.value)
 
     @property
     def phase_count(self):
@@ -267,6 +267,10 @@ class Lifecycle:
                 return run
 
         return None
+
+    @property
+    def termination_status(self):
+        return self._termination_status
 
     def transitioned_at(self, phase: Phase) -> Optional[datetime.datetime]:
         phase_transition = self._transitions.get(phase)
@@ -348,11 +352,15 @@ class PhaseStep(ABC):
         pass
 
 
-class InitStep(PhaseStep):
+class NoOpsStep(PhaseStep):
+
+    def __init__(self, phase, stop_status):
+        self._phase = phase
+        self._stop_status = stop_status
 
     @property
     def phase(self):
-        return StandardPhase.INIT
+        return self._phase
 
     def run(self):
         pass
@@ -362,40 +370,81 @@ class InitStep(PhaseStep):
 
     @property
     def stop_status(self):
-        return TerminationStatus.STOPPED
+        return self._stop_status
 
 
-class TerminalStep(PhaseStep):
+class InitStep(NoOpsStep):
+
+    def __init__(self):
+        super().__init__(StandardPhase.INIT.value, TerminationStatus.STOPPED)
+
+
+class TerminalStep(NoOpsStep):
+
+    def __init__(self):
+        super().__init__(StandardPhase.TERMINAL.value, TerminationStatus.NONE)
+
+
+class WaitWrapperStep(PhaseStep):
+
+    def __init__(self, wrapped_step):
+        self.wrapped_step = wrapped_step
+        self._run_event = Event()
+
+    def wait(self, timeout):
+        self._run_event.wait(timeout)
 
     @property
     def phase(self):
-        return StandardPhase.TERMINAL
+        return self.wrapped_step.phase
 
     def run(self):
-        pass
+        self._run_event.set()
+        self.wrapped_step.run()
 
     def stop(self):
-        pass
+        self.wrapped_step.stop()
 
     @property
     def stop_status(self):
-        return TerminationStatus.NONE
+        return self.wrapped_step.stop_status
+
+
+def unique_steps_to_dict(steps):
+    name_to_step = {}
+    for step in steps:
+        if step.phase.name in name_to_step:
+            raise ValueError(f"Duplicate phase found: {step.phase.name}")
+        name_to_step[step.phase.name] = step
+    return name_to_step
 
 
 class Phaser:
 
-    def __init__(self, lifecycle, steps, *, timestamp_generator=util.utc_now):
-        self.transition_hook = None
-        self._steps = steps
+    def __init__(self, steps, lifecycle=None, *, timestamp_generator=util.utc_now):
+        self._name_to_step = unique_steps_to_dict(steps)
         self._timestamp_generator = timestamp_generator
+        self.transition_hook = None
 
         self._phase_lock = Lock()
         # Guarded by the phase lock:
-        self._lifecycle = lifecycle
+        self._lifecycle = lifecycle or Lifecycle()
         self._current_step = None
         self._abort = False
         self._run_error = None
         self._term_status = TerminationStatus.NONE
+
+    T = TypeVar('T')
+
+    def get_typed_phase_step(self, step_type: Type[T], phase_name: str) -> Optional[T]:
+        step = self._name_to_step.get(phase_name)
+        if step is None:
+            return None
+
+        if not isinstance(step, step_type):
+            raise TypeError(f"Expected step of type {step_type}, but got {type(step)} for phase '{phase_name}'")
+
+        return step
 
     @property
     def lifecycle(self):
@@ -421,7 +470,7 @@ class Phaser:
 
         term_status = None
         exc = None
-        for step in self._steps:
+        for step in self._name_to_step.values():
             with self._phase_lock:
                 if self._abort:
                     return
@@ -439,6 +488,7 @@ class Phaser:
 
             term_status, exc = self._run_handle_errors(step)
 
+        self._term_status = self._term_status or TerminationStatus.COMPLETED
         self._next_step(TerminalStep())
 
     def _run_handle_errors(self, step):
@@ -467,7 +517,7 @@ class Phaser:
 
         prev_phase = self._lifecycle.phase
         self._current_step = step
-        self._lifecycle.add_transition(PhaseTransition(step.phase, self._timestamp_generator), self._term_status)
+        self._lifecycle.add_transition(PhaseTransition(step.phase, self._timestamp_generator()), self._term_status)
         ordinal = self._lifecycle.phase_count
         if self.transition_hook:
             self.transition_hook(prev_phase, self._lifecycle.phase, ordinal)
@@ -477,9 +527,9 @@ class Phaser:
             if self._term_status:
                 return
 
-            self._term_status = self._current_step.stop_status
+            self._term_status = self._current_step.stop_status if self._current_step else TerminationStatus.STOPPED
             assert self._term_status
-            if self._current_step.phase == StandardPhase.INIT:
+            if not self._current_step or (self._current_step.phase == StandardPhase.INIT.value):
                 # Not started yet
                 self._abort = True  # Prevent phase transition...
                 self._next_step(TerminalStep())
