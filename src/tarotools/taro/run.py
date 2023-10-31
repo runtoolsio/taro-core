@@ -337,9 +337,17 @@ class Lifecycle:
 
 class PhaseStep(ABC):
 
+    def __init__(self, phase):
+        self._phase = phase
+        self.status_hook: Optional[Callable[[str, bool], None]]
+
+    @property
+    def phase(self):
+        return self._phase
+
     @property
     @abstractmethod
-    def phase(self):
+    def stop_status(self):
         pass
 
     @abstractmethod
@@ -348,33 +356,26 @@ class PhaseStep(ABC):
 
     @abstractmethod
     def stop(self):
-        pass
-
-    @property
-    @abstractmethod
-    def stop_status(self):
         pass
 
 
 class NoOpsStep(PhaseStep):
 
     def __init__(self, phase, stop_status):
-        self._phase = phase
+        super().__init__(phase)
         self._stop_status = stop_status
-
-    @property
-    def phase(self):
-        return self._phase
-
-    def run(self):
-        pass
-
-    def stop(self):
-        pass
 
     @property
     def stop_status(self):
         return self._stop_status
+
+    def run(self):
+        """No activity on run"""
+        pass
+
+    def stop(self):
+        """Nothing to stop"""
+        pass
 
 
 class InitStep(NoOpsStep):
@@ -392,15 +393,16 @@ class TerminalStep(NoOpsStep):
 class WaitWrapperStep(PhaseStep):
 
     def __init__(self, wrapped_step):
+        super().__init__(wrapped_step.phase)
         self.wrapped_step = wrapped_step
         self._run_event = Event()
 
+    @property
+    def stop_status(self):
+        return self.wrapped_step.stop_status
+
     def wait(self, timeout):
         self._run_event.wait(timeout)
-
-    @property
-    def phase(self):
-        return self.wrapped_step.phase
 
     def run(self):
         self._run_event.set()
@@ -408,10 +410,6 @@ class WaitWrapperStep(PhaseStep):
 
     def stop(self):
         self.wrapped_step.stop()
-
-    @property
-    def stop_status(self):
-        return self.wrapped_step.stop_status
 
 
 def unique_steps_to_dict(steps):
@@ -429,6 +427,7 @@ class Phaser:
         self._name_to_step = unique_steps_to_dict(steps)
         self._timestamp_generator = timestamp_generator
         self.transition_hook: Optional[Callable[[Phase, Phase, int], None]] = None
+        self.status_hook: Optional[Callable[[str, bool], None]] = None
 
         self._phase_lock = Lock()
         # Guarded by the phase lock:
@@ -527,6 +526,7 @@ class Phaser:
 
         prev_phase = self._lifecycle.phase
         self._current_step = step
+        self._current_step.status_hook = self.status_hook  # Should be the hook removed from the prev step?
         self._lifecycle.add_transition(PhaseTransition(step.phase, self._timestamp_generator()), self._term_status)
         ordinal = self._lifecycle.phase_count
         if self.transition_hook:

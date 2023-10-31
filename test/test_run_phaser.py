@@ -11,14 +11,14 @@ from tarotools.taro.run import Phaser, StandardPhase, TerminationStatus, PhaseSt
 class ExecTestPhase(PhaseStep):
 
     def __init__(self, name):
-        self.name = name
+        super().__init__(Phase(name, RunState.EXECUTING))
         self.fail = False
         self.failed_run = None
         self.exception = None
 
     @property
-    def phase(self):
-        return Phase(self.name, RunState.EXECUTING)
+    def stop_status(self):
+        return TerminationStatus.STOPPED
 
     def run(self):
         if self.exception:
@@ -30,10 +30,6 @@ class ExecTestPhase(PhaseStep):
 
     def stop(self):
         pass
-
-    @property
-    def stop_status(self):
-        return TerminationStatus.STOPPED
 
 
 @pytest.fixture
@@ -181,3 +177,18 @@ def test_exception(sut):
             ])
 
     assert sut.run_error == Fault('InvalidStateError', 'reason')
+
+
+def test_interruption(sut):
+    sut.get_typed_phase_step(ExecTestPhase, 'EXEC1').exception = KeyboardInterrupt
+    sut.prime()
+
+    exc_passed = False
+    try:
+        sut.run()
+    except KeyboardInterrupt:
+        exc_passed = True
+
+    assert sut.termination_status == TerminationStatus.INTERRUPTED
+    assert sut.lifecycle.termination_status == TerminationStatus.INTERRUPTED
+    assert exc_passed
