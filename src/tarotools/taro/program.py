@@ -13,7 +13,7 @@ from typing import Union, Optional
 
 from tarotools.taro.execution import OutputExecution, \
     ExecutionOutputNotification
-from tarotools.taro.run import ExecutionError, TerminationStatus
+from tarotools.taro.run import FailedRun, TerminationStatus
 
 USE_SHELL = False  # For testing only
 
@@ -60,13 +60,14 @@ class ProgramExecution(OutputExecution):
                     return TerminationStatus.COMPLETED
             except FileNotFoundError as e:
                 sys.stderr.write(str(e) + "\n")
-                raise ExecutionError(str(e), TerminationStatus.FAILED) from e
+                """TODO Move exception level up"""
+                raise FailedRun('CommandNotFound', str(e)) from e
 
         if self._interrupted or self.ret_code == -signal.SIGINT:
             return TerminationStatus.INTERRUPTED
         if self._stopped or self.ret_code < 0:  # Negative exit code means terminated by a signal
             return TerminationStatus.STOPPED
-        raise ExecutionError("Process returned non-zero code " + str(self.ret_code), TerminationStatus.FAILED)
+        raise FailedRun("ExitCode", "Process returned non-zero code " + str(self.ret_code))
 
     def _start_output_reader(self, infile, is_err):
         name = 'Stderr-Reader' if is_err else 'Stdout-Reader'

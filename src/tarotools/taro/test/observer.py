@@ -14,7 +14,7 @@ from typing import Tuple, List, Callable
 
 from tarotools.taro import TerminationStatus
 from tarotools.taro.jobs.instance import JobInst, InstanceOutputObserver, InstancePhaseObserver, InstancePhase
-from tarotools.taro.run import ExecutionError
+from tarotools.taro.run import FailedRun
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class TestPhaseObserver(InstancePhaseObserver):
     __test__ = False  # To tell pytest it isn't a test class
 
     def __init__(self):
-        self._events: List[Tuple[datetime, JobInst, TerminationStatus, ExecutionError]] = []
+        self._events: List[Tuple[datetime, JobInst, TerminationStatus, FailedRun]] = []
         self.completion_lock = Condition()
 
     def new_instance_phase(self, job_inst: JobInst, previous_phase, new_phase, changed):
@@ -65,7 +65,7 @@ class TestPhaseObserver(InstancePhaseObserver):
         """
         return self._events[event_idx][2]
 
-    def exec_error(self, event_idx: int) -> ExecutionError:
+    def exec_error(self, event_idx: int) -> FailedRun:
         """
         :param event_idx: event index
         :return: execution state of the event on given index

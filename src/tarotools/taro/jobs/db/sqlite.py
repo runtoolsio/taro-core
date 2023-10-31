@@ -18,7 +18,7 @@ from tarotools.taro.jobs.instance import (InstancePhaseObserver, JobInst, JobIns
 from tarotools.taro.jobs.job import JobStats
 from tarotools.taro.jobs.persistence import SortCriteria
 from tarotools.taro.jobs.track import TrackedTaskInfo
-from tarotools.taro.run import ExecutionError
+from tarotools.taro.run import FailedRun
 from tarotools.taro.util import MatchingStrategy, format_dt_sql, parse_dt_sql
 
 log = logging.getLogger(__name__)
@@ -179,7 +179,7 @@ class SQLite(InstancePhaseObserver):
             status = t[8]
             error_output = json.loads(t[9]) if t[9] else tuple()
             warnings = json.loads(t[10]) if t[10] else dict()
-            exec_error = ExecutionError.from_dict(json.loads(t[11])) if t[11] else None
+            exec_error = FailedRun.from_dict(json.loads(t[11])) if t[11] else None
             user_params = json.loads(t[12]) if t[12] else dict()
             parameters = tuple((tuple(x) for x in json.loads(t[13]))) if t[13] else tuple()
             pending_group = json.loads(t[14]).get("pending_group") if t[14] else None

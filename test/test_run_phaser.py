@@ -2,21 +2,30 @@ from threading import Thread
 
 import pytest
 
+from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.coordination import ApprovalPhase
-from tarotools.taro.run import Phaser, StandardPhase, TerminationStatus, PhaseStep, Phase, RunState, WaitWrapperStep
+from tarotools.taro.run import Phaser, StandardPhase, TerminationStatus, PhaseStep, Phase, RunState, WaitWrapperStep, \
+    FailedRun, Fault
 
 
 class ExecTestPhase(PhaseStep):
 
-    def __init__(self, name, *, fail=False):
+    def __init__(self, name):
         self.name = name
-        self.fail = fail
+        self.fail = False
+        self.failed_run = None
+        self.exception = None
 
     @property
     def phase(self):
         return Phase(self.name, RunState.EXECUTING)
 
     def run(self):
+        if self.exception:
+            raise self.exception
+        if self.failed_run:
+            raise self.failed_run
+
         return TerminationStatus.FAILED if self.fail else TerminationStatus.NONE
 
     def stop(self):
@@ -136,3 +145,39 @@ def test_transition_hook(sut):
     sut.run()
 
     assert len(transitions) == 4
+
+
+def test_failed_run_exception(sut):
+    failed_run = FailedRun('FaultType', 'reason')
+    sut.get_typed_phase_step(ExecTestPhase, 'EXEC1').failed_run = failed_run
+    sut.prime()
+    sut.run()
+
+    assert sut.termination_status == TerminationStatus.FAILED
+    assert sut.lifecycle.termination_status == TerminationStatus.FAILED
+    assert (sut.lifecycle.phases ==
+            [
+                StandardPhase.INIT.value,
+                Phase('EXEC1', RunState.EXECUTING),
+                StandardPhase.TERMINAL.value
+            ])
+
+    assert sut.run_failure == failed_run.fault
+
+
+def test_exception(sut):
+    exc = InvalidStateError('reason')
+    sut.get_typed_phase_step(ExecTestPhase, 'EXEC1').exception = exc
+    sut.prime()
+    sut.run()
+
+    assert sut.termination_status == TerminationStatus.ERROR
+    assert sut.lifecycle.termination_status == TerminationStatus.ERROR
+    assert (sut.lifecycle.phases ==
+            [
+                StandardPhase.INIT.value,
+                Phase('EXEC1', RunState.EXECUTING),
+                StandardPhase.TERMINAL.value
+            ])
+
+    assert sut.run_error == Fault('InvalidStateError', 'reason')

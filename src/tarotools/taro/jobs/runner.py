@@ -53,7 +53,7 @@ from tarotools.taro.execution import ExecutionOutputObserver
 from tarotools.taro.jobs.instance import JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, \
     InstancePhaseNotification, \
     InstanceOutputNotification, InstanceWarningNotification, RunnableJobInstance
-from tarotools.taro.run import Phaser, Lifecycle, TerminationStatus, Flag, ExecutionError
+from tarotools.taro.run import Phaser, Lifecycle, TerminationStatus, Flag, FailedRun
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
 log = logging.getLogger(__name__)
@@ -116,7 +116,7 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
         return dict(self._warnings)
 
     @property
-    def exec_error(self) -> Union[ExecutionError, None]:
+    def exec_error(self) -> Union[FailedRun, None]:
         return self._exec_error
 
     def create_snapshot(self):

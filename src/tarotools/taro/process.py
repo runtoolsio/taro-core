@@ -14,7 +14,7 @@ from queue import Full
 from typing import Union, Tuple
 
 from tarotools.taro.execution import OutputExecution, ExecutionOutputNotification
-from tarotools.taro.run import ExecutionError, TerminationStatus
+from tarotools.taro.run import FailedRun, TerminationStatus
 
 log = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class ProcessExecution(OutputExecution):
             return TerminationStatus.INTERRUPTED
         if self._stopped or self._process.exitcode < 0:  # Negative exit code means terminated by a signal
             return TerminationStatus.STOPPED
-        raise ExecutionError("Process returned non-zero code " + str(self._process.exitcode), TerminationStatus.FAILED)
+        raise FailedRun("ExitCode", "Process returned non-zero code " + str(self._process.exitcode))
 
     def _run(self):
         with self._capture_stdout():

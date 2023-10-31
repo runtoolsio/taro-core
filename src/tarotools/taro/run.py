@@ -435,8 +435,11 @@ class Phaser:
         self._lifecycle = lifecycle or Lifecycle()
         self._current_step = None
         self._abort = False
-        self._run_error = None
         self._term_status = TerminationStatus.NONE
+        # ----------------------- #
+
+        self._run_failure: Optional[Fault] = None
+        self._run_error: Optional[Fault] = None
 
     T = TypeVar('T')
 
@@ -461,6 +464,10 @@ class Phaser:
     @property
     def termination_status(self):
         return self._term_status
+
+    @property
+    def run_failure(self):
+        return self._run_failure
 
     def prime(self):
         with self._phase_lock:
@@ -498,13 +505,12 @@ class Phaser:
     def _run_handle_errors(self, step):
         try:
             return step.run(), None
-        except ExecutionError as e:
-            self._run_error = e
-            # TODO Print exception
-            return self._run_error.termination_status or TerminationStatus.FAILED, None
+        except FailedRun as e:
+            self._run_failure = e.fault
+            return TerminationStatus.FAILED, None
         except Exception as e:
-            self._run_error = ExecutionError.from_unexpected_exception(e)
-            return TerminationStatus.ERROR, e
+            self._run_error = Fault(e.__class__.__name__, str(e))
+            return TerminationStatus.ERROR, None
         except KeyboardInterrupt as e:
             log.warning('keyboard_interruption')
             # Assuming child processes received SIGINT, TODO different state on other platforms?
@@ -541,52 +547,17 @@ class Phaser:
         self._current_step.stop()
 
 
-class ExecutionError(Exception):
+@dataclass
+class Fault:
+    fault_type: str
+    reason: str
+
+
+class FailedRun(Exception):
     """
-    This exception is used to provide additional information about an error condition that occurred during execution.
-    TODO:
-    1. Rename RunError
+    This exception is used to provide additional information about a run failure.
     """
 
-    @classmethod
-    def from_unexpected_exception(cls, e: Exception):
-        return cls("Unexpected error: " + str(e), TerminationStatus.ERROR, unexpected_error=e)
-
-    @classmethod
-    def from_dict(cls, as_dict):
-        return cls(as_dict['message'], TerminationStatus[as_dict['state']])  # TODO Add kwargs
-
-    def __init__(self, message: str, exec_state: TerminationStatus, unexpected_error: Exception = None, **kwargs):
-        if not exec_state.has_flag(TerminationStatusFlag.FAILURE):
-            raise ValueError('exec_state must be flagged as failure', exec_state)
-        super().__init__(message)
-        self.message = message
-        self.termination_status = exec_state
-        self.unexpected_error = unexpected_error
-        self.params = kwargs
-
-    def to_dict(self, include_empty=True) -> Dict[str, Any]:
-        # TODO Add kwargs
-        d = {
-            "message": self.message,
-            "state": self.termination_status.name,
-        }
-        if include_empty:
-            return d
-        else:
-            return {k: v for k, v in d.items() if not is_empty(v)}
-
-    def __hash__(self):
-        """
-        Used for comparing in tests
-        """
-        return hash((self.message, self.termination_status, self.unexpected_error, self.params))
-
-    def __eq__(self, other):
-        """
-        Used for comparing in tests
-        """
-        if not isinstance(other, ExecutionError):
-            return NotImplemented
-        return (self.message, self.termination_status, self.unexpected_error, self.params) == (
-            other.message, other.termination_status, other.unexpected_error, self.params)
+    def __init__(self, fault_type: str, reason: str):
+        super().__init__(f"{fault_type}: {reason}")
+        self.fault = Fault(fault_type, reason)
