@@ -12,7 +12,6 @@ import abc
 from typing import Tuple
 
 from tarotools.taro.run import TerminationStatus, PhaseStep, Phase, RunState
-from tarotools.taro.util.observer import CallableNotification
 
 
 class Execution(abc.ABC):
@@ -55,47 +54,29 @@ class OutputExecution(Execution):
     """
 
     @abc.abstractmethod
-    def add_output_observer(self, observer):
+    def add_output_callback(self, callback):
         """
-        Register output observer
+        Register a function to be called on output notification.
+
+        The expected function signature is:
+            callback(output: str, is_error: bool) -> None
+
+        This means the callback should accept two arguments:
+        - `output`: The actual output data.
+        - `is_error`: A boolean indicating whether the output represents an error.
 
         Args:
-            observer: to register
+            callback (Callable[[str, bool], None]): The function to register as a callback.
         """
 
     @abc.abstractmethod
-    def remove_output_observer(self, observer):
+    def remove_output_callback(self, callback):
         """
-        De-register output observer
+        De-register the output callback function
 
         Args:
-            observer: to de-register
+            callback (Callable[[str, bool], None]): The callback to de-register
         """
-
-
-class ExecutionOutputObserver(abc.ABC):
-
-    def execution_output_update(self, output, is_error: bool):
-        """
-        Executed when a new output line is available.
-
-        Args:
-            output (str): The output text.
-            is_error (bool): True when the text represents an error output.
-        """
-
-
-class ExecutionOutputNotification(CallableNotification):
-
-    def __init__(self, error_hook=None, joined_notification=None):
-        super().__init__(error_hook, joined_notification)
-
-    def _notify(self, observer, *args) -> bool:
-        if isinstance(observer, ExecutionOutputObserver):
-            observer.execution_output_update(*args)
-            return True
-        else:
-            return False
 
 
 class ExecutingPhase(PhaseStep):

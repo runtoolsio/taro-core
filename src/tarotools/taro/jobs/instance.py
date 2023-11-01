@@ -588,10 +588,10 @@ class DelegatingJobInstance(RunnableJobInstance):
         self.delegated.remove_warning_observer(observer)
 
     def add_output_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self.delegated.add_output_observer(observer, priority)
+        self.delegated.add_output_callback(observer, priority)
 
     def remove_output_observer(self, observer):
-        self.delegated.remove_output_observer(observer)
+        self.delegated.remove_output_callback(observer)
 
 
 class RunInNewThreadJobInstance(DelegatingJobInstance):

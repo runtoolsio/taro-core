@@ -12,6 +12,9 @@ class CallableNotification:
         self.error_hook: Optional[Callable[[Callable, Tuple[Any], Exception], None]] = error_hook
         self._prioritized_observers = []
 
+    def __call__(self, *args):
+        self.notify_all(*args)
+
     @property
     def observers(self) -> List[Callable[..., Any]]:
         return [o for _, o in self._prioritized_observers]
@@ -37,13 +40,13 @@ class CallableNotification:
                 if self.error_hook:
                     self.error_hook(observer, args, e)
                 else:
-                    print(e, file=sys.stderr)
+                    print(f"{e.__class__.__name__}: {e}", file=sys.stderr)
 
 
 O = TypeVar("O")
 
 
-class ObserverNotification(Generic[O]):
+class ObservableNotification(Generic[O]):
 
     def __init__(self, error_hook: Optional[Callable[[O, Tuple[Any], Exception], None]] = None):
         self.error_hook: Optional[Callable[[O, Tuple[Any], Exception], None]] = error_hook

@@ -13,8 +13,9 @@ from multiprocessing.context import Process
 from queue import Full
 from typing import Union, Tuple
 
-from tarotools.taro.execution import OutputExecution, ExecutionOutputNotification
+from tarotools.taro.execution import OutputExecution
 from tarotools.taro.run import FailedRun, TerminationStatus
+from tarotools.taro.util.observer import CallableNotification
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ class ProcessExecution(OutputExecution):
         self._status = None
         self._stopped: bool = False
         self._interrupted: bool = False
-        self._output_observers = ExecutionOutputNotification(log)
+        self._output_notification = CallableNotification()
 
     def execute(self) -> TerminationStatus:
         if not self._stopped and not self._interrupted:
@@ -107,11 +108,11 @@ class ProcessExecution(OutputExecution):
     def interrupted(self):
         self._interrupted = True
 
-    def add_output_observer(self, observer):
-        self._output_observers.add_observer(observer)
+    def add_output_callback(self, callback):
+        self._output_notification.add_callable(callback)
 
-    def remove_output_observer(self, observer):
-        self._output_observers.remove_observer(observer)
+    def remove_output_callback(self, callback):
+        self._output_notification.remove_callable(callback)
 
     def _read_output(self):
         while True:
@@ -119,7 +120,7 @@ class ProcessExecution(OutputExecution):
             if isinstance(output_text, _QueueStop):
                 break
             self._status = output_text
-            self._output_observers.notify_all(output_text, is_err)
+            self._output_notification(output_text, is_err)
 
 
 class _CapturingWriter:

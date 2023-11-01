@@ -106,11 +106,11 @@ class ProgramExecution(OutputExecution):
         """
         self._interrupted = True
 
-    def add_output_observer(self, observer):
-        self._output_observers.add_observer(observer)
+    def add_output_callback(self, callback):
+        self._output_observers.add_observer(callback)
 
-    def remove_output_observer(self, observer):
-        self._output_observers.remove_observer(observer)
+    def remove_output_callback(self, callback):
+        self._output_observers.remove_observer(callback)
 
     def _process_output(self, infile, is_err):
         with infile:

@@ -18,9 +18,11 @@ from enum import Enum, auto, EnumMeta
 from threading import Lock, Event
 from typing import Optional, List, Dict, Any, Set, TypeVar, Type, Callable
 
-from tarotools.taro import util
+from tarotools.taro import util, status
 from tarotools.taro.err import InvalidStateError
+from tarotools.taro.status import StatusObserver
 from tarotools.taro.util import format_dt_iso, is_empty
+from tarotools.taro.util.observer import ObservableNotification
 
 log = logging.getLogger(__name__)
 
@@ -339,7 +341,7 @@ class PhaseStep(ABC):
 
     def __init__(self, phase):
         self._phase = phase
-        self.status_hook: Optional[Callable[[str, bool], None]]
+        self._status_notification = ObservableNotification[StatusObserver]()
 
     @property
     def phase(self):
@@ -357,6 +359,12 @@ class PhaseStep(ABC):
     @abstractmethod
     def stop(self):
         pass
+
+    def add_status_observer(self, observer, priority=status.DEFAULT_OBSERVER_PRIORITY):
+        self._status_notification.add_observer(observer, priority)
+
+    def remove_status_observer(self, observer):
+        self._status_notification.remove_observer(observer)
 
 
 class NoOpsStep(PhaseStep):

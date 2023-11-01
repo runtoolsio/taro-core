@@ -92,10 +92,10 @@ class TestExecution(OutputExecution):
     def interrupted(self):
         raise NotImplementedError()
 
-    def add_output_observer(self, observer):
+    def add_output_callback(self, callback):
         pass
 
-    def remove_output_observer(self, observer):
+    def remove_output_callback(self, callback):
         pass
 
 

@@ -49,7 +49,6 @@ from collections import deque, Counter
 from typing import List, Union, Tuple
 
 from tarotools.taro import util
-from tarotools.taro.execution import ExecutionOutputObserver
 from tarotools.taro.jobs.instance import JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, RunnableJobInstance
 from tarotools.taro.run import Phaser, Lifecycle, TerminationStatus, Flag, FailedRun
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY, CallableNotification
@@ -66,7 +65,7 @@ _output_observers = CallableNotification(error_hook=log_observer_error)
 _warning_observers = CallableNotification(error_hook=log_observer_error)
 
 
-class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
+class RunnerJobInstance(RunnableJobInstance):
 
     def __init__(self, job_id, phase_steps, *, instance_id=None, **user_params):
         self._id = JobInstanceID(job_id, instance_id or util.unique_timestamp_hex())
@@ -181,12 +180,12 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
 
     def run(self):
         # Forward output from execution to the job instance for the instance's output listeners
-        self._execution.add_output_observer(self)
+        self._execution.add_output_callback(self)
 
         try:
             self._phaser.run()
         finally:
-            self._execution.remove_output_observer(self)
+            self._execution.remove_output_callback(self)
 
     def _phase_change(self, prev_phase, new_phase, ordinal):
         if self._phaser.run_error:
