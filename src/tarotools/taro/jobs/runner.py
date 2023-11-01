@@ -50,17 +50,20 @@ from typing import List, Union, Tuple
 
 from tarotools.taro import util
 from tarotools.taro.execution import ExecutionOutputObserver
-from tarotools.taro.jobs.instance import JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, \
-    InstancePhaseNotification, \
-    InstanceOutputNotification, InstanceWarningNotification, RunnableJobInstance
+from tarotools.taro.jobs.instance import JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, RunnableJobInstance
 from tarotools.taro.run import Phaser, Lifecycle, TerminationStatus, Flag, FailedRun
-from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
+from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY, CallableNotification
 
 log = logging.getLogger(__name__)
 
-_state_observers = InstancePhaseNotification(logger=log)
-_output_observers = InstanceOutputNotification(logger=log)
-_warning_observers = InstanceWarningNotification(logger=log)
+
+def log_observer_error(observer, args, exc):
+    log.error("event=[observer_error] observer=[%s], args=[%s] error_type=[%s], error=[%s]", observer, args, exc)
+
+
+_state_observers = CallableNotification(error_hook=log_observer_error)
+_output_observers = CallableNotification(error_hook=log_observer_error)
+_warning_observers = CallableNotification(error_hook=log_observer_error)
 
 
 class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
@@ -76,9 +79,9 @@ class RunnerJobInstance(RunnableJobInstance, ExecutionOutputObserver):
         self._executing = False
         self._exec_error = None
         self._warnings = Counter()
-        self._state_notification = InstancePhaseNotification(log, _state_observers)
-        self._warning_notification = InstanceWarningNotification(log, _warning_observers)
-        self._output_notification = InstanceOutputNotification(log, _output_observers)
+        self._state_notification = CallableNotification(error_hook=log_observer_error)
+        self._warning_notification = CallableNotification(error_hook=log_observer_error)
+        self._output_notification = CallableNotification(error_hook=log_observer_error)
 
     def _log(self, event: str, msg: str = '', *params):
         return ("event=[{}] instance=[{}] " + msg).format(event, self._id, *params)

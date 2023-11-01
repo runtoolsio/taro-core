@@ -29,7 +29,7 @@ from tarotools.taro.jobs.criteria import IDMatchCriteria
 from tarotools.taro.jobs.track import TrackedTaskInfo
 from tarotools.taro.run import TerminationStatus, FailedRun
 from tarotools.taro.util import is_empty, format_dt_iso
-from tarotools.taro.util.observer import Notification, DEFAULT_OBSERVER_PRIORITY
+from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
 
 class InstancePhase(Enum):
@@ -929,48 +929,3 @@ def _job_inst_to_args(job_inst):
     changed = job_inst.lifecycle.last_transition_at
 
     return job_inst, previous_state, new_state, changed
-
-
-class InstancePhaseNotification(Notification):
-
-    def __init__(self, logger=None, joined_notification=None):
-        super().__init__(logger, joined_notification)
-
-    def notify_phase_changed(self, observer, job_inst):
-        self.notify(observer, *_job_inst_to_args(job_inst))
-
-    def notify_all_phase_changed(self, job_inst):
-        self.notify_all(*_job_inst_to_args(job_inst))
-
-    def _notify(self, observer, *args) -> bool:
-        if isinstance(observer, InstancePhaseObserver):
-            observer.new_instance_phase(*args)
-            return True
-        else:
-            return False
-
-
-class InstanceOutputNotification(Notification):
-
-    def __init__(self, logger=None, joined_notification=None):
-        super().__init__(logger, joined_notification)
-
-    def _notify(self, observer, *args) -> bool:
-        if isinstance(observer, InstanceOutputObserver):
-            observer.new_instance_output(*args)
-            return True
-        else:
-            return False
-
-
-class InstanceWarningNotification(Notification):
-
-    def __init__(self, logger=None, joined_notification=None):
-        super().__init__(logger, joined_notification)
-
-    def _notify(self, observer, *args) -> bool:
-        if isinstance(observer, InstanceWarningObserver):
-            observer.new_instance_warning(*args)
-            return True
-        else:
-            return False

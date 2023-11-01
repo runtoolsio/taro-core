@@ -12,58 +12,13 @@ import abc
 from typing import Tuple
 
 from tarotools.taro.run import TerminationStatus, PhaseStep, Phase, RunState
-from tarotools.taro.util.observer import Notification
-
-
-class UnexpectedStateError(Exception):
-    """
-    Raised when processing logic encounters an unrecognized or invalid
-    execution state in the given context.
-    """
+from tarotools.taro.util.observer import CallableNotification
 
 
 class Execution(abc.ABC):
     """
-    A synchronous execution of a task
+    An execution of a task
     """
-
-    @abc.abstractmethod
-    def execute(self) -> TerminationStatus:
-        """
-        For the caller of this method:
-            This execution instance must be in `Phase.EXECUTING` phase when this method is called.
-            This execution instance must be in `Phase.TERMINAL` phase when this method returns a value.
-
-        For the implementer of this class:
-            The execution must be started when this method is called.
-            The returned value must be a terminal execution state representing the final state of the execution.
-            In case of a failure an execution error can be raised or a failure state can be returned.
-
-        Raises:
-            ExecutionError: To provide more information when a failure or an error occurred during the execution.
-        """
-
-    @property
-    @abc.abstractmethod
-    def tracking(self):
-        """
-        Returns:
-            An object containing tracking information about the progress of the execution
-        """
-
-    @property
-    @abc.abstractmethod
-    def status(self):
-        """
-        Gets the status of the progress.
-
-        If progress monitoring is not supported, this method will always return None. Otherwise:
-         - if executing: returns the current progress.
-         - when finished: returns the result.
-
-        Returns:
-            str: The progress or result if applicable, or None if progress monitoring is not supported.
-        """
 
     @property
     @abc.abstractmethod
@@ -71,6 +26,12 @@ class Execution(abc.ABC):
         """
         Returns:
             Tuple[str, str]: A sequence representing arbitrary immutable execution parameters
+        """
+
+    @abc.abstractmethod
+    def execute(self) -> TerminationStatus:
+        """
+        Execute a task and return its termination status.
         """
 
     @abc.abstractmethod
@@ -124,10 +85,10 @@ class ExecutionOutputObserver(abc.ABC):
         """
 
 
-class ExecutionOutputNotification(Notification):
+class ExecutionOutputNotification(CallableNotification):
 
-    def __init__(self, logger=None, joined_notification=None):
-        super().__init__(logger, joined_notification)
+    def __init__(self, error_hook=None, joined_notification=None):
+        super().__init__(error_hook, joined_notification)
 
     def _notify(self, observer, *args) -> bool:
         if isinstance(observer, ExecutionOutputObserver):
@@ -140,19 +101,15 @@ class ExecutionOutputNotification(Notification):
 class ExecutingPhase(PhaseStep):
 
     def __init__(self, phase_name, execution):
-        self._phase_name = phase_name
+        super().__init__(Phase(phase_name, RunState.EXECUTING))
         self._execution = execution
 
     @property
-    def phase(self):
-        return Phase(self._phase_name, RunState.EXECUTING)
+    def stop_status(self):
+        return TerminationStatus.STOPPED
 
     def run(self):
         self._execution.execute()
 
     def stop(self):
         self._execution.stop()
-
-    @property
-    def stop_status(self):
-        return TerminationStatus.STOPPED
