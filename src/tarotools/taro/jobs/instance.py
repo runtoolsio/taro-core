@@ -27,7 +27,7 @@ from typing import NamedTuple, Dict, Any, Optional, List, Tuple, Iterable
 from tarotools.taro import util
 from tarotools.taro.jobs.criteria import IDMatchCriteria
 from tarotools.taro.jobs.track import TrackedTaskInfo
-from tarotools.taro.run import TerminationStatus, FailedRun
+from tarotools.taro.run import TerminationStatus, FailedRun, Phase
 from tarotools.taro.util import is_empty, format_dt_iso
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
@@ -428,7 +428,7 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
+    def add_transition_callback(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
         """
         Register an instance state observer. Optionally, trigger a notification with the last known state
         upon registration.
@@ -447,7 +447,7 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def remove_state_observer(self, observer):
+    def remove_transition_callback(self, observer):
         """
         De-register an execution state observer.
         Note: The implementation must cope with the scenario when this method is executed during notification.
@@ -457,7 +457,7 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_warning_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+    def add_warning_callback(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         """
         Register a warning observer.
         The observer can be:
@@ -472,7 +472,7 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def remove_warning_observer(self, observer):
+    def remove_warning_callback(self, observer):
         """
         De-register a warning observer.
 
@@ -481,7 +481,7 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_output_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+    def add_status_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         """
         Register an output observer.
         The observer can be:
@@ -494,7 +494,7 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def remove_output_observer(self, observer):
+    def remove_status_observer(self, observer):
         """
         De-register an output observer.
 
@@ -575,22 +575,22 @@ class DelegatingJobInstance(RunnableJobInstance):
     def interrupted(self):
         self.delegated.interrupted()
 
-    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
-        self.delegated.add_state_observer(observer, priority, notify_on_register)
+    def add_transition_callback(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
+        self.delegated.add_transition_callback(observer, priority, notify_on_register)
 
-    def remove_state_observer(self, observer):
-        self.delegated.remove_state_observer(observer)
+    def remove_transition_callback(self, observer):
+        self.delegated.remove_transition_callback(observer)
 
-    def add_warning_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self.delegated.add_warning_observer(observer, priority)
+    def add_warning_callback(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+        self.delegated.add_warning_callback(observer, priority)
 
-    def remove_warning_observer(self, observer):
-        self.delegated.remove_warning_observer(observer)
+    def remove_warning_callback(self, observer):
+        self.delegated.remove_warning_callback(observer)
 
-    def add_output_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+    def add_status_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self.delegated.add_output_callback(observer, priority)
 
-    def remove_output_observer(self, observer):
+    def remove_status_observer(self, observer):
         self.delegated.remove_output_callback(observer)
 
 
@@ -693,6 +693,18 @@ class JobInst:
         return self._lifecycle
 
     @property
+    def termination_status(self):
+        return TerminationStatus.NONE  # TODO
+
+    @property
+    def run_error(self):
+        return None # TODO
+
+    @property
+    def run_failure(self):
+        return None # TODO
+
+    @property
     def state(self):
         """
         Returns:
@@ -749,6 +761,14 @@ class JobInst:
         """
         return self._exec_error
 
+    def __eq__(self, other):
+        if not isinstance(other, JobInst):
+            return NotImplemented
+        return (self.metadata, self._lifecycle, self._tracking, self._status, self._error_output,
+                self._warnings, self._exec_error) == \
+            (other.metadata, other._lifecycle, other._tracking, other._status, other._error_output,
+             other._warnings, other._exec_error)  # TODO
+
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         d = {
             "metadata": self.metadata.to_dict(include_empty),
@@ -763,14 +783,6 @@ class JobInst:
             return d
         else:
             return {k: v for k, v in d.items() if not is_empty(v)}
-
-    def __eq__(self, other):
-        if not isinstance(other, JobInst):
-            return NotImplemented
-        return (self.metadata, self._lifecycle, self._tracking, self._status, self._error_output,
-                self._warnings, self._exec_error) == \
-            (other.metadata, other._lifecycle, other._tracking, other._status, other._error_output,
-             other._warnings, other._exec_error)  # TODO
 
     def __hash__(self):
         return hash((self.metadata, self._lifecycle, self._tracking, self._status, self._error_output,
@@ -822,11 +834,10 @@ class JobInstances(list):
         return {"jobs": [job.to_dict(include_empty=include_empty) for job in self]}
 
 
-class InstancePhaseObserver(abc.ABC):
+class InstanceTransitionObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_instance_phase(self, job_inst: JobInst, previous_phase: TerminationStatus, new_phase: TerminationStatus,
-                           changed: datetime.datetime):
+    def new_transition(self, job_inst: JobInst, previous_phase: Phase, new_phase: Phase, changed: datetime.datetime):
         """
         Called when the instance transitions to a new phase.
 

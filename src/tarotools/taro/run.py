@@ -13,9 +13,10 @@ import datetime
 import logging
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+from copy import copy
 from dataclasses import dataclass
 from enum import Enum, auto, EnumMeta
-from threading import Lock, Event
+from threading import Event, RLock
 from typing import Optional, List, Dict, Any, Set, TypeVar, Type, Callable, Tuple, Union
 
 from tarotools.taro import util, status
@@ -178,14 +179,13 @@ class Lifecycle:
     Each phase has a timestamp that indicates when the transition to that phase occurred.
     """
 
-    def __init__(self, *transitions: PhaseTransition, termination_status=TerminationStatus.NONE):
-        self._transitions = OrderedDict()
+    def __init__(self, *transitions: PhaseTransition):
+        self._transitions: OrderedDict[Phase, PhaseTransition] = OrderedDict()
         self._phase_runs: List[PhaseRun] = []
-        self._termination_status = termination_status
         for transition in transitions:
             self.add_transition(transition)
 
-    def add_transition(self, new_transition: PhaseTransition, termination_status=TerminationStatus.NONE):
+    def add_transition(self, new_transition: PhaseTransition):
         """
         Adds a new phase transition to the lifecycle and updates the phase runs accordingly.
         TODO:
@@ -194,9 +194,6 @@ class Lifecycle:
         """
         if new_transition.phase == StandardPhase.NONE.value or new_transition.phase == self.phase:
             return False
-
-        if new_transition.phase.state == RunState.ENDED and not termination_status:
-            raise ValueError("Termination status is mandatory for ended state phase")
 
         if self._transitions:
             last_phase_run = self._phase_runs[-1]
@@ -214,21 +211,18 @@ class Lifecycle:
             ended_at=None,
             execution_time=None
         ))
-        self._termination_status = termination_status
 
     @classmethod
     def from_dict(cls, as_dict):
         transitions = [
             PhaseTransition(Phase.from_dict(phase_change['phase']), util.parse_datetime(phase_change['transitioned']))
             for phase_change in as_dict['transitions']]
-        term_status = TerminationStatus.from_str(as_dict['termination_status'])
-        return cls(*transitions, termination_status=term_status)
+        return cls(*transitions)
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
         d = {
             "transitions": [{"phase": pt.phase.to_dict(), "transitioned": format_dt_iso(pt.transitioned)}
-                            for pt in self._transitions],
-            "termination_status": str(self._termination_status),
+                            for pt in self._transitions.values()],
             "phase": self.phase.to_dict(),
             "last_transition_at": format_dt_iso(self.last_transition_at),
             "created_at": format_dt_iso(self.created_at),
@@ -243,7 +237,17 @@ class Lifecycle:
 
     @property
     def phase(self):
-        return next(reversed(self._transitions.keys()), StandardPhase.NONE.value)
+        if not self.phase_runs:
+            return StandardPhase.NONE.value
+
+        return self.phase_runs[-1].phase
+
+    @property
+    def previous_phase(self):
+        if len(self.phase_runs) < 2:
+            return StandardPhase.NONE.value
+
+        return self.phase_runs[-2].phase
 
     @property
     def state(self):
@@ -273,10 +277,6 @@ class Lifecycle:
                 return run
 
         return None
-
-    @property
-    def termination_status(self):
-        return self._termination_status
 
     def transitioned_at(self, phase: Phase) -> Optional[datetime.datetime]:
         phase_transition = self._transitions.get(phase)
@@ -310,8 +310,8 @@ class Lifecycle:
         return self.state_last_at(RunState.ENDED)
 
     @property
-    def is_terminated(self):
-        return bool(self._termination_status)
+    def is_ended(self):
+        return self.contains_state(RunState.ENDED)
 
     def run_time_in_state(self, state: RunState) -> datetime.timedelta:
         """
@@ -420,7 +420,7 @@ class WaitWrapperStep(PhaseStep):
         self.wrapped_step.stop()
 
 
-def unique_steps_to_dict(steps):
+def unique_steps_to_dict(steps) -> Dict[str, PhaseStep]:
     name_to_step = {}
     for step in steps:
         if step.phase.name in name_to_step:
@@ -432,11 +432,11 @@ def unique_steps_to_dict(steps):
 class Phaser:
 
     def __init__(self, steps, lifecycle=None, *, timestamp_generator=util.utc_now):
-        self._name_to_step = unique_steps_to_dict(steps)
+        self._name_to_step: Dict[str, PhaseStep] = unique_steps_to_dict(steps)
         self._timestamp_generator = timestamp_generator
         self.transition_hook: Optional[Callable[[Phase, Phase, int], None]] = None
 
-        self._transition_lock = Lock()
+        self._transition_lock = RLock()
         # Guarded by the transition/state lock:
         self._lifecycle = lifecycle or Lifecycle()
         self._current_step = None
@@ -459,20 +459,12 @@ class Phaser:
         return step
 
     @property
-    def lifecycle(self):
-        return self._lifecycle
+    def steps(self):
+        return list(self._name_to_step.values())
 
-    @property
-    def run_error(self):
-        return self._run_error
-
-    @property
-    def termination_status(self):
-        return self._term_status
-
-    @property
-    def run_failure(self):
-        return self._run_failure
+    def create_run_snapshot(self):
+        with self._transition_lock:
+            return RunSnapshot(copy(self._lifecycle), self._term_status, self._run_failure, self._run_error)
 
     def prime(self):
         with self._transition_lock:
@@ -520,12 +512,14 @@ class Phaser:
         """
         assert self._current_step != step
 
-        prev_phase = self._lifecycle.phase
         self._current_step = step
-        self._lifecycle.add_transition(PhaseTransition(step.phase, self._timestamp_generator()), self._term_status)
-        ordinal = self._lifecycle.phase_count
+        self._lifecycle.add_transition(PhaseTransition(step.phase, self._timestamp_generator()))
         if self.transition_hook:
-            self.transition_hook(prev_phase, self._lifecycle.phase, ordinal)
+            self.execute_last_transition_hook(self.transition_hook)
+
+    def execute_last_transition_hook(self, transition_hook):
+        with self._transition_lock:
+            transition_hook(self._lifecycle.previous_phase, self._lifecycle.phase, self._lifecycle.phase_count)
 
     def stop(self):
         with self._transition_lock:
@@ -566,6 +560,14 @@ class FailedRun(Exception):
     def __init__(self, fault_type: str, reason: str):
         super().__init__(f"{fault_type}: {reason}")
         self.fault = RunFailure(fault_type, reason)
+
+
+@dataclass
+class RunSnapshot:
+    lifecycle: Lifecycle
+    termination_status: Optional[TerminationStatus]
+    run_failure: Optional[Fault]
+    run_error: Optional[Fault]
 
 
 def _run_handle_errors(step) -> Tuple[Optional[TerminationStatus], Union[None, RunFailure, RunError, BaseException]]:

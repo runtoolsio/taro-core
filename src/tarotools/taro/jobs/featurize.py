@@ -20,7 +20,7 @@ from tarotools.taro import plugins as plugins_mod
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.events import PhaseDispatcher, OutputDispatcher
-from tarotools.taro.jobs.instance import (InstancePhaseObserver, JobInst, JobInstance, JobInstanceManager,
+from tarotools.taro.jobs.instance import (InstanceTransitionObserver, JobInst, JobInstance, JobInstanceManager,
                                           InstanceOutputObserver, JobInstanceID, InstancePhase)
 from tarotools.taro.jobs.plugins import Plugin
 
@@ -201,7 +201,7 @@ class _ManagedInstance:
     released: bool = False
 
 
-class FeaturedContext(InstancePhaseObserver):
+class FeaturedContext(InstanceTransitionObserver):
     """
     Represents a specialized context for job instances enriched with features.
 
@@ -238,7 +238,7 @@ class FeaturedContext(InstancePhaseObserver):
 
     def __init__(self, instance_managers=(), state_observers=(), output_observers=(), *, transient=False):
         self._instance_managers: Tuple[ManagerFeature[JobInstanceManager]] = tuple(instance_managers)
-        self._state_observers: Tuple[ObserverFeature[InstancePhaseObserver]] = tuple(state_observers)
+        self._state_observers: Tuple[ObserverFeature[InstanceTransitionObserver]] = tuple(state_observers)
         self._output_observers: Tuple[ObserverFeature[InstanceOutputObserver]] = tuple(output_observers)
         self._keep_removed = not transient
         self._managed_instances: Dict[JobInstanceID, _ManagedInstance] = {}
@@ -322,11 +322,11 @@ class FeaturedContext(InstancePhaseObserver):
 
         ctx_observer_priority = 1000
         for state_observer_feat in self._state_observers:
-            job_instance.add_state_observer(state_observer_feat.component, state_observer_feat.priority)
+            job_instance.add_transition_callback(state_observer_feat.component, state_observer_feat.priority)
             ctx_observer_priority = max(ctx_observer_priority, state_observer_feat.priority)
 
         for output_observer_feat in self._output_observers:
-            job_instance.add_output_observer(output_observer_feat.component, output_observer_feat.priority)
+            job_instance.add_status_observer(output_observer_feat.component, output_observer_feat.priority)
 
         # #  TODO optional plugins
         # if cfg.plugins_enabled and cfg.plugins_load:
@@ -338,7 +338,7 @@ class FeaturedContext(InstancePhaseObserver):
         #   2. Priority should be set to be the lowest from all observers, however the current implementation
         #      will work regardless of the priority as the removal of the observers doesn't affect
         #      iteration/notification (`Notification` class)
-        job_instance.add_state_observer(self, ctx_observer_priority + 1)
+        job_instance.add_transition_callback(self, ctx_observer_priority + 1)
         if job_instance.lifecycle.is_ended:
             self._release_instance(job_instance.id, not self._keep_removed)
 
@@ -356,7 +356,7 @@ class FeaturedContext(InstancePhaseObserver):
         """
         return self._release_instance(job_instance_id, True)
 
-    def new_instance_phase(self, job_inst: JobInst, previous_phase, new_phase, changed):
+    def new_transition(self, job_inst: JobInst, previous_phase, new_phase, changed):
         """
         DO NOT EXECUTE THIS METHOD! It is part of the internal mechanism.
         """
@@ -383,13 +383,13 @@ class FeaturedContext(InstancePhaseObserver):
 
         job_instance = managed_instance.instance
         if release:
-            job_instance.remove_state_observer(self)
+            job_instance.remove_transition_callback(self)
 
             for output_observer_feat in self._output_observers:
-                job_instance.remove_output_observer(output_observer_feat.component)
+                job_instance.remove_status_observer(output_observer_feat.component)
 
             for state_observer_feat in self._state_observers:
-                job_instance.remove_state_observer(state_observer_feat.component)
+                job_instance.remove_transition_callback(state_observer_feat.component)
 
             for manager_feat in self._instance_managers:
                 if manager_feat.unregister_after_termination:

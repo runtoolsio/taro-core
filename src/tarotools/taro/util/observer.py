@@ -23,12 +23,12 @@ class CallableNotification:
     def prioritized_observers(self) -> List[Tuple[int, Callable[..., Any]]]:
         return list(self._prioritized_observers)
 
-    def add_callable(self, observer: Callable[..., Any], priority: int = DEFAULT_OBSERVER_PRIORITY) -> None:
+    def add_observer(self, observer: Callable[..., Any], priority: int = DEFAULT_OBSERVER_PRIORITY) -> None:
         self._prioritized_observers = sorted(
             chain(self._prioritized_observers, [(priority, observer)]),
             key=itemgetter(0))
 
-    def remove_callable(self, observer: Callable[..., Any]) -> None:
+    def remove_observer(self, observer: Callable[..., Any]) -> None:
         self._prioritized_observers = [(priority, o) for priority, o in self._prioritized_observers if o != observer]
 
     def notify_all(self, *args):

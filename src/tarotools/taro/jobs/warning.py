@@ -3,16 +3,16 @@ from threading import Timer
 from typing import Sequence
 
 from tarotools.taro import util
-from tarotools.taro.jobs.instance import JobInstance, JobInst, InstancePhaseObserver, Warn, InstanceOutputObserver, \
+from tarotools.taro.jobs.instance import JobInstance, JobInst, InstanceTransitionObserver, Warn, InstanceOutputObserver, \
     InstancePhase
 
 
 def exec_time_exceeded(job_instance: JobInstance, warning_name: str, time: float):
-    job_instance.add_state_observer(_ExecTimeWarning(job_instance, warning_name, time))
+    job_instance.add_transition_callback(_ExecTimeWarning(job_instance, warning_name, time))
 
 
 def output_matches(job_instance: JobInstance, warning_name: str, regex: str):
-    job_instance.add_output_observer(_OutputMatchesWarning(job_instance, warning_name, regex))
+    job_instance.add_status_observer(_OutputMatchesWarning(job_instance, warning_name, regex))
 
 
 def register(job_instance: JobInstance, *, warn_times: Sequence[str] = (), warn_outputs: Sequence[str] = ()):
@@ -24,7 +24,7 @@ def register(job_instance: JobInstance, *, warn_times: Sequence[str] = (), warn_
         output_matches(job_instance, f"output=~{warn_output}", warn_output)
 
 
-class _ExecTimeWarning(InstancePhaseObserver):
+class _ExecTimeWarning(InstanceTransitionObserver):
 
     def __init__(self, job_instance, name, time: float):
         self.job_instance = job_instance
@@ -32,7 +32,7 @@ class _ExecTimeWarning(InstancePhaseObserver):
         self.time = time
         self.timer = None
 
-    def new_instance_phase(self, job_inst: JobInst, previous_phase, new_phase, changed):
+    def new_transition(self, job_inst: JobInst, previous_phase, new_phase, changed):
         if new_phase.in_phase(InstancePhase.EXECUTING):
             assert self.timer is None
             self.timer = Timer(self.time, self._check)

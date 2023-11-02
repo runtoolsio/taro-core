@@ -13,7 +13,8 @@ from tarotools.taro import cfg, InstanceLifecycle, TerminationStatus
 from tarotools.taro import paths
 from tarotools.taro.execution import Flag, \
     Phase
-from tarotools.taro.jobs.instance import (InstancePhaseObserver, JobInst, JobInstances, JobInstanceID, LifecycleEvent,
+from tarotools.taro.jobs.instance import (InstanceTransitionObserver, JobInst, JobInstances, JobInstanceID,
+                                          LifecycleEvent,
                                           JobInstanceMetadata, InstancePhase)
 from tarotools.taro.jobs.job import JobStats
 from tarotools.taro.jobs.persistence import SortCriteria
@@ -111,12 +112,12 @@ def _build_where_clause(instance_match, alias=''):
     return " WHERE {conditions}".format(conditions=" AND ".join(all_conditions_str))
 
 
-class SQLite(InstancePhaseObserver):
+class SQLite(InstanceTransitionObserver):
 
     def __init__(self, connection):
         self._conn = connection
 
-    def new_instance_phase(self, job_inst: JobInst, previous_phase, new_phase, changed):
+    def new_transition(self, job_inst: JobInst, previous_phase, new_phase, changed):
         if new_phase.in_phase(Phase.TERMINAL):
             self.store_instances(job_inst)
 

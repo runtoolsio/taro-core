@@ -11,10 +11,10 @@ def test_notification_priority():
         return appender
 
     i = TestJobInstance()
-    i.add_state_observer(observer(2), 2)
-    i.add_state_observer(observer(4), 4)
-    i.add_state_observer(observer(1), 1)
-    i.add_state_observer(observer(3), 3)
+    i.add_transition_callback(observer(2), 2)
+    i.add_transition_callback(observer(4), 4)
+    i.add_transition_callback(observer(1), 1)
+    i.add_transition_callback(observer(3), 3)
 
     i.change_phase(TerminationStatus.RUNNING)
 

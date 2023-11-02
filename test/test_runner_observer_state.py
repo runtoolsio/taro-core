@@ -9,7 +9,7 @@ import tarotools.taro
 import tarotools.taro.jobs.runner as runner
 from tarotools.taro import TerminationStatus
 from tarotools.taro.jobs import lock
-from tarotools.taro.jobs.instance import InstancePhaseObserver, JobInst
+from tarotools.taro.jobs.instance import InstanceTransitionObserver, JobInst
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.observer import TestPhaseObserver
 
@@ -54,15 +54,15 @@ def test_observer_raises_exception():
     observer = ExceptionRaisingObserver(Exception('Should be captured by runner'))
     execution = TestExecution(TerminationStatus.COMPLETED)
     job_instance = tarotools.taro.job_instance('j1', execution, state_locker=lock.NullStateLocker())
-    job_instance.add_state_observer(observer)
+    job_instance.add_transition_callback(observer)
     job_instance.run()
     assert execution.executed_count() == 1  # No exception thrown before
 
 
-class ExceptionRaisingObserver(InstancePhaseObserver):
+class ExceptionRaisingObserver(InstanceTransitionObserver):
 
     def __init__(self, raise_exc: Exception):
         self.raise_exc = raise_exc
 
-    def new_instance_phase(self, job_inst: JobInst, previous_phase, new_phase, changed):
+    def new_transition(self, job_inst: JobInst, previous_phase, new_phase, changed):
         raise self.raise_exc

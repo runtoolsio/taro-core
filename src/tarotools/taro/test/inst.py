@@ -141,22 +141,22 @@ class TestJobInstance(RunnableJobInstance):
     def interrupted(self):
         self.interrupted = True
 
-    def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
+    def add_transition_callback(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
         self.state_notification.add_observer(observer, priority)
 
-    def remove_state_observer(self, observer):
+    def remove_transition_callback(self, observer):
         self.state_notification.remove_observer(observer)
 
-    def add_warning_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+    def add_warning_callback(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         pass
 
-    def remove_warning_observer(self, observer):
+    def remove_warning_callback(self, observer):
         pass
 
-    def add_output_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+    def add_status_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         pass
 
-    def remove_output_observer(self, observer):
+    def remove_status_observer(self, observer):
         pass
 
 

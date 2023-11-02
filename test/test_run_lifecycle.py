@@ -57,8 +57,9 @@ def test_states(sut):
     assert sut.ended_at == datetime.datetime(2023, 1, 1, 0, 50)
 
 
-def test_current_phase(sut):
+def test_current_and_previous_phase(sut):
     assert sut.phase == StandardPhase.TERMINAL.value
+    assert sut.previous_phase == EXECUTING
 
 
 def test_phase_run(sut):
@@ -69,8 +70,8 @@ def test_phase_run(sut):
 
 
 def test_termination(sut):
-    assert sut.is_terminated
-    assert not Lifecycle(PhaseTransition(StandardPhase.INIT.value, utc_now())).is_terminated
+    assert sut.is_ended
+    assert not Lifecycle(PhaseTransition(StandardPhase.INIT.value, utc_now())).is_ended
 
 
 def test_execution_time(sut):

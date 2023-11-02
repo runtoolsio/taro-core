@@ -14,7 +14,7 @@ def test_state_dispatching():
     receiver.listeners.append(observer)
     receiver.start()
     try:
-        dispatcher.new_instance_phase(
+        dispatcher.new_transition(
             TestJobInstance('j1').create_snapshot(),
             TerminationStatus.NONE,
             TerminationStatus.CREATED,
