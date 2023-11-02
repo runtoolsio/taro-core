@@ -114,10 +114,10 @@ class TestJobInstance(RunnableJobInstance):
         self._warnings.update([warning.name])
 
     @property
-    def exec_error(self) -> ExecutionError:
+    def run_error(self) -> ExecutionError:
         return self._exec_error
 
-    @exec_error.setter
+    @run_error.setter
     def exec_error(self, value):
         self._exec_error = value
 
@@ -133,7 +133,7 @@ class TestJobInstance(RunnableJobInstance):
             self.status,
             self.error_output,
             self.warnings,
-            self.exec_error)
+            self.run_error)
 
     def stop(self):
         self.stopped = True

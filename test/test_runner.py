@@ -84,9 +84,9 @@ def test_error():
     instance = tarotools.taro.run_uncoordinated('j', execution)
 
     assert instance.lifecycle.phase == ExSt.ERROR
-    assert isinstance(instance.exec_error, FailedRun)
-    assert instance.exec_error.termination_status == ExSt.ERROR
-    assert instance.exec_error.unexpected_error == exception
+    assert isinstance(instance.run_error, FailedRun)
+    assert instance.run_error.termination_status == ExSt.ERROR
+    assert instance.run_error.unexpected_error == exception
 
 
 def wait_for_pending_state(instance: JobInstance):

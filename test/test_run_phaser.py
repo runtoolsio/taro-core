@@ -5,7 +5,7 @@ import pytest
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.coordination import ApprovalPhase
 from tarotools.taro.run import Phaser, StandardPhase, TerminationStatus, PhaseStep, Phase, RunState, WaitWrapperStep, \
-    FailedRun, Fault
+    FailedRun, RunError
 
 
 class ExecTestPhase(PhaseStep):
@@ -176,7 +176,7 @@ def test_exception(sut):
                 StandardPhase.TERMINAL.value
             ])
 
-    assert sut.run_error == Fault('InvalidStateError', 'reason')
+    assert sut.run_error == RunError('InvalidStateError', 'reason')
 
 
 def test_interruption(sut):

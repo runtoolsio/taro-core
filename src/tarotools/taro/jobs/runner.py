@@ -46,11 +46,11 @@ State lock
 import copy
 import logging
 from collections import deque, Counter
-from typing import List, Union, Tuple
+from typing import List, Tuple, Optional
 
 from tarotools.taro import util
 from tarotools.taro.jobs.instance import JobInst, WarnEventCtx, JobInstanceID, JobInstanceMetadata, RunnableJobInstance
-from tarotools.taro.run import Phaser, Lifecycle, TerminationStatus, Flag, FailedRun
+from tarotools.taro.run import Phaser, Lifecycle, TerminationStatus, Flag, Fault
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY, CallableNotification
 
 log = logging.getLogger(__name__)
@@ -73,10 +73,10 @@ class RunnerJobInstance(RunnableJobInstance):
         self._phaser = Phaser(Lifecycle(), phase_steps)
         parameters = ()  # TODO
         self._metadata = JobInstanceMetadata(self._id, parameters, user_params)
+        self._tracking = None  # TODO The output fields below will be moved to the tracker
         self._last_output = deque(maxlen=10)  # TODO Max len configurable
         self._error_output = deque(maxlen=1000)  # TODO Max len configurable
         self._executing = False
-        self._exec_error = None
         self._warnings = Counter()
         self._state_notification = CallableNotification(error_hook=log_observer_error)
         self._warning_notification = CallableNotification(error_hook=log_observer_error)
@@ -99,11 +99,11 @@ class RunnerJobInstance(RunnableJobInstance):
 
     @property
     def tracking(self):
-        return self._execution.tracking
+        return self._tracking
 
     @property
     def status(self):
-        return self._execution.status
+        return self._tracking.status
 
     @property
     def last_output(self) -> List[Tuple[str, bool]]:
@@ -118,19 +118,18 @@ class RunnerJobInstance(RunnableJobInstance):
         return dict(self._warnings)
 
     @property
-    def exec_error(self) -> Union[FailedRun, None]:
-        return self._exec_error
+    def run_error(self) -> Optional[Fault]:
+        return self._phaser.run_error
 
     def create_snapshot(self):
-        with self._state_lock:
-            return JobInst(
-                self.metadata,
-                copy.deepcopy(self.lifecycle),
-                self.tracking.copy() if self.tracking else None,
-                self.status,
-                self.error_output,
-                self.warnings,
-                self.exec_error)
+        return JobInst(
+            self.metadata,
+            copy.deepcopy(self.lifecycle),
+            self.tracking.copy() if self.tracking else None,
+            self.status,
+            self.error_output,
+            self.warnings,
+            self.run_error)
 
     def add_state_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
         with self._state_lock:

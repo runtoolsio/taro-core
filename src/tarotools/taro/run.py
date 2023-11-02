@@ -16,7 +16,7 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum, auto, EnumMeta
 from threading import Lock, Event
-from typing import Optional, List, Dict, Any, Set, TypeVar, Type, Callable
+from typing import Optional, List, Dict, Any, Set, TypeVar, Type, Callable, Tuple, Union
 
 from tarotools.taro import util, status
 from tarotools.taro.err import InvalidStateError
@@ -435,18 +435,16 @@ class Phaser:
         self._name_to_step = unique_steps_to_dict(steps)
         self._timestamp_generator = timestamp_generator
         self.transition_hook: Optional[Callable[[Phase, Phase, int], None]] = None
-        self.status_hook: Optional[Callable[[str, bool], None]] = None
 
-        self._phase_lock = Lock()
-        # Guarded by the phase lock:
+        self._transition_lock = Lock()
+        # Guarded by the transition/state lock:
         self._lifecycle = lifecycle or Lifecycle()
         self._current_step = None
         self._abort = False
         self._term_status = TerminationStatus.NONE
-        # ----------------------- #
-
         self._run_failure: Optional[Fault] = None
         self._run_error: Optional[Fault] = None
+        # ----------------------- #
 
     T = TypeVar('T')
 
@@ -477,7 +475,7 @@ class Phaser:
         return self._run_failure
 
     def prime(self):
-        with self._phase_lock:
+        with self._transition_lock:
             if self._current_step:
                 raise InvalidStateError("Primed already")
             self._next_step(InitStep())
@@ -489,42 +487,32 @@ class Phaser:
         term_status = None
         exc = None
         for step in self._name_to_step.values():
-            with self._phase_lock:
+            with self._transition_lock:
                 if self._abort:
                     return
                 if term_status and not self._term_status:
                     self._term_status = term_status
-                if exc:
+                if isinstance(exc, BaseException):
                     assert self._term_status
                     self._next_step(TerminalStep())
                     raise exc
+                if exc:
+                    assert self._term_status
+                    if isinstance(exc, RunFailure):
+                        self._run_failure = exc
+                    else:
+                        assert isinstance(exc, RunError)
+                        self._run_error = exc
                 if self._term_status:
                     self._next_step(TerminalStep())
                     return
 
                 self._next_step(step)
 
-            term_status, exc = self._run_handle_errors(step)
+            term_status, exc = _run_handle_errors(step)
 
         self._term_status = self._term_status or TerminationStatus.COMPLETED
         self._next_step(TerminalStep())
-
-    def _run_handle_errors(self, step):
-        try:
-            return step.run(), None
-        except FailedRun as e:
-            self._run_failure = e.fault
-            return TerminationStatus.FAILED, None
-        except Exception as e:
-            self._run_error = Fault(e.__class__.__name__, str(e))
-            return TerminationStatus.ERROR, None
-        except KeyboardInterrupt as e:
-            log.warning('keyboard_interruption')
-            # Assuming child processes received SIGINT, TODO different state on other platforms?
-            return TerminationStatus.INTERRUPTED, e
-        except SystemExit as e:
-            # Consider UNKNOWN (or new state DETACHED?) if there is possibility the execution is not completed
-            return (TerminationStatus.COMPLETED if e.code == 0 else TerminationStatus.FAILED), e
 
     def _next_step(self, step):
         """
@@ -534,14 +522,13 @@ class Phaser:
 
         prev_phase = self._lifecycle.phase
         self._current_step = step
-        self._current_step.status_hook = self.status_hook  # Should be the hook removed from the prev step?
         self._lifecycle.add_transition(PhaseTransition(step.phase, self._timestamp_generator()), self._term_status)
         ordinal = self._lifecycle.phase_count
         if self.transition_hook:
             self.transition_hook(prev_phase, self._lifecycle.phase, ordinal)
 
     def stop(self):
-        with self._phase_lock:
+        with self._transition_lock:
             if self._term_status:
                 return
 
@@ -561,6 +548,16 @@ class Fault:
     reason: str
 
 
+@dataclass
+class RunFailure(Fault):
+    pass
+
+
+@dataclass
+class RunError(Fault):
+    pass
+
+
 class FailedRun(Exception):
     """
     This exception is used to provide additional information about a run failure.
@@ -568,4 +565,20 @@ class FailedRun(Exception):
 
     def __init__(self, fault_type: str, reason: str):
         super().__init__(f"{fault_type}: {reason}")
-        self.fault = Fault(fault_type, reason)
+        self.fault = RunFailure(fault_type, reason)
+
+
+def _run_handle_errors(step) -> Tuple[Optional[TerminationStatus], Union[None, RunFailure, RunError, BaseException]]:
+    try:
+        return step.run(), None
+    except FailedRun as e:
+        return TerminationStatus.FAILED, e.fault
+    except Exception as e:
+        return TerminationStatus.ERROR, RunError(e.__class__.__name__, str(e))
+    except KeyboardInterrupt as e:
+        log.warning('keyboard_interruption')
+        # Assuming child processes received SIGINT, TODO different state on other platforms?
+        return TerminationStatus.INTERRUPTED, e
+    except SystemExit as e:
+        # Consider UNKNOWN (or new state DETACHED?) if there is possibility the execution is not completed
+        return (TerminationStatus.COMPLETED if e.code == 0 else TerminationStatus.FAILED), e

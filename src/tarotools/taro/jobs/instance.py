@@ -364,7 +364,7 @@ class JobInstance(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def exec_error(self):
+    def run_error(self):
         """
         Retrieves the error details of the job execution, if any occurred.
         If no errors occurred during the execution of the job, this property returns None.
@@ -560,8 +560,8 @@ class DelegatingJobInstance(RunnableJobInstance):
         self.delegated.add_warning(warning)
 
     @property
-    def exec_error(self) -> FailedRun:
-        return self.delegated.exec_error
+    def run_error(self) -> FailedRun:
+        return self.delegated.run_error
 
     def create_snapshot(self):
         return self.delegated.create_snapshot()
