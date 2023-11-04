@@ -73,8 +73,8 @@ class RunnerJobInstance(JobInstance):
         self._metadata = JobInstanceMetadata(self._id, parameters, user_params)
         self._phaser = Phaser(Lifecycle(), phase_steps)
         self._tracking = None  # TODO The output fields below will be moved to the tracker
-        #self._last_output = deque(maxlen=10)  # TODO Max len configurable
-        #self._error_output = deque(maxlen=1000)  # TODO Max len configurable
+        # self._last_output = deque(maxlen=10)  # TODO Max len configurable
+        # self._error_output = deque(maxlen=1000)  # TODO Max len configurable
         self._transition_notification = CallableNotification(error_hook=log_observer_error)
         self._status_notification = ObservableNotification[StatusObserver](error_hook=log_observer_error)
 
@@ -103,6 +103,10 @@ class RunnerJobInstance(JobInstance):
     def run_error(self) -> Optional[Fault]:
         return self._phaser.create_run_snapshot().run_error
 
+    @property
+    def status_observer(self):
+        return self._status_notification.observer_proxy
+
     def create_snapshot(self) -> JobRun:
         run_snapshot = self._phaser.create_run_snapshot()
         return JobRun(
@@ -114,14 +118,15 @@ class RunnerJobInstance(JobInstance):
             run_snapshot.run_error)
 
     def run(self):
+        observer_proxy = self._status_notification.observer_proxy
         for phase_step in self._phaser.steps:
-            phase_step.add_status_observer(self._status_notification.observer_proxy)
+            phase_step.add_status_observer(observer_proxy)
 
         try:
             self._phaser.run()
         finally:
             for phase_step in self._phaser.steps:
-                phase_step.remove_status_observer(self._status_notification.observer_proxy)
+                phase_step.remove_status_observer(observer_proxy)
 
     def stop(self):
         """

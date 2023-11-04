@@ -182,6 +182,16 @@ class JobInstance(abc.ABC):
             tarotools.taro.jobs.lifecycle.ExecutionError: The details of the execution error or None if the job executed successfully.
         """
 
+    @property
+    @abc.abstractmethod
+    def status_observer(self):
+        """
+        Returned status observer allows to add status notifications also by a logic located outside the instance.
+
+        Returns:
+            Status observer for this instance.
+        """
+
     @abc.abstractmethod
     def create_snapshot(self):
         """
