@@ -9,7 +9,7 @@ import tarotools.taro
 import tarotools.taro.jobs.runner as runner
 from tarotools.taro import TerminationStatus
 from tarotools.taro.jobs import lock
-from tarotools.taro.jobs.instance import InstanceTransitionObserver, JobInst
+from tarotools.taro.jobs.instance import InstanceTransitionObserver, JobRun
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.observer import TestPhaseObserver
 
@@ -17,9 +17,9 @@ from tarotools.taro.test.observer import TestPhaseObserver
 @pytest.fixture
 def observer():
     observer = TestPhaseObserver()
-    runner.register_state_observer(observer)
+    runner.register_transition_callback(observer)
     yield observer
-    runner.deregister_state_observer(observer)
+    runner.deregister_transition_callback(observer)
 
 
 def test_job_passed(observer: TestPhaseObserver):
@@ -64,5 +64,5 @@ class ExceptionRaisingObserver(InstanceTransitionObserver):
     def __init__(self, raise_exc: Exception):
         self.raise_exc = raise_exc
 
-    def new_transition(self, job_inst: JobInst, previous_phase, new_phase, changed):
+    def new_transition(self, job_inst: JobRun, previous_phase, new_phase, changed):
         raise self.raise_exc

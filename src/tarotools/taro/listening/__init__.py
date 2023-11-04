@@ -7,8 +7,8 @@ from json import JSONDecodeError
 
 from tarotools.taro import util
 from tarotools.taro.jobs.events import PHASE_LISTENER_FILE_EXTENSION, OUTPUT_LISTENER_FILE_EXTENSION
-from tarotools.taro.jobs.instance import JobInstanceMetadata, InstancePhase
-from tarotools.taro.run import TerminationStatus
+from tarotools.taro.jobs.instance import JobInstanceMetadata
+from tarotools.taro.run import TerminationStatus, Phase
 from tarotools.taro.socket import SocketServer
 
 log = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ def _read_metadata(req_body_json):
     if not instance_metadata:
         raise ValueError(_missing_field_txt('root', 'instance_metadata'))
 
-    return event_type, JobInstanceMetadata.from_dict(instance_metadata)
+    return event_type, JobInstanceMetadata.deserialize(instance_metadata)
 
 
 class EventReceiver(SocketServer):
@@ -77,12 +77,12 @@ class PhaseReceiver(EventReceiver):
         self.listeners = []
 
     def handle_event(self, _, instance_meta, event):
-        new_phase = InstancePhase[event["new_phase"]]
+        new_phase = Phase.deserialize(event["new_phase"])
 
         if self.phases and new_phase not in self.phases:
             return
 
-        previous_phase = InstancePhase[event['previous_phase']]
+        previous_phase = Phase.deserialize(event['previous_phase'])
         changed = util.parse_datetime(event["changed"])
         termination_status = TerminationStatus[
             "termination_status"] if "termination_status" in event else TerminationStatus.NONE

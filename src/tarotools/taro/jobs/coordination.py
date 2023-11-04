@@ -7,7 +7,7 @@ from threading import Condition, Event, Lock
 from tarotools import taro
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.criteria import IDMatchCriteria, StateCriteria, InstanceMatchCriteria
-from tarotools.taro.jobs.instance import JobInstances, InstancePhase
+from tarotools.taro.jobs.instance import JobRuns
 from tarotools.taro.listening import PhaseReceiver, InstancePhaseEventObserver
 from tarotools.taro.run import PhaseStep, RunState, Phase, TerminationStatus
 
@@ -85,7 +85,7 @@ class DependencyPhase(PhaseStep):
         self._dependency_match = dependency_match
         self._parameters = (
             ('phase', 'dependency'),
-            ('dependency', (str(dependency_match.to_dict(False)))),
+            ('dependency', (str(dependency_match.serialize(False)))),
         )
 
     @property
@@ -391,7 +391,7 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
         )
         jobs, _ = taro.client.read_instances(criteria)
 
-        group_jobs_sorted = JobInstances(sorted(jobs, key=InstancePhase.CREATED))
+        group_jobs_sorted = JobRuns(sorted(jobs, key=RunState.CREATED))
         next_count = self._max_executions - len(group_jobs_sorted.executing)
         if next_count <= 0:
             return False
@@ -409,7 +409,7 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
         with self._wait_guard:
             if not self._current_wait:
                 return
-            if new_phase == InstancePhase.TERMINAL and instance_meta.contains_parameters(self._parameters):
+            if new_phase.state == RunState.ENDED and instance_meta.contains_parameters(self._parameters):
                 self._current_wait = False
                 self._stop_listening()
                 self._wait_guard.notify()

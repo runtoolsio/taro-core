@@ -69,10 +69,10 @@ class Phase:
     state: RunState
 
     @classmethod
-    def from_dict(cls, as_dict) -> 'Phase':
+    def deserialize(cls, as_dict) -> 'Phase':
         return cls(as_dict['name'], RunState.from_str(as_dict['state']))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def serialize(self) -> Dict[str, Any]:
         return {"name": self.name, "state": str(self.state)}
 
 
@@ -97,6 +97,7 @@ class TerminationStatusFlag(Enum):
 
 
 class TerminationStatusMeta(EnumMeta):
+
     def __getitem__(self, name):
         if not name:
             return TerminationStatus.NONE
@@ -137,13 +138,6 @@ class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
         obj = object.__new__(cls)
         obj._value_ = value
         return obj
-
-    @classmethod
-    def from_str(cls, value: str):
-        try:
-            return cls[value.upper()]
-        except KeyError:
-            return cls.UNKNOWN
 
     @classmethod
     def with_flags(cls, *flags):
@@ -213,17 +207,17 @@ class Lifecycle:
         ))
 
     @classmethod
-    def from_dict(cls, as_dict):
+    def deserialize(cls, as_dict):
         transitions = [
-            PhaseTransition(Phase.from_dict(phase_change['phase']), util.parse_datetime(phase_change['transitioned']))
+            PhaseTransition(Phase.deserialize(phase_change['phase']), util.parse_datetime(phase_change['transitioned']))
             for phase_change in as_dict['transitions']]
         return cls(*transitions)
 
-    def to_dict(self, include_empty=True) -> Dict[str, Any]:
+    def serialize(self, include_empty=True) -> Dict[str, Any]:
         d = {
-            "transitions": [{"phase": pt.phase.to_dict(), "transitioned": format_dt_iso(pt.transitioned)}
+            "transitions": [{"phase": pt.phase.serialize(), "transitioned": format_dt_iso(pt.transitioned)}
                             for pt in self._transitions.values()],
-            "phase": self.phase.to_dict(),
+            "phase": self.phase.serialize(),
             "last_transition_at": format_dt_iso(self.last_transition_at),
             "created_at": format_dt_iso(self.created_at),
             "executed_at": format_dt_iso(self.executed_at),
@@ -434,7 +428,7 @@ class Phaser:
     def __init__(self, steps, lifecycle=None, *, timestamp_generator=util.utc_now):
         self._name_to_step: Dict[str, PhaseStep] = unique_steps_to_dict(steps)
         self._timestamp_generator = timestamp_generator
-        self.transition_hook: Optional[Callable[[Phase, Phase, int], None]] = None
+        self.transition_hook: Optional[Callable[[Phase, Phase, int, datetime.datetime], None]] = None
 
         self._transition_lock = RLock()
         # Guarded by the transition/state lock:
@@ -515,11 +509,12 @@ class Phaser:
         self._current_step = step
         self._lifecycle.add_transition(PhaseTransition(step.phase, self._timestamp_generator()))
         if self.transition_hook:
-            self.execute_last_transition_hook(self.transition_hook)
+            self.execute_transition_hook_safely(self.transition_hook)
 
-    def execute_last_transition_hook(self, transition_hook):
+    def execute_transition_hook_safely(self, transition_hook):
         with self._transition_lock:
-            transition_hook(self._lifecycle.previous_phase, self._lifecycle.phase, self._lifecycle.phase_count)
+            lc = self._lifecycle
+            transition_hook(lc.previous_phase, lc.phase, lc.phase_count, lc.last_transition_at)
 
     def stop(self):
         with self._transition_lock:
@@ -540,6 +535,13 @@ class Phaser:
 class Fault:
     fault_type: str
     reason: str
+
+    def serialize(self):
+        return {"fault_type": self.fault_type, "reason": self.reason}
+
+    @classmethod
+    def deserialize(cls, as_dict):
+        return cls(as_dict["fault_type"], as_dict["reason"])
 
 
 @dataclass

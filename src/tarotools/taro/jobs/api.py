@@ -58,7 +58,7 @@ class InstancesResource(APIResource):
         return '/instances'
 
     def handle(self, job_instance, req_body):
-        return {"job_instance": job_instance.create_snapshot().to_dict()}
+        return {"job_instance": job_instance.create_snapshot().serialize()}
 
 
 class ReleaseWaitingResource(APIResource):
@@ -187,7 +187,7 @@ class APIServer(SocketServer, JobInstanceManager):
             except Exception:
                 log.error("event=[api_handler_error]", exc_info=True)
                 return _resp_err(500, 'Unexpected API handler error')
-            instance_response['instance_metadata'] = job_instance.metadata.to_dict()
+            instance_response['instance_metadata'] = job_instance.metadata.serialize()
             instance_responses.append(instance_response)
 
         return _resp_ok(instance_responses)
@@ -222,7 +222,7 @@ def _missing_field_error(field) -> _ApiError:
 def _inst_metadata(job_instance):
     return {
         "job_id": job_instance.job_id,
-        "instance_id": job_instance.instance_id
+        "instance_id": job_instance.run_id
     }
 
 

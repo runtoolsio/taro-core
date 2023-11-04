@@ -13,7 +13,7 @@ from tarotools.taro import cfg, InstanceLifecycle, TerminationStatus
 from tarotools.taro import paths
 from tarotools.taro.execution import Flag, \
     Phase
-from tarotools.taro.jobs.instance import (InstanceTransitionObserver, JobInst, JobInstances, JobInstanceID,
+from tarotools.taro.jobs.instance import (InstanceTransitionObserver, JobRun, JobRuns, JobInstanceID,
                                           LifecycleEvent,
                                           JobInstanceMetadata, InstancePhase)
 from tarotools.taro.jobs.job import JobStats
@@ -62,13 +62,13 @@ def _build_where_clause(instance_match, alias=''):
                 conditions.append(f'{alias}job_id = "{c.job_id}"')
             else:
                 raise ValueError(f"Matching strategy {c.strategy} is not supported")
-        if c.instance_id:
+        if c.run_id:
             if c.strategy == MatchingStrategy.PARTIAL:
-                conditions.append(f'{alias}instance_id GLOB "*{c.instance_id}*"')
+                conditions.append(f'{alias}instance_id GLOB "*{c.run_id}*"')
             elif c.strategy == MatchingStrategy.FN_MATCH:
-                conditions.append(f'{alias}instance_id GLOB "{c.instance_id}"')
+                conditions.append(f'{alias}instance_id GLOB "{c.run_id}"')
             elif c.strategy == MatchingStrategy.EXACT:
-                conditions.append(f'{alias}instance_id = "{c.instance_id}"')
+                conditions.append(f'{alias}instance_id = "{c.run_id}"')
             else:
                 raise ValueError(f"Matching strategy {c.strategy} is not supported")
 
@@ -117,7 +117,7 @@ class SQLite(InstanceTransitionObserver):
     def __init__(self, connection):
         self._conn = connection
 
-    def new_transition(self, job_inst: JobInst, previous_phase, new_phase, changed):
+    def new_transition(self, job_inst: JobRun, previous_phase, new_phase, changed):
         if new_phase.in_phase(Phase.TERMINAL):
             self.store_instances(job_inst)
 
@@ -151,7 +151,7 @@ class SQLite(InstanceTransitionObserver):
 
     def read_instances(self, instance_match=None, sort=SortCriteria.ENDED,
                        *, asc=True, limit=-1, offset=-1, last=False) \
-            -> JobInstances:
+            -> JobRuns:
         def sort_exp():
             if sort == SortCriteria.CREATED:
                 return 'h.created'
@@ -186,9 +186,9 @@ class SQLite(InstanceTransitionObserver):
             pending_group = json.loads(t[14]).get("pending_group") if t[14] else None
             metadata = JobInstanceMetadata(JobInstanceID(t[0], t[1]), parameters, user_params, pending_group)
 
-            return JobInst(metadata, lifecycle, tracking, status, error_output, warnings, exec_error)
+            return JobRun(metadata, lifecycle, tracking, status, error_output, warnings, exec_error)
 
-        return JobInstances((to_job_info(row) for row in c.fetchall()))
+        return JobRuns((to_job_info(row) for row in c.fetchall()))
 
     def clean_up(self, max_records, max_age):
         if max_records >= 0:
@@ -260,7 +260,7 @@ class SQLite(InstanceTransitionObserver):
     def store_instances(self, *job_inst):
         def to_tuple(j):
             return (j.job_id,
-                    j.instance_id,
+                    j.run_id,
                     format_dt_sql(j.lifecycle.created_at),
                     format_dt_sql(j.lifecycle.last_transition_at),
                     round(j.lifecycle.total_executing_time.total_seconds(), 3) if j.lifecycle.total_executing_time else None,
@@ -268,11 +268,11 @@ class SQLite(InstanceTransitionObserver):
                         [(phase.name, float(changed.timestamp())) for phase, changed in j.lifecycle.phase_transitions]),
                     j.lifecycle.phase.name if j.lifecycle.phase.in_phase(
                         InstancePhase.TERMINAL) else TerminationStatus.UNKNOWN.name,
-                    json.dumps(j.tracking.to_dict(include_empty=False)) if j.tracking else None,
+                    json.dumps(j.tracking.serialize(include_empty=False)) if j.tracking else None,
                     j.status,
                     json.dumps(j.error_output) if j.error_output else None,
                     json.dumps(j.warnings) if j.warnings else None,
-                    json.dumps(j.run_error.to_dict(include_empty=False)) if j.run_error else None,
+                    json.dumps(j.run_error.serialize(include_empty=False)) if j.run_error else None,
                     json.dumps(j.metadata.user_params) if j.metadata.user_params else None,
                     json.dumps(j.metadata.parameters) if j.metadata.parameters else None,
                     json.dumps({"pending_group": j.metadata.pending_group}) if j.metadata.pending_group else None

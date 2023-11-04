@@ -44,7 +44,7 @@ def test_last(sut):
 
     jobs = sut.read_instances(last=True)
     assert len(jobs) == 3
-    assert [job.instance_id for job in jobs] == ['j1-2', 'j3-1', 'j2-2']
+    assert [job.run_id for job in jobs] == ['j1-2', 'j3-1', 'j2-2']
 
 
 def test_sort(sut):

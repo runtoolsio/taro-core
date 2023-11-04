@@ -12,7 +12,7 @@ import json
 import logging
 
 from tarotools.taro import util
-from tarotools.taro.jobs.instance import InstanceTransitionObserver, JobInst, InstanceOutputObserver
+from tarotools.taro.jobs.instance import InstanceTransitionObserver, JobRun, InstanceOutputObserver
 from tarotools.taro.socket import SocketClient, PayloadTooLarge
 from tarotools.taro.util import format_dt_iso
 
@@ -37,7 +37,7 @@ class EventDispatcher(abc.ABC):
             "event_metadata": {
                 "event_type": event_type
             },
-            "instance_metadata": instance_meta.to_dict(),
+            "instance_metadata": instance_meta.serialize(),
             "event": event
         }
         try:
@@ -58,7 +58,7 @@ class PhaseDispatcher(EventDispatcher, InstanceTransitionObserver):
     def __init__(self):
         super(PhaseDispatcher, self).__init__(SocketClient(PHASE_LISTENER_FILE_EXTENSION, bidirectional=False))
 
-    def new_transition(self, job_inst: JobInst, previous_phase, new_phase, changed):
+    def new_transition(self, job_inst: JobRun, previous_phase, new_phase, changed):
         event = {
             "new_state": new_phase.name,
             "previous_state": previous_phase.name,
@@ -76,7 +76,7 @@ class OutputDispatcher(EventDispatcher, InstanceOutputObserver):
     def __init__(self):
         super(OutputDispatcher, self).__init__(SocketClient(OUTPUT_LISTENER_FILE_EXTENSION, bidirectional=False))
 
-    def new_instance_output(self, job_info: JobInst, output, is_error):
+    def new_instance_output(self, job_info: JobRun, output, is_error):
         event = {
             "output": util.truncate(output, 10000, truncated_suffix=".. (truncated)"),
             "is_error": is_error,

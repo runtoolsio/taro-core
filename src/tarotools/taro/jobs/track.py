@@ -208,7 +208,7 @@ class Operation(Temporal, Activatable):
     def to_dict(self, include_empty=True):
         d = {
             'name': self.name,
-            'progress': self.progress.to_dict(include_empty),
+            'progress': self.progress.serialize(include_empty),
             'started_at': format_dt_iso(self.started_at),
             'updated_at': format_dt_iso(self.updated_at),
             'ended_at': format_dt_iso(self.ended_at),
@@ -335,8 +335,8 @@ class TrackedTask(Temporal, Activatable):
         d = {
             'name': self.name,
             'events': [(event, format_dt_iso(ts)) for event, ts in self.events],
-            'operations': [op.to_dict(include_empty) for op in self.operations],
-            'subtasks': [task.to_dict(include_empty) for task in self.subtasks],
+            'operations': [op.serialize(include_empty) for op in self.operations],
+            'subtasks': [task.serialize(include_empty) for task in self.subtasks],
             'started_at': format_dt_iso(self.started_at),
             'updated_at': format_dt_iso(self.updated_at),
             'ended_at': format_dt_iso(self.ended_at),

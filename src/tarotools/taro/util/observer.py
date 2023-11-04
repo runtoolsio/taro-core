@@ -54,7 +54,7 @@ class ObservableNotification(Generic[O]):
 
     @property
     def observer_proxy(self) -> O:
-        return _Proxy(self.observers, self.error_hook)
+        return _Proxy(self)
 
     @property
     def observers(self) -> List[O]:
@@ -75,26 +75,23 @@ class ObservableNotification(Generic[O]):
 
 class _Proxy(Generic[O]):
 
-    def __init__(self, observers: List[O], error_hook) -> None:
-        self._observers = observers
-        self._error_hook = error_hook
+    def __init__(self, notification: ObservableNotification) -> None:
+        self._notification = notification
 
     def __getattribute__(self, name: str) -> object:
         def method(*args, **kwargs):
-            results = []
-            for observer in object.__getattribute__(self, "_observers"):
+            for observer in object.__getattribute__(self, "_notification").observers:
                 try:
-                    results.append(getattr(observer, name)(*args, **kwargs))
+                    getattr(observer, name)(*args, **kwargs)
                 except Exception as e:
-                    error_hook = object.__getattribute__(self, "_error_hook")
+                    error_hook = object.__getattribute__(self, "_notification").error_hook
                     if error_hook:
                         error_hook(observer, args, e)
                     else:
                         print(f"{e.__class__.__name__}: {e}", file=sys.stderr)
-            return results
 
         # Special handling for methods/attributes that are specific to the proxy object itself
-        if name in ["_observers", "_error_hook"]:
+        if name in ["_notification"]:
             return object.__getattribute__(self, name)
 
         return method

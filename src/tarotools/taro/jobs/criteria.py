@@ -46,7 +46,7 @@ class IDMatchCriteria:
         Returns:
             IDMatchCriteria: An IDMatchCriteria object that will match the given job_instance.
         """
-        return IDMatchCriteria(job_id=job_inst.id.job_id, instance_id=job_inst.id.instance_id)
+        return IDMatchCriteria(job_id=job_inst.id.job_id, instance_id=job_inst.id.run_id)
 
     @classmethod
     def parse_pattern(cls, pattern: str, strategy=MatchingStrategy.EXACT):
@@ -96,7 +96,7 @@ class IDMatchCriteria:
         """
         op = self._op()
         return op(not self.job_id or self.strategy(jid.job_id, self.job_id),
-                  not self.instance_id or self.strategy(jid.instance_id, self.instance_id))
+                  not self.instance_id or self.strategy(jid.run_id, self.instance_id))
 
     def __call__(self, jid):
         return self.matches(jid)
@@ -471,9 +471,9 @@ class InstanceMatchCriteria:
 
     def to_dict(self, include_empty=True):
         d = {
-            'id_criteria': [c.to_dict(include_empty) for c in self.id_criteria],
-            'interval_criteria': [c.to_dict(include_empty) for c in self.interval_criteria],
-            'state_criteria': self.state_criteria.to_dict(include_empty) if self.state_criteria else None,
+            'id_criteria': [c.serialize(include_empty) for c in self.id_criteria],
+            'interval_criteria': [c.serialize(include_empty) for c in self.interval_criteria],
+            'state_criteria': self.state_criteria.serialize(include_empty) if self.state_criteria else None,
             'jobs': self.job_ids,
             'param_sets': self.param_sets,
         }

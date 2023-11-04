@@ -20,9 +20,10 @@ from tarotools.taro import plugins as plugins_mod
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.events import PhaseDispatcher, OutputDispatcher
-from tarotools.taro.jobs.instance import (InstanceTransitionObserver, JobInst, JobInstance, JobInstanceManager,
-                                          InstanceOutputObserver, JobInstanceID, InstancePhase)
+from tarotools.taro.jobs.instance import (InstanceTransitionObserver, JobRun, JobInstance, JobInstanceManager,
+                                          InstanceOutputObserver, JobInstanceID)
 from tarotools.taro.jobs.plugins import Plugin
+from tarotools.taro.run import RunState
 
 log = logging.getLogger(__name__)
 
@@ -311,11 +312,11 @@ class FeaturedContext(InstanceTransitionObserver):
                 raise InvalidStateError("Cannot add job instance because the context has not been opened")
             if self._close_requested:
                 raise InvalidStateError("Cannot add job instance because the context has been already closed")
-            if job_instance.id in self._managed_instances:
+            if job_instance.metadata.id in self._managed_instances:
                 raise ValueError("An instance with this ID has already been added to the context")
 
             managed_instance = _ManagedInstance(job_instance)
-            self._managed_instances[job_instance.id] = managed_instance
+            self._managed_instances[job_instance.metadata.id] = managed_instance
 
         for manager_feat in self._instance_managers:
             manager_feat.component.register_instance(job_instance)
@@ -340,7 +341,7 @@ class FeaturedContext(InstanceTransitionObserver):
         #      iteration/notification (`Notification` class)
         job_instance.add_transition_callback(self, ctx_observer_priority + 1)
         if job_instance.lifecycle.is_ended:
-            self._release_instance(job_instance.id, not self._keep_removed)
+            self._release_instance(job_instance.metadata.id, not self._keep_removed)
 
         return job_instance
 
@@ -356,12 +357,12 @@ class FeaturedContext(InstanceTransitionObserver):
         """
         return self._release_instance(job_instance_id, True)
 
-    def new_transition(self, job_inst: JobInst, previous_phase, new_phase, changed):
+    def new_transition(self, job_run: JobRun, previous_phase, new_phase, ordinal, transitioned):
         """
         DO NOT EXECUTE THIS METHOD! It is part of the internal mechanism.
         """
-        if new_phase.in_phase(InstancePhase.TERMINAL):
-            self._release_instance(job_inst.id, not self._keep_removed)
+        if new_phase.state == RunState.ENDED:
+            self._release_instance(job_run.metadata.id, not self._keep_removed)
 
     def _release_instance(self, job_instance_id, remove):
         """

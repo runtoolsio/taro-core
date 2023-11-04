@@ -13,11 +13,11 @@ from tarotools.taro import cfg, client, log
 from tarotools.taro.hostinfo import read_hostinfo, HostinfoError
 from tarotools.taro.jobs import warning, persistence, plugins, repo, coordination, runner, lock
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
-from tarotools.taro.jobs.instance import JobInstanceID, JobInstance, JobInst, InstanceTransitionObserver, Warn, \
+from tarotools.taro.jobs.instance import JobInstanceID, JobInstance, JobRun, InstanceTransitionObserver, Warn, \
     InstanceWarningObserver, \
-    WarnEventCtx, RunnableJobInstance, RunInNewThreadJobInstance, InstanceLifecycle
+    WarnEventCtx, JobInstance, RunInNewThreadJobInstance
 from tarotools.taro.jobs.plugins import Plugin, PluginDisabledError
-from tarotools.taro.jobs.runner import RunnerJobInstance, RunnableJobInstance, register_state_observer
+from tarotools.taro.jobs.runner import RunnerJobInstance, register_transition_callback
 from tarotools.taro.paths import lookup_file_in_config_path
 from tarotools.taro.process import ProcessExecution
 from tarotools.taro.util import format_timedelta, read_toml_file_flatten
@@ -67,14 +67,14 @@ def close():
 
 def job_instance(job_id, execution, sync_=None, state_locker=lock.default_queue_locker(), *,
                  instance_id=None, **user_params) \
-        -> RunnableJobInstance:
-    return RunnerJobInstance(job_id, execution, sync_, state_locker, instance_id=instance_id, user_params=user_params)
+        -> JobInstance:
+    return RunnerJobInstance(job_id, execution, sync_, state_locker, run_id=instance_id, user_params=user_params)
 
 
 def job_instance_background(job_id, execution, sync_=None, state_locker=lock.default_queue_locker(), *,
                             instance_id=None, **user_params) \
-        -> RunnableJobInstance:
-    instance = RunnerJobInstance(job_id, execution, sync_, state_locker, instance_id=instance_id,
+        -> JobInstance:
+    instance = RunnerJobInstance(job_id, execution, sync_, state_locker, run_id=instance_id,
                                  user_params=user_params)
     return RunInNewThreadJobInstance(instance)
 
@@ -87,8 +87,8 @@ def run(job_id, execution, sync_=None, state_locker=lock.default_queue_locker(),
 
 
 def job_instance_uncoordinated(job_id, execution, *, instance_id=None, **user_params) \
-        -> RunnableJobInstance:
-    return RunnerJobInstance(job_id, execution, coord_locker=lock.NullStateLocker(), instance_id=instance_id,
+        -> JobInstance:
+    return RunnerJobInstance(job_id, execution, coord_locker=lock.NullStateLocker(), run_id=instance_id,
                              user_params=user_params)
 
 

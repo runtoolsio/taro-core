@@ -38,8 +38,9 @@ from tarotools.taro import paths
 from tarotools.taro import util, cfg
 from tarotools.taro.err import TaroException
 from tarotools.taro.jobs import db
-from tarotools.taro.jobs.instance import JobInstances, InstancePhase
+from tarotools.taro.jobs.instance import JobRuns
 from tarotools.taro.jobs.job import JobStats
+from tarotools.taro.run import RunState
 
 
 def load_configured_persistence():
@@ -114,7 +115,7 @@ class SortCriteria(Enum):
 
 
 def read_instances(instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, offset=-1, last=False) \
-        -> JobInstances:
+        -> JobRuns:
     """
     Fetches ended job instances based on specified criteria.
     Datasource: The database as defined by the configured persistence type.
@@ -134,7 +135,7 @@ def read_instances(instance_match=None, sort=SortCriteria.ENDED, *, asc=True, li
             If set to True, only the last record for each job is returned. Defaults to False.
 
     Returns:
-        JobInstances: A collection of job instances that match the given criteria.
+        JobRuns: A collection of job instances that match the given criteria.
     """
     return _instance().read_instances(instance_match, sort, asc=asc, limit=limit, offset=offset, last=last)
 
@@ -231,7 +232,7 @@ def _sort_key(sort: SortCriteria):
     """TODO To remove?"""
     def key(j):
         if sort == SortCriteria.CREATED:
-            return j.lifecycle.transitioned_at(InstancePhase.CREATED)
+            return j.lifecycle.state_first_at(RunState.CREATED)
         if sort == SortCriteria.ENDED:
             return j.lifecycle.ended_at
         if sort == SortCriteria.TIME:

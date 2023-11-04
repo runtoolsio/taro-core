@@ -14,201 +14,46 @@ TODO:
 
 import abc
 import datetime
-import textwrap
 from abc import ABC, abstractmethod
-from collections import OrderedDict
 from dataclasses import dataclass
-from enum import Enum, auto
 from fnmatch import fnmatch
-from functools import partial
 from threading import Thread
-from typing import NamedTuple, Dict, Any, Optional, List, Tuple, Iterable
+from typing import Dict, Any, Optional, List, Tuple
 
-from tarotools.taro import util
 from tarotools.taro.jobs.criteria import IDMatchCriteria
 from tarotools.taro.jobs.track import TrackedTaskInfo
-from tarotools.taro.run import TerminationStatus, FailedRun, Phase
-from tarotools.taro.util import is_empty, format_dt_iso
+from tarotools.taro.run import TerminationStatus, Phase, Lifecycle, Fault, RunState
+from tarotools.taro.util import is_empty
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
 
-class InstancePhase(Enum):
-    NONE = auto()
-    CREATED = auto()
-    PENDING = auto()
-    QUEUED = auto()
-    EXECUTING = auto()
-    TERMINAL = auto()
-
-    def is_before(self, other_phase):
-        return self.value < other_phase.value
-
-    def is_after(self, other_phase):
-        return self.value > other_phase.value
-
-    def __call__(self, lifecycle):
-        return self.transitioned_at(lifecycle)
-
-    def transitioned_at(self, lifecycle) -> Optional[datetime.datetime]:
-        return lifecycle.transitioned_at(self)
-
-
-class LifecycleEvent(Enum):
-    # TODO Remove and use phase instead
-    CREATED = partial(lambda l: l.created_at)
-    EXECUTED = partial(lambda l: l.executed_at)
-    ENDED = partial(lambda l: l.ended_at)
-
-    def __call__(self, instance) -> Optional[datetime.datetime]:
-        return self.value(instance)
-
-    @classmethod
-    def decode(cls, value):
-        return cls[value]
-
-    def encode(self):
-        return self.name
-
-
-class InstanceLifecycle:
-    """
-    This class represents the lifecycle of an instance. A lifecycle consists of a chronological sequence of
-    instance phases. Each phase has a timestamp that indicates when the instance transitioned to that phase.
-    """
-
-    def __init__(self, *phase_changes: Tuple[InstancePhase, datetime.datetime],
-                 termination_status: TerminationStatus = TerminationStatus.NONE):
-        self._phase_changes: OrderedDict[InstancePhase, datetime.datetime] = OrderedDict(phase_changes)
-        self._terminal_status = termination_status
-
-    @classmethod
-    def from_dict(cls, as_dict):
-        phase_changes = ((InstancePhase[state_change['phase']], util.parse_datetime(state_change['changed']))
-                         for state_change in as_dict['phase_changes'])
-        return cls(*phase_changes)
-
-    @property
-    def phase(self):
-        return next(reversed(self._phase_changes.keys()), InstancePhase.NONE)
-
-    @property
-    def phases(self) -> List[InstancePhase]:
-        return list(self._phase_changes.keys())
-
-    @property
-    def phase_changes(self) -> Iterable[Tuple[InstancePhase, datetime.datetime]]:
-        return ((phase, changed) for phase, changed in self._phase_changes.items())
-
-    def changed_at(self, phase: InstancePhase) -> datetime.datetime:
-        return self._phase_changes[phase]
-
-    @property
-    def last_changed_at(self) -> Optional[datetime.datetime]:
-        return next(reversed(self._phase_changes.values()), None)
-
-    @property
-    def created_at(self) -> datetime.datetime:
-        return self.changed_at(InstancePhase.CREATED)
-
-    @property
-    def is_executed(self) -> bool:
-        return InstancePhase.EXECUTING in self._phase_changes
-
-    @property
-    def executed_at(self) -> Optional[datetime.datetime]:
-        return self._phase_changes.get(InstancePhase.EXECUTING)
-
-    @property
-    def is_ended(self):
-        return InstancePhase.TERMINAL in self._phase_changes
-
-    @property
-    def ended_at(self) -> Optional[datetime.datetime]:
-        return self.changed_at(InstancePhase.TERMINAL)
-
-    @property
-    def execution_time(self) -> Optional[datetime.timedelta]:
-        start = self.executed_at
-        if not start:
-            return None
-
-        end = self.ended_at or util.utc_now()
-        return end - start
-
-    def to_dict(self, include_empty=True) -> Dict[str, Any]:
-        d = {
-            "phase_changes": [{"state": state.name, "changed": format_dt_iso(change)} for state, change in
-                              self.phase_changes],
-            "phase": self.phase.name,
-            "last_changed_at": format_dt_iso(self.last_changed_at),
-            "created_at": format_dt_iso(self.created_at),
-            "executed_at": format_dt_iso(self.executed_at),
-            "ended_at": format_dt_iso(self.ended_at),
-            "execution_time": self.execution_time.total_seconds() if self.executed_at else None,
-        }
-        if include_empty:
-            return d
-        else:
-            return {k: v for k, v in d.items() if not is_empty(v)}
-
-    def __copy__(self):
-        copied = InstanceLifecycle()
-        copied._phase_changes = self._phase_changes
-        return copied
-
-    def __deepcopy__(self, memo):
-        return InstanceLifecycle(*self.phase_changes)
-
-    def __eq__(self, other):
-        if not isinstance(other, InstanceLifecycle):
-            return NotImplemented
-        return self._phase_changes == other._phase_changes
-
-    def __hash__(self):
-        return hash(tuple(self._phase_changes.items()))
-
-    def __repr__(self) -> str:
-        return "{}({!r})".format(
-            self.__class__.__name__, self._phase_changes)
-
-
-class JobInstanceID(NamedTuple):
+@dataclass(frozen=True)
+class JobInstanceID:
     """
     Attributes:
         job_id (str): The ID of the job to which the instance belongs.
-        instance_id (str): The ID of the individual instance.
+        run_id (str): The ID of the run represented by the instance.
+        instance_id (str): The reference ID of the instance.
 
-    TODO:
-        1. Identity or reference ID.
-        2. Create a method that returns a match and a no-match for this ID.
+    TODO: Create a method that returns a match and a no-match for this ID.
     """
     job_id: str
+    run_id: str
     instance_id: str
 
     @classmethod
-    def from_dict(cls, as_dict):
-        return cls(as_dict['job_id'], as_dict['instance_id'])
+    def deserialize(cls, as_dict):
+        return cls(as_dict['job_id'], as_dict['run_id'], as_dict['instance_id'])
 
-    def matches_pattern(self, id_pattern, matching_strategy=fnmatch):
-        return IDMatchCriteria.parse_pattern(id_pattern, strategy=matching_strategy).matches(self)
-
-    def to_dict(self) -> Dict[str, Any]:
+    def serialize(self) -> Dict[str, Any]:
         return {
             "job_id": self.job_id,
+            "run_id": self.job_id,
             "instance_id": self.instance_id
         }
 
-    def __eq__(self, other):
-        if type(self) is type(other):
-            return self.job_id == other.job_id and self.instance_id == other.instance_id
-        else:
-            return False
-
-    def __hash__(self):
-        return hash((self.job_id, self.instance_id))
-
-    def __repr__(self):
-        return "{}@{}".format(self.job_id, self.instance_id)
+    def matches_pattern(self, id_pattern, matching_strategy=fnmatch):
+        return IDMatchCriteria.parse_pattern(id_pattern, strategy=matching_strategy).matches(self)
 
 
 @dataclass
@@ -235,12 +80,12 @@ class JobInstanceMetadata:
     user_params: Dict[str, Any]
 
     @classmethod
-    def from_dict(cls, as_dict):
-        return cls(JobInstanceID.from_dict(as_dict['id']), as_dict['parameters'], as_dict['user_params'])
+    def deserialize(cls, as_dict):
+        return cls(JobInstanceID.deserialize(as_dict['id']), as_dict['parameters'], as_dict['user_params'])
 
-    def to_dict(self, include_empty=True) -> Dict[str, Any]:
+    def serialize(self, include_empty=True) -> Dict[str, Any]:
         d = {
-            "id": self.id.to_dict(),
+            "id": self.id.serialize(),
             "parameters": self.parameters,
             "user_params": self.user_params,
         }
@@ -253,6 +98,7 @@ class JobInstanceMetadata:
         return all(param in self.parameters for param in params)
 
     def __repr__(self):
+        # TODO needed?
         return (
             f"{self.__class__.__name__}("
             f"job_id={self.id!r}, "
@@ -265,7 +111,7 @@ class JobInstance(abc.ABC):
     """
     The `JobInstance` class is a central component of this package. It denotes a single occurrence of a job.
     While the job itself describes static attributes common to all its instances, the JobInstance class
-    represents a specific execution or run of that job.
+    represents a specific run of that job.
     """
 
     @property
@@ -277,28 +123,28 @@ class JobInstance(abc.ABC):
         """
 
     @property
-    def id(self):
-        """
-        Returns:
-            JobInstanceID: Identifier of this instance.
-        """
-        return self.metadata.id
-
-    @property
     def job_id(self):
         """
         Returns:
             str: Job part of the instance identifier.
         """
-        return self.id.job_id
+        return self.metadata.id.job_id
+
+    @property
+    def run_id(self):
+        """
+        Returns:
+            str: Run part of the instance identifier.
+        """
+        return self.metadata.id.job_id
 
     @property
     def instance_id(self):
         """
         Returns:
-            str: Instance part of the instance identifier.
+            str: Instance reference/identity identifier.
         """
-        return self.id.instance_id
+        return self.metadata.id.instance_id
 
     @property
     @abc.abstractmethod
@@ -320,46 +166,9 @@ class JobInstance(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def status(self):
+    def run_failure(self):
         """
-        Returns:
-            str: Current status of the job or None if not supported
-        """
-
-    @property
-    @abc.abstractmethod
-    def last_output(self):
-        """
-        Retrieves the recent lines of job output.
-
-        Each line is returned as a tuple, where the first element is the output string and the second element
-        is a boolean value indicating whether the output is an error output.
-
-        The number of lines returned is dependent on the specific implementation. It is not recommended to return
-        large number of lines.
-
-        Returns:
-            List[Tuple[str, bool]]: A list of the latest output lines or None if output capture is not supported.
-        """
-
-    @property
-    @abc.abstractmethod
-    def error_output(self):
-        """
-        Retrieves the lines of error output.
-
-        Returns:
-            List[str] or None: Lines of error output, or None if error output capture is not supported.
-        """
-
-    @property
-    @abc.abstractmethod
-    def warnings(self):
-        """
-        Retrieves the warnings associated with the job instance.
-
-        Returns:
-            Dict[str, int]: A dictionary mapping warning names to their occurrence count.
+        TODO
         """
 
     @property
@@ -373,35 +182,22 @@ class JobInstance(abc.ABC):
             tarotools.taro.jobs.lifecycle.ExecutionError: The details of the execution error or None if the job executed successfully.
         """
 
-    @property
-    @abc.abstractmethod
-    def queue_waiter(self):
-        """
-        Returns:
-            Optional[QueueWaiter]: Queue waiter if the instance has been assigned to an execution queue
-        """
-
     @abc.abstractmethod
     def create_snapshot(self):
         """
         Creates a consistent, thread-safe snapshot of the job instance's current state.
 
         Returns:
-            JobInst: A snapshot representing the current state of the job instance.
+            JobRun: A snapshot representing the current state of the job instance.
         """
-
     @abc.abstractmethod
-    def release(self):
+    def run(self):
         """
-        Releases the instance if it's in the pre-execution phase, waiting for a specific condition to be met
-        before it begins execution.
+        Run the job.
 
-        This method is intended for two primary scenarios:
-        1. When the job is awaiting an external condition and relies on the user to signal when that condition is met.
-        2. When the user, understanding the implications, chooses to bypass the waiting condition and releases
-           the instance prematurely.
+        This method is not expected to raise any errors. In case of any failure the error details can be retrieved
+        by calling `exec_error` method.
         """
-
     @abc.abstractmethod
     def stop(self):
         """
@@ -416,15 +212,6 @@ class JobInstance(abc.ABC):
     def interrupted(self):
         """
         TODO: Notify about keyboard interruption signal
-        """
-
-    @abc.abstractmethod
-    def add_warning(self, warning):
-        """
-        Adds a warning to the job instance.
-
-        Args:
-            warning (Warn): The warning to be added.
         """
 
     @abc.abstractmethod
@@ -457,30 +244,6 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_warning_callback(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        """
-        Register a warning observer.
-        The observer can be:
-            1. An instance of `WarningObserver`.
-            2. A callable object with the signature of `WarningObserver.new_warning`.
-
-        Args:
-            observer:
-                The observer to register.
-            priority (int, optional):
-                The observer's priority as a number. Lower numbers are notified first.
-        """
-
-    @abc.abstractmethod
-    def remove_warning_callback(self, observer):
-        """
-        De-register a warning observer.
-
-        Args:
-            observer: The observer to de-register.
-        """
-
-    @abc.abstractmethod
     def add_status_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         """
         Register an output observer.
@@ -503,149 +266,59 @@ class JobInstance(abc.ABC):
         """
 
 
-class RunnableJobInstance(JobInstance):
-
-    @abc.abstractmethod
-    def run(self):
-        """
-        Run the job.
-
-        This method is not expected to raise any errors. In case of any failure the error details can be retrieved
-        by calling `exec_error` method.
-        """
-
-
-class DelegatingJobInstance(RunnableJobInstance):
-
-    def __init__(self, delegated):
-        self.delegated = delegated
-
-    @abc.abstractmethod
-    def run(self):
-        """Run the job"""
-
-    @property
-    def id(self):
-        return self.delegated.id
-
-    @property
-    def metadata(self):
-        return self.delegated.metadata
-
-    @property
-    def lifecycle(self):
-        return self.delegated.lifecycle
-
-    @property
-    def status(self):
-        return self.delegated.status
-
-    @property
-    def tracking(self):
-        return self.delegated.tracking
-
-    @property
-    def last_output(self):
-        return self.delegated.last_output
-
-    @property
-    def error_output(self):
-        return self.delegated.error_output
-
-    @property
-    def warnings(self):
-        return self.delegated.warnings
-
-    def add_warning(self, warning):
-        self.delegated.add_warning(warning)
-
-    @property
-    def run_error(self) -> FailedRun:
-        return self.delegated.run_error
-
-    def create_snapshot(self):
-        return self.delegated.create_snapshot()
-
-    def release(self):
-        self.delegated.release()
-
-    def stop(self):
-        self.delegated.stop()
-
-    def interrupted(self):
-        self.delegated.interrupted()
-
-    def add_transition_callback(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
-        self.delegated.add_transition_callback(observer, priority, notify_on_register)
-
-    def remove_transition_callback(self, observer):
-        self.delegated.remove_transition_callback(observer)
-
-    def add_warning_callback(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self.delegated.add_warning_callback(observer, priority)
-
-    def remove_warning_callback(self, observer):
-        self.delegated.remove_warning_callback(observer)
-
-    def add_status_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self.delegated.add_output_callback(observer, priority)
-
-    def remove_status_observer(self, observer):
-        self.delegated.remove_output_callback(observer)
-
-
-class RunInNewThreadJobInstance(DelegatingJobInstance):
+class RunInNewThreadJobInstance:
 
     def __init__(self, job_instance):
-        super().__init__(job_instance)
+        self.job_instance = job_instance
+
+    def __getattr__(self, name):
+        return getattr(self.job_instance, name)
 
     def run(self):
         t = Thread(target=self.delegated.run)
         t.start()
 
 
-class JobInst:
+@dataclass
+class JobRun:
     """
     Immutable snapshot of job instance
     """
 
+    """Descriptive information about this instance"""
+    metadata: JobInstanceMetadata
+    """The lifecycle of this job run"""
+    lifecycle: Lifecycle
+    # TODO textwrap.shorten(status, 1000, placeholder=".. (truncated)", break_long_words=False)
+    tracking: TrackedTaskInfo
+    termination_status: Optional[TerminationStatus]
+    run_failure: Optional[Fault]
+    run_error: Optional[Fault]
+
     @classmethod
-    def from_dict(cls, as_dict):
-        if as_dict['tracking']:
-            tracking = TrackedTaskInfo.from_dict(as_dict['tracking'])
-        else:
-            tracking = None
-
-        if as_dict['exec_error']:
-            exec_error = FailedRun.from_dict(as_dict['exec_error'])
-        else:
-            exec_error = None
-
+    def deserialize(cls, as_dict):
         return cls(
-            JobInstanceMetadata.from_dict(as_dict['metadata']),
-            InstanceLifecycle.from_dict(as_dict['lifecycle']),
-            tracking,
-            as_dict['status'],
-            as_dict['error_output'],
-            as_dict['warnings'],
-            exec_error,
+            JobInstanceMetadata.deserialize(as_dict['metadata']),
+            Lifecycle.deserialize(as_dict['lifecycle']),
+            TrackedTaskInfo.from_dict(as_dict['tracking']) if "tracking" in as_dict else None,
+            TerminationStatus[as_dict["termination_status"]],
+            Fault.deserialize(as_dict["run_failure"]) if "run_failure" in as_dict else None,
+            Fault.deserialize(as_dict["run_error"]) if "run_error" in as_dict else None,
         )
 
-    def __init__(self, metadata, lifecycle, tracking, status, error_output, warnings, exec_error):
-        self._metadata = metadata
-        self._lifecycle = lifecycle
-        self._tracking = tracking
-        if status:
-            self._status = textwrap.shorten(status, 1000, placeholder=".. (truncated)", break_long_words=False)
+    def serialize(self, include_empty=True) -> Dict[str, Any]:
+        d = {
+            "metadata": self.metadata.serialize(include_empty),
+            "lifecycle": self.lifecycle.serialize(include_empty),
+            "tracking": self.tracking.to_dict(include_empty) if self.tracking else None,
+            "termination_status": self.termination_status.name,
+            "run_failure": self.run_failure.serialize() if self.run_failure else None,
+            "run_error": self.run_error.serialize() if self.run_error else None,
+        }
+        if include_empty:
+            return d
         else:
-            self._status = status
-        self._error_output = error_output or ()
-        self._warnings = warnings or {}
-        self._exec_error = exec_error
-
-    @staticmethod
-    def created_at(job_info):
-        return job_info.lifecycle.created_at
+            return {k: v for k, v in d.items() if not is_empty(v)}
 
     @property
     def job_id(self) -> str:
@@ -656,143 +329,23 @@ class JobInst:
         return self.metadata.id.job_id
 
     @property
-    def instance_id(self) -> str:
+    def run_id(self) -> str:
         """
         Returns:
-            str: Instance part of the instance identifier.
+            str: Run part of the instance identifier.
         """
-        return self.metadata.id.instance_id
+        return self.metadata.id.run_id
 
     @property
-    def id(self):
+    def instance_id(self):
         """
         Returns:
             JobInstanceID: Identifier of this instance.
         """
-        return self.metadata.id
-
-    @property
-    def metadata(self):
-        """
-        Returns:
-            JobInstanceMetadata: Descriptive information about this instance.
-        """
-        return self._metadata
-
-    @property
-    def lifecycle(self):
-        """
-        Retrieves the execution lifecycle of this instance.
-
-        The execution lifecycle comprises a sequence of states that the job instance transitions through,
-        each associated with a timestamp indicating when that state was reached.
-
-        Returns:
-            InstanceLifecycle: The lifecycle of this job instance.
-        """
-        return self._lifecycle
-
-    @property
-    def termination_status(self):
-        return TerminationStatus.NONE  # TODO
-
-    @property
-    def run_error(self):
-        return None # TODO
-
-    @property
-    def run_failure(self):
-        return None # TODO
-
-    @property
-    def state(self):
-        """
-        Returns:
-            The current execution state of the instance
-        """
-        return self._lifecycle.phase
-
-    @property
-    def tracking(self):
-        """TODO: Task tracking information, None if tracking is not supported"""
-        return self._tracking
-
-    @property
-    def status(self):
-        """
-        Returns:
-            str: Current status of the job or None if not supported.
-        """
-        return self._status
-
-    @property
-    def warnings(self):
-        """
-        Retrieves the warnings associated with the job instance.
-        TODO:
-            1. Rename to `warning_counts` or so (maybe just move to `JobInst`)
-            2. Make `warnings` returned the `Warn` objects (impl. limit)
-            3. Modify de/serialization accordingly
-            4. Associated timestamps or add timestamp to `Warn` object?
-
-        Returns:
-            Dict[str, int]: A dictionary mapping warning names to their occurrence count.
-        """
-        return self._warnings
-
-    @property
-    def error_output(self):
-        """
-        Retrieves the lines of error output.
-
-        Returns:
-            List[str] or None: Lines of error output, or None if error output capture is not supported.
-        """
-        return self._error_output
-
-    @property
-    def exec_error(self):
-        """
-        Retrieves the error details of the job execution, if any occurred.
-        If no errors occurred during the execution of the job, this property returns None.
-
-        Returns:
-            tarotools.taro.jobs.lifecycle.ExecutionError: The details of the execution error or None if the job executed successfully.
-        """
-        return self._exec_error
-
-    def __eq__(self, other):
-        if not isinstance(other, JobInst):
-            return NotImplemented
-        return (self.metadata, self._lifecycle, self._tracking, self._status, self._error_output,
-                self._warnings, self._exec_error) == \
-            (other.metadata, other._lifecycle, other._tracking, other._status, other._error_output,
-             other._warnings, other._exec_error)  # TODO
-
-    def to_dict(self, include_empty=True) -> Dict[str, Any]:
-        d = {
-            "metadata": self.metadata.to_dict(include_empty),
-            "lifecycle": self.lifecycle.to_dict(include_empty),
-            "tracking": self.tracking.to_dict(include_empty) if self.tracking else None,
-            "status": self.status,
-            "error_output": self.error_output,
-            "warnings": self.warnings,
-            "exec_error": self.exec_error.to_dict(include_empty) if self.exec_error else None
-        }
-        if include_empty:
-            return d
-        else:
-            return {k: v for k, v in d.items() if not is_empty(v)}
-
-    def __hash__(self):
-        return hash((self.metadata, self._lifecycle, self._tracking, self._status, self._error_output,
-                     tuple(sorted(self._warnings.items())), self._exec_error))  # TODO
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}("f"metadata={self.metadata!r}"
+        return self.metadata.id.instance_id
 
 
-class JobInstances(list):
+class JobRuns(list):
     """
     List of job instances with auxiliary methods.
     """
@@ -804,40 +357,41 @@ class JobInstances(list):
     def job_ids(self) -> List[str]:
         return [j.id.job_id for j in self]
 
-    def in_phase(self, execution_phase):
-        return [j for j in self if j.lifecycle.phase.phase is execution_phase]
+    def in_phase(self, phase):
+        return [run for run in self if run.lifecycle.phase is phase]
 
-    def in_state(self, execution_state):
-        return [j for j in self if j.lifecycle.phase is execution_state]
+    def in_state(self, state):
+        return [run for run in self if run.lifecycle.state is state]
 
     @property
     def scheduled(self):
-        return self.in_phase(InstancePhase.CREATED)
+        return self.in_state(RunState.CREATED)
 
     @property
     def pending(self):
-        return self.in_phase(InstancePhase.PENDING)
+        return self.in_phase(RunState.PENDING)
 
     @property
     def queued(self):
-        return self.in_phase(InstancePhase.QUEUED)
+        return self.in_phase(RunState.IN_QUEUE)
 
     @property
     def executing(self):
-        return self.in_phase(InstancePhase.EXECUTING)
+        return self.in_phase(RunState.EXECUTING)
 
     @property
     def terminal(self):
-        return self.in_phase(InstancePhase.TERMINAL)
+        return self.in_phase(RunState.ENDED)
 
     def to_dict(self, include_empty=True) -> Dict[str, Any]:
-        return {"jobs": [job.to_dict(include_empty=include_empty) for job in self]}
+        return {"runs": [run.serialize(include_empty=include_empty) for run in self]}
 
 
 class InstanceTransitionObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_transition(self, job_inst: JobInst, previous_phase: Phase, new_phase: Phase, changed: datetime.datetime):
+    def new_transition(self, job_inst: JobRun, previous_phase: Phase, new_phase: Phase, ordinal: int,
+                       changed: datetime.datetime):
         """
         Called when the instance transitions to a new phase.
 
@@ -845,9 +399,10 @@ class InstanceTransitionObserver(abc.ABC):
         to make the observer aware about the current phase of the instance.
 
         Args:
-            job_inst (JobInst): The job instance that transitioned to a new phase.
+            job_inst (JobRun): The job instance that transitioned to a new phase.
             previous_phase (TerminationStatus): The previous phase of the job instance.
             new_phase (TerminationStatus): The new/current phase state of the job instance.
+            ordinal (int): The number of the current phase.
             changed (datetime.datetime): The timestamp of when the transition.
         """
 
@@ -881,19 +436,19 @@ class WarnEventCtx:
 class InstanceWarningObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_instance_warning(self, job_info: JobInst, warning_ctx: WarnEventCtx):
+    def new_instance_warning(self, job_info: JobRun, warning_ctx: WarnEventCtx):
         """This method is called when there is a new warning event."""
 
 
 class InstanceOutputObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_instance_output(self, job_info: JobInst, output: str, is_error: bool):
+    def new_instance_output(self, job_info: JobRun, output: str, is_error: bool):
         """
         Executed when a new output line is available.
 
         Args:
-            job_info (JobInst): Job instance producing the output.
+            job_info (JobRun): Job instance producing the output.
             output (str): Job instance output text.
             is_error (bool): True if it is an error output, otherwise False.
         """
