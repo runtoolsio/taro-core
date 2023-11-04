@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from tarotools.taro.run import PhaseTransition, Phase, StandardPhase, RunState, Lifecycle, TerminationStatus
+from tarotools.taro.run import PhaseTransition, Phase, StandardPhase, RunState, Lifecycle
 from tarotools.taro.util import utc_now
 
 PENDING = Phase("PENDING", RunState.PENDING)
@@ -21,8 +21,7 @@ def sut() -> Lifecycle:
     # 20 minutes after initialization, it goes to EXECUTING state
     lifecycle.add_transition(PhaseTransition(EXECUTING, base + datetime.timedelta(minutes=20)))
     # 50 minutes after initialization, it terminates
-    lifecycle.add_transition(PhaseTransition(StandardPhase.TERMINAL.value, base + datetime.timedelta(minutes=50)),
-                             termination_status=TerminationStatus.COMPLETED)
+    lifecycle.add_transition(PhaseTransition(StandardPhase.TERMINAL.value, base + datetime.timedelta(minutes=50)))
 
     return lifecycle
 
@@ -77,3 +76,13 @@ def test_termination(sut):
 def test_execution_time(sut):
     # 50min - 20min based on create_sut()
     assert sut.total_executing_time == datetime.timedelta(minutes=30)
+
+
+def test_phases_between(sut):
+    assert sut.phases_between(PENDING, EXECUTING) == [PENDING, EXECUTING]
+    assert (sut.phases_between(PENDING, StandardPhase.TERMINAL.value)
+            == [PENDING, EXECUTING, StandardPhase.TERMINAL.value])
+    assert sut.phases_between(PENDING, PENDING) == [PENDING]
+    assert sut.phases_between(EXECUTING, PENDING) == []
+    assert sut.phases_between(PENDING, Phase('Not contained', RunState.NONE)) == []
+    assert sut.phases_between(Phase('Not contained', RunState.NONE), PENDING) == []

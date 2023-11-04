@@ -111,6 +111,7 @@ class RunnerJobInstance(JobInstance):
         run_snapshot = self._phaser.create_run_snapshot()
         return JobRun(
             self.metadata,
+            [step.metadata for step in self._phaser.steps],
             run_snapshot.lifecycle,
             self.tracking.copy(),
             run_snapshot.termination_status,
@@ -159,20 +160,23 @@ class RunnerJobInstance(JobInstance):
 
     def _transition_hook(self, prev_phase, new_phase, ordinal, transitioned_at):
         """Executed under phaser transition lock"""
-        snapshot = self.create_snapshot()
+        job_run = self.create_snapshot()
 
-        if snapshot.run_error:
+        if job_run.run_error:
             log.error(self._log('unexpected_error', "error_type=[{}] reason=[{}]",
-                                snapshot.run_error.fault_type, snapshot.run_error.reason))
-        elif snapshot.run_failure:
+                                job_run.run_error.fault_type, job_run.run_error.reason))
+        elif job_run.run_failure:
             log.warning(self._log('run_failed', "error_type=[{}] reason=[{}]",
-                                  snapshot.run_error.fault_type, snapshot.run_error.reason))
+                                  job_run.run_error.fault_type, job_run.run_error.reason))
 
-        level = logging.WARN if snapshot.termination_status.has_flag(Flag.NONSUCCESS) else logging.INFO
+        if job_run.termination_status.has_flag(Flag.NONSUCCESS):
+            level = logging.WARN
+        else:
+            level = logging.INFO
         log.log(level, self._log('phase_changed', "prev_phase=[{}] new_phase=[{}] ordinal=[{}]",
                                  prev_phase.name, new_phase.name, ordinal))
 
-        self._transition_notification(snapshot, prev_phase, new_phase, ordinal, transitioned_at)
+        self._transition_notification(job_run, prev_phase, new_phase, ordinal, transitioned_at)
 
     def add_status_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self._status_notification.add_observer(observer, priority)

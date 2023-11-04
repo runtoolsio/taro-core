@@ -22,7 +22,7 @@ from typing import Dict, Any, Optional, List, Tuple
 
 from tarotools.taro.jobs.criteria import IDMatchCriteria
 from tarotools.taro.jobs.track import TrackedTaskInfo
-from tarotools.taro.run import TerminationStatus, Phase, Lifecycle, Fault, RunState
+from tarotools.taro.run import TerminationStatus, Phase, Lifecycle, Fault, RunState, PhaseMetadata
 from tarotools.taro.util import is_empty
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
@@ -298,6 +298,7 @@ class JobRun:
     """Descriptive information about this instance"""
     metadata: JobInstanceMetadata
     """The lifecycle of this job run"""
+    phases: List[PhaseMetadata]
     lifecycle: Lifecycle
     # TODO textwrap.shorten(status, 1000, placeholder=".. (truncated)", break_long_words=False)
     tracking: TrackedTaskInfo
@@ -309,6 +310,7 @@ class JobRun:
     def deserialize(cls, as_dict):
         return cls(
             JobInstanceMetadata.deserialize(as_dict['metadata']),
+            [PhaseMetadata.deserialize(phase) for phase in as_dict['phases']],
             Lifecycle.deserialize(as_dict['lifecycle']),
             TrackedTaskInfo.from_dict(as_dict['tracking']) if "tracking" in as_dict else None,
             TerminationStatus[as_dict["termination_status"]],
@@ -319,6 +321,7 @@ class JobRun:
     def serialize(self, include_empty=True) -> Dict[str, Any]:
         d = {
             "metadata": self.metadata.serialize(include_empty),
+            "phases": [pm.serialize() for pm in self.phases],
             "lifecycle": self.lifecycle.serialize(include_empty),
             "tracking": self.tracking.to_dict(include_empty) if self.tracking else None,
             "termination_status": self.termination_status.name,

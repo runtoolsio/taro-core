@@ -272,6 +272,22 @@ class Lifecycle:
 
         return None
 
+    def phases_between(self, phase_from, phase_to) -> List[Phase]:
+        if phase_from == phase_to:
+            return [phase_from]
+
+        phases = []
+        for p in self._transitions:
+            if p == phase_to:
+                if not phases:
+                    return []
+                phases.append(p)
+                return phases
+            elif p == phase_from or phases:
+                phases.append(p)
+
+        return []
+
     def transitioned_at(self, phase: Phase) -> Optional[datetime.datetime]:
         phase_transition = self._transitions.get(phase)
         return phase_transition.transitioned if phase_transition else None
@@ -331,15 +347,33 @@ class Lifecycle:
         return copied
 
 
+@dataclass
+class PhaseMetadata:
+    phase: Phase
+    parameters: Dict[str, str]
+
+    @classmethod
+    def deserialize(cls, as_dict):
+        return cls(Phase.deserialize(as_dict["phase"]), as_dict["parameters"])
+
+    def serialize(self):
+        return {"phase": self.phase.serialize(), "parameters": self.parameters}
+
+
 class PhaseStep(ABC):
 
-    def __init__(self, phase):
+    def __init__(self, phase, parameters=None):
         self._phase = phase
+        self._metadata = PhaseMetadata(phase, parameters)
         self._status_notification = ObservableNotification[StatusObserver]()
 
     @property
     def phase(self):
         return self._phase
+
+    @property
+    def metadata(self):
+        return self._metadata
 
     @property
     @abstractmethod

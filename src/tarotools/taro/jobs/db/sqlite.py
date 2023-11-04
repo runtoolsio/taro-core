@@ -274,7 +274,7 @@ class SQLite(InstanceTransitionObserver):
                     json.dumps(j.warnings) if j.warnings else None,
                     json.dumps(j.run_error.serialize(include_empty=False)) if j.run_error else None,
                     json.dumps(j.metadata.user_params) if j.metadata.user_params else None,
-                    json.dumps(j.metadata.parameters) if j.metadata.parameters else None,
+                    json.dumps(j.metadata.phase_parameters) if j.metadata.phase_parameters else None,
                     json.dumps({"pending_group": j.metadata.pending_group}) if j.metadata.pending_group else None
                     )
 

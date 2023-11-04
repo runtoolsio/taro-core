@@ -17,16 +17,13 @@ log = logging.getLogger(__name__)
 class ApprovalPhase(PhaseStep):
     """
     Approval parameters (incl. timeout) + approval eval as separate objects
+    TODO: parameters
     """
 
     def __init__(self, phase_name, timeout=0):
-        self._name = phase_name
+        super().__init__(Phase(phase_name, RunState.PENDING))
         self._timeout = timeout
         self._event = Event()
-
-    @property
-    def phase(self):
-        return Phase(self._name, RunState.PENDING)
 
     def run(self) -> TerminationStatus:
         resolved = self._event.wait(self._timeout or None)
@@ -51,24 +48,40 @@ class NoOverlapPhase(PhaseStep):
     TODO Global lock
     """
     def __init__(self, phase_name, no_overlap_id, until_phase=None):
-        self._phase_name = phase_name
-        self._parameters = (('phase', 'no_overlap'), ('no_overlap_id', no_overlap_id), ('until_phase', until_phase))
-
-    @property
-    def phase(self):
-        return Phase(self._phase_name, RunState.EVALUATING)
-
-    @property
-    def parameters(self):
-        return self._parameters
+        if not no_overlap_id:
+            raise ValueError("no_overlap_id cannot be empty")
+        params = {
+            'phase': 'no_overlap',
+            'no_overlap_id': no_overlap_id,
+            'until_phase': until_phase
+        }
+        super().__init__(Phase(phase_name, RunState.EVALUATING), params)
+        self._no_overlap_id = no_overlap_id
 
     def run(self):
-        instances, _ = taro.client.read_instances()
+        runs, _ = taro.client.read_job_runs()
         # TODO Check No instance with same overlap ID in protected phase
-        if any(i for i in instances if i.id != self.instance.id and self._phase_group.matches(i)):
+        if any(i for i in runs if i.id != self.instance.id and self._phase_group.matches(i)):
             return TerminationStatus.SKIPPED
 
         return TerminationStatus.NONE
+
+    def _search_no_overlap_phase_range(self, job_run):
+        overlap_phase = None
+        until_phase = None
+
+        for idx, phase_meta in enumerate(job_run.phases):
+            if phase_meta.parameters.get('no_overlap_id') == self._no_overlap_id:
+                if (idx + 1) >= len(job_run.phases):
+                    continue  # No next phase - shouldn't happen but check anyway
+
+                overlap_phase = phase_meta.phase.name
+                until_phase = phase_meta.parameters.get('until_phase') or job_run.phases[idx + 1].phase.name
+
+        if not overlap_phase:
+            return False
+
+
 
     def stop(self):
         pass
@@ -101,7 +114,7 @@ class DependencyPhase(PhaseStep):
         return self._parameters
 
     def run(self):
-        instances, _ = taro.client.read_instances()
+        instances, _ = taro.client.read_job_runs()
         if not any(i for i in instances if self._dependency_match.matches(i)):
             return TerminationStatus.UNSATISFIED
 
@@ -389,7 +402,7 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
             state_criteria=StateCriteria(phases={Phase.QUEUED, Phase.EXECUTING}),
             param_sets=set(self._parameters)
         )
-        jobs, _ = taro.client.read_instances(criteria)
+        jobs, _ = taro.client.read_job_runs(criteria)
 
         group_jobs_sorted = JobRuns(sorted(jobs, key=RunState.CREATED))
         next_count = self._max_executions - len(group_jobs_sorted.executing)
