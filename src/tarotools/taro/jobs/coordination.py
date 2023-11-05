@@ -9,19 +9,19 @@ from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.criteria import IDMatchCriteria, StateCriteria, InstanceMatchCriteria
 from tarotools.taro.jobs.instance import JobRuns
 from tarotools.taro.listening import PhaseReceiver, InstancePhaseEventObserver
-from tarotools.taro.run import PhaseStep, RunState, Phase, TerminationStatus
+from tarotools.taro.run import RunState, Phase, TerminationStatus
 
 log = logging.getLogger(__name__)
 
 
-class ApprovalPhase(PhaseStep):
+class ApprovalPhase(Phase):
     """
     Approval parameters (incl. timeout) + approval eval as separate objects
     TODO: parameters
     """
 
     def __init__(self, phase_name, timeout=0):
-        super().__init__(Phase(phase_name, RunState.PENDING))
+        super().__init__(phase_name, RunState.PENDING)
         self._timeout = timeout
         self._event = Event()
 
@@ -43,7 +43,7 @@ class ApprovalPhase(PhaseStep):
         return TerminationStatus.CANCELLED
 
 
-class NoOverlapPhase(PhaseStep):
+class NoOverlapPhase(Phase):
     """
     TODO Global lock
     """
@@ -55,7 +55,7 @@ class NoOverlapPhase(PhaseStep):
             'no_overlap_id': no_overlap_id,
             'until_phase': until_phase
         }
-        super().__init__(Phase(phase_name, RunState.EVALUATING), params)
+        super().__init__(phase_name, RunState.EVALUATING, params)
         self._no_overlap_id = no_overlap_id
 
     def run(self):
@@ -81,7 +81,8 @@ class NoOverlapPhase(PhaseStep):
         if not overlap_phase:
             return False
 
-
+        protected_phases = job_run.lifecycle.runs_between(overlap_phase, until_phase)
+        return job_run.lifecycle.phase in protected_phases
 
     def stop(self):
         pass
@@ -91,19 +92,12 @@ class NoOverlapPhase(PhaseStep):
         return TerminationStatus.CANCELLED
 
 
-class DependencyPhase(PhaseStep):
+class DependencyPhase(Phase):
 
     def __init__(self, phase_name, dependency_match):
-        self._phase_name = phase_name
+        self._parameters = {'phase': 'dependency', 'dependency': str(dependency_match.serialize(False))}
+        super().__init__(phase_name, RunState.EVALUATING, self._parameters)
         self._dependency_match = dependency_match
-        self._parameters = (
-            ('phase', 'dependency'),
-            ('dependency', (str(dependency_match.serialize(False)))),
-        )
-
-    @property
-    def phase(self):
-        return Phase(self._phase_name, RunState.EVALUATING)
 
     @property
     def dependency_match(self):
@@ -128,21 +122,17 @@ class DependencyPhase(PhaseStep):
         return TerminationStatus.CANCELLED
 
 
-class WaitingPhase(PhaseStep):
+class WaitingPhase(Phase):
     """
     """
 
     def __init__(self, phase_name, observable_conditions, timeout=0):
-        self._phase_name = phase_name
+        super().__init__(phase_name, RunState.WAITING)
         self._observable_conditions = observable_conditions
         self._timeout = timeout
         self._conditions_lock = Lock()
         self._event = Event()
         self._term_status = TerminationStatus.NONE
-
-    @property
-    def phase(self):
-        return Phase(self._phase_name, RunState.WAITING)
 
     def run(self):
         for condition in self._observable_conditions:
@@ -422,7 +412,7 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
         with self._wait_guard:
             if not self._current_wait:
                 return
-            if new_phase.state == RunState.ENDED and instance_meta.contains_parameters(self._parameters):
+            if new_phase.run_state == RunState.ENDED and instance_meta.contains_parameters(self._parameters):
                 self._current_wait = False
                 self._stop_listening()
                 self._wait_guard.notify()

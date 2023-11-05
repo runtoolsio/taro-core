@@ -11,7 +11,7 @@ TODO: Remove execution prefix where appropriate
 import abc
 from typing import Tuple
 
-from tarotools.taro.run import TerminationStatus, PhaseStep, Phase, RunState
+from tarotools.taro.run import TerminationStatus, Phase, RunState
 
 
 class Execution(abc.ABC):
@@ -79,7 +79,7 @@ class OutputExecution(Execution):
         """
 
 
-class ExecutingPhase(PhaseStep):
+class ExecutingPhase(Phase):
 
     def __init__(self, phase_name, execution):
         super().__init__(Phase(phase_name, RunState.EXECUTING))

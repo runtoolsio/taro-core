@@ -361,7 +361,7 @@ class FeaturedContext(InstanceTransitionObserver):
         """
         DO NOT EXECUTE THIS METHOD! It is part of the internal mechanism.
         """
-        if new_phase.state == RunState.ENDED:
+        if new_phase.run_state == RunState.ENDED:
             self._release_instance(job_run.metadata.id, not self._keep_removed)
 
     def _release_instance(self, job_instance_id, remove):

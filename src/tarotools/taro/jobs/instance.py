@@ -374,7 +374,7 @@ class JobRuns(list):
         return [run for run in self if run.lifecycle.phase is phase]
 
     def in_state(self, state):
-        return [run for run in self if run.lifecycle.state is state]
+        return [run for run in self if run.lifecycle.run_state is state]
 
     @property
     def scheduled(self):

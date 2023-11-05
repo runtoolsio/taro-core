@@ -33,15 +33,15 @@ class _ExecTimeWarning(InstanceTransitionObserver):
         self.timer = None
 
     def new_transition(self, job_inst: JobRun, previous_phase, new_phase, ordinal, changed):
-        if new_phase.state == RunState.EXECUTING:
+        if new_phase.run_state == RunState.EXECUTING:
             assert self.timer is None
             self.timer = Timer(self.time, self._check)
             self.timer.start()
-        elif new_phase.state == RunState.ENDED and self.timer is not None:
+        elif new_phase.run_state == RunState.ENDED and self.timer is not None:
             self.timer.cancel()
 
     def _check(self):
-        if not self.job_instance.lifecycle.state == RunState.ENDED:
+        if not self.job_instance.lifecycle.run_state == RunState.ENDED:
             warn = Warn(self.name, {'exceeded_sec': self.time})
             self.job_instance.add_warning(warn)
 

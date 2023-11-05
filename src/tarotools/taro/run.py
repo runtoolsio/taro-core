@@ -6,7 +6,7 @@ its run (like waiting, evaluating, executing, etc.). Phases operate in a predefi
 subsequent phase begins. However, if a phase ends and signals premature termination by providing a status other than
 'COMPLETED,' the next phase may not commence. Regardless of how the entire run finishes, the final phase must be a
 termination phase, and a termination status must be provided. This module includes a class, 'Phaser,' which represents
-the run concept by orchestrating the given phase steps. Each phase step represents an implementation of a phase.
+the run concept by orchestrating the given phase phases. Each phase phase represents an implementation of a phase.
 """
 
 import datetime
@@ -61,25 +61,6 @@ class RunState(Enum):
             return cls[value.upper()]
         except KeyError:
             return cls.UNKNOWN
-
-
-@dataclass(frozen=True)
-class Phase:
-    name: str
-    state: RunState
-
-    @classmethod
-    def deserialize(cls, as_dict) -> 'Phase':
-        return cls(as_dict['name'], RunState.from_str(as_dict['state']))
-
-    def serialize(self) -> Dict[str, Any]:
-        return {"name": self.name, "state": str(self.state)}
-
-
-class StandardPhase(Enum):
-    NONE = Phase('NONE', RunState.NONE)
-    INIT = Phase('INIT', RunState.CREATED)
-    TERMINAL = Phase('TERMINAL', RunState.ENDED)
 
 
 class TerminationStatusFlag(Enum):
@@ -153,18 +134,41 @@ class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
         return flag in self.flags
 
 
-@dataclass(frozen=True)
-class PhaseTransition:
-    phase: Phase
-    transitioned: datetime.datetime
+class StandardPhaseNames:
+    INIT = 'INIT'
+    TERMINAL = 'TERMINAL'
 
 
-@dataclass(frozen=True)
+@dataclass
 class PhaseRun:
-    phase: Phase
+    phase_name: str
+    run_state: RunState
     started_at: datetime
-    ended_at: Optional[datetime.datetime]
-    execution_time: Optional[datetime.timedelta]
+    ended_at: Optional[datetime.datetime] = None
+
+    @classmethod
+    def deserialize(cls, d):
+        return cls(
+            d['phase_name'],
+            RunState[d['run_state']],
+            util.parse_datetime(d['started_at']),
+            util.parse_datetime(d['ended_at'])
+        )
+
+    def serialize(self):
+        return {
+            'phase_name': self.phase_name,
+            'run_state': self.run_state.name,
+            'started_at': format_dt_iso(self.started_at),
+            'ended_at': format_dt_iso(self.ended_at)
+        }
+
+    @property
+    def run_time(self):
+        return self.ended_at - self.started_at
+
+    def __copy__(self):
+        return PhaseRun(self.phase_name, self.run_state, self.started_at, self.ended_at)
 
 
 class Lifecycle:
@@ -173,51 +177,40 @@ class Lifecycle:
     Each phase has a timestamp that indicates when the transition to that phase occurred.
     """
 
-    def __init__(self, *transitions: PhaseTransition):
-        self._transitions: OrderedDict[Phase, PhaseTransition] = OrderedDict()
-        self._phase_runs: List[PhaseRun] = []
-        for transition in transitions:
-            self.add_transition(transition)
+    def __init__(self, *phase_runs: PhaseRun):
+        self._phase_runs: OrderedDict[str, PhaseRun] = OrderedDict()
+        self._current_run: Optional[PhaseRun] = None
+        self._previous_run: Optional[PhaseRun] = None
+        for run in phase_runs:
+            self.add_run(run)
 
-    def add_transition(self, new_transition: PhaseTransition):
+    def add_run(self, phase_run: PhaseRun):
         """
-        Adds a new phase transition to the lifecycle and updates the phase runs accordingly.
-        TODO:
-        1. Check phase name not already present
-        2. Check termination status not already set
+        Adds a new phase run to the lifecycle.
         """
-        if new_transition.phase == StandardPhase.NONE.value or new_transition.phase == self.phase:
-            return False
+        if phase_run.phase_name in self._phase_runs:
+            raise ValueError("Phase already in lifecycle: " + str(phase_run))
 
-        if self._transitions:
-            last_phase_run = self._phase_runs[-1]
-            ended_at = new_transition.transitioned
-            exec_time = new_transition.transitioned - last_phase_run.started_at
-            self._phase_runs[-1] = PhaseRun(last_phase_run.phase, last_phase_run.started_at, ended_at, exec_time)
+        if self.current_run:
+            self._previous_run = self._current_run
+            self._previous_run.ended_at = phase_run.started_at
 
-        # Add the new transition.
-        self._transitions[new_transition.phase] = new_transition
-
-        # Begin a new phase run for the new transition (without an end time yet).
-        self._phase_runs.append(PhaseRun(
-            phase=new_transition.phase,
-            started_at=new_transition.transitioned,
-            ended_at=None,
-            execution_time=None
-        ))
+        self._current_run = phase_run
+        self._phase_runs[phase_run.phase_name] = phase_run
 
     @classmethod
     def deserialize(cls, as_dict):
-        transitions = [
-            PhaseTransition(Phase.deserialize(phase_change['phase']), util.parse_datetime(phase_change['transitioned']))
-            for phase_change in as_dict['transitions']]
-        return cls(*transitions)
+        phase_runs = [PhaseRun.deserialize(run) for run in as_dict['phase_runs']]
+        return cls(*phase_runs)
 
-    def serialize(self, include_empty=True) -> Dict[str, Any]:
+    def serialize(self) -> Dict[str, Any]:
+        return {"phase_runs": [run.serialize() for run in self._phase_runs.values()]}
+
+    def dto(self, include_empty=True) -> Dict[str, Any]:
         d = {
-            "transitions": [{"phase": pt.phase.serialize(), "transitioned": format_dt_iso(pt.transitioned)}
-                            for pt in self._transitions.values()],
-            "phase": self.phase.serialize(),
+            "phase_runs": [run.serialize() for run in self._phase_runs.values()],
+            "current_run": self.current_run.serialize(),
+            "previous_run": self.previous_run.serialize(),
             "last_transition_at": format_dt_iso(self.last_transition_at),
             "created_at": format_dt_iso(self.created_at),
             "executed_at": format_dt_iso(self.executed_at),
@@ -230,82 +223,87 @@ class Lifecycle:
             return {k: v for k, v in d.items() if not is_empty(v)}
 
     @property
-    def phase(self):
-        if not self.phase_runs:
-            return StandardPhase.NONE.value
-
-        return self.phase_runs[-1].phase
+    def current_run(self) -> Optional[PhaseRun]:
+        return self._current_run
 
     @property
-    def previous_phase(self):
-        if len(self.phase_runs) < 2:
-            return StandardPhase.NONE.value
-
-        return self.phase_runs[-2].phase
+    def current_phase(self) -> Optional[PhaseRun]:
+        return self._current_run.phase_name if self._current_run else None
 
     @property
-    def state(self):
-        return self.phase.state
+    def previous_run(self) -> Optional[PhaseRun]:
+        return self._previous_run
+
+    @property
+    def previous_phase(self) -> Optional[PhaseRun]:
+        return self._previous_run.phase_name if self._previous_run else None
+
+    @property
+    def run_state(self):
+        if not self._current_run:
+            return RunState.NONE
+
+        return self._current_run.run_state
 
     @property
     def phase_count(self):
-        return len(self._transitions)
+        return len(self._phase_runs)
 
-    def get_ordinal(self, phase: Phase) -> int:
-        for index, current_phase in enumerate(self._transitions.keys()):
-            if current_phase == phase:
+    def get_ordinal(self, phase_name: str) -> int:
+        for index, current_phase in enumerate(self._phase_runs.keys()):
+            if current_phase == phase_name:
                 return index + 1
-        raise ValueError(f"Phase {phase} not found in lifecycle")
+        raise ValueError(f"Phase {phase_name} not found in lifecycle")
 
     @property
-    def phases(self) -> List[Phase]:
-        return list(self._transitions.keys())
+    def phases(self) -> List[str]:
+        return list(self._phase_runs.keys())
 
     @property
     def phase_runs(self) -> List[PhaseRun]:
-        return list(self._phase_runs)
+        return list(self._phase_runs.values())
 
-    def phase_run(self, phase: Phase) -> Optional[PhaseRun]:
-        for run in self._phase_runs:
-            if run.phase == phase:
-                return run
+    def phase_run(self, phase_name: str) -> Optional[PhaseRun]:
+        return self._phase_runs.get(phase_name)
 
-        return None
-
-    def phases_between(self, phase_from, phase_to) -> List[Phase]:
-        if phase_from == phase_to:
-            return [phase_from]
-
-        phases = []
-        for p in self._transitions:
-            if p == phase_to:
-                if not phases:
-                    return []
-                phases.append(p)
-                return phases
-            elif p == phase_from or phases:
-                phases.append(p)
+    def runs_between(self, phase_from, phase_to) -> List[PhaseRun]:
+        runs = []
+        for run in self._phase_runs.values():
+            if run.phase_name == phase_to:
+                if not runs:
+                    if phase_from == phase_to:
+                        return [run]
+                    else:
+                        return []
+                runs.append(run)
+                return runs
+            elif run.phase_name == phase_from or runs:
+                runs.append(run)
 
         return []
 
-    def transitioned_at(self, phase: Phase) -> Optional[datetime.datetime]:
-        phase_transition = self._transitions.get(phase)
-        return phase_transition.transitioned if phase_transition else None
+    def phases_between(self, phase_from, phase_to):
+        return [run.phase_name for run in self.runs_between(phase_from, phase_to)]
+
+    def started_at(self, phase_name: str) -> Optional[datetime.datetime]:
+        phase_run = self._phase_runs.get(phase_name)
+        return phase_run.started_at if phase_run else None
 
     @property
     def last_transition_at(self) -> Optional[datetime.datetime]:
-        last_transition = next(reversed(self._transitions.values()), None)
-        return last_transition.transitioned if last_transition else None
+        if not self._current_run:
+            return None
+
+        return self._current_run.started_at
 
     def state_first_at(self, state: RunState) -> Optional[datetime.datetime]:
-        return next((pt.transitioned for pt in self._transitions.values() if pt.phase.state == state), None)
+        return next((run.started_at for run in self._phase_runs.values() if run.run_state == state), None)
 
     def state_last_at(self, state: RunState) -> Optional[datetime.datetime]:
-        return next((pt.transitioned for pt in reversed(self._transitions.values()) if pt.phase.state == state),
-                    None)
+        return next((run.started_at for run in reversed(self._phase_runs.values()) if run.run_state == state), None)
 
     def contains_state(self, state: RunState):
-        return any(pt.phase.state == state for pt in self._transitions.values())
+        return any(run.run_state == state for run in self._phase_runs.values())
 
     @property
     def created_at(self) -> Optional[datetime.datetime]:
@@ -333,7 +331,7 @@ class Lifecycle:
         Returns:
             datetime.timedelta: Total time spent in the given state.
         """
-        durations = [run.execution_time for run in self._phase_runs if run.phase.state == state and run.execution_time]
+        durations = [run.run_time for run in self._phase_runs.values() if run.run_state == state and run.run_time]
         return sum(durations, datetime.timedelta())
 
     @property
@@ -342,34 +340,35 @@ class Lifecycle:
 
     def __copy__(self):
         copied = Lifecycle()
-        copied._transitions = self._transitions.copy()
-        copied._phase_runs = self._phase_runs.copy()
+        copied._phase_runs = OrderedDict((name, copy(run)) for name, run in self._phase_runs.items())
+        copied._current_run = copy(self._current_run)
+        copied._previous_run = copy(self._previous_run)
         return copied
 
 
 @dataclass
 class PhaseMetadata:
-    phase: Phase
+    phase_name: str
+    run_state: RunState
     parameters: Dict[str, str]
 
     @classmethod
     def deserialize(cls, as_dict):
-        return cls(Phase.deserialize(as_dict["phase"]), as_dict["parameters"])
+        return cls(as_dict["phase_name"], RunState[as_dict["run_state"]], as_dict["parameters"])
 
     def serialize(self):
-        return {"phase": self.phase.serialize(), "parameters": self.parameters}
+        return {"phase_name": self.phase_name, "run_state": self.run_state.name, "parameters": self.parameters}
 
 
-class PhaseStep(ABC):
+class Phase(ABC):
 
-    def __init__(self, phase, parameters=None):
-        self._phase = phase
-        self._metadata = PhaseMetadata(phase, parameters)
+    def __init__(self, phase_name: str, run_state: RunState, parameters: Optional[Dict[str, str]] = None):
+        self._metadata = PhaseMetadata(phase_name, run_state, parameters or {})
         self._status_notification = ObservableNotification[StatusObserver]()
 
     @property
-    def phase(self):
-        return self._phase
+    def name(self):
+        return self._metadata.phase_name
 
     @property
     def metadata(self):
@@ -395,10 +394,10 @@ class PhaseStep(ABC):
         self._status_notification.remove_observer(observer)
 
 
-class NoOpsStep(PhaseStep):
+class NoOpsStep(Phase):
 
-    def __init__(self, phase, stop_status):
-        super().__init__(phase)
+    def __init__(self, phase_name, run_state, stop_status):
+        super().__init__(phase_name, run_state)
         self._stop_status = stop_status
 
     @property
@@ -417,57 +416,58 @@ class NoOpsStep(PhaseStep):
 class InitStep(NoOpsStep):
 
     def __init__(self):
-        super().__init__(StandardPhase.INIT.value, TerminationStatus.STOPPED)
+        super().__init__(StandardPhaseNames.INIT, RunState.CREATED, TerminationStatus.STOPPED)
 
 
 class TerminalStep(NoOpsStep):
 
     def __init__(self):
-        super().__init__(StandardPhase.TERMINAL.value, TerminationStatus.NONE)
+        super().__init__(StandardPhaseNames.TERMINAL, RunState.ENDED, TerminationStatus.NONE)
 
 
-class WaitWrapperStep(PhaseStep):
+class WaitWrapperPhase(Phase):
 
-    def __init__(self, wrapped_step):
-        super().__init__(wrapped_step.phase)
-        self.wrapped_step = wrapped_step
+    def __init__(self, wrapped_phase):
+        super().__init__(wrapped_phase.name, wrapped_phase.metadata.run_state, wrapped_phase.metadata.parameters)
+        self.wrapped_phase = wrapped_phase
         self._run_event = Event()
 
     @property
     def stop_status(self):
-        return self.wrapped_step.stop_status
+        return self.wrapped_phase.stop_status
 
     def wait(self, timeout):
         self._run_event.wait(timeout)
 
     def run(self):
         self._run_event.set()
-        self.wrapped_step.run()
+        self.wrapped_phase.run()
 
     def stop(self):
-        self.wrapped_step.stop()
+        self.wrapped_phase.stop()
 
 
-def unique_steps_to_dict(steps) -> Dict[str, PhaseStep]:
-    name_to_step = {}
-    for step in steps:
-        if step.phase.name in name_to_step:
-            raise ValueError(f"Duplicate phase found: {step.phase.name}")
-        name_to_step[step.phase.name] = step
-    return name_to_step
+def unique_phases_to_dict(phases) -> Dict[str, Phase]:
+    name_to_phase = {}
+    for phase in phases:
+        if phase.name in name_to_phase:
+            raise ValueError(f"Duplicate phase found: {phase.name}")
+        name_to_phase[phase.name] = phase
+    return name_to_phase
 
 
 class Phaser:
 
-    def __init__(self, steps, lifecycle=None, *, timestamp_generator=util.utc_now):
-        self._name_to_step: Dict[str, PhaseStep] = unique_steps_to_dict(steps)
+    def __init__(self, phases: List[Phase], lifecycle=None, *, timestamp_generator=util.utc_now):
+        self._name_to_phase: Dict[str, Phase] = unique_phases_to_dict(phases)
+        self._phase_meta: Tuple[PhaseMetadata] = tuple(phase.metadata for phase in phases)
         self._timestamp_generator = timestamp_generator
-        self.transition_hook: Optional[Callable[[Phase, Phase, int, datetime.datetime], None]] = None
+        self.transition_hook: Optional[Callable[[PhaseRun, PhaseRun, int], None]] = None
 
         self._transition_lock = RLock()
         # Guarded by the transition/state lock:
         self._lifecycle = lifecycle or Lifecycle()
-        self._current_step = None
+        self._current_phase = None
         self._abort = False
         self._term_status = TerminationStatus.NONE
         self._run_failure: Optional[Fault] = None
@@ -476,37 +476,38 @@ class Phaser:
 
     T = TypeVar('T')
 
-    def get_typed_phase_step(self, step_type: Type[T], phase_name: str) -> Optional[T]:
-        step = self._name_to_step.get(phase_name)
-        if step is None:
+    def get_typed_phase(self, phase_type: Type[T], phase_name: str) -> Optional[T]:
+        phase = self._name_to_phase.get(phase_name)
+        if phase is None:
             return None
 
-        if not isinstance(step, step_type):
-            raise TypeError(f"Expected step of type {step_type}, but got {type(step)} for phase '{phase_name}'")
+        if not isinstance(phase, phase_type):
+            raise TypeError(f"Expected phase of type {phase_type}, but got {type(phase)} for phase '{phase_name}'")
 
-        return step
+        return phase
 
     @property
-    def steps(self):
-        return list(self._name_to_step.values())
+    def phases(self) -> List[Phase]:
+        return list(self._name_to_phase.values())
 
     def create_run_snapshot(self):
         with self._transition_lock:
-            return RunSnapshot(copy(self._lifecycle), self._term_status, self._run_failure, self._run_error)
+            return RunSnapshot(
+                self._phase_meta, copy(self._lifecycle), self._term_status, self._run_failure, self._run_error)
 
     def prime(self):
         with self._transition_lock:
-            if self._current_step:
+            if self._current_phase:
                 raise InvalidStateError("Primed already")
-            self._next_step(InitStep())
+            self._next_phase(InitStep())
 
     def run(self):
-        if not self._current_step:
+        if not self._current_phase:
             raise InvalidStateError('Prime not executed before run')
 
         term_status = None
         exc = None
-        for step in self._name_to_step.values():
+        for phase in self._name_to_phase.values():
             with self._transition_lock:
                 if self._abort:
                     return
@@ -514,7 +515,7 @@ class Phaser:
                     self._term_status = term_status
                 if isinstance(exc, BaseException):
                     assert self._term_status
-                    self._next_step(TerminalStep())
+                    self._next_phase(TerminalStep())
                     raise exc
                 if exc:
                     assert self._term_status
@@ -524,45 +525,45 @@ class Phaser:
                         assert isinstance(exc, RunError)
                         self._run_error = exc
                 if self._term_status:
-                    self._next_step(TerminalStep())
+                    self._next_phase(TerminalStep())
                     return
 
-                self._next_step(step)
+                self._next_phase(phase)
 
-            term_status, exc = _run_handle_errors(step)
+            term_status, exc = _run_handle_errors(phase)
 
         self._term_status = self._term_status or TerminationStatus.COMPLETED
-        self._next_step(TerminalStep())
+        self._next_phase(TerminalStep())
 
-    def _next_step(self, step):
+    def _next_phase(self, phase):
         """
-        Impl note: The execution must be guarded by the phase lock (except terminal step)
+        Impl note: The execution must be guarded by the phase lock (except terminal phase)
         """
-        assert self._current_step != step
+        assert self._current_phase != phase
 
-        self._current_step = step
-        self._lifecycle.add_transition(PhaseTransition(step.phase, self._timestamp_generator()))
+        self._current_phase = phase
+        self._lifecycle.add_run(PhaseRun(phase.name, phase.metadata.run_state, self._timestamp_generator()))
         if self.transition_hook:
             self.execute_transition_hook_safely(self.transition_hook)
 
-    def execute_transition_hook_safely(self, transition_hook):
+    def execute_transition_hook_safely(self, transition_hook: Optional[Callable[[PhaseRun, PhaseRun, int], None]]):
         with self._transition_lock:
-            lc = self._lifecycle
-            transition_hook(lc.previous_phase, lc.phase, lc.phase_count, lc.last_transition_at)
+            lc = copy(self._lifecycle)
+            transition_hook(lc.previous_run, lc.current_run, lc.phase_count)
 
     def stop(self):
         with self._transition_lock:
             if self._term_status:
                 return
 
-            self._term_status = self._current_step.stop_status if self._current_step else TerminationStatus.STOPPED
+            self._term_status = self._current_phase.stop_status if self._current_phase else TerminationStatus.STOPPED
             assert self._term_status
-            if not self._current_step or (self._current_step.phase == StandardPhase.INIT.value):
+            if not self._current_phase or (self._current_phase.name == StandardPhaseNames.INIT):
                 # Not started yet
                 self._abort = True  # Prevent phase transition...
-                self._next_step(TerminalStep())
+                self._next_phase(TerminalStep())
 
-        self._current_step.stop()
+        self._current_phase.stop()
 
 
 @dataclass
@@ -600,15 +601,16 @@ class FailedRun(Exception):
 
 @dataclass
 class RunSnapshot:
+    phases: Tuple[PhaseMetadata]
     lifecycle: Lifecycle
     termination_status: Optional[TerminationStatus]
     run_failure: Optional[Fault]
     run_error: Optional[Fault]
 
 
-def _run_handle_errors(step) -> Tuple[Optional[TerminationStatus], Union[None, RunFailure, RunError, BaseException]]:
+def _run_handle_errors(phase) -> Tuple[Optional[TerminationStatus], Union[None, RunFailure, RunError, BaseException]]:
     try:
-        return step.run(), None
+        return phase.run(), None
     except FailedRun as e:
         return TerminationStatus.FAILED, e.fault
     except Exception as e:
