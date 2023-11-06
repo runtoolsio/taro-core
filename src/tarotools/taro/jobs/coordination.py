@@ -50,6 +50,7 @@ class NoOverlapPhase(Phase):
     def __init__(self, phase_name, no_overlap_id, until_phase=None):
         if not no_overlap_id:
             raise ValueError("no_overlap_id cannot be empty")
+
         params = {
             'phase': 'no_overlap',
             'no_overlap_id': no_overlap_id,
@@ -59,15 +60,15 @@ class NoOverlapPhase(Phase):
         self._no_overlap_id = no_overlap_id
 
     def run(self):
+        # TODO Phase params criteria
         runs, _ = taro.client.read_job_runs()
-        # TODO Check No instance with same overlap ID in protected phase
-        if any(i for i in runs if i.id != self.instance.id and self._phase_group.matches(i)):
-            return TerminationStatus.SKIPPED
+        if any(r for r in runs if self._in_protected_phase(r)):
+            return TerminationStatus.INVALID_OVERLAP
 
         return TerminationStatus.NONE
 
-    def _search_no_overlap_phase_range(self, job_run):
-        overlap_phase = None
+    def _in_protected_phase(self, job_run):
+        no_overlap_phase = None
         until_phase = None
 
         for idx, phase_meta in enumerate(job_run.phases):
@@ -75,13 +76,13 @@ class NoOverlapPhase(Phase):
                 if (idx + 1) >= len(job_run.phases):
                     continue  # No next phase - shouldn't happen but check anyway
 
-                overlap_phase = phase_meta.phase.name
+                no_overlap_phase = phase_meta.phase.name
                 until_phase = phase_meta.parameters.get('until_phase') or job_run.phases[idx + 1].phase.name
 
-        if not overlap_phase:
+        if not no_overlap_phase:
             return False
 
-        protected_phases = job_run.lifecycle.runs_between(overlap_phase, until_phase)
+        protected_phases = job_run.lifecycle.phases_between(no_overlap_phase, until_phase)
         return job_run.lifecycle.phase in protected_phases
 
     def stop(self):

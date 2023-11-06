@@ -48,7 +48,7 @@ from typing import Optional
 
 from tarotools.taro import util
 from tarotools.taro.jobs.instance import JobInstance, JobRun, JobInstanceID, JobInstanceMetadata
-from tarotools.taro.run import Phaser, Lifecycle, Flag, Fault
+from tarotools.taro.run import Phaser, Flag, Fault, PhaseRun
 from tarotools.taro.status import StatusObserver
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY, CallableNotification, ObservableNotification
 
@@ -66,12 +66,12 @@ _warning_observers = CallableNotification(error_hook=log_observer_error)
 
 class RunnerJobInstance(JobInstance):
 
-    def __init__(self, job_id, phase_steps, *, run_id=None, instance_id_gen=util.unique_timestamp_hex, **user_params):
+    def __init__(self, job_id, phases, *, run_id=None, instance_id_gen=util.unique_timestamp_hex, **user_params):
         instance_id = instance_id_gen()
         self._id = JobInstanceID(job_id, run_id or instance_id, instance_id)
         parameters = ()  # TODO
         self._metadata = JobInstanceMetadata(self._id, parameters, user_params)
-        self._phaser = Phaser(Lifecycle(), phase_steps)
+        self._phaser = Phaser(phases)
         self._tracking = None  # TODO The output fields below will be moved to the tracker
         # self._last_output = deque(maxlen=10)  # TODO Max len configurable
         # self._error_output = deque(maxlen=1000)  # TODO Max len configurable
@@ -111,7 +111,7 @@ class RunnerJobInstance(JobInstance):
         run_snapshot = self._phaser.create_run_snapshot()
         return JobRun(
             self.metadata,
-            [step.metadata for step in self._phaser.steps],
+            run_snapshot.phases,
             run_snapshot.lifecycle,
             self.tracking.copy(),
             run_snapshot.termination_status,
@@ -120,13 +120,13 @@ class RunnerJobInstance(JobInstance):
 
     def run(self):
         observer_proxy = self._status_notification.observer_proxy
-        for phase_step in self._phaser.steps:
+        for phase_step in self._phaser.phases:
             phase_step.add_status_observer(observer_proxy)
 
         try:
             self._phaser.run()
         finally:
-            for phase_step in self._phaser.steps:
+            for phase_step in self._phaser.phases:
                 phase_step.remove_status_observer(observer_proxy)
 
     def stop(self):
@@ -158,7 +158,7 @@ class RunnerJobInstance(JobInstance):
     def remove_transition_callback(self, callback):
         self._transition_notification.remove_observer(callback)
 
-    def _transition_hook(self, prev_phase, new_phase, ordinal, transitioned_at):
+    def _transition_hook(self, prev_phase: PhaseRun, new_phase: PhaseRun, ordinal):
         """Executed under phaser transition lock"""
         job_run = self.create_snapshot()
 
@@ -174,9 +174,9 @@ class RunnerJobInstance(JobInstance):
         else:
             level = logging.INFO
         log.log(level, self._log('phase_changed', "prev_phase=[{}] new_phase=[{}] ordinal=[{}]",
-                                 prev_phase.name, new_phase.name, ordinal))
+                                 prev_phase.phase_name, new_phase.phase_name, ordinal))
 
-        self._transition_notification(job_run, prev_phase, new_phase, ordinal, transitioned_at)
+        self._transition_notification(job_run, prev_phase, new_phase, ordinal)
 
     def add_status_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self._status_notification.add_observer(observer, priority)

@@ -298,7 +298,7 @@ class JobRun:
     """Descriptive information about this instance"""
     metadata: JobInstanceMetadata
     """The lifecycle of this job run"""
-    phases: List[PhaseMetadata]
+    phases: Tuple[PhaseMetadata]
     lifecycle: Lifecycle
     # TODO textwrap.shorten(status, 1000, placeholder=".. (truncated)", break_long_words=False)
     tracking: TrackedTaskInfo

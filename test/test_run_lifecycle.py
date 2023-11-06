@@ -17,11 +17,11 @@ def sut() -> Lifecycle:
     lifecycle = Lifecycle(init_transition)
 
     # 10 minutes after initialization, it goes to PENDING state
-    lifecycle.add_run(PhaseRun(PENDING, RunState.PENDING, base + datetime.timedelta(minutes=10)))
+    lifecycle.add_phase_run(PhaseRun(PENDING, RunState.PENDING, base + datetime.timedelta(minutes=10)))
     # 20 minutes after initialization, it goes to EXECUTING state
-    lifecycle.add_run(PhaseRun(EXECUTING, RunState.EXECUTING, base + datetime.timedelta(minutes=20)))
+    lifecycle.add_phase_run(PhaseRun(EXECUTING, RunState.EXECUTING, base + datetime.timedelta(minutes=20)))
     # 50 minutes after initialization, it terminates
-    lifecycle.add_run(PhaseRun(StandardPhaseNames.TERMINAL, RunState.ENDED, base + datetime.timedelta(minutes=50)))
+    lifecycle.add_phase_run(PhaseRun(StandardPhaseNames.TERMINAL, RunState.ENDED, base + datetime.timedelta(minutes=50)))
 
     return lifecycle
 

@@ -3,10 +3,10 @@ A run is an abstract concept that consists of a sequence of individual phase run
 phases, whether they are processes, programs, tasks, conditions, or other constructs, executed in a specific order.
 Each phase has a unique name and defines its run state, which determines the nature of the phase's activity during
 its run (like waiting, evaluating, executing, etc.). Phases operate in a predefined order; when one phase ends, the
-subsequent phase begins. However, if a phase ends and signals premature termination by providing a status other than
-'COMPLETED,' the next phase may not commence. Regardless of how the entire run finishes, the final phase must be a
-termination phase, and a termination status must be provided. This module includes a class, 'Phaser,' which represents
-the run concept by orchestrating the given phase phases. Each phase phase represents an implementation of a phase.
+subsequent phase begins. However, if a phase ends and signals premature termination by providing a termination status,
+the next phase may not commence. Regardless of how the entire run finishes, the final phase must be a terminal phase,
+and a termination status must be provided. This module includes a class, 'Phaser,' which implements the run concept
+by orchestrating the given phase phases.
 """
 
 import datetime
@@ -17,7 +17,7 @@ from copy import copy
 from dataclasses import dataclass
 from enum import Enum, auto, EnumMeta
 from threading import Event, RLock
-from typing import Optional, List, Dict, Any, Set, TypeVar, Type, Callable, Tuple, Union
+from typing import Optional, List, Dict, Any, Set, TypeVar, Type, Callable, Tuple, Union, Iterable
 
 from tarotools.taro import util, status
 from tarotools.taro.err import InvalidStateError
@@ -102,7 +102,7 @@ class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
 
     CANCELLED = {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.ABORTED}
     TIMEOUT = {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.REJECTED}
-    SKIPPED = {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.REJECTED}
+    INVALID_OVERLAP = {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.REJECTED}
     UNSATISFIED = {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.REJECTED}
 
     RUNNING = {Flag.EXECUTED}
@@ -182,14 +182,14 @@ class Lifecycle:
         self._current_run: Optional[PhaseRun] = None
         self._previous_run: Optional[PhaseRun] = None
         for run in phase_runs:
-            self.add_run(run)
+            self.add_phase_run(run)
 
-    def add_run(self, phase_run: PhaseRun):
+    def add_phase_run(self, phase_run: PhaseRun):
         """
         Adds a new phase run to the lifecycle.
         """
         if phase_run.phase_name in self._phase_runs:
-            raise ValueError("Phase already in lifecycle: " + str(phase_run))
+            raise ValueError(f"Phase {phase_run.phase_name} already in this lifecycle: {self.phases}")
 
         if self.current_run:
             self._previous_run = self._current_run
@@ -354,7 +354,7 @@ class PhaseMetadata:
 
     @classmethod
     def deserialize(cls, as_dict):
-        return cls(as_dict["phase_name"], RunState[as_dict["run_state"]], as_dict["parameters"])
+        return cls(as_dict["phase_name"], RunState[as_dict["run_state"]], as_dict["parameters"] or {})
 
     def serialize(self):
         return {"phase_name": self.phase_name, "run_state": self.run_state.name, "parameters": self.parameters}
@@ -394,7 +394,7 @@ class Phase(ABC):
         self._status_notification.remove_observer(observer)
 
 
-class NoOpsStep(Phase):
+class NoOpsPhase(Phase):
 
     def __init__(self, phase_name, run_state, stop_status):
         super().__init__(phase_name, run_state)
@@ -413,13 +413,13 @@ class NoOpsStep(Phase):
         pass
 
 
-class InitStep(NoOpsStep):
+class InitPhase(NoOpsPhase):
 
     def __init__(self):
         super().__init__(StandardPhaseNames.INIT, RunState.CREATED, TerminationStatus.STOPPED)
 
 
-class TerminalStep(NoOpsStep):
+class TerminalPhase(NoOpsPhase):
 
     def __init__(self):
         super().__init__(StandardPhaseNames.TERMINAL, RunState.ENDED, TerminationStatus.NONE)
@@ -445,126 +445,6 @@ class WaitWrapperPhase(Phase):
 
     def stop(self):
         self.wrapped_phase.stop()
-
-
-def unique_phases_to_dict(phases) -> Dict[str, Phase]:
-    name_to_phase = {}
-    for phase in phases:
-        if phase.name in name_to_phase:
-            raise ValueError(f"Duplicate phase found: {phase.name}")
-        name_to_phase[phase.name] = phase
-    return name_to_phase
-
-
-class Phaser:
-
-    def __init__(self, phases: List[Phase], lifecycle=None, *, timestamp_generator=util.utc_now):
-        self._name_to_phase: Dict[str, Phase] = unique_phases_to_dict(phases)
-        self._phase_meta: Tuple[PhaseMetadata] = tuple(phase.metadata for phase in phases)
-        self._timestamp_generator = timestamp_generator
-        self.transition_hook: Optional[Callable[[PhaseRun, PhaseRun, int], None]] = None
-
-        self._transition_lock = RLock()
-        # Guarded by the transition/state lock:
-        self._lifecycle = lifecycle or Lifecycle()
-        self._current_phase = None
-        self._abort = False
-        self._term_status = TerminationStatus.NONE
-        self._run_failure: Optional[Fault] = None
-        self._run_error: Optional[Fault] = None
-        # ----------------------- #
-
-    T = TypeVar('T')
-
-    def get_typed_phase(self, phase_type: Type[T], phase_name: str) -> Optional[T]:
-        phase = self._name_to_phase.get(phase_name)
-        if phase is None:
-            return None
-
-        if not isinstance(phase, phase_type):
-            raise TypeError(f"Expected phase of type {phase_type}, but got {type(phase)} for phase '{phase_name}'")
-
-        return phase
-
-    @property
-    def phases(self) -> List[Phase]:
-        return list(self._name_to_phase.values())
-
-    def create_run_snapshot(self):
-        with self._transition_lock:
-            return RunSnapshot(
-                self._phase_meta, copy(self._lifecycle), self._term_status, self._run_failure, self._run_error)
-
-    def prime(self):
-        with self._transition_lock:
-            if self._current_phase:
-                raise InvalidStateError("Primed already")
-            self._next_phase(InitStep())
-
-    def run(self):
-        if not self._current_phase:
-            raise InvalidStateError('Prime not executed before run')
-
-        term_status = None
-        exc = None
-        for phase in self._name_to_phase.values():
-            with self._transition_lock:
-                if self._abort:
-                    return
-                if term_status and not self._term_status:
-                    self._term_status = term_status
-                if isinstance(exc, BaseException):
-                    assert self._term_status
-                    self._next_phase(TerminalStep())
-                    raise exc
-                if exc:
-                    assert self._term_status
-                    if isinstance(exc, RunFailure):
-                        self._run_failure = exc
-                    else:
-                        assert isinstance(exc, RunError)
-                        self._run_error = exc
-                if self._term_status:
-                    self._next_phase(TerminalStep())
-                    return
-
-                self._next_phase(phase)
-
-            term_status, exc = _run_handle_errors(phase)
-
-        self._term_status = self._term_status or TerminationStatus.COMPLETED
-        self._next_phase(TerminalStep())
-
-    def _next_phase(self, phase):
-        """
-        Impl note: The execution must be guarded by the phase lock (except terminal phase)
-        """
-        assert self._current_phase != phase
-
-        self._current_phase = phase
-        self._lifecycle.add_run(PhaseRun(phase.name, phase.metadata.run_state, self._timestamp_generator()))
-        if self.transition_hook:
-            self.execute_transition_hook_safely(self.transition_hook)
-
-    def execute_transition_hook_safely(self, transition_hook: Optional[Callable[[PhaseRun, PhaseRun, int], None]]):
-        with self._transition_lock:
-            lc = copy(self._lifecycle)
-            transition_hook(lc.previous_run, lc.current_run, lc.phase_count)
-
-    def stop(self):
-        with self._transition_lock:
-            if self._term_status:
-                return
-
-            self._term_status = self._current_phase.stop_status if self._current_phase else TerminationStatus.STOPPED
-            assert self._term_status
-            if not self._current_phase or (self._current_phase.name == StandardPhaseNames.INIT):
-                # Not started yet
-                self._abort = True  # Prevent phase transition...
-                self._next_phase(TerminalStep())
-
-        self._current_phase.stop()
-
 
 @dataclass
 class Fault:
@@ -606,6 +486,125 @@ class RunSnapshot:
     termination_status: Optional[TerminationStatus]
     run_failure: Optional[Fault]
     run_error: Optional[Fault]
+
+
+def unique_phases_to_dict(phases) -> Dict[str, Phase]:
+    name_to_phase = {}
+    for phase in phases:
+        if phase.name in name_to_phase:
+            raise ValueError(f"Duplicate phase found: {phase.name}")
+        name_to_phase[phase.name] = phase
+    return name_to_phase
+
+
+class Phaser:
+
+    def __init__(self, phases: Iterable[Phase], lifecycle=None, *, timestamp_generator=util.utc_now):
+        self._name_to_phase: Dict[str, Phase] = unique_phases_to_dict(phases)
+        self._phase_meta: Tuple[PhaseMetadata] = tuple(phase.metadata for phase in phases)
+        self._timestamp_generator = timestamp_generator
+        self.transition_hook: Optional[Callable[[PhaseRun, PhaseRun, int], None]] = None
+
+        self._transition_lock = RLock()
+        # Guarded by the transition/state lock:
+        self._lifecycle = lifecycle or Lifecycle()
+        self._current_phase = None
+        self._abort = False
+        self._term_status = TerminationStatus.NONE
+        self._run_failure: Optional[Fault] = None
+        self._run_error: Optional[Fault] = None
+        # ----------------------- #
+
+    P = TypeVar('P')
+
+    def get_typed_phase(self, phase_type: Type[P], phase_name: str) -> Optional[P]:
+        phase = self._name_to_phase.get(phase_name)
+        if phase is None:
+            return None
+
+        if not isinstance(phase, phase_type):
+            raise TypeError(f"Expected phase of type {phase_type}, but got {type(phase)} for phase '{phase_name}'")
+
+        return phase
+
+    @property
+    def phases(self) -> List[Phase]:
+        return list(self._name_to_phase.values())
+
+    def create_run_snapshot(self) -> RunSnapshot:
+        with self._transition_lock:
+            return RunSnapshot(
+                self._phase_meta, copy(self._lifecycle), self._term_status, self._run_failure, self._run_error)
+
+    def prime(self):
+        with self._transition_lock:
+            if self._current_phase:
+                raise InvalidStateError("Primed already")
+            self._next_phase(InitPhase())
+
+    def run(self):
+        if not self._current_phase:
+            raise InvalidStateError('Prime not executed before run')
+
+        term_status = None
+        exc = None
+        for phase in self._name_to_phase.values():
+            with self._transition_lock:
+                if self._abort:
+                    return
+                if term_status and not self._term_status:
+                    self._term_status = term_status
+                if isinstance(exc, BaseException):
+                    assert self._term_status
+                    self._next_phase(TerminalPhase())
+                    raise exc
+                if exc:
+                    assert self._term_status
+                    if isinstance(exc, RunFailure):
+                        self._run_failure = exc
+                    else:
+                        assert isinstance(exc, RunError)
+                        self._run_error = exc
+                if self._term_status:
+                    self._next_phase(TerminalPhase())
+                    return
+
+                self._next_phase(phase)
+
+            term_status, exc = _run_handle_errors(phase)
+
+        self._term_status = self._term_status or TerminationStatus.COMPLETED
+        self._next_phase(TerminalPhase())
+
+    def _next_phase(self, phase):
+        """
+        Impl note: The execution must be guarded by the phase lock (except terminal phase)
+        """
+        assert self._current_phase != phase
+
+        self._current_phase = phase
+        self._lifecycle.add_phase_run(PhaseRun(phase.name, phase.metadata.run_state, self._timestamp_generator()))
+        if self.transition_hook:
+            self.execute_transition_hook_safely(self.transition_hook)
+
+    def execute_transition_hook_safely(self, transition_hook: Optional[Callable[[PhaseRun, PhaseRun, int], None]]):
+        with self._transition_lock:
+            lc = copy(self._lifecycle)
+            transition_hook(lc.previous_run, lc.current_run, lc.phase_count)
+
+    def stop(self):
+        with self._transition_lock:
+            if self._term_status:
+                return
+
+            self._term_status = self._current_phase.stop_status if self._current_phase else TerminationStatus.STOPPED
+            assert self._term_status
+            if not self._current_phase or (self._current_phase.name == StandardPhaseNames.INIT):
+                # Not started yet
+                self._abort = True  # Prevent phase transition...
+                self._next_phase(TerminalPhase())
+
+        self._current_phase.stop()
 
 
 def _run_handle_errors(phase) -> Tuple[Optional[TerminationStatus], Union[None, RunFailure, RunError, BaseException]]:

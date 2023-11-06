@@ -13,7 +13,7 @@ def test_interval_utc_conversion():
 
 
 def test_phase_criteria():
-    inst = TestJobInstance('skipped', '', TerminationStatus.SKIPPED)
+    inst = TestJobInstance('skipped', '', TerminationStatus.INVALID_OVERLAP)
     inst.warnings = Counter(['error_output'])
     matching1 = StateCriteria(flag_groups=[{Flag.SUCCESS}, {Flag.UNEXECUTED, Flag.NONSUCCESS}])
     not_matching1 = StateCriteria(flag_groups=[{Flag.SUCCESS}, {Flag.UNEXECUTED, Flag.ABORTED}])
@@ -34,5 +34,5 @@ def test_phase_criteria_phases():
     assert c(TestJobInstance(phase=TerminationStatus.QUEUED))
     assert not c(TestJobInstance(phase=TerminationStatus.CREATED))
     assert not c(TestJobInstance(phase=TerminationStatus.RUNNING))
-    assert not c(TestJobInstance(phase=TerminationStatus.SKIPPED))
+    assert not c(TestJobInstance(phase=TerminationStatus.INVALID_OVERLAP))
 
