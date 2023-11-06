@@ -149,7 +149,7 @@ class SignalProceedResponse(JobInstanceResponse):
     executed: bool
 
 
-def read_job_runs(instance_match=None) -> AggregatedResponse[JobRun]:
+def read_runs(instance_match=None) -> AggregatedResponse[JobRun]:
     """
     Retrieves instance information for all active job instances for the current user.
 

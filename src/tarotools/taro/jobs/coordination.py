@@ -61,13 +61,13 @@ class NoOverlapPhase(Phase):
 
     def run(self):
         # TODO Phase params criteria
-        runs, _ = taro.client.read_job_runs()
-        if any(r for r in runs if self._in_protected_phase(r)):
+        runs, _ = taro.client.read_runs()
+        if any(r for r in runs if self._in_no_overlap_phase(r)):
             return TerminationStatus.INVALID_OVERLAP
 
         return TerminationStatus.NONE
 
-    def _in_protected_phase(self, job_run):
+    def _in_no_overlap_phase(self, job_run):
         no_overlap_phase = None
         until_phase = None
 
@@ -109,7 +109,7 @@ class DependencyPhase(Phase):
         return self._parameters
 
     def run(self):
-        instances, _ = taro.client.read_job_runs()
+        instances, _ = taro.client.read_runs()
         if not any(i for i in instances if self._dependency_match.matches(i)):
             return TerminationStatus.UNSATISFIED
 
@@ -393,7 +393,7 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
             state_criteria=StateCriteria(phases={Phase.QUEUED, Phase.EXECUTING}),
             param_sets=set(self._parameters)
         )
-        jobs, _ = taro.client.read_job_runs(criteria)
+        jobs, _ = taro.client.read_runs(criteria)
 
         group_jobs_sorted = JobRuns(sorted(jobs, key=RunState.CREATED))
         next_count = self._max_executions - len(group_jobs_sorted.executing)
