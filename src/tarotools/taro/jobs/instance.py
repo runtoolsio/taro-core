@@ -13,61 +13,57 @@ TODO:
 """
 
 import abc
-import datetime
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from threading import Thread
 from typing import Dict, Any, Optional, List, Tuple
 
-from tarotools.taro.jobs.criteria import IDMatchCriteria
+from tarotools.taro.jobs.criteria import JobRunIdCriterion
 from tarotools.taro.jobs.track import TrackedTaskInfo
-from tarotools.taro.run import TerminationStatus, Phase, Lifecycle, Fault, RunState, PhaseMetadata
+from tarotools.taro.run import TerminationStatus, Lifecycle, Fault, RunState, PhaseMetadata, PhaseRun
 from tarotools.taro.util import is_empty
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
 
 @dataclass(frozen=True)
-class JobInstanceID:
+class JobRunId:
     """
     Attributes:
-        job_id (str): The ID of the job to which the instance belongs.
-        run_id (str): The ID of the run represented by the instance.
-        instance_id (str): The reference ID of the instance.
+        job_id (str): The ID of the job to which the run belongs.
+        run_id (str): The ID of the run.
 
     TODO: Create a method that returns a match and a no-match for this ID.
     """
     job_id: str
     run_id: str
-    instance_id: str
 
     @classmethod
     def deserialize(cls, as_dict):
-        return cls(as_dict['job_id'], as_dict['run_id'], as_dict['instance_id'])
+        return cls(as_dict['job_id'], as_dict['run_id'])
 
     def serialize(self) -> Dict[str, Any]:
         return {
             "job_id": self.job_id,
             "run_id": self.job_id,
-            "instance_id": self.instance_id
         }
 
     def matches_pattern(self, id_pattern, matching_strategy=fnmatch):
-        return IDMatchCriteria.parse_pattern(id_pattern, strategy=matching_strategy).matches(self)
+        return JobRunIdCriterion.parse_pattern(id_pattern, strategy=matching_strategy).matches(self)
 
 
 @dataclass
-class JobInstanceMetadata:
+class JobRunMetadata:
     """
-    A dataclass that contains metadata information related to a specific job instance.
-    This object is designed to represent essential information about a job instance in a compact and
-    serializable format. By using this object instead of a full job instance snapshot, you can reduce the amount of
-    data transmitted when sending information across a network or between different parts of a system.
+    A dataclass that contains metadata information related to a specific job run. This object is designed 
+    to represent essential information about a job run in a compact and serializable format. By using this object 
+    instead of a full `JobRun` snapshot, you can reduce the amount of data transmitted when sending information 
+    across a network or between different parts of a system.
 
     Attributes:
-        id (JobInstanceID):
+        id (JobRunId):
             The unique identifier associated with the job instance.
-        parameters (Tuple[Tuple[str, str]]):
+        system_parameters (Tuple[Tuple[str, str]]):
             A tuple of key-value pairs representing system parameters for the job.
             These parameters are implementation-specific and contain information needed by the system to
             perform certain tasks or enable specific features.
@@ -75,18 +71,18 @@ class JobInstanceMetadata:
             A dictionary containing user-defined parameters associated with the instance.
             These are arbitrary parameters set by the user, and they do not affect the functionality.
     """
-    id: JobInstanceID
-    parameters: Tuple[Tuple[str, str]]  # TODO Rename to system_params
+    id: JobRunId
+    system_parameters: Dict[str, Any]
     user_params: Dict[str, Any]
 
     @classmethod
     def deserialize(cls, as_dict):
-        return cls(JobInstanceID.deserialize(as_dict['id']), as_dict['parameters'], as_dict['user_params'])
+        return cls(JobRunId.deserialize(as_dict['id']), as_dict['system_parameters'], as_dict['user_params'])
 
     def serialize(self, include_empty=True) -> Dict[str, Any]:
         d = {
             "id": self.id.serialize(),
-            "parameters": self.parameters,
+            "system_parameters": self.system_parameters,
             "user_params": self.user_params,
         }
         if include_empty:
@@ -94,17 +90,8 @@ class JobInstanceMetadata:
         else:
             return {k: v for k, v in d.items() if not is_empty(v)}
 
-    def contains_parameters(self, *params):
-        return all(param in self.parameters for param in params)
-
-    def __repr__(self):
-        # TODO needed?
-        return (
-            f"{self.__class__.__name__}("
-            f"job_id={self.id!r}, "
-            f"parameters={self.parameters!r}, "
-            f"user_params={self.user_params!r})"
-        )
+    def contains_system_parameters(self, *params):
+        return all(param in self.system_parameters for param in params)
 
 
 class JobInstance(abc.ABC):
@@ -116,10 +103,18 @@ class JobInstance(abc.ABC):
 
     @property
     @abc.abstractmethod
+    def instance_id(self):
+        """
+        Returns:
+            str: Instance reference/identity identifier.
+        """
+
+    @property
+    @abc.abstractmethod
     def metadata(self):
         """
         Returns:
-            JobInstanceMetadata: Descriptive information about this instance.
+            JobRunMetadata: Descriptive information about this instance.
         """
 
     @property
@@ -137,14 +132,6 @@ class JobInstance(abc.ABC):
             str: Run part of the instance identifier.
         """
         return self.metadata.id.job_id
-
-    @property
-    def instance_id(self):
-        """
-        Returns:
-            str: Instance reference/identity identifier.
-        """
-        return self.metadata.id.instance_id
 
     @property
     @abc.abstractmethod
@@ -179,7 +166,7 @@ class JobInstance(abc.ABC):
         If no errors occurred during the execution of the job, this property returns None.
 
         Returns:
-            tarotools.taro.jobs.lifecycle.ExecutionError: The details of the execution error or None if the job executed successfully.
+            Fault: The details of the execution error or None if the job executed successfully.
         """
 
     @property
@@ -198,8 +185,9 @@ class JobInstance(abc.ABC):
         Creates a consistent, thread-safe snapshot of the job instance's current state.
 
         Returns:
-            JobRun: A snapshot representing the current state of the job instance.
+            JobInstSnapshot: A snapshot representing the current state of the job instance.
         """
+
     @abc.abstractmethod
     def run(self):
         """
@@ -208,6 +196,7 @@ class JobInstance(abc.ABC):
         This method is not expected to raise any errors. In case of any failure the error details can be retrieved
         by calling `exec_error` method.
         """
+
     @abc.abstractmethod
     def stop(self):
         """
@@ -225,7 +214,7 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_transition_callback(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
+    def add_observer_phase_transition(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
         """
         Register an instance state observer. Optionally, trigger a notification with the last known state
         upon registration.
@@ -236,7 +225,7 @@ class JobInstance(abc.ABC):
             observer:
                 The observer to register. This can either be:
                 1. An instance of `InstanceStateObserver`.
-                2. A callable object with the signature of the `InstanceStateObserver.new_instance_state` method.
+                2. A callable object with the signature of the `InstanceStateObserver.instance_phase_transition` method.
             priority (int, optional):
                 Priority of the observer. Lower numbers are notified first.
             notify_on_register (bool, optional):
@@ -244,7 +233,7 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def remove_transition_callback(self, observer):
+    def remove_observer_phase_transition(self, observer):
         """
         De-register an execution state observer.
         Note: The implementation must cope with the scenario when this method is executed during notification.
@@ -254,7 +243,7 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_status_observer(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+    def add_observer_status(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         """
         Register an output observer.
         The observer can be:
@@ -267,7 +256,7 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def remove_status_observer(self, observer):
+    def remove_observer_status(self, observer):
         """
         De-register an output observer.
 
@@ -289,14 +278,14 @@ class RunInNewThreadJobInstance:
         t.start()
 
 
-@dataclass
+@dataclass(frozen=True)
 class JobRun:
     """
     Immutable snapshot of job instance
     """
 
     """Descriptive information about this instance"""
-    metadata: JobInstanceMetadata
+    metadata: JobRunMetadata
     """The lifecycle of this job run"""
     phases: Tuple[PhaseMetadata]
     lifecycle: Lifecycle
@@ -309,8 +298,8 @@ class JobRun:
     @classmethod
     def deserialize(cls, as_dict):
         return cls(
-            JobInstanceMetadata.deserialize(as_dict['metadata']),
-            [PhaseMetadata.deserialize(phase) for phase in as_dict['phases']],
+            JobRunMetadata.deserialize(as_dict['metadata']),
+            tuple(PhaseMetadata.deserialize(phase) for phase in as_dict['phases']),
             Lifecycle.deserialize(as_dict['lifecycle']),
             TrackedTaskInfo.from_dict(as_dict['tracking']) if "tracking" in as_dict else None,
             TerminationStatus[as_dict["termination_status"]],
@@ -322,7 +311,7 @@ class JobRun:
         d = {
             "metadata": self.metadata.serialize(include_empty),
             "phases": [pm.serialize() for pm in self.phases],
-            "lifecycle": self.lifecycle.serialize(include_empty),
+            "lifecycle": self.lifecycle.serialize(),
             "tracking": self.tracking.to_dict(include_empty) if self.tracking else None,
             "termination_status": self.termination_status.name,
             "run_failure": self.run_failure.serialize() if self.run_failure else None,
@@ -349,13 +338,14 @@ class JobRun:
         """
         return self.metadata.id.run_id
 
-    @property
-    def instance_id(self):
-        """
-        Returns:
-            JobInstanceID: Identifier of this instance.
-        """
-        return self.metadata.id.instance_id
+
+@dataclass(frozen=True)
+class JobInstSnapshot:
+    """
+    Instance related information can include hostname info, etc.
+    """
+    instance_id: str
+    job_run: JobRun
 
 
 class JobRuns(list):
@@ -400,11 +390,10 @@ class JobRuns(list):
         return {"runs": [run.serialize(include_empty=include_empty) for run in self]}
 
 
-class InstanceTransitionObserver(abc.ABC):
+class PhaseTransitionObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_transition(self, job_inst: JobRun, previous_phase: Phase, new_phase: Phase, ordinal: int,
-                       changed: datetime.datetime):
+    def new_phase(self, job_inst: JobInstSnapshot, previous_phase: PhaseRun, new_phase: PhaseRun, ordinal: int):
         """
         Called when the instance transitions to a new phase.
 
@@ -412,11 +401,10 @@ class InstanceTransitionObserver(abc.ABC):
         to make the observer aware about the current phase of the instance.
 
         Args:
-            job_inst (JobRun): The job instance that transitioned to a new phase.
+            job_inst (JobInstSnapshot): A snapshot of the job instance that transitioned to a new phase.
             previous_phase (TerminationStatus): The previous phase of the job instance.
             new_phase (TerminationStatus): The new/current phase state of the job instance.
             ordinal (int): The number of the current phase.
-            changed (datetime.datetime): The timestamp of when the transition.
         """
 
 
@@ -449,19 +437,19 @@ class WarnEventCtx:
 class InstanceWarningObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_instance_warning(self, job_info: JobRun, warning_ctx: WarnEventCtx):
+    def new_instance_warning(self, job_info: JobInstSnapshot, warning_ctx: WarnEventCtx):
         """This method is called when there is a new warning event."""
 
 
 class InstanceOutputObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_instance_output(self, job_info: JobRun, output: str, is_error: bool):
+    def new_instance_output(self, job_info: JobInstSnapshot, output: str, is_error: bool):
         """
         Executed when a new output line is available.
 
         Args:
-            job_info (JobRun): Job instance producing the output.
+            job_info (JobInstSnapshot): Job instance producing the output.
             output (str): Job instance output text.
             is_error (bool): True if it is an error output, otherwise False.
         """

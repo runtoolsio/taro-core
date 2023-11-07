@@ -12,11 +12,10 @@ import json
 import logging
 
 from tarotools.taro import util
-from tarotools.taro.jobs.instance import InstanceTransitionObserver, JobRun, InstanceOutputObserver
+from tarotools.taro.jobs.instance import PhaseTransitionObserver, JobRun, InstanceOutputObserver
 from tarotools.taro.socket import SocketClient, PayloadTooLarge
-from tarotools.taro.util import format_dt_iso
 
-PHASE_LISTENER_FILE_EXTENSION = '.slistener'
+PHASE_LISTENER_FILE_EXTENSION = '.plistener'
 OUTPUT_LISTENER_FILE_EXTENSION = '.olistener'
 
 log = logging.getLogger(__name__)
@@ -49,22 +48,26 @@ class EventDispatcher(abc.ABC):
         self._client.close()
 
 
-class PhaseDispatcher(EventDispatcher, InstanceTransitionObserver):
+class PhaseTransitionDispatcher(EventDispatcher, PhaseTransitionObserver):
     """
     This producer emits an event when the state of a job instance changes. This dispatcher should be registered to
     the job instance as an `InstanceStateObserver`.
     """
 
     def __init__(self):
-        super(PhaseDispatcher, self).__init__(SocketClient(PHASE_LISTENER_FILE_EXTENSION, bidirectional=False))
+        super(PhaseTransitionDispatcher, self).__init__(SocketClient(PHASE_LISTENER_FILE_EXTENSION, bidirectional=False))
 
-    def new_transition(self, job_inst: JobRun, previous_phase, new_phase, changed):
+    def __call__(self, job_run: JobRun, previous_phase, new_phase, ordinal):
+        self.new_phase(job_run, previous_phase, new_phase, ordinal)
+
+    def new_phase(self, job_inst: JobRun, previous_phase, new_phase, ordinal):
         event = {
-            "new_state": new_phase.name,
-            "previous_state": previous_phase.name,
-            "changed": format_dt_iso(changed),
+            "job_run": job_inst.serialize(),
+            "previous_phase": previous_phase.serialize(),
+            "new_phase": new_phase.serialize(),
+            "ordinal": ordinal,
         }
-        self._send_event("new_instance_state", job_inst.metadata, event)
+        self._send_event("instance_phase_transition", job_inst.metadata, event)
 
 
 class OutputDispatcher(EventDispatcher, InstanceOutputObserver):

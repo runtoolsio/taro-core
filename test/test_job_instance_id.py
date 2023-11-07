@@ -1,6 +1,6 @@
 from operator import eq
 
-from tarotools.taro.jobs.instance import JobInstanceID as Jid
+from tarotools.taro.jobs.instance import JobRunId as Jid
 
 
 def test_full_match():

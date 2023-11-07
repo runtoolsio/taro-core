@@ -36,8 +36,10 @@ def truncate(text, max_len, truncated_suffix=''):
 def partial_match(string, pattern):
     return bool(re.search(pattern, string))
 
+
 def always_true(*_):
     return True
+
 
 def always_false(*_):
     return False

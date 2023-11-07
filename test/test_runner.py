@@ -108,7 +108,7 @@ def test_output_observer():
     execution = ProcessExecution(print_it)
     instance = tarotools.taro.job_instance_uncoordinated('j', execution)
     observer = TestOutputObserver()
-    instance.add_status_observer(observer)
+    instance.add_observer_status(observer)
 
     instance.run()
 

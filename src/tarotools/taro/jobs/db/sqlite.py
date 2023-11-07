@@ -13,13 +13,13 @@ from tarotools.taro import cfg, InstanceLifecycle, TerminationStatus
 from tarotools.taro import paths
 from tarotools.taro.execution import Flag, \
     Phase
-from tarotools.taro.jobs.instance import (InstanceTransitionObserver, JobRun, JobRuns, JobInstanceID,
+from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobRun, JobRuns, JobRunId,
                                           LifecycleEvent,
-                                          JobInstanceMetadata, InstancePhase)
+                                          JobRunMetadata, InstancePhase)
 from tarotools.taro.jobs.job import JobStats
 from tarotools.taro.jobs.persistence import SortCriteria
 from tarotools.taro.jobs.track import TrackedTaskInfo
-from tarotools.taro.run import FailedRun
+from tarotools.taro.run import FailedRun, RunState
 from tarotools.taro.util import MatchingStrategy, format_dt_sql, parse_dt_sql
 
 log = logging.getLogger(__name__)
@@ -112,14 +112,14 @@ def _build_where_clause(instance_match, alias=''):
     return " WHERE {conditions}".format(conditions=" AND ".join(all_conditions_str))
 
 
-class SQLite(InstanceTransitionObserver):
+class SQLite(PhaseTransitionObserver):
 
     def __init__(self, connection):
         self._conn = connection
 
-    def new_transition(self, job_inst: JobRun, previous_phase, new_phase, changed):
-        if new_phase.in_phase(Phase.TERMINAL):
-            self.store_instances(job_inst)
+    def new_phase(self, job_inst: JobRun, previous_phase, new_phase, ordinal):
+        if new_phase.run_state == RunState.ENDED:
+            self.store_runs(job_inst)
 
     def check_tables_exist(self):
         # Version 4
@@ -149,8 +149,7 @@ class SQLite(InstanceTransitionObserver):
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
-    def read_instances(self, instance_match=None, sort=SortCriteria.ENDED,
-                       *, asc=True, limit=-1, offset=-1, last=False) \
+    def read_runs(self, instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, offset=-1, last=False) \
             -> JobRuns:
         def sort_exp():
             if sort == SortCriteria.CREATED:
@@ -184,7 +183,7 @@ class SQLite(InstanceTransitionObserver):
             user_params = json.loads(t[12]) if t[12] else dict()
             parameters = tuple((tuple(x) for x in json.loads(t[13]))) if t[13] else tuple()
             pending_group = json.loads(t[14]).get("pending_group") if t[14] else None
-            metadata = JobInstanceMetadata(JobInstanceID(t[0], t[1]), parameters, user_params, pending_group)
+            metadata = JobRunMetadata(JobRunId(t[0], t[1]), parameters, user_params, pending_group)
 
             return JobRun(metadata, lifecycle, tracking, status, error_output, warnings, exec_error)
 
@@ -257,7 +256,7 @@ class SQLite(InstanceTransitionObserver):
 
         return [to_job_stats(row) for row in c.fetchall()]
 
-    def store_instances(self, *job_inst):
+    def store_runs(self, *job_inst):
         def to_tuple(j):
             return (j.job_id,
                     j.run_id,

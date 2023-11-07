@@ -42,7 +42,7 @@ def test_ordinal(sut):
 
 
 def test_transitions(sut):
-    assert sut.started_at(EXECUTING) == datetime.datetime(2023, 1, 1, 0, 20)
+    assert sut.phase_started_at(EXECUTING) == datetime.datetime(2023, 1, 1, 0, 20)
     assert sut.last_transition_at == datetime.datetime(2023, 1, 1, 0, 50)
 
 

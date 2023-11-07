@@ -1,20 +1,20 @@
 from datetime import datetime
 
 from tarotools.taro import TerminationStatus
-from tarotools.taro.jobs.events import PhaseDispatcher, OutputDispatcher
+from tarotools.taro.jobs.events import PhaseTransitionDispatcher, OutputDispatcher
 from tarotools.taro.listening import PhaseReceiver, OutputReceiver
 from tarotools.taro.test.inst import TestJobInstance
 from tarotools.taro.test.observer import GenericObserver
 
 
 def test_state_dispatching():
-    dispatcher = PhaseDispatcher()
+    dispatcher = PhaseTransitionDispatcher()
     receiver = PhaseReceiver()
     observer = GenericObserver()
     receiver.listeners.append(observer)
     receiver.start()
     try:
-        dispatcher.new_transition(
+        dispatcher.new_phase(
             TestJobInstance('j1').create_snapshot(),
             TerminationStatus.NONE,
             TerminationStatus.CREATED,

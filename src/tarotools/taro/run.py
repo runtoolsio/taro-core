@@ -227,7 +227,7 @@ class Lifecycle:
         return self._current_run
 
     @property
-    def current_phase(self) -> Optional[PhaseRun]:
+    def current_phase(self) -> Optional[str]:
         return self._current_run.phase_name if self._current_run else None
 
     @property
@@ -235,7 +235,7 @@ class Lifecycle:
         return self._previous_run
 
     @property
-    def previous_phase(self) -> Optional[PhaseRun]:
+    def previous_phase(self) -> Optional[str]:
         return self._previous_run.phase_name if self._previous_run else None
 
     @property
@@ -285,7 +285,7 @@ class Lifecycle:
     def phases_between(self, phase_from, phase_to):
         return [run.phase_name for run in self.runs_between(phase_from, phase_to)]
 
-    def started_at(self, phase_name: str) -> Optional[datetime.datetime]:
+    def phase_started_at(self, phase_name: str) -> Optional[datetime.datetime]:
         phase_run = self._phase_runs.get(phase_name)
         return phase_run.started_at if phase_run else None
 
@@ -353,7 +353,7 @@ class PhaseMetadata:
     parameters: Dict[str, str]
 
     @classmethod
-    def deserialize(cls, as_dict):
+    def deserialize(cls, as_dict) -> 'PhaseMetadata':
         return cls(as_dict["phase_name"], RunState[as_dict["run_state"]], as_dict["parameters"] or {})
 
     def serialize(self):
@@ -445,6 +445,7 @@ class WaitWrapperPhase(Phase):
 
     def stop(self):
         self.wrapped_phase.stop()
+
 
 @dataclass
 class Fault:

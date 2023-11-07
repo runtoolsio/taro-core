@@ -13,7 +13,7 @@ from threading import Condition
 from typing import Tuple, List, Callable
 
 from tarotools.taro import TerminationStatus
-from tarotools.taro.jobs.instance import JobRun, InstanceOutputObserver, InstanceTransitionObserver, InstancePhase
+from tarotools.taro.jobs.instance import JobRun, InstanceOutputObserver, PhaseTransitionObserver, InstancePhase
 from tarotools.taro.run import FailedRun
 
 log = logging.getLogger(__name__)
@@ -30,14 +30,14 @@ class GenericObserver:
         self.updates.put_nowait(args)
 
 
-class TestPhaseObserver(InstanceTransitionObserver):
+class TestPhaseObserver(PhaseTransitionObserver):
     __test__ = False  # To tell pytest it isn't a test class
 
     def __init__(self):
         self._events: List[Tuple[datetime, JobRun, TerminationStatus, FailedRun]] = []
         self.completion_lock = Condition()
 
-    def new_transition(self, job_inst: JobRun, previous_phase, new_phase, changed):
+    def new_phase(self, job_inst: JobRun, previous_phase, new_phase, changed):
         self._events.append((datetime.now(), job_inst, new_phase, job_inst.exec_error))
         log.info("event=[state_changed] job_info=[{}]".format(job_inst))
         self._release_state_waiter()

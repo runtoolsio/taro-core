@@ -686,8 +686,8 @@ class OutputTracker:
         else:
             rel_task = self.task
 
-        if not rel_task.started_at:
-            rel_task.started_at = fields.get(Fields.TIMESTAMP)
+        if not rel_task.phase_started_at:
+            rel_task.phase_started_at = fields.get(Fields.TIMESTAMP)
         rel_task.updated_at = fields.get(Fields.TIMESTAMP)
         rel_task.active = True
         rel_task.deactivate_subtasks()

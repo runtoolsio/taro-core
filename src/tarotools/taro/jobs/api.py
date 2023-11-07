@@ -12,7 +12,7 @@ import logging
 from abc import ABC, abstractmethod
 from json import JSONDecodeError
 
-from tarotools.taro.jobs.criteria import InstanceMatchCriteria
+from tarotools.taro.jobs.criteria import InstanceCriteria
 from tarotools.taro.jobs.instance import JobInstanceManager
 from tarotools.taro.run import util, Flag, TerminationStatus
 from tarotools.taro.socket import SocketServer
@@ -209,7 +209,7 @@ class APIServer(SocketServer, JobInstanceManager):
             return self._job_instances
 
         try:
-            matching_criteria = InstanceMatchCriteria.from_dict(instance_match)
+            matching_criteria = InstanceCriteria.from_dict(instance_match)
         except ValueError:
             raise _ApiError(422, f"Invalid instance match: {instance_match}")
         return [job_instance for job_instance in self._job_instances if matching_criteria.matches(job_instance)]

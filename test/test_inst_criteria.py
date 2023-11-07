@@ -2,13 +2,13 @@ from collections import Counter
 
 from tarotools.taro import TerminationStatus, Flag
 from tarotools.taro.execution import Phase
-from tarotools.taro.jobs.criteria import IntervalCriteria, StateCriteria
+from tarotools.taro.jobs.criteria import IntervalCriterion, StateCriteria
 from tarotools.taro.jobs.instance import LifecycleEvent
 from tarotools.taro.test.inst import TestJobInstance
 
 
 def test_interval_utc_conversion():
-    c = IntervalCriteria.to_utc(LifecycleEvent.CREATED, from_val='2023-11-10T09:00+02:00', to_val=None)
+    c = IntervalCriterion.to_utc(LifecycleEvent.CREATED, from_val='2023-11-10T09:00+02:00', to_val=None)
     assert c.from_dt.hour == 7
 
 

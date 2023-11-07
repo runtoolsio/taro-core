@@ -6,7 +6,7 @@ from threading import Condition, Event, Lock
 
 from tarotools import taro
 from tarotools.taro.jobs import lock
-from tarotools.taro.jobs.criteria import IDMatchCriteria, StateCriteria, InstanceMatchCriteria
+from tarotools.taro.jobs.criteria import JobRunIdCriterion, StateCriteria, InstanceCriteria
 from tarotools.taro.jobs.instance import JobRuns
 from tarotools.taro.listening import PhaseReceiver, InstancePhaseEventObserver
 from tarotools.taro.run import RunState, Phase, TerminationStatus
@@ -61,7 +61,7 @@ class NoOverlapPhase(Phase):
 
     def run(self):
         # TODO Phase params criteria
-        runs, _ = taro.client.read_runs()
+        runs, _ = taro.client.read_instances()
         if any(r for r in runs if self._in_no_overlap_phase(r)):
             return TerminationStatus.INVALID_OVERLAP
 
@@ -109,7 +109,7 @@ class DependencyPhase(Phase):
         return self._parameters
 
     def run(self):
-        instances, _ = taro.client.read_runs()
+        instances, _ = taro.client.read_instances()
         if not any(i for i in instances if self._dependency_match.matches(i)):
             return TerminationStatus.UNSATISFIED
 
@@ -389,11 +389,11 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
         self._state_receiver.start()
 
     def _dispatch_next(self):
-        criteria = InstanceMatchCriteria(
+        criteria = InstanceCriteria(
             state_criteria=StateCriteria(phases={Phase.QUEUED, Phase.EXECUTING}),
             param_sets=set(self._parameters)
         )
-        jobs, _ = taro.client.read_runs(criteria)
+        jobs, _ = taro.client.read_instances(criteria)
 
         group_jobs_sorted = JobRuns(sorted(jobs, key=RunState.CREATED))
         next_count = self._max_executions - len(group_jobs_sorted.executing)
@@ -402,7 +402,7 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
 
         for next_proceed in group_jobs_sorted.queued:
             # TODO Use identity ID
-            signal_resp = taro.client.signal_dispatch(InstanceMatchCriteria(IDMatchCriteria.for_instance(next_proceed)))
+            signal_resp = taro.client.signal_dispatch(InstanceCriteria(JobRunIdCriterion.for_run(next_proceed)))
             for r in signal_resp.responses:
                 if r.executed:
                     next_count -= 1
@@ -413,7 +413,7 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
         with self._wait_guard:
             if not self._current_wait:
                 return
-            if new_phase.run_state == RunState.ENDED and instance_meta.contains_parameters(self._parameters):
+            if new_phase.run_state == RunState.ENDED and instance_meta.contains_system_parameters(self._parameters):
                 self._current_wait = False
                 self._stop_listening()
                 self._wait_guard.notify()

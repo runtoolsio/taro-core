@@ -1,33 +1,50 @@
 """
-This module provides various criteria objects used to match job instances.
+This module provides various criteria objects used to match job instances or their parts.
 
 TODO: Remove immutable properties
 """
 
 import datetime
+from abc import abstractmethod, ABC
 from dataclasses import dataclass
 from datetime import timezone, time, timedelta
-from typing import Dict, Any, Set, Iterable, Optional
+from typing import Dict, Any, Set, Iterable, Optional, TypeVar, Generic
 
-from tarotools.taro.run import TerminationStatusFlag, RunState, Phase
-from tarotools.taro.util import MatchingStrategy, and_, or_, is_empty, parse, single_day_range, days_range, \
+from tarotools.taro import JobRunId
+from tarotools.taro.run import TerminationStatusFlag, RunState, Phase, Lifecycle
+from tarotools.taro.util import MatchingStrategy, and_, or_, parse, single_day_range, days_range, \
     format_dt_iso, remove_empty_values, to_list
+
+T = TypeVar('T')
+
+
+class MatchCriteria(ABC, Generic[T]):
+
+    @abstractmethod
+    def matches(self, tested: T) -> bool:
+        """
+        Check if the provided tested item matches the criteria.
+
+        :param tested: The item to check against the criteria.
+        :return: True if the item matches the criteria, False otherwise.
+        """
+        pass
 
 
 @dataclass
-class IDMatchCriteria:
+class JobRunIdCriterion(MatchCriteria[JobRunId]):
     """
-    This class specifies criteria for matching `JobInstanceID` instances.
-    If both `job_id` and `instance_id` are empty, the matching strategy defaults to `MatchingStrategy.ALWAYS_TRUE`.
+    This class specifies criteria for matching `JobRun` instances.
+    If both `job_id` and `run_id` are empty, the matching strategy defaults to `MatchingStrategy.ALWAYS_TRUE`.
 
     Attributes:
         job_id (str): The pattern for job ID matching. If empty, the field is ignored.
-        instance_id (str): The pattern for instance ID matching. If empty, the field is ignored.
+        run_id (str): The pattern for run ID matching. If empty, the field is ignored.
         match_both_ids (bool): If False, a match with either job_id or instance_id is sufficient. Default is True.
         strategy (MatchingStrategy): The strategy to use for matching. Default is `MatchingStrategy.EXACT`.
     """
     job_id: str
-    instance_id: str = ''
+    run_id: str = ''
     match_both_ids: bool = True
     strategy: MatchingStrategy = MatchingStrategy.EXACT
 
@@ -36,22 +53,22 @@ class IDMatchCriteria:
         return cls('', '', True, MatchingStrategy.ALWAYS_FALSE)
 
     @staticmethod
-    def for_instance(job_inst):
+    def for_run(job_run):
         """
-        Creates an IDMatchCriteria object that matches the provided job instance.
+        Creates an JobRunIdMatchCriteria object that matches the provided job run.
 
         Args:
-            job_inst: The specific job instance to create a match for.
+            job_run: The specific job run to create a match for.
 
         Returns:
-            IDMatchCriteria: An IDMatchCriteria object that will match the given job_instance.
+            JobRunIdCriterion: A criteria object that will match the given job run.
         """
-        return IDMatchCriteria(job_id=job_inst.id.job_id, instance_id=job_inst.id.run_id)
+        return JobRunIdCriterion(job_id=job_run.job_id, run_id=job_run.run_id)
 
     @classmethod
     def parse_pattern(cls, pattern: str, strategy=MatchingStrategy.EXACT):
         """
-        Parses the provided pattern and returns the corresponding IDMatchCriteria object.
+        Parses the provided pattern and returns the corresponding JobRunIdMatchCriteria object.
         The pattern can contain the `@` token to denote `job_id` and `instance_id` parts in this format:
         `{job_id}@{instance_id}`. If the token is not included, then the pattern is matched against both IDs,
         and a match on any fields results in a positive match.
@@ -64,7 +81,7 @@ class IDMatchCriteria:
             strategy (MatchingStrategy, optional): The strategy to use for matching. Default is `MatchingStrategy.EXACT`
 
         Returns:
-            IDMatchCriteria: A new IDMatchCriteria object with the parsed job_id, instance_id, and strategy.
+            JobRunIdCriterion: A new IDMatchCriteria object with the parsed job_id, instance_id, and strategy.
         """
         if "@" in pattern:
             job_id, instance_id = pattern.split("@")
@@ -75,53 +92,47 @@ class IDMatchCriteria:
         return cls(job_id, instance_id, match_both, strategy)
 
     @classmethod
-    def from_dict(cls, as_dict):
-        return cls(as_dict['job_id'],
-                   as_dict['instance_id'],
-                   as_dict['match_both_ids'],
+    def deserialize(cls, as_dict):
+        return cls(as_dict['job_id'], as_dict['run_id'], as_dict['match_both_ids'],
                    MatchingStrategy[as_dict['strategy'].upper()])
+
+    def serialize(self):
+        return {
+            'job_id': self.job_id,
+            'run_Id': self.run_id,
+            'match_both_ids': self.match_both_ids,
+            'strategy': self.strategy.name.lower(),
+        }
 
     def _op(self):
         return and_ if self.match_both_ids else or_
+
+    def __call__(self, jid):
+        return self.matches(jid)
 
     def matches(self, jid):
         """
         The matching method. It can be also executed by calling this object (`__call__` delegates to this method).
 
         Args:
-            jid: Job instance ID to be matched
+            jid: Job run ID to be matched
 
         Returns:
             bool: Whether the provided job instance ID matches this criteria
         """
         op = self._op()
         return op(not self.job_id or self.strategy(jid.job_id, self.job_id),
-                  not self.instance_id or self.strategy(jid.run_id, self.instance_id))
+                  not self.run_id or self.strategy(jid.run_id, self.run_id))
 
-    def __call__(self, jid):
-        return self.matches(jid)
-
-    def matches_instance(self, job_instance):
+    def matches_run(self, job_run):
         """
         Args:
-            job_instance: Job instance to be matched
+            job_run: Job run to be matched
 
         Returns:
-            bool: Whether the provided job instance matches this criteria
+            bool: Whether the provided job run matches this criteria
         """
-        return self.matches(job_instance.id)
-
-    def to_dict(self, include_empty=True):
-        d = {
-            'job_id': self.job_id,
-            'instance_id': self.instance_id,
-            'match_both_ids': self.match_both_ids,
-            'strategy': self.strategy.name.lower(),
-        }
-        if include_empty:
-            return d
-        else:
-            return {k: v for k, v in d.items() if not is_empty(v)}
+        return self.matches(job_run.metadata.id)
 
 
 def compound_id_filter(criteria_seq):
@@ -131,47 +142,44 @@ def compound_id_filter(criteria_seq):
     return match
 
 
-class IntervalCriteria:
+@dataclass
+class IntervalCriterion(MatchCriteria[Lifecycle]):
     """
-    A class to represent interval criteria. The interval is defined for the provided execution lifecycle event.
+    A class to represent criteria for determining if the first occurrence of a given run state in a lifecycle falls
+    within a specified datetime interval. This criterion is used to filter or identify lifecycles based
+    on the timing of their first transition to the specified run state.
 
     Properties:
-        event (LifecycleEvent): The lifecycle event for which the interval is defined.
-        from_dt (datetime, optional): The start date-time of the interval. Defaults to None.
-        to_dt (datetime, optional): The end date-time of the interval. Defaults to None.
-        include_to (bool, optional): Whether to include the end date-time in the interval. Defaults to True.
-
-    Raises:
-        ValueError: If neither 'from_dt' nor 'to_dt' is provided or if 'event' is not provided.
+        run_state (RunState):
+            The specific run state whose first occurrence in the lifecycle is to be checked. Default to CREATED state.
+        from_dt (datetime, optional):
+            The start date-time of the interval. Defaults to None.
+        to_dt (datetime, optional):
+            The end date-time of the interval. Defaults to None.
+        include_to (bool, optional):
+            Whether to include the end date-time in the interval. Defaults to True.
     """
 
-    def __init__(self, run_state: RunState, from_dt=None, to_dt=None, *, include_to=True):
-        if not run_state:
-            raise ValueError('Interval criteria run state must be provided')
-        if not from_dt and not to_dt:
-            raise ValueError('Interval cannot be empty')
-
-        self._event = run_state
-        self._from_dt = from_dt
-        self._to_dt = to_dt
-        self._include_to = include_to
+    run_state: RunState = RunState.CREATED
+    from_dt: Optional[datetime] = None
+    to_dt: Optional[datetime] = None
+    include_to: bool = True
 
     @classmethod
-    def from_dict(cls, data):
-        event = RunState[data['run_state']]
+    def deserialize(cls, data):
+        rs = RunState[data['run_state']]
         from_dt = data.get("from_dt", None)
         to_dt = data.get("to_dt", '')
         include_to = data['include_to']
-        return cls(event, from_dt, to_dt, include_to=include_to)
+        return cls(rs, from_dt, to_dt, include_to)
 
-    def to_dict(self, include_empty=True) -> Dict[str, Any]:
-        d = {
+    def serialize(self) -> Dict[str, Any]:
+        return {
             "run_state": str(self.run_state),
             "from_dt": format_dt_iso(self.from_dt),
             "to_dt": format_dt_iso(self.to_dt),
             "include_to": self.include_to,
         }
-        return remove_empty_values(d) if include_empty else d
 
     @classmethod
     def to_utc(cls, event, from_val, to_val):
@@ -209,7 +217,7 @@ class IntervalCriteria:
                 to_dt = datetime.datetime.combine(to_val + timedelta(days=1), time.min).astimezone(timezone.utc)
                 include_to = False
 
-        return IntervalCriteria(event, from_dt, to_dt, include_to=include_to)
+        return IntervalCriterion(event, from_dt, to_dt, include_to=include_to)
 
     @classmethod
     def single_day_period(cls, event, day_offset, *, to_utc=False):
@@ -254,43 +262,24 @@ class IntervalCriteria:
     def week_back(cls, event, *, to_utc=False):
         return cls.days_interval(event, -7, to_utc=to_utc)
 
-    @property
-    def run_state(self):
-        return self._event
-
-    @property
-    def from_dt(self):
-        return self._from_dt
-
-    @property
-    def to_dt(self):
-        return self._to_dt
-
-    @property
-    def include_to(self):
-        return self._include_to
-
     def __call__(self, lifecycle):
         return self.matches(lifecycle)
 
     def matches(self, lifecycle):
-        event_dt = self.run_state(lifecycle)
-        if not event_dt:
+        checked_dt = lifecycle.state_first_at(self.run_state)
+        if not checked_dt:
             return False
-        if self.from_dt and event_dt < self.from_dt:
+        if self.from_dt and checked_dt < self.from_dt:
             return False
         if self.to_dt:
             if self.include_to:
-                if event_dt > self.to_dt:
+                if checked_dt > self.to_dt:
                     return False
             else:
-                if event_dt >= self.to_dt:
+                if checked_dt >= self.to_dt:
                     return False
 
         return True
-
-    def __str__(self):
-        return f"Event: {self.run_state}, From: {self.from_dt}, To: {self.to_dt}, Include To: {self.include_to}"
 
 
 class StateCriteria:
@@ -355,7 +344,7 @@ class StateCriteria:
         return remove_empty_values(d) if include_empty else d
 
 
-class InstanceMatchCriteria:
+class InstanceCriteria:
     """
     This object aggregates various filters, allowing for complex queries and matching against job instances.
     An instance must meet all individual filters for this object to match.
@@ -385,12 +374,12 @@ class InstanceMatchCriteria:
 
     @classmethod
     def parse_pattern(cls, pattern: str, strategy: MatchingStrategy = MatchingStrategy.EXACT):
-        return cls(IDMatchCriteria.parse_pattern(pattern, strategy))
+        return cls(JobRunIdCriterion.parse_pattern(pattern, strategy))
 
     @classmethod
     def from_dict(cls, as_dict):
-        id_criteria = [IDMatchCriteria.from_dict(c) for c in as_dict.get('id_criteria', ())]
-        interval_criteria = [IntervalCriteria.from_dict(c) for c in as_dict.get('interval_criteria', ())]
+        id_criteria = [JobRunIdCriterion.deserialize(c) for c in as_dict.get('id_criteria', ())]
+        interval_criteria = [IntervalCriterion.deserialize(c) for c in as_dict.get('interval_criteria', ())]
         sc = as_dict.get('state_criteria')
         state_criteria = StateCriteria.from_dict(sc) if sc else None
         jobs = as_dict.get('jobs', ())
@@ -451,7 +440,7 @@ class InstanceMatchCriteria:
 
     def matches_parameters(self, job_instance):
         return (not self.param_sets or
-                any(job_instance.metadata.contains_parameters(*param_set) for param_set in self.param_sets))
+                any(job_instance.metadata.contains_system_parameters(*param_set) for param_set in self.param_sets))
 
     def __call__(self, job_instance):
         return self.matches(job_instance)
@@ -493,4 +482,4 @@ class InstanceMatchCriteria:
 
 
 def parse_criteria(pattern: str, strategy: MatchingStrategy = MatchingStrategy.EXACT):
-    return InstanceMatchCriteria.parse_pattern(pattern, strategy)
+    return InstanceCriteria.parse_pattern(pattern, strategy)
