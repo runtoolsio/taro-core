@@ -17,7 +17,7 @@ from copy import copy
 from dataclasses import dataclass
 from enum import Enum, auto, EnumMeta
 from threading import Event, RLock
-from typing import Optional, List, Dict, Any, Set, TypeVar, Type, Callable, Tuple, Union, Iterable
+from typing import Optional, List, Dict, Any, Set, TypeVar, Type, Callable, Tuple, Iterable
 
 from tarotools.taro import util, status
 from tarotools.taro.err import InvalidStateError
@@ -114,7 +114,7 @@ class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
     FAILED = {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.FAILURE}
     ERROR = {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.FAILURE}
 
-    def __new__(cls, *args, **kwds):
+    def __new__(cls, *_, **__):
         value = len(cls.__members__) + 1
         obj = object.__new__(cls)
         obj._value_ = value
@@ -143,7 +143,7 @@ class StandardPhaseNames:
 class PhaseRun:
     phase_name: str
     run_state: RunState
-    started_at: datetime
+    started_at: datetime.datetime
     ended_at: Optional[datetime.datetime] = None
 
     @classmethod
@@ -480,13 +480,19 @@ class FailedRun(Exception):
         self.fault = RunFailure(fault_type, reason)
 
 
-@dataclass
+@dataclass(frozen=True)
+class TerminationInfo:
+    termination_status: TerminationStatus
+    terminated_at: datetime.datetime
+    failure: Optional[Fault] = None
+    error: Optional[Fault] = None
+
+
+@dataclass(frozen=True)
 class RunSnapshot:
     phases: Tuple[PhaseMetadata]
     lifecycle: Lifecycle
-    termination_status: Optional[TerminationStatus]
-    run_failure: Optional[Fault]
-    run_error: Optional[Fault]
+    termination: TerminationInfo
 
 
 def unique_phases_to_dict(phases) -> Dict[str, Phase]:
@@ -511,9 +517,7 @@ class Phaser:
         self._lifecycle = lifecycle or Lifecycle()
         self._current_phase = None
         self._abort = False
-        self._term_status = TerminationStatus.NONE
-        self._run_failure: Optional[Fault] = None
-        self._run_error: Optional[Fault] = None
+        self._termination: Optional[TerminationInfo] = None
         # ----------------------- #
 
     P = TypeVar('P')
@@ -534,8 +538,7 @@ class Phaser:
 
     def create_run_snapshot(self) -> RunSnapshot:
         with self._transition_lock:
-            return RunSnapshot(
-                self._phase_meta, copy(self._lifecycle), self._term_status, self._run_failure, self._run_error)
+            return RunSnapshot(self._phase_meta, copy(self._lifecycle), self._termination)
 
     def prime(self):
         with self._transition_lock:
@@ -547,35 +550,48 @@ class Phaser:
         if not self._current_phase:
             raise InvalidStateError('Prime not executed before run')
 
-        term_status = None
+        term_info = None
         exc = None
         for phase in self._name_to_phase.values():
             with self._transition_lock:
                 if self._abort:
                     return
-                if term_status and not self._term_status:
-                    self._term_status = term_status
+                if term_info and not self._termination:  # Set only when not set by stop already
+                    self._termination = term_info
                 if isinstance(exc, BaseException):
-                    assert self._term_status
+                    assert self._termination
                     self._next_phase(TerminalPhase())
                     raise exc
-                if exc:
-                    assert self._term_status
-                    if isinstance(exc, RunFailure):
-                        self._run_failure = exc
-                    else:
-                        assert isinstance(exc, RunError)
-                        self._run_error = exc
-                if self._term_status:
+                if self._termination:
                     self._next_phase(TerminalPhase())
                     return
 
                 self._next_phase(phase)
 
-            term_status, exc = _run_handle_errors(phase)
+            term_info, exc = self._run_handle_errors(phase)
 
-        self._term_status = self._term_status or TerminationStatus.COMPLETED
+        self._termination = (
+                self._termination or TerminationInfo(TerminationStatus.COMPLETED, self._timestamp_generator()))
         self._next_phase(TerminalPhase())
+
+    def _run_handle_errors(self, phase) -> Tuple[Optional[TerminationInfo], Optional[BaseException]]:
+        term_ts = self._timestamp_generator()
+
+        try:
+            return phase.run(), None
+        except FailedRun as e:
+            return TerminationInfo(TerminationStatus.FAILED, term_ts, e.fault), None
+        except Exception as e:
+            run_error = RunError(e.__class__.__name__, str(e))
+            return TerminationInfo(TerminationStatus.ERROR, term_ts, run_error), None
+        except KeyboardInterrupt as e:
+            log.warning('keyboard_interruption')
+            # Assuming child processes received SIGINT, TODO different state on other platforms?
+            return TerminationInfo(TerminationStatus.INTERRUPTED, term_ts), e
+        except SystemExit as e:
+            # Consider UNKNOWN (or new state DETACHED?) if there is possibility the execution is not completed
+            term_status = TerminationStatus.COMPLETED if e.code == 0 else TerminationStatus.FAILED
+            return TerminationInfo(term_status, term_ts), e
 
     def _next_phase(self, phase):
         """
@@ -595,30 +611,15 @@ class Phaser:
 
     def stop(self):
         with self._transition_lock:
-            if self._term_status:
+            if self._termination:
                 return
 
-            self._term_status = self._current_phase.stop_status if self._current_phase else TerminationStatus.STOPPED
-            assert self._term_status
+            stop_status = self._current_phase.stop_status if self._current_phase else TerminationStatus.STOPPED
+            self._termination = TerminationInfo(stop_status, self._timestamp_generator())
+            assert self._termination.termination_status
             if not self._current_phase or (self._current_phase.name == StandardPhaseNames.INIT):
                 # Not started yet
                 self._abort = True  # Prevent phase transition...
                 self._next_phase(TerminalPhase())
 
         self._current_phase.stop()
-
-
-def _run_handle_errors(phase) -> Tuple[Optional[TerminationStatus], Union[None, RunFailure, RunError, BaseException]]:
-    try:
-        return phase.run(), None
-    except FailedRun as e:
-        return TerminationStatus.FAILED, e.fault
-    except Exception as e:
-        return TerminationStatus.ERROR, RunError(e.__class__.__name__, str(e))
-    except KeyboardInterrupt as e:
-        log.warning('keyboard_interruption')
-        # Assuming child processes received SIGINT, TODO different state on other platforms?
-        return TerminationStatus.INTERRUPTED, e
-    except SystemExit as e:
-        # Consider UNKNOWN (or new state DETACHED?) if there is possibility the execution is not completed
-        return (TerminationStatus.COMPLETED if e.code == 0 else TerminationStatus.FAILED), e
