@@ -21,8 +21,7 @@ from typing import Dict, Any, Optional, List, Tuple
 
 from tarotools.taro.jobs.criteria import JobRunIdCriterion
 from tarotools.taro.jobs.track import TrackedTaskInfo
-from tarotools.taro.run import TerminationStatus, Lifecycle, Fault, RunState, PhaseMetadata, PhaseRun
-from tarotools.taro.util import is_empty
+from tarotools.taro.run import TerminationStatus, RunState, PhaseRun, RunSnapshot
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
 
@@ -53,7 +52,7 @@ class JobRunId:
 
 
 @dataclass
-class JobRunMetadata:
+class JobInstanceMetadata:
     """
     A dataclass that contains metadata information related to a specific job run. This object is designed 
     to represent essential information about a job run in a compact and serializable format. By using this object 
@@ -61,7 +60,7 @@ class JobRunMetadata:
     across a network or between different parts of a system.
 
     Attributes:
-        id (JobRunId):
+        job_run_id (JobRunId):
             The unique identifier associated with the job instance.
         system_parameters (Tuple[Tuple[str, str]]):
             A tuple of key-value pairs representing system parameters for the job.
@@ -71,24 +70,27 @@ class JobRunMetadata:
             A dictionary containing user-defined parameters associated with the instance.
             These are arbitrary parameters set by the user, and they do not affect the functionality.
     """
-    id: JobRunId
+    job_run_id: JobRunId
+    instance_id: str
     system_parameters: Dict[str, Any]
     user_params: Dict[str, Any]
 
     @classmethod
     def deserialize(cls, as_dict):
-        return cls(JobRunId.deserialize(as_dict['id']), as_dict['system_parameters'], as_dict['user_params'])
+        return cls(
+            JobRunId.deserialize(as_dict['job_run_id']),
+            as_dict['instance_id'],
+            as_dict['system_parameters'],
+            as_dict['user_params'],
+        )
 
-    def serialize(self, include_empty=True) -> Dict[str, Any]:
-        d = {
-            "id": self.id.serialize(),
+    def serialize(self) -> Dict[str, Any]:
+        return {
+            "job_run_id": self.job_run_id.serialize(),
+            "instance_id": self.instance_id,
             "system_parameters": self.system_parameters,
             "user_params": self.user_params,
         }
-        if include_empty:
-            return d
-        else:
-            return {k: v for k, v in d.items() if not is_empty(v)}
 
     def contains_system_parameters(self, *params):
         return all(param in self.system_parameters for param in params)
@@ -114,7 +116,7 @@ class JobInstance(abc.ABC):
     def metadata(self):
         """
         Returns:
-            JobRunMetadata: Descriptive information about this instance.
+            JobInstanceMetadata: Descriptive information about this instance.
         """
 
     @property
@@ -123,7 +125,7 @@ class JobInstance(abc.ABC):
         Returns:
             str: Job part of the instance identifier.
         """
-        return self.metadata.id.job_id
+        return self.metadata.job_run_id.job_id
 
     @property
     def run_id(self):
@@ -131,42 +133,20 @@ class JobInstance(abc.ABC):
         Returns:
             str: Run part of the instance identifier.
         """
-        return self.metadata.id.job_id
-
-    @property
-    @abc.abstractmethod
-    def lifecycle(self):
-        """
-        Retrieves the execution lifecycle of this instance.
-
-        The execution lifecycle comprises a sequence of states that the job instance transitions through,
-        each associated with a timestamp indicating when that state was reached.
-
-        Returns:
-            InstanceLifecycle: The lifecycle of this job instance.
-        """
+        return self.metadata.job_run_id.job_id
 
     @property
     @abc.abstractmethod
     def tracking(self):
         """TODO: Task tracking information, None if tracking is not supported"""
 
-    @property
     @abc.abstractmethod
-    def run_failure(self):
+    def create_detail(self):
         """
-        TODO
-        """
-
-    @property
-    @abc.abstractmethod
-    def run_error(self):
-        """
-        Retrieves the error details of the job execution, if any occurred.
-        If no errors occurred during the execution of the job, this property returns None.
+        Creates a consistent, thread-safe snapshot of the job instance's current state.
 
         Returns:
-            Fault: The details of the execution error or None if the job executed successfully.
+            JobInstanceDetail: A snapshot representing the current state of the job instance.
         """
 
     @property
@@ -177,15 +157,6 @@ class JobInstance(abc.ABC):
 
         Returns:
             Status observer for this instance.
-        """
-
-    @abc.abstractmethod
-    def create_snapshot(self):
-        """
-        Creates a consistent, thread-safe snapshot of the job instance's current state.
-
-        Returns:
-            JobInstSnapshot: A snapshot representing the current state of the job instance.
         """
 
     @abc.abstractmethod
@@ -279,48 +250,32 @@ class RunInNewThreadJobInstance:
 
 
 @dataclass(frozen=True)
-class JobRun:
+class JobInstanceDetail:
     """
     Immutable snapshot of job instance
     """
 
     """Descriptive information about this instance"""
-    metadata: JobRunMetadata
-    """The lifecycle of this job run"""
-    phases: Tuple[PhaseMetadata]
-    lifecycle: Lifecycle
+    metadata: JobInstanceMetadata
+    """The snapshot of the job run represented by this instance"""
+    run: RunSnapshot
     # TODO textwrap.shorten(status, 1000, placeholder=".. (truncated)", break_long_words=False)
     tracking: TrackedTaskInfo
-    termination_status: Optional[TerminationStatus]
-    run_failure: Optional[Fault]
-    run_error: Optional[Fault]
 
     @classmethod
     def deserialize(cls, as_dict):
         return cls(
-            JobRunMetadata.deserialize(as_dict['metadata']),
-            tuple(PhaseMetadata.deserialize(phase) for phase in as_dict['phases']),
-            Lifecycle.deserialize(as_dict['lifecycle']),
+            JobInstanceMetadata.deserialize(as_dict['metadata']),
+            RunSnapshot.deserialize(as_dict['run']),
             TrackedTaskInfo.from_dict(as_dict['tracking']) if "tracking" in as_dict else None,
-            TerminationStatus[as_dict["termination_status"]],
-            Fault.deserialize(as_dict["run_failure"]) if "run_failure" in as_dict else None,
-            Fault.deserialize(as_dict["run_error"]) if "run_error" in as_dict else None,
         )
 
     def serialize(self, include_empty=True) -> Dict[str, Any]:
-        d = {
-            "metadata": self.metadata.serialize(include_empty),
-            "phases": [pm.serialize() for pm in self.phases],
-            "lifecycle": self.lifecycle.serialize(),
+        return {
+            "metadata": self.metadata.serialize(),
+            "run": self.run.serialize(),
             "tracking": self.tracking.to_dict(include_empty) if self.tracking else None,
-            "termination_status": self.termination_status.name,
-            "run_failure": self.run_failure.serialize() if self.run_failure else None,
-            "run_error": self.run_error.serialize() if self.run_error else None,
         }
-        if include_empty:
-            return d
-        else:
-            return {k: v for k, v in d.items() if not is_empty(v)}
 
     @property
     def job_id(self) -> str:
@@ -328,7 +283,7 @@ class JobRun:
         Returns:
             str: Job part of the instance identifier.
         """
-        return self.metadata.id.job_id
+        return self.metadata.job_run_id.job_id
 
     @property
     def run_id(self) -> str:
@@ -336,19 +291,10 @@ class JobRun:
         Returns:
             str: Run part of the instance identifier.
         """
-        return self.metadata.id.run_id
+        return self.metadata.job_run_id.run_id
 
 
-@dataclass(frozen=True)
-class JobInstSnapshot:
-    """
-    Instance related information can include hostname info, etc.
-    """
-    instance_id: str
-    job_run: JobRun
-
-
-class JobRuns(list):
+class JobInstances(list):
     """
     List of job instances with auxiliary methods.
     """
@@ -393,7 +339,7 @@ class JobRuns(list):
 class PhaseTransitionObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_phase(self, job_inst: JobInstSnapshot, previous_phase: PhaseRun, new_phase: PhaseRun, ordinal: int):
+    def new_phase(self, job_inst: JobInstanceDetail, previous_phase: PhaseRun, new_phase: PhaseRun, ordinal: int):
         """
         Called when the instance transitions to a new phase.
 
@@ -434,17 +380,10 @@ class WarnEventCtx:
     count: int
 
 
-class InstanceWarningObserver(abc.ABC):
-
-    @abc.abstractmethod
-    def new_instance_warning(self, job_info: JobInstSnapshot, warning_ctx: WarnEventCtx):
-        """This method is called when there is a new warning event."""
-
-
 class InstanceOutputObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_instance_output(self, job_info: JobInstSnapshot, output: str, is_error: bool):
+    def new_instance_output(self, job_info: JobInstanceDetail, output: str, is_error: bool):
         """
         Executed when a new output line is available.
 

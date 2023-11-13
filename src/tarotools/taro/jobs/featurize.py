@@ -20,7 +20,7 @@ from tarotools.taro import plugins as plugins_mod
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.events import PhaseTransitionDispatcher, OutputDispatcher
-from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobRun, JobInstance, JobInstanceManager,
+from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobInstanceDetail, JobInstance, JobInstanceManager,
                                           InstanceOutputObserver, JobRunId)
 from tarotools.taro.jobs.plugins import Plugin
 from tarotools.taro.run import RunState
@@ -312,11 +312,11 @@ class FeaturedContext(PhaseTransitionObserver):
                 raise InvalidStateError("Cannot add job instance because the context has not been opened")
             if self._close_requested:
                 raise InvalidStateError("Cannot add job instance because the context has been already closed")
-            if job_instance.metadata.id in self._managed_instances:
+            if job_instance.metadata.job_run_id in self._managed_instances:
                 raise ValueError("An instance with this ID has already been added to the context")
 
             managed_instance = _ManagedInstance(job_instance)
-            self._managed_instances[job_instance.metadata.id] = managed_instance
+            self._managed_instances[job_instance.metadata.job_run_id] = managed_instance
 
         for manager_feat in self._instance_managers:
             manager_feat.component.register_instance(job_instance)
@@ -341,7 +341,7 @@ class FeaturedContext(PhaseTransitionObserver):
         #      iteration/notification (`Notification` class)
         job_instance.add_observer_phase_transition(self, ctx_observer_priority + 1)
         if job_instance.lifecycle.is_ended:
-            self._release_instance(job_instance.metadata.id, not self._keep_removed)
+            self._release_instance(job_instance.metadata.job_run_id, not self._keep_removed)
 
         return job_instance
 
@@ -357,12 +357,12 @@ class FeaturedContext(PhaseTransitionObserver):
         """
         return self._release_instance(job_instance_id, True)
 
-    def new_phase(self, job_inst: JobRun, previous_phase, new_phase, ordinal, transitioned):
+    def new_phase(self, job_inst: JobInstanceDetail, previous_phase, new_phase, ordinal, transitioned):
         """
         DO NOT EXECUTE THIS METHOD! It is part of the internal mechanism.
         """
         if new_phase.run_state == RunState.ENDED:
-            self._release_instance(job_inst.metadata.id, not self._keep_removed)
+            self._release_instance(job_inst.metadata.job_run_id, not self._keep_removed)
 
     def _release_instance(self, job_instance_id, remove):
         """

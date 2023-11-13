@@ -482,10 +482,27 @@ class FailedRun(Exception):
 
 @dataclass(frozen=True)
 class TerminationInfo:
-    termination_status: TerminationStatus
+    status: TerminationStatus
     terminated_at: datetime.datetime
     failure: Optional[Fault] = None
     error: Optional[Fault] = None
+
+    @classmethod
+    def deserialize(cls, as_dict: Dict[str, Any]):
+        return cls(
+            status=TerminationStatus(as_dict['termination_status']),
+            terminated_at=util.parse_datetime(as_dict['terminated_at']),
+            failure=Fault.deserialize(as_dict['failure']) if as_dict.get('failure') else None,
+            error=Fault.deserialize(as_dict['error']) if as_dict.get('error') else None
+        )
+
+    def serialize(self) -> Dict[str, Any]:
+        return {
+            "termination_status": self.status.name,
+            "terminated_at": format_dt_iso(self.terminated_at),
+            "failure": self.failure.serialize() if self.failure else None,
+            "error": self.error.serialize() if self.error else None
+        }
 
 
 @dataclass(frozen=True)
@@ -493,6 +510,21 @@ class RunSnapshot:
     phases: Tuple[PhaseMetadata]
     lifecycle: Lifecycle
     termination: TerminationInfo
+
+    @classmethod
+    def deserialize(cls, as_dict: Dict[str, Any]):
+        return cls(
+            phases=tuple(PhaseMetadata.deserialize(phase) for phase in as_dict['phases']),
+            lifecycle=Lifecycle.deserialize(as_dict['lifecycle']),
+            termination=TerminationInfo.deserialize(as_dict['termination'])
+        )
+
+    def serialize(self) -> Dict[str, Any]:
+        return {
+            "phases": [phase.serialize() for phase in self.phases],
+            "lifecycle": self.lifecycle.serialize(),
+            "termination": self.termination.serialize(),
+        }
 
 
 def unique_phases_to_dict(phases) -> Dict[str, Phase]:
@@ -532,6 +564,9 @@ class Phaser:
 
         return phase
 
+    def _term_info(self, termination_status, failure=None, error=None):
+        return TerminationInfo(termination_status, self._timestamp_generator(), failure, error)
+
     @property
     def phases(self) -> List[Phase]:
         return list(self._name_to_phase.values())
@@ -570,28 +605,26 @@ class Phaser:
 
             term_info, exc = self._run_handle_errors(phase)
 
-        self._termination = (
-                self._termination or TerminationInfo(TerminationStatus.COMPLETED, self._timestamp_generator()))
+        self._termination = self._termination or self._term_info(TerminationStatus.COMPLETED)
         self._next_phase(TerminalPhase())
 
     def _run_handle_errors(self, phase) -> Tuple[Optional[TerminationInfo], Optional[BaseException]]:
-        term_ts = self._timestamp_generator()
 
         try:
             return phase.run(), None
         except FailedRun as e:
-            return TerminationInfo(TerminationStatus.FAILED, term_ts, e.fault), None
+            return self._term_info(TerminationStatus.FAILED, e.fault), None
         except Exception as e:
             run_error = RunError(e.__class__.__name__, str(e))
-            return TerminationInfo(TerminationStatus.ERROR, term_ts, run_error), None
+            return self._term_info(TerminationStatus.ERROR, run_error), None
         except KeyboardInterrupt as e:
             log.warning('keyboard_interruption')
             # Assuming child processes received SIGINT, TODO different state on other platforms?
-            return TerminationInfo(TerminationStatus.INTERRUPTED, term_ts), e
+            return self._term_info(TerminationStatus.INTERRUPTED), e
         except SystemExit as e:
             # Consider UNKNOWN (or new state DETACHED?) if there is possibility the execution is not completed
             term_status = TerminationStatus.COMPLETED if e.code == 0 else TerminationStatus.FAILED
-            return TerminationInfo(term_status, term_ts), e
+            return self._term_info(term_status), e
 
     def _next_phase(self, phase):
         """
@@ -615,8 +648,8 @@ class Phaser:
                 return
 
             stop_status = self._current_phase.stop_status if self._current_phase else TerminationStatus.STOPPED
-            self._termination = TerminationInfo(stop_status, self._timestamp_generator())
-            assert self._termination.termination_status
+            self._termination = self._term_info(stop_status)
+            assert self._termination.status
             if not self._current_phase or (self._current_phase.name == StandardPhaseNames.INIT):
                 # Not started yet
                 self._abort = True  # Prevent phase transition...

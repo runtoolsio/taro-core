@@ -10,7 +10,7 @@ from json import JSONDecodeError
 from typing import List, Any, Dict, NamedTuple, Optional, TypeVar, Generic, Callable
 
 from tarotools.taro.jobs.api import API_FILE_EXTENSION
-from tarotools.taro.jobs.instance import JobRun, JobRunMetadata
+from tarotools.taro.jobs.instance import JobInstanceDetail, JobInstanceMetadata
 from tarotools.taro.socket import SocketClient, ServerResponse, Error
 
 log = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class InstanceResponse(NamedTuple):
         instance_meta: Metadata about the job instance.
         body: The JSON body of the response, as a dictionary.
     """
-    instance_meta: JobRunMetadata
+    instance_meta: JobInstanceMetadata
     body: Dict[str, Any]
 
 
@@ -113,7 +113,7 @@ class AggregatedResponse(Generic[T]):
 
 @dataclass
 class JobInstanceResponse:
-    instance_metadata: JobRunMetadata
+    instance_metadata: JobInstanceMetadata
 
 
 class ReleaseResult(Enum):
@@ -149,7 +149,7 @@ class SignalProceedResponse(JobInstanceResponse):
     executed: bool
 
 
-def read_instances(instance_match=None) -> AggregatedResponse[JobRun]:
+def read_instances(instance_match=None) -> AggregatedResponse[JobInstanceDetail]:
     """
     Retrieves instance information for all active job instances for the current user.
 
@@ -288,7 +288,7 @@ class APIClient(SocketClient):
         server_responses: List[ServerResponse] = self.communicate(json.dumps(req_body))
         return _process_responses(server_responses, resp_mapper)
 
-    def read_instances(self, instance_match=None) -> AggregatedResponse[JobRun]:
+    def read_instances(self, instance_match=None) -> AggregatedResponse[JobInstanceDetail]:
         """
         Retrieves instance information for all active job instances for the current user.
 
@@ -304,8 +304,8 @@ class APIClient(SocketClient):
             PayloadTooLarge: If the payload size exceeds the maximum limit.
         """
 
-        def resp_mapper(inst_resp: InstanceResponse) -> JobRun:
-            return JobRun.deserialize(inst_resp.body["job_instance"])
+        def resp_mapper(inst_resp: InstanceResponse) -> JobInstanceDetail:
+            return JobInstanceDetail.deserialize(inst_resp.body["job_instance"])
 
         return self.send_request('/instances', instance_match, resp_mapper=resp_mapper)
 
@@ -451,7 +451,7 @@ def _process_responses(server_responses: List[ServerResponse], resp_mapper: Call
             continue
 
         for instance_resp in resp_body['instance_responses']:
-            instance_metadata = JobRunMetadata.deserialize(instance_resp['instance_metadata'])
+            instance_metadata = JobInstanceMetadata.deserialize(instance_resp['instance_metadata'])
             api_instance_response = InstanceResponse(instance_metadata, instance_resp)
             try:
                 resp = resp_mapper(api_instance_response)

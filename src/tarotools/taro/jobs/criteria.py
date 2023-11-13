@@ -149,6 +149,8 @@ class IntervalCriterion(MatchCriteria[Lifecycle]):
     within a specified datetime interval. This criterion is used to filter or identify lifecycles based
     on the timing of their first transition to the specified run state.
 
+    TODO: Phase
+
     Properties:
         run_state (RunState):
             The specific run state whose first occurrence in the lifecycle is to be checked. Default to CREATED state.

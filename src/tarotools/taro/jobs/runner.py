@@ -44,11 +44,10 @@ State lock
 """
 
 import logging
-from typing import Optional
 
 from tarotools.taro import util, PhaseTransitionObserver
-from tarotools.taro.jobs.instance import JobInstance, JobRun, JobRunId, JobRunMetadata, JobInstSnapshot
-from tarotools.taro.run import Phaser, Flag, Fault, PhaseRun
+from tarotools.taro.jobs.instance import JobInstance, JobInstanceDetail, JobRunId, JobInstanceMetadata
+from tarotools.taro.run import Phaser, Flag, PhaseRun
 from tarotools.taro.status import StatusObserver
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY, CallableNotification, ObservableNotification
 
@@ -67,10 +66,10 @@ _warning_observers = CallableNotification(error_hook=log_observer_error)
 class RunnerJobInstance(JobInstance):
 
     def __init__(self, job_id, phases, *, run_id=None, instance_id_gen=util.unique_timestamp_hex, **user_params):
-        self._instance_id = instance_id_gen()
-        self._job_run_id = JobRunId(job_id, run_id or self._instance_id)
+        instance_id = instance_id_gen()
+        self._job_run_id = JobRunId(job_id, run_id or instance_id)
         parameters = ()  # TODO
-        self._metadata = JobRunMetadata(self._job_run_id, parameters, user_params)
+        self._metadata = JobInstanceMetadata(self._job_run_id, instance_id, parameters, user_params)
         self._phaser = Phaser(phases)
         self._tracking = None  # TODO The output fields below will be moved to the tracker
         # self._last_output = deque(maxlen=10)  # TODO Max len configurable
@@ -85,44 +84,22 @@ class RunnerJobInstance(JobInstance):
 
     @property
     def instance_id(self):
-        return self._instance_id
+        return self._metadata.instance_id
 
     @property
     def metadata(self):
         return self._metadata
 
     @property
-    def lifecycle(self):
-        return self._phaser.create_run_snapshot().lifecycle
-
-    @property
     def tracking(self):
         return self._tracking
-
-    @property
-    def run_failure(self):
-        return self._phaser.create_run_snapshot().run_failure
-
-    @property
-    def run_error(self) -> Optional[Fault]:
-        return self._phaser.create_run_snapshot().run_error
 
     @property
     def status_observer(self):
         return self._status_notification.observer_proxy
 
-    def create_snapshot(self) -> JobInstSnapshot:
-        run_snapshot = self._phaser.create_run_snapshot()
-        job_run = JobRun(
-            self.metadata,
-            run_snapshot.phases,
-            run_snapshot.lifecycle,
-            self.tracking.copy(),
-            run_snapshot.termination_status,
-            run_snapshot.run_failure,
-            run_snapshot.run_error)
-
-        return JobInstSnapshot(self._instance_id, job_run)
+    def create_detail(self) -> JobInstanceDetail:
+        return JobInstanceDetail(self.metadata, self._phaser.create_run_snapshot(), self.tracking.copy())
 
     def run(self):
         observer_proxy = self._status_notification.observer_proxy
@@ -164,25 +141,28 @@ class RunnerJobInstance(JobInstance):
     def remove_observer_phase_transition(self, callback):
         self._transition_notification.remove_observer(callback)
 
-    def _transition_hook(self, prev_phase: PhaseRun, new_phase: PhaseRun, ordinal):
+    def _transition_hook(self, old_phase: PhaseRun, new_phase: PhaseRun, ordinal):
         """Executed under phaser transition lock"""
-        job_run = self.create_snapshot()
+        snapshot = self.create_detail()
+        termination = snapshot.run.termination
 
-        if job_run.run_error:
-            log.error(self._log('unexpected_error', "error_type=[{}] reason=[{}]",
-                                job_run.run_error.fault_type, job_run.run_error.reason))
-        elif job_run.run_failure:
-            log.warning(self._log('run_failed', "error_type=[{}] reason=[{}]",
-                                  job_run.run_error.fault_type, job_run.run_error.reason))
+        non_success = False
+        if termination:
+            if termination.error:
+                log.error(self._log('unexpected_error', "error_type=[{}] reason=[{}]",
+                                    termination.error.fault_type, termination.error.reason))
+            elif termination.failure:
+                log.warning(self._log('run_failed', "error_type=[{}] reason=[{}]",
+                                      termination.failure.fault_type, termination.failure.reason))
 
-        if job_run.termination_status.has_flag(Flag.NONSUCCESS):
-            level = logging.WARN
-        else:
-            level = logging.INFO
-        log.log(level, self._log('phase_changed', "prev_phase=[{}] new_phase=[{}] ordinal=[{}]",
-                                 prev_phase.phase_name, new_phase.phase_name, ordinal))
+            if termination.status.has_flag(Flag.NONSUCCESS):
+                non_success = True
 
-        self._transition_notification.observer_proxy.new_phase(job_run, prev_phase, new_phase, ordinal)
+        log.log(logging.WARN if non_success else logging.INFO,
+                self._log('new_phase', "prev_phase=[{}] prev_state=[{}] new_phase=[{}] new_state=[{}]",
+                          old_phase.phase_name, old_phase.run_state, new_phase.run_state, new_phase.phase_name))
+
+        self._transition_notification.observer_proxy.new_phase(snapshot, old_phase, new_phase, ordinal)
 
     def add_observer_status(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self._status_notification.add_observer(observer, priority)

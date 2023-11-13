@@ -58,7 +58,7 @@ class InstancesResource(APIResource):
         return '/instances'
 
     def handle(self, job_instance, req_body):
-        return {"job_instance": job_instance.create_snapshot().serialize()}
+        return {"job_instance": job_instance.create_detail().serialize()}
 
 
 class ReleaseWaitingResource(APIResource):

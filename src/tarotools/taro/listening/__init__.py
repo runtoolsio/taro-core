@@ -7,7 +7,7 @@ from json import JSONDecodeError
 
 from tarotools.taro import util
 from tarotools.taro.jobs.events import PHASE_LISTENER_FILE_EXTENSION, OUTPUT_LISTENER_FILE_EXTENSION
-from tarotools.taro.jobs.instance import JobRunMetadata
+from tarotools.taro.jobs.instance import JobInstanceMetadata
 from tarotools.taro.run import TerminationStatus, Phase
 from tarotools.taro.socket import SocketServer
 
@@ -35,7 +35,7 @@ def _read_metadata(req_body_json):
     if not instance_metadata:
         raise ValueError(_missing_field_txt('root', 'instance_metadata'))
 
-    return event_type, JobRunMetadata.deserialize(instance_metadata)
+    return event_type, JobInstanceMetadata.deserialize(instance_metadata)
 
 
 class EventReceiver(SocketServer):

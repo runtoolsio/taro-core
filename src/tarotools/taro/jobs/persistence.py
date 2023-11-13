@@ -38,7 +38,7 @@ from tarotools.taro import paths
 from tarotools.taro import util, cfg
 from tarotools.taro.err import TaroException
 from tarotools.taro.jobs import db
-from tarotools.taro.jobs.instance import JobRuns
+from tarotools.taro.jobs.instance import JobInstances
 from tarotools.taro.jobs.job import JobStats
 from tarotools.taro.run import RunState
 
@@ -115,7 +115,7 @@ class SortCriteria(Enum):
 
 
 def read_instances(instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, offset=-1, last=False) \
-        -> JobRuns:
+        -> JobInstances:
     """
     Fetches ended job instances based on specified criteria.
     Datasource: The database as defined by the configured persistence type.
@@ -135,7 +135,7 @@ def read_instances(instance_match=None, sort=SortCriteria.ENDED, *, asc=True, li
             If set to True, only the last record for each job is returned. Defaults to False.
 
     Returns:
-        JobRuns: A collection of job instances that match the given criteria.
+        JobInstances: A collection of job instances that match the given criteria.
     """
     return _instance().read_instances(instance_match, sort, asc=asc, limit=limit, offset=offset, last=last)
 

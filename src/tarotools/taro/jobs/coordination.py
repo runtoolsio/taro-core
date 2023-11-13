@@ -7,7 +7,7 @@ from threading import Condition, Event, Lock
 from tarotools import taro
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.criteria import JobRunIdCriterion, StateCriteria, InstanceCriteria
-from tarotools.taro.jobs.instance import JobRuns
+from tarotools.taro.jobs.instance import JobInstances
 from tarotools.taro.listening import PhaseReceiver, InstancePhaseEventObserver
 from tarotools.taro.run import RunState, Phase, TerminationStatus
 
@@ -395,7 +395,7 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
         )
         jobs, _ = taro.client.read_instances(criteria)
 
-        group_jobs_sorted = JobRuns(sorted(jobs, key=RunState.CREATED))
+        group_jobs_sorted = JobInstances(sorted(jobs, key=RunState.CREATED))
         next_count = self._max_executions - len(group_jobs_sorted.executing)
         if next_count <= 0:
             return False

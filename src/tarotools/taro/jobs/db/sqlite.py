@@ -13,9 +13,9 @@ from tarotools.taro import cfg, InstanceLifecycle, TerminationStatus
 from tarotools.taro import paths
 from tarotools.taro.execution import Flag, \
     Phase
-from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobRun, JobRuns, JobRunId,
+from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobInstanceDetail, JobInstances, JobRunId,
                                           LifecycleEvent,
-                                          JobRunMetadata, InstancePhase)
+                                          JobInstanceMetadata, InstancePhase)
 from tarotools.taro.jobs.job import JobStats
 from tarotools.taro.jobs.persistence import SortCriteria
 from tarotools.taro.jobs.track import TrackedTaskInfo
@@ -117,7 +117,7 @@ class SQLite(PhaseTransitionObserver):
     def __init__(self, connection):
         self._conn = connection
 
-    def new_phase(self, job_inst: JobRun, previous_phase, new_phase, ordinal):
+    def new_phase(self, job_inst: JobInstanceDetail, previous_phase, new_phase, ordinal):
         if new_phase.run_state == RunState.ENDED:
             self.store_runs(job_inst)
 
@@ -150,7 +150,7 @@ class SQLite(PhaseTransitionObserver):
             self._conn.commit()
 
     def read_runs(self, instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, offset=-1, last=False) \
-            -> JobRuns:
+            -> JobInstances:
         def sort_exp():
             if sort == SortCriteria.CREATED:
                 return 'h.created'
@@ -183,11 +183,11 @@ class SQLite(PhaseTransitionObserver):
             user_params = json.loads(t[12]) if t[12] else dict()
             parameters = tuple((tuple(x) for x in json.loads(t[13]))) if t[13] else tuple()
             pending_group = json.loads(t[14]).get("pending_group") if t[14] else None
-            metadata = JobRunMetadata(JobRunId(t[0], t[1]), parameters, user_params, pending_group)
+            metadata = JobInstanceMetadata(JobRunId(t[0], t[1]), parameters, user_params, pending_group)
 
-            return JobRun(metadata, lifecycle, tracking, status, error_output, warnings, exec_error)
+            return JobInstanceDetail(metadata, lifecycle, tracking, status, error_output, warnings, exec_error)
 
-        return JobRuns((to_job_info(row) for row in c.fetchall()))
+        return JobInstances((to_job_info(row) for row in c.fetchall()))
 
     def clean_up(self, max_records, max_age):
         if max_records >= 0:

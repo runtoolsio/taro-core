@@ -1,9 +1,9 @@
 from collections import Counter
 from dataclasses import dataclass
 
-from tarotools.taro import JobRun, JobRunId, ExecutionError, TerminationStatus
+from tarotools.taro import JobInstanceDetail, JobRunId, ExecutionError, TerminationStatus
 from tarotools.taro import util
-from tarotools.taro.jobs.instance import JobRunMetadata, JobInstanceManager, \
+from tarotools.taro.jobs.instance import JobInstanceMetadata, JobInstanceManager, \
     InstancePhaseNotification, RunnableJobInstance, MutableInstanceLifecycle, InstancePhase
 from tarotools.taro.jobs.track import MutableTrackedTask
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
@@ -11,15 +11,15 @@ from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
 def i(job_id, instance_id=None, params=None, user_params=None, lifecycle=None, tracking=None, status=None,
       error_output=None, warnings=None, exec_error=None):
-    meta = JobRunMetadata(JobRunId(job_id, instance_id or util.unique_timestamp_hex()), params, user_params)
-    return JobRun(meta, lifecycle, tracking, status, error_output, warnings, exec_error)
+    meta = JobInstanceMetadata(JobRunId(job_id, instance_id or util.unique_timestamp_hex()), params, user_params)
+    return JobInstanceDetail(meta, lifecycle, tracking, status, error_output, warnings, exec_error)
 
 
 class TestJobInstance(RunnableJobInstance):
 
     def __init__(self, job_id="", instance_id="", phase=TerminationStatus.CREATED):
         self._id = JobRunId(job_id, instance_id)
-        self._metadata = JobRunMetadata(self._id, (), {})
+        self._metadata = JobInstanceMetadata(self._id, (), {})
         self._lifecycle = MutableInstanceLifecycle()
         self._tracking = MutableTrackedTask()
         self._status = None
@@ -126,7 +126,7 @@ class TestJobInstance(RunnableJobInstance):
         return None
 
     def create_snapshot(self):
-        return JobRun(
+        return JobInstanceDetail(
             self.metadata,
             self.lifecycle,
             self.tracking,

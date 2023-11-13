@@ -12,7 +12,7 @@ import json
 import logging
 
 from tarotools.taro import util
-from tarotools.taro.jobs.instance import PhaseTransitionObserver, JobRun, InstanceOutputObserver
+from tarotools.taro.jobs.instance import PhaseTransitionObserver, JobInstanceDetail, InstanceOutputObserver
 from tarotools.taro.socket import SocketClient, PayloadTooLarge
 
 PHASE_LISTENER_FILE_EXTENSION = '.plistener'
@@ -57,10 +57,10 @@ class PhaseTransitionDispatcher(EventDispatcher, PhaseTransitionObserver):
     def __init__(self):
         super(PhaseTransitionDispatcher, self).__init__(SocketClient(PHASE_LISTENER_FILE_EXTENSION, bidirectional=False))
 
-    def __call__(self, job_run: JobRun, previous_phase, new_phase, ordinal):
+    def __call__(self, job_run: JobInstanceDetail, previous_phase, new_phase, ordinal):
         self.new_phase(job_run, previous_phase, new_phase, ordinal)
 
-    def new_phase(self, job_inst: JobRun, previous_phase, new_phase, ordinal):
+    def new_phase(self, job_inst: JobInstanceDetail, previous_phase, new_phase, ordinal):
         event = {
             "job_run": job_inst.serialize(),
             "previous_phase": previous_phase.serialize(),
@@ -79,7 +79,7 @@ class OutputDispatcher(EventDispatcher, InstanceOutputObserver):
     def __init__(self):
         super(OutputDispatcher, self).__init__(SocketClient(OUTPUT_LISTENER_FILE_EXTENSION, bidirectional=False))
 
-    def new_instance_output(self, job_info: JobRun, output, is_error):
+    def new_instance_output(self, job_info: JobInstanceDetail, output, is_error):
         event = {
             "output": util.truncate(output, 10000, truncated_suffix=".. (truncated)"),
             "is_error": is_error,
