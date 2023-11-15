@@ -46,7 +46,7 @@ State lock
 import logging
 
 from tarotools.taro import util
-from tarotools.taro.jobs.instance import JobInstance, JobInstanceDetail, JobInstanceMetadata, PhaseTransitionObserver
+from tarotools.taro.jobs.instance import JobInstance, JobRun, JobInstanceMetadata, PhaseTransitionObserver
 from tarotools.taro.run import Phaser, Flag, PhaseRun
 from tarotools.taro.status import StatusObserver
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY, CallableNotification, ObservableNotification
@@ -98,8 +98,8 @@ class RunnerJobInstance(JobInstance):
     def status_observer(self):
         return self._status_notification.observer_proxy
 
-    def create_detail(self) -> JobInstanceDetail:
-        return JobInstanceDetail(self.metadata, self._phaser.create_run_snapshot(), self.tracking.copy())
+    def job_run_info(self) -> JobRun:
+        return JobRun(self.metadata, self._phaser.run_info(), self.tracking.copy())
 
     def run(self):
         observer_proxy = self._status_notification.observer_proxy
@@ -132,7 +132,7 @@ class RunnerJobInstance(JobInstance):
         if notify_on_register:
             def add_and_notify_callback(*args):
                 self._transition_notification.add_observer(observer)
-                observer.new_phase(self._phaser.create_run_snapshot(), *args)
+                observer.new_phase(self._phaser.run_info(), *args)
 
             self._phaser.execute_transition_hook_safely(add_and_notify_callback)
         else:
@@ -143,7 +143,7 @@ class RunnerJobInstance(JobInstance):
 
     def _transition_hook(self, old_phase: PhaseRun, new_phase: PhaseRun, ordinal):
         """Executed under phaser transition lock"""
-        snapshot = self.create_detail()
+        snapshot = self.job_run_info()
         termination = snapshot.run.termination
 
         non_success = False

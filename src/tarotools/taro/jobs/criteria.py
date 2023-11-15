@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import timezone, time, timedelta
 from typing import Dict, Any, Set, Iterable, Optional, TypeVar, Generic, Tuple
 
+from tarotools.taro.jobs.instance import JobRun
 from tarotools.taro.run import TerminationStatusFlag, RunState, Lifecycle, TerminationInfo
 from tarotools.taro.util import MatchingStrategy, and_, or_, parse, single_day_range, days_range, \
     format_dt_iso
@@ -321,7 +322,7 @@ class TerminationCriterion(MatchCriteria[TerminationInfo]):
         return bool(self.flag_groups)
 
 
-class JobInstanceAggregatedCriteria:
+class JobRunAggregatedCriteria(MatchCriteria[JobRun]):
     """
     This object aggregates various criteria for querying and matching job instances.
     An instance must meet all the provided criteria to be considered a match.
@@ -372,35 +373,53 @@ class JobInstanceAggregatedCriteria:
     def parse_pattern(cls, pattern: str, strategy: MatchingStrategy = MatchingStrategy.EXACT):
         # TODO
         return cls()
+    
+    def __iadd__(self, criterion):
+        return self.add(criterion)
+    
+    def add(self, criterion):
+        match criterion:
+            case JobRunIdCriterion():
+                self.job_run_id_criteria.append(criterion)
+            case IntervalCriterion():
+                self.interval_criteria.append(criterion)
+            case TerminationCriterion():
+                self.termination_criteria.append(criterion)
+            case str():
+                self.jobs.append(criterion)
+            case _:
+                raise ValueError("Invalid criterion type")
 
-    def matches_job_run_id(self, job_instance):
-        job_id = job_instance.metadata.job_id
-        run_id = job_instance.metadata.run_id
+        return self
+
+    def matches_job_run_id(self, job_run):
+        job_id = job_run.metadata.job_id
+        run_id = job_run.metadata.run_id
         return not self.job_run_id_criteria or any(c((job_id, run_id)) for c in self.job_run_id_criteria)
 
-    def matches_interval(self, job_instance):
-        return not self.interval_criteria or any(c(job_instance.lifecycle) for c in self.interval_criteria)
+    def matches_interval(self, job_run):
+        return not self.interval_criteria or any(c(job_run.lifecycle) for c in self.interval_criteria)
 
-    def matches_termination(self, job_instance):
-        return self.termination_criteria or any(c(job_instance.run.termination) for c in self.termination_criteria)
+    def matches_termination(self, job_run):
+        return self.termination_criteria or any(c(job_run.run.termination) for c in self.termination_criteria)
 
-    def matches_jobs(self, job_instance):
-        return not self.jobs or job_instance.job_id in self.jobs
+    def matches_jobs(self, job_run):
+        return not self.jobs or job_run.job_id in self.jobs
 
-    def __call__(self, job_instance):
-        return self.matches(job_instance)
+    def __call__(self, job_run):
+        return self.matches(job_run)
 
-    def matches(self, job_instance):
+    def matches(self, job_run):
         """
         Args:
-            job_instance (JobInstance): Job instance to match.
+            job_run (JobInstance): Job instance to match.
         Returns:
             bool: Whether the provided job instance matches all criteria.
         """
-        return self.matches_job_run_id(job_instance) \
-            and self.matches_interval(job_instance) \
-            and self.matches_termination(job_instance) \
-            and self.matches_jobs(job_instance)
+        return self.matches_job_run_id(job_run) \
+            and self.matches_interval(job_run) \
+            and self.matches_termination(job_run) \
+            and self.matches_jobs(job_run)
 
     def __bool__(self):
         return (bool(self.job_run_id_criteria)
@@ -417,4 +436,4 @@ class JobInstanceAggregatedCriteria:
 
 
 def parse_criteria(pattern: str, strategy: MatchingStrategy = MatchingStrategy.EXACT):
-    return JobInstanceAggregatedCriteria.parse_pattern(pattern, strategy)
+    return JobRunAggregatedCriteria.parse_pattern(pattern, strategy)

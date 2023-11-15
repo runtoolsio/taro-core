@@ -52,13 +52,13 @@ def test_run_with_approval(sut_approve):
     wait_wrapper = sut_approve.get_typed_phase(WaitWrapperPhase, 'APPROVAL')
 
     wait_wrapper.wait(1)
-    snapshot = sut_approve.create_run_snapshot()
+    snapshot = sut_approve.run_info()
     assert snapshot.lifecycle.current_phase == 'APPROVAL'
     assert snapshot.lifecycle.run_state == RunState.PENDING
 
     wait_wrapper.wrapped_step.approve()
     run_thread.join(1)
-    assert (sut_approve.create_run_snapshot().lifecycle.phases ==
+    assert (sut_approve.run_info().lifecycle.phases ==
             [
                 StandardPhaseNames.INIT,
                 Phase('APPROVAL', RunState.PENDING),
@@ -70,7 +70,7 @@ def test_run_with_approval(sut_approve):
 def test_post_prime(sut):
     sut.prime()
 
-    snapshot = sut.create_run_snapshot()
+    snapshot = sut.run_info()
     assert snapshot.lifecycle.current_phase == StandardPhaseNames.INIT
     assert snapshot.lifecycle.run_state == RunState.CREATED
 
@@ -78,11 +78,11 @@ def test_post_prime(sut):
 def test_empty_phaser():
     empty = Phaser([])
     empty.prime()
-    assert empty.create_run_snapshot().lifecycle.phases == [StandardPhaseNames.INIT]
+    assert empty.run_info().lifecycle.phases == [StandardPhaseNames.INIT]
 
     empty.run()
 
-    snapshot = empty.create_run_snapshot()
+    snapshot = empty.run_info()
     assert snapshot.lifecycle.phases == [StandardPhaseNames.INIT, StandardPhaseNames.TERMINAL]
     assert snapshot.termination_status == TerminationStatus.COMPLETED
 
@@ -90,7 +90,7 @@ def test_empty_phaser():
 def test_stop_before_prime(sut):
     sut.stop()
 
-    snapshot = sut.create_run_snapshot()
+    snapshot = sut.run_info()
     assert snapshot.lifecycle.phases == [StandardPhaseNames.TERMINAL]
     assert snapshot.termination_status == TerminationStatus.STOPPED
 
@@ -99,7 +99,7 @@ def test_stop_before_run(sut):
     sut.prime()
     sut.stop()
 
-    snapshot = sut.create_run_snapshot()
+    snapshot = sut.run_info()
     assert snapshot.lifecycle.phases == [StandardPhaseNames.INIT, StandardPhaseNames.TERMINAL]
     assert snapshot.termination_status == TerminationStatus.STOPPED
 
@@ -114,7 +114,7 @@ def test_stop_in_run(sut_approve):
     sut_approve.stop()
     run_thread.join(1)  # Let the run end
 
-    snapshot = sut_approve.create_run_snapshot()
+    snapshot = sut_approve.run_info()
     assert (snapshot.lifecycle.phases == [StandardPhaseNames.INIT, 'APPROVAL', StandardPhaseNames.TERMINAL])
     assert snapshot.termination_status == TerminationStatus.CANCELLED
 
@@ -124,7 +124,7 @@ def test_premature_termination(sut):
     sut.prime()
     sut.run()
 
-    snapshot = sut.create_run_snapshot()
+    snapshot = sut.run_info()
     assert snapshot.termination_status == TerminationStatus.FAILED
     assert (snapshot.lifecycle.phases == [StandardPhaseNames.INIT, 'EXEC1', StandardPhaseNames.TERMINAL])
 
@@ -156,7 +156,7 @@ def test_failed_run_exception(sut):
     sut.prime()
     sut.run()
 
-    snapshot = sut.create_run_snapshot()
+    snapshot = sut.run_info()
     assert snapshot.termination_status == TerminationStatus.FAILED
     assert (snapshot.lifecycle.phases == [StandardPhaseNames.INIT, 'EXEC1', StandardPhaseNames.TERMINAL])
 
@@ -169,7 +169,7 @@ def test_exception(sut):
     sut.prime()
     sut.run()
 
-    snapshot = sut.create_run_snapshot()
+    snapshot = sut.run_info()
     assert snapshot.termination_status == TerminationStatus.ERROR
     assert (snapshot.lifecycle.phases == [StandardPhaseNames.INIT, 'EXEC1', StandardPhaseNames.TERMINAL])
 
@@ -186,6 +186,6 @@ def test_interruption(sut):
     except KeyboardInterrupt:
         exc_passed = True
 
-    snapshot = sut.create_run_snapshot()
+    snapshot = sut.run_info()
     assert snapshot.termination_status == TerminationStatus.INTERRUPTED
     assert exc_passed

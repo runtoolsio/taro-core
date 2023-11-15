@@ -55,7 +55,8 @@ class JobInstanceMetadata:
     @classmethod
     def deserialize(cls, as_dict):
         return cls(
-            JobRunId.deserialize(as_dict['job_run_id']),
+            as_dict['job_id'],
+            as_dict['run_id'],
             as_dict['instance_id'],
             as_dict['system_parameters'],
             as_dict['user_params'],
@@ -102,7 +103,7 @@ class JobInstance(abc.ABC):
         Returns:
             str: Job part of the instance identifier.
         """
-        return self.metadata.job_run_id.job_id
+        return self.metadata.job_id
 
     @property
     def run_id(self):
@@ -110,7 +111,7 @@ class JobInstance(abc.ABC):
         Returns:
             str: Run part of the instance identifier.
         """
-        return self.metadata.job_run_id.job_id
+        return self.metadata.job_id
 
     @property
     @abc.abstractmethod
@@ -118,12 +119,12 @@ class JobInstance(abc.ABC):
         """TODO: Task tracking information, None if tracking is not supported"""
 
     @abc.abstractmethod
-    def create_detail(self):
+    def job_run_info(self):
         """
         Creates a consistent, thread-safe snapshot of the job instance's current state.
 
         Returns:
-            JobInstanceDetail: A snapshot representing the current state of the job instance.
+            JobRun: A snapshot representing the current state of the job instance.
         """
 
     @property
@@ -227,12 +228,18 @@ class RunInNewThreadJobInstance:
 
 
 @dataclass(frozen=True)
-class JobInstanceDetail:
+class InstanceMetadata:
+    instance_id: str
+
+
+@dataclass(frozen=True)
+class JobRun:
     """
     Immutable snapshot of job instance
+    TODO: Instance detail/info
     """
 
-    """Descriptive information about this instance"""
+    """Descriptive information about this job run"""
     metadata: JobInstanceMetadata
     """The snapshot of the job run represented by this instance"""
     run: Run
@@ -316,7 +323,7 @@ class JobInstances(list):
 class PhaseTransitionObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_phase(self, job_inst: JobInstanceDetail, previous_phase: PhaseRun, new_phase: PhaseRun, ordinal: int):
+    def new_phase(self, job_run: JobRun, previous_phase: PhaseRun, new_phase: PhaseRun, ordinal: int):
         """
         Called when the instance transitions to a new phase.
 
@@ -324,7 +331,7 @@ class PhaseTransitionObserver(abc.ABC):
         to make the observer aware about the current phase of the instance.
 
         Args:
-            job_inst (JobInstSnapshot): A snapshot of the job instance that transitioned to a new phase.
+            job_run (JobInstSnapshot): A snapshot of the job instance that transitioned to a new phase.
             previous_phase (TerminationStatus): The previous phase of the job instance.
             new_phase (TerminationStatus): The new/current phase state of the job instance.
             ordinal (int): The number of the current phase.
@@ -360,7 +367,7 @@ class WarnEventCtx:
 class InstanceOutputObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_instance_output(self, job_info: JobInstanceDetail, output: str, is_error: bool):
+    def new_instance_output(self, job_info: JobRun, output: str, is_error: bool):
         """
         Executed when a new output line is available.
 

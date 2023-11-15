@@ -9,7 +9,7 @@ import tarotools.taro
 import tarotools.taro.jobs.runner as runner
 from tarotools.taro import TerminationStatus
 from tarotools.taro.jobs import lock
-from tarotools.taro.jobs.instance import PhaseTransitionObserver, JobInstanceDetail
+from tarotools.taro.jobs.instance import PhaseTransitionObserver, JobRun
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.observer import TestPhaseObserver
 
@@ -64,5 +64,5 @@ class ExceptionRaisingObserver(PhaseTransitionObserver):
     def __init__(self, raise_exc: Exception):
         self.raise_exc = raise_exc
 
-    def new_phase(self, job_inst: JobInstanceDetail, previous_phase, new_phase, changed):
+    def new_phase(self, job_run: JobRun, previous_phase, new_phase, changed):
         raise self.raise_exc

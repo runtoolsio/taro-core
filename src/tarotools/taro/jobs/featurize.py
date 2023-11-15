@@ -20,7 +20,7 @@ from tarotools.taro import plugins as plugins_mod
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.events import PhaseTransitionDispatcher, OutputDispatcher
-from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobInstanceDetail, JobInstance, JobInstanceManager,
+from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobRun, JobInstance, JobInstanceManager,
                                           InstanceOutputObserver)
 from tarotools.taro.jobs.plugins import Plugin
 from tarotools.taro.run import RunState
@@ -357,12 +357,12 @@ class FeaturedContext(PhaseTransitionObserver):
         """
         return self._release_instance(job_instance_id, True)
 
-    def new_phase(self, job_inst: JobInstanceDetail, previous_phase, new_phase, ordinal, transitioned):
+    def new_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal, transitioned):
         """
         DO NOT EXECUTE THIS METHOD! It is part of the internal mechanism.
         """
         if new_phase.run_state == RunState.ENDED:
-            self._release_instance(job_inst.metadata.job_run_id, not self._keep_removed)
+            self._release_instance(job_run.metadata.job_run_id, not self._keep_removed)
 
     def _release_instance(self, job_instance_id, remove):
         """

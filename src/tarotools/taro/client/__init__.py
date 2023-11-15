@@ -10,7 +10,7 @@ from json import JSONDecodeError
 from typing import List, Any, Dict, NamedTuple, Optional, TypeVar, Generic, Callable
 
 from tarotools.taro.jobs.api import API_FILE_EXTENSION
-from tarotools.taro.jobs.instance import JobInstanceDetail, JobInstanceMetadata
+from tarotools.taro.jobs.instance import JobRun, JobInstanceMetadata
 from tarotools.taro.socket import SocketClient, ServerResponse, Error
 
 log = logging.getLogger(__name__)
@@ -149,7 +149,7 @@ class SignalProceedResponse(JobInstanceResponse):
     executed: bool
 
 
-def read_instances(instance_match=None) -> AggregatedResponse[JobInstanceDetail]:
+def read_instances(instance_match=None) -> AggregatedResponse[JobRun]:
     """
     Retrieves instance information for all active job instances for the current user.
 
@@ -288,7 +288,7 @@ class APIClient(SocketClient):
         server_responses: List[ServerResponse] = self.communicate(json.dumps(req_body))
         return _process_responses(server_responses, resp_mapper)
 
-    def read_instances(self, instance_match=None) -> AggregatedResponse[JobInstanceDetail]:
+    def read_instances(self, instance_match=None) -> AggregatedResponse[JobRun]:
         """
         Retrieves instance information for all active job instances for the current user.
 
@@ -304,8 +304,8 @@ class APIClient(SocketClient):
             PayloadTooLarge: If the payload size exceeds the maximum limit.
         """
 
-        def resp_mapper(inst_resp: InstanceResponse) -> JobInstanceDetail:
-            return JobInstanceDetail.deserialize(inst_resp.body["job_instance"])
+        def resp_mapper(inst_resp: InstanceResponse) -> JobRun:
+            return JobRun.deserialize(inst_resp.body["job_instance"])
 
         return self.send_request('/instances', instance_match, resp_mapper=resp_mapper)
 

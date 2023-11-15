@@ -6,7 +6,7 @@ from threading import Condition, Event, Lock
 
 from tarotools import taro
 from tarotools.taro.jobs import lock
-from tarotools.taro.jobs.criteria import JobRunIdCriterion, TerminationCriterion, JobInstanceAggregatedCriteria
+from tarotools.taro.jobs.criteria import JobRunIdCriterion, TerminationCriterion, JobRunAggregatedCriteria
 from tarotools.taro.jobs.instance import JobInstances
 from tarotools.taro.listening import PhaseReceiver, InstancePhaseEventObserver
 from tarotools.taro.run import RunState, Phase, TerminationStatus
@@ -389,7 +389,7 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
         self._state_receiver.start()
 
     def _dispatch_next(self):
-        criteria = JobInstanceAggregatedCriteria(
+        criteria = JobRunAggregatedCriteria(
             state_criteria=TerminationCriterion(phases={Phase.QUEUED, Phase.EXECUTING}),
             param_sets=set(self._parameters)
         )
@@ -402,7 +402,7 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
 
         for next_proceed in group_jobs_sorted.queued:
             # TODO Use identity ID
-            signal_resp = taro.client.signal_dispatch(JobInstanceAggregatedCriteria(JobRunIdCriterion.for_instance(next_proceed)))
+            signal_resp = taro.client.signal_dispatch(JobRunAggregatedCriteria(JobRunIdCriterion.for_instance(next_proceed)))
             for r in signal_resp.responses:
                 if r.executed:
                     next_count -= 1

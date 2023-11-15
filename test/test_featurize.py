@@ -1,7 +1,23 @@
+from dataclasses import dataclass
+
+from tarotools.taro.test.inst import TestJobInstanceManager, TestJobInstance
+
 from tarotools.taro import TerminationStatus
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
-from tarotools.taro.test.inst import TestJobInstanceManager, TestJobInstance
 from tarotools.taro.test.observer import TestPhaseObserver, TestOutputObserver
+
+
+@dataclass
+class TestJobInstanceManager(JobInstanceManager):
+
+    def __init__(self):
+        self.instances = []
+
+    def register_instance(self, job_instance):
+        self.instances.append(job_instance)
+
+    def unregister_instance(self, job_instance):
+        self.instances.remove(job_instance)
 
 
 class FeatHelper:

@@ -3,7 +3,7 @@ from threading import Timer
 from typing import Sequence
 
 from tarotools.taro import util
-from tarotools.taro.jobs.instance import JobInstance, JobInstanceDetail, PhaseTransitionObserver, Warn, \
+from tarotools.taro.jobs.instance import JobInstance, JobRun, PhaseTransitionObserver, Warn, \
     InstanceOutputObserver
 from tarotools.taro.run import RunState
 
@@ -33,7 +33,7 @@ class _ExecTimeWarning(PhaseTransitionObserver):
         self.time = time
         self.timer = None
 
-    def new_phase(self, job_inst: JobInstanceDetail, previous_phase, new_phase, ordinal, changed):
+    def new_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal, changed):
         if new_phase.run_state == RunState.EXECUTING:
             assert self.timer is None
             self.timer = Timer(self.time, self._check)

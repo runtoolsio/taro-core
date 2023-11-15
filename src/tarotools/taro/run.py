@@ -346,7 +346,7 @@ class Lifecycle:
         return copied
 
 
-@dataclass
+@dataclass(frozen=True)
 class PhaseMetadata:
     phase_name: str
     run_state: RunState
@@ -571,7 +571,7 @@ class Phaser:
     def phases(self) -> List[Phase]:
         return list(self._name_to_phase.values())
 
-    def create_run_snapshot(self) -> Run:
+    def run_info(self) -> Run:
         with self._transition_lock:
             return Run(self._phase_meta, copy(self._lifecycle), self._termination)
 

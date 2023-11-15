@@ -13,7 +13,7 @@ from tarotools.taro import cfg, InstanceLifecycle, TerminationStatus
 from tarotools.taro import paths
 from tarotools.taro.execution import Flag, \
     Phase
-from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobInstanceDetail, JobInstances, JobRunId,
+from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobRun, JobInstances, JobRunId,
                                           LifecycleEvent,
                                           JobInstanceMetadata, InstancePhase)
 from tarotools.taro.jobs.job import JobStats
@@ -117,9 +117,9 @@ class SQLite(PhaseTransitionObserver):
     def __init__(self, connection):
         self._conn = connection
 
-    def new_phase(self, job_inst: JobInstanceDetail, previous_phase, new_phase, ordinal):
+    def new_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal):
         if new_phase.run_state == RunState.ENDED:
-            self.store_runs(job_inst)
+            self.store_runs(job_run)
 
     def check_tables_exist(self):
         # Version 4
@@ -185,7 +185,7 @@ class SQLite(PhaseTransitionObserver):
             pending_group = json.loads(t[14]).get("pending_group") if t[14] else None
             metadata = JobInstanceMetadata(JobRunId(t[0], t[1]), parameters, user_params, pending_group)
 
-            return JobInstanceDetail(metadata, lifecycle, tracking, status, error_output, warnings, exec_error)
+            return JobRun(metadata, lifecycle, tracking, status, error_output, warnings, exec_error)
 
         return JobInstances((to_job_info(row) for row in c.fetchall()))
 

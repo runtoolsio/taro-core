@@ -2,15 +2,15 @@ import sqlite3
 from datetime import datetime as dt
 
 import pytest
+from tarotools.taro.test.inst import i
 
 from tarotools.taro import TerminationStatus, ExecutionError
-from tarotools.taro.jobs.criteria import IntervalCriterion, TerminationCriterion, JobInstanceAggregatedCriteria, \
+from tarotools.taro.jobs.criteria import IntervalCriterion, TerminationCriterion, JobRunAggregatedCriteria, \
     parse_criteria
 from tarotools.taro.jobs.db.sqlite import SQLite
 from tarotools.taro.jobs.instance import LifecycleEvent
 from tarotools.taro.jobs.track import MutableTrackedTask
 from tarotools.taro.test.execution import lc_failed, lc_completed
-from tarotools.taro.test.inst import i
 from tarotools.taro.util import parse_iso8601_duration, MatchingStrategy
 
 
@@ -111,24 +111,24 @@ def test_interval(sut):
     sut.store_runs(j(3, created=dt(2023, 4, 22), completed=dt(2023, 4, 22, 23, 59, 58)))
 
     ic = IntervalCriterion(run_state=LifecycleEvent.ENDED, from_dt=dt(2023, 4, 23))
-    jobs = sut.read_runs(JobInstanceAggregatedCriteria(interval_criteria=ic))
+    jobs = sut.read_runs(JobRunAggregatedCriteria(interval_criteria=ic))
     assert jobs.job_ids == ['j1']
 
     ic = IntervalCriterion(run_state=LifecycleEvent.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59))
-    jobs = sut.read_runs(JobInstanceAggregatedCriteria(interval_criteria=ic))
+    jobs = sut.read_runs(JobRunAggregatedCriteria(interval_criteria=ic))
     assert sorted(jobs.job_ids) == ['j2', 'j3']
 
     ic = IntervalCriterion(run_state=LifecycleEvent.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59), include_to=False)
-    jobs = sut.read_runs(JobInstanceAggregatedCriteria(interval_criteria=ic))
+    jobs = sut.read_runs(JobRunAggregatedCriteria(interval_criteria=ic))
     assert jobs.job_ids == ['j3']
 
     ic = IntervalCriterion(run_state=LifecycleEvent.ENDED, from_dt=dt(2023, 4, 22, 23, 59, 59), to_dt=dt(2023, 4, 23))
-    jobs = sut.read_runs(JobInstanceAggregatedCriteria(interval_criteria=ic))
+    jobs = sut.read_runs(JobRunAggregatedCriteria(interval_criteria=ic))
     assert sorted(jobs.job_ids) == ['j1', 'j2']
 
 
 def test_warning(sut):
     sut.store_runs(j(1), j(2, warnings={'w1': 1}), j(3))
-    jobs = sut.read_runs(JobInstanceAggregatedCriteria(state_criteria=TerminationCriterion(warning=True)))
+    jobs = sut.read_runs(JobRunAggregatedCriteria(state_criteria=TerminationCriterion(warning=True)))
 
     assert jobs.job_ids == ['j2']
