@@ -45,8 +45,8 @@ State lock
 
 import logging
 
-from tarotools.taro import util, PhaseTransitionObserver
-from tarotools.taro.jobs.instance import JobInstance, JobInstanceDetail, JobRunId, JobInstanceMetadata
+from tarotools.taro import util
+from tarotools.taro.jobs.instance import JobInstance, JobInstanceDetail, JobInstanceMetadata, PhaseTransitionObserver
 from tarotools.taro.run import Phaser, Flag, PhaseRun
 from tarotools.taro.status import StatusObserver
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY, CallableNotification, ObservableNotification
@@ -67,9 +67,8 @@ class RunnerJobInstance(JobInstance):
 
     def __init__(self, job_id, phases, *, run_id=None, instance_id_gen=util.unique_timestamp_hex, **user_params):
         instance_id = instance_id_gen()
-        self._job_run_id = JobRunId(job_id, run_id or instance_id)
-        parameters = ()  # TODO
-        self._metadata = JobInstanceMetadata(self._job_run_id, instance_id, parameters, user_params)
+        parameters = {}  # TODO
+        self._metadata = JobInstanceMetadata(job_id, run_id or instance_id, instance_id, parameters, user_params)
         self._phaser = Phaser(phases)
         self._tracking = None  # TODO The output fields below will be moved to the tracker
         # self._last_output = deque(maxlen=10)  # TODO Max len configurable
@@ -80,7 +79,8 @@ class RunnerJobInstance(JobInstance):
         self._phaser.transition_hook = self._transition_hook
 
     def _log(self, event: str, msg: str = '', *params):
-        return ("event=[{}] instance=[{}] " + msg).format(event, self._job_run_id, *params)
+        return ("event=[{}] job_run=[{}@{}] " + msg).format(
+            event, self._metadata.job_id, self._metadata.run_id, *params)
 
     @property
     def instance_id(self):

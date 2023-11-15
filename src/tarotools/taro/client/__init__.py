@@ -282,7 +282,7 @@ class APIClient(SocketClient):
         if not req_body:
             req_body = {}
         req_body["request_metadata"] = {"api": api}
-        if instance_match and instance_match.id_criteria:
+        if instance_match and instance_match.job_run_id_criteria:
             req_body["request_metadata"]["instance_match"] = instance_match.serialize()
 
         server_responses: List[ServerResponse] = self.communicate(json.dumps(req_body))

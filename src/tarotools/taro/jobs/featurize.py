@@ -21,7 +21,7 @@ from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.events import PhaseTransitionDispatcher, OutputDispatcher
 from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobInstanceDetail, JobInstance, JobInstanceManager,
-                                          InstanceOutputObserver, JobRunId)
+                                          InstanceOutputObserver)
 from tarotools.taro.jobs.plugins import Plugin
 from tarotools.taro.run import RunState
 
@@ -242,7 +242,7 @@ class FeaturedContext(PhaseTransitionObserver):
         self._state_observers: Tuple[ObserverFeature[PhaseTransitionObserver]] = tuple(state_observers)
         self._output_observers: Tuple[ObserverFeature[InstanceOutputObserver]] = tuple(output_observers)
         self._keep_removed = not transient
-        self._managed_instances: Dict[JobRunId, _ManagedInstance] = {}
+        self._managed_instances: Dict[str, _ManagedInstance] = {}
         self._ctx_lock = Lock()
         self._opened = False
         self._close_requested = False
@@ -312,11 +312,11 @@ class FeaturedContext(PhaseTransitionObserver):
                 raise InvalidStateError("Cannot add job instance because the context has not been opened")
             if self._close_requested:
                 raise InvalidStateError("Cannot add job instance because the context has been already closed")
-            if job_instance.metadata.job_run_id in self._managed_instances:
+            if job_instance.instance_id in self._managed_instances:
                 raise ValueError("An instance with this ID has already been added to the context")
 
             managed_instance = _ManagedInstance(job_instance)
-            self._managed_instances[job_instance.metadata.job_run_id] = managed_instance
+            self._managed_instances[job_instance.instance_id] = managed_instance
 
         for manager_feat in self._instance_managers:
             manager_feat.component.register_instance(job_instance)

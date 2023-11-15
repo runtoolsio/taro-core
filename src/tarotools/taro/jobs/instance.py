@@ -15,40 +15,12 @@ TODO:
 import abc
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from fnmatch import fnmatch
 from threading import Thread
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List
 
-from tarotools.taro.jobs.criteria import JobRunIdCriterion
 from tarotools.taro.jobs.track import TrackedTaskInfo
-from tarotools.taro.run import TerminationStatus, RunState, PhaseRun, RunSnapshot
+from tarotools.taro.run import TerminationStatus, RunState, PhaseRun, Run
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
-
-
-@dataclass(frozen=True)
-class JobRunId:
-    """
-    Attributes:
-        job_id (str): The ID of the job to which the run belongs.
-        run_id (str): The ID of the run.
-
-    TODO: Create a method that returns a match and a no-match for this ID.
-    """
-    job_id: str
-    run_id: str
-
-    @classmethod
-    def deserialize(cls, as_dict):
-        return cls(as_dict['job_id'], as_dict['run_id'])
-
-    def serialize(self) -> Dict[str, Any]:
-        return {
-            "job_id": self.job_id,
-            "run_id": self.job_id,
-        }
-
-    def matches_pattern(self, id_pattern, matching_strategy=fnmatch):
-        return JobRunIdCriterion.parse_pattern(id_pattern, strategy=matching_strategy).matches(self)
 
 
 @dataclass
@@ -60,17 +32,22 @@ class JobInstanceMetadata:
     across a network or between different parts of a system.
 
     Attributes:
-        job_run_id (JobRunId):
-            The unique identifier associated with the job instance.
-        system_parameters (Tuple[Tuple[str, str]]):
-            A tuple of key-value pairs representing system parameters for the job.
+        job_id (str):
+            The unique identifier of the job associated with the instance.
+        run_id (str):
+            The unique identifier of the job instance run.
+        instance_id (str):
+            The reference identifier of the job instance.
+        system_parameters (Dict[str, Any]):
+            A dictionary containing system parameters for the job instance.
             These parameters are implementation-specific and contain information needed by the system to
             perform certain tasks or enable specific features.
         user_params (Dict[str, Any]):
             A dictionary containing user-defined parameters associated with the instance.
             These are arbitrary parameters set by the user, and they do not affect the functionality.
     """
-    job_run_id: JobRunId
+    job_id: str
+    run_id: str
     instance_id: str
     system_parameters: Dict[str, Any]
     user_params: Dict[str, Any]
@@ -258,7 +235,7 @@ class JobInstanceDetail:
     """Descriptive information about this instance"""
     metadata: JobInstanceMetadata
     """The snapshot of the job run represented by this instance"""
-    run: RunSnapshot
+    run: Run
     # TODO textwrap.shorten(status, 1000, placeholder=".. (truncated)", break_long_words=False)
     tracking: TrackedTaskInfo
 
@@ -266,7 +243,7 @@ class JobInstanceDetail:
     def deserialize(cls, as_dict):
         return cls(
             JobInstanceMetadata.deserialize(as_dict['metadata']),
-            RunSnapshot.deserialize(as_dict['run']),
+            Run.deserialize(as_dict['run']),
             TrackedTaskInfo.from_dict(as_dict['tracking']) if "tracking" in as_dict else None,
         )
 
@@ -283,7 +260,7 @@ class JobInstanceDetail:
         Returns:
             str: Job part of the instance identifier.
         """
-        return self.metadata.job_run_id.job_id
+        return self.metadata.job_id
 
     @property
     def run_id(self) -> str:
@@ -291,7 +268,7 @@ class JobInstanceDetail:
         Returns:
             str: Run part of the instance identifier.
         """
-        return self.metadata.job_run_id.run_id
+        return self.metadata.run_id
 
 
 class JobInstances(list):

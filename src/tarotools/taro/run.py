@@ -122,7 +122,7 @@ class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
 
     @classmethod
     def with_flags(cls, *flags):
-        return [state for state in cls if all(flag in state.flags for flag in flags)]
+        return [term_status for term_status in cls if all(flag in term_status.flags for flag in flags)]
 
     def __init__(self, flags: Set[TerminationStatusFlag]):
         self.flags = flags
@@ -506,24 +506,24 @@ class TerminationInfo:
 
 
 @dataclass(frozen=True)
-class RunSnapshot:
+class Run:
     phases: Tuple[PhaseMetadata]
     lifecycle: Lifecycle
-    termination: TerminationInfo
+    termination: Optional[TerminationInfo]
 
     @classmethod
     def deserialize(cls, as_dict: Dict[str, Any]):
         return cls(
             phases=tuple(PhaseMetadata.deserialize(phase) for phase in as_dict['phases']),
             lifecycle=Lifecycle.deserialize(as_dict['lifecycle']),
-            termination=TerminationInfo.deserialize(as_dict['termination'])
+            termination=TerminationInfo.deserialize(as_dict['termination']) if 'termination' in as_dict else None,
         )
 
     def serialize(self) -> Dict[str, Any]:
         return {
             "phases": [phase.serialize() for phase in self.phases],
             "lifecycle": self.lifecycle.serialize(),
-            "termination": self.termination.serialize(),
+            "termination": self.termination.serialize() if self.termination else None,
         }
 
 
@@ -571,9 +571,9 @@ class Phaser:
     def phases(self) -> List[Phase]:
         return list(self._name_to_phase.values())
 
-    def create_run_snapshot(self) -> RunSnapshot:
+    def create_run_snapshot(self) -> Run:
         with self._transition_lock:
-            return RunSnapshot(self._phase_meta, copy(self._lifecycle), self._termination)
+            return Run(self._phase_meta, copy(self._lifecycle), self._termination)
 
     def prime(self):
         with self._transition_lock:

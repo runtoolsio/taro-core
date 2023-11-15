@@ -8,12 +8,11 @@ import datetime
 from abc import abstractmethod, ABC
 from dataclasses import dataclass
 from datetime import timezone, time, timedelta
-from typing import Dict, Any, Set, Iterable, Optional, TypeVar, Generic
+from typing import Dict, Any, Set, Iterable, Optional, TypeVar, Generic, Tuple
 
-from tarotools.taro import JobRunId
-from tarotools.taro.run import TerminationStatusFlag, RunState, Phase, Lifecycle
+from tarotools.taro.run import TerminationStatusFlag, RunState, Lifecycle, TerminationInfo
 from tarotools.taro.util import MatchingStrategy, and_, or_, parse, single_day_range, days_range, \
-    format_dt_iso, remove_empty_values, to_list
+    format_dt_iso
 
 T = TypeVar('T')
 
@@ -32,7 +31,7 @@ class MatchCriteria(ABC, Generic[T]):
 
 
 @dataclass
-class JobRunIdCriterion(MatchCriteria[JobRunId]):
+class JobRunIdCriterion(MatchCriteria[Tuple[str, str]]):
     """
     This class specifies criteria for matching `JobRun` instances.
     If both `job_id` and `run_id` are empty, the matching strategy defaults to `MatchingStrategy.ALWAYS_TRUE`.
@@ -53,17 +52,17 @@ class JobRunIdCriterion(MatchCriteria[JobRunId]):
         return cls('', '', True, MatchingStrategy.ALWAYS_FALSE)
 
     @staticmethod
-    def for_run(job_run):
+    def for_instance(job_inst):
         """
-        Creates an JobRunIdMatchCriteria object that matches the provided job run.
+        Creates an JobRunIdMatchCriteria object that matches the provided job instance.
 
         Args:
-            job_run: The specific job run to create a match for.
+            job_inst: The specific job instance to create a match for.
 
         Returns:
-            JobRunIdCriterion: A criteria object that will match the given job run.
+            JobRunIdCriterion: A criteria object that will match the given job instance.
         """
-        return JobRunIdCriterion(job_id=job_run.job_id, run_id=job_run.run_id)
+        return JobRunIdCriterion(job_id=job_inst.metadata.job_id, run_id=job_inst.metadata.run_id)
 
     @classmethod
     def parse_pattern(cls, pattern: str, strategy=MatchingStrategy.EXACT):
@@ -107,39 +106,33 @@ class JobRunIdCriterion(MatchCriteria[JobRunId]):
     def _op(self):
         return and_ if self.match_both_ids else or_
 
-    def __call__(self, jid):
-        return self.matches(jid)
+    def __call__(self, id_tuple):
+        return self.matches(id_tuple)
 
-    def matches(self, jid):
+    def matches(self, id_tuple):
         """
         The matching method. It can be also executed by calling this object (`__call__` delegates to this method).
 
         Args:
-            jid: Job run ID to be matched
+            id_tuple: A tuple of job ID and run ID to be matched
 
         Returns:
             bool: Whether the provided job instance ID matches this criteria
         """
         op = self._op()
-        return op(not self.job_id or self.strategy(jid.job_id, self.job_id),
-                  not self.run_id or self.strategy(jid.run_id, self.run_id))
+        job_id, run_id = id_tuple
+        return op(not self.job_id or self.strategy(job_id, self.job_id),
+                  not self.run_id or self.strategy(run_id, self.run_id))
 
-    def matches_run(self, job_run):
+    def matches_instance(self, job_inst):
         """
         Args:
-            job_run: Job run to be matched
+            job_inst: Job instance to be matched
 
         Returns:
-            bool: Whether the provided job run matches this criteria
+            bool: Whether the provided job instance matches this criteria
         """
-        return self.matches(job_run.metadata.id)
-
-
-def compound_id_filter(criteria_seq):
-    def match(jid):
-        return not criteria_seq or any(criteria(jid) for criteria in criteria_seq)
-
-    return match
+        return self.matches((job_inst.metadata.job_id, job_inst.metadata.run_id))
 
 
 @dataclass
@@ -148,8 +141,6 @@ class IntervalCriterion(MatchCriteria[Lifecycle]):
     A class to represent criteria for determining if the first occurrence of a given run state in a lifecycle falls
     within a specified datetime interval. This criterion is used to filter or identify lifecycles based
     on the timing of their first transition to the specified run state.
-
-    TODO: Phase
 
     Properties:
         run_state (RunState):
@@ -284,7 +275,8 @@ class IntervalCriterion(MatchCriteria[Lifecycle]):
         return True
 
 
-class StateCriteria:
+@dataclass
+class TerminationCriterion(MatchCriteria[TerminationInfo]):
     """
     This object can be used to filter job instances based on their state, such as instance phase or warnings.
     For the whole criteria to match, all provided filters must be met.
@@ -303,146 +295,97 @@ class StateCriteria:
             Default is None.
     """
 
-    def __init__(self, *,
-                 phases: Set[Phase] = (),
-                 flag_groups: Iterable[Set[TerminationStatusFlag]] = (),
-                 warning: Optional[bool] = None):
-        self.phases = phases
-        self.flag_groups = flag_groups
-        self.warning = warning
+    flag_groups: Iterable[Set[TerminationStatusFlag]] = ()
 
     @classmethod
-    def from_dict(cls, data):
-        phases = data.get('phases', ())
+    def deserialize(cls, data):
         flag_groups = data.get('flag_groups', ())
-        warning = data.get('warning', None)
-        return cls(phases=phases, flag_groups=flag_groups, warning=warning)
+        return cls(flag_groups)
 
-    def __call__(self, instance):
-        return self.matches(instance)
+    def serialize(self):
+        return {
+            "flag_groups": self.flag_groups,
+        }
 
-    def matches(self, instance):
-        if self.phases and instance.lifecycle.phase.phase not in self.phases:
-            return False
+    def __call__(self, term_info):
+        return self.matches(term_info)
 
+    def matches(self, term_info):
         if self.flag_groups and \
-                not any(all(f in instance.lifecycle.phase.flags for f in g) for g in self.flag_groups):
-            return False
-
-        if self.warning is not None and self.warning != bool(instance.warnings):
+                not any(all(f in term_info.status.flags for f in g) for g in self.flag_groups):
             return False
 
         return True
 
     def __bool__(self):
-        return bool(self.phases) or bool(self.flag_groups) or self.warning is not None
-
-    def to_dict(self, include_empty=True):
-        d = {
-            "phases": self.phases,
-            "flag_groups": self.flag_groups,
-            "warning": self.warning,
-        }
-        return remove_empty_values(d) if include_empty else d
+        return bool(self.flag_groups)
 
 
-class InstanceCriteria:
+class JobInstanceAggregatedCriteria:
     """
-    This object aggregates various filters, allowing for complex queries and matching against job instances.
-    An instance must meet all individual filters for this object to match.
+    This object aggregates various criteria for querying and matching job instances.
+    An instance must meet all the provided criteria to be considered a match.
 
     Properties:
-        id_criteria (Optional[Union[JobIDMatchCriteria, Iterable[JobIDMatchCriteria]]]):
-            Conditions for matching based on job instance IDs.
-            If more than one condition is provided, this filter matches if any of the conditions are met.
-        interval_criteria (Optional[Union[IntervalCriteria, Iterable[IntervalCriteria]]]):
-            Conditions for matching based on time intervals.
-            If more than one condition is provided, this filter matches if any of the conditions are met.
-        state_criteria (Optional[StateCriteria]):
-            A condition for matching based on job instance state.
-        job_ids (Optional[Union[Job, Iterable[Job]]]):
-            A job ID or an iterable of IDs for an exact match against specific job instances.
-        param_sets (Iterable[Set[Tuple[str, str]]):
-            Collection of set of parameters to match. An instance matches if any of the sets matches.
-            All tuples in a set must match.
+        job_run_id_criteria (List[JobRunIdCriterion]):
+            A list of criteria for matching based on job run IDs.
+            An instance matches if it meets any of the criteria in this list.
+        interval_criteria (List[IntervalCriterion]):
+            A list of criteria for matching based on time intervals.
+            An instance matches if it meets any of the criteria in this list.
+        termination_criteria (List[TerminationCriterion]):
+            A list of criteria for matching based on termination conditions.
+            An instance matches if it meets any of the criteria in this list.
+        jobs (List[Job]):
+            A list of specific job IDs for matching.
+            An instance matches if its job ID is in this list.
+
+    The class provides methods to check whether a given job instance matches the criteria,
+    serialize and deserialize the criteria, and parse criteria from a pattern.
     """
 
-    def __init__(self, id_criteria=None, interval_criteria=None, state_criteria=None, jobs=None, param_sets=None):
-        self._id_criteria = to_list(id_criteria)
-        self._interval_criteria = to_list(interval_criteria)
-        self._state_criteria = state_criteria
-        self._job_ids = to_list(jobs)
-        self._param_sets = param_sets
+    def __init__(self):
+        self.job_run_id_criteria = []
+        self.interval_criteria = []
+        self.termination_criteria = []
+        self.jobs = []
+
+    @classmethod
+    def deserialize(cls, as_dict):
+        new = cls()
+        new.job_run_id_criteria = [JobRunIdCriterion.deserialize(c) for c in as_dict.get('job_run_id_criteria', ())]
+        new.interval_criteria = [IntervalCriterion.deserialize(c) for c in as_dict.get('interval_criteria', ())]
+        new.termination_criteria = [TerminationCriterion.deserialize(c) for c in
+                                    as_dict.get('termination_criteria', ())]
+        new.jobs = as_dict.get('jobs', [])
+        return new
+
+    def serialize(self):
+        return {
+            'job_run_id_criteria': [c.serialize() for c in self.job_run_id_criteria],
+            'interval_criteria': [c.serialize() for c in self.interval_criteria],
+            'state_criteria': [c.serialize() for c in self.termination_criteria],
+            'jobs': self.jobs,
+        }
 
     @classmethod
     def parse_pattern(cls, pattern: str, strategy: MatchingStrategy = MatchingStrategy.EXACT):
-        return cls(JobRunIdCriterion.parse_pattern(pattern, strategy))
+        # TODO
+        return cls()
 
-    @classmethod
-    def from_dict(cls, as_dict):
-        id_criteria = [JobRunIdCriterion.deserialize(c) for c in as_dict.get('id_criteria', ())]
-        interval_criteria = [IntervalCriterion.deserialize(c) for c in as_dict.get('interval_criteria', ())]
-        sc = as_dict.get('state_criteria')
-        state_criteria = StateCriteria.from_dict(sc) if sc else None
-        jobs = as_dict.get('jobs', ())
-        param_sets = as_dict.get('param_sets', ())
-        return cls(id_criteria, interval_criteria, state_criteria, jobs, param_sets)
-
-    @property
-    def id_criteria(self):
-        return self._id_criteria
-
-    @id_criteria.setter
-    def id_criteria(self, criteria):
-        self._id_criteria = to_list(criteria)
-
-    @property
-    def interval_criteria(self):
-        return self._interval_criteria
-
-    @interval_criteria.setter
-    def interval_criteria(self, criteria):
-        self._interval_criteria = to_list(criteria)
-
-    @property
-    def state_criteria(self):
-        return self._state_criteria
-
-    @state_criteria.setter
-    def state_criteria(self, criteria):
-        self._state_criteria = criteria
-
-    @property
-    def job_ids(self):
-        return self._job_ids
-
-    @job_ids.setter
-    def job_ids(self, jobs):
-        self._job_ids = to_list(jobs)
-
-    @property
-    def param_sets(self):
-        return self._param_sets
-
-    @param_sets.setter
-    def param_sets(self, param_sets):
-        self._param_sets = param_sets
-
-    def matches_id(self, job_instance):
-        return not self.id_criteria or compound_id_filter(self.id_criteria)(job_instance)
+    def matches_job_run_id(self, job_instance):
+        job_id = job_instance.metadata.job_id
+        run_id = job_instance.metadata.run_id
+        return not self.job_run_id_criteria or any(c((job_id, run_id)) for c in self.job_run_id_criteria)
 
     def matches_interval(self, job_instance):
         return not self.interval_criteria or any(c(job_instance.lifecycle) for c in self.interval_criteria)
 
-    def matches_state(self, job_instance):
-        return self.state_criteria is None or self.state_criteria(job_instance)
+    def matches_termination(self, job_instance):
+        return self.termination_criteria or any(c(job_instance.run.termination) for c in self.termination_criteria)
 
-    def matches_job_ids(self, job_instance):
-        return not self.job_ids or job_instance.job_id in self.job_ids
-
-    def matches_parameters(self, job_instance):
-        return (not self.param_sets or
-                any(job_instance.metadata.contains_system_parameters(*param_set) for param_set in self.param_sets))
+    def matches_jobs(self, job_instance):
+        return not self.jobs or job_instance.job_id in self.jobs
 
     def __call__(self, job_instance):
         return self.matches(job_instance)
@@ -454,34 +397,24 @@ class InstanceCriteria:
         Returns:
             bool: Whether the provided job instance matches all criteria.
         """
-        return self.matches_id(job_instance) \
+        return self.matches_job_run_id(job_instance) \
             and self.matches_interval(job_instance) \
-            and self.matches_state(job_instance) \
-            and self.matches_job_ids(job_instance) \
-            and self.matches_parameters(job_instance)
-
-    def to_dict(self, include_empty=True):
-        d = {
-            'id_criteria': [c.serialize(include_empty) for c in self.id_criteria],
-            'interval_criteria': [c.serialize(include_empty) for c in self.interval_criteria],
-            'state_criteria': self.state_criteria.serialize(include_empty) if self.state_criteria else None,
-            'jobs': self.job_ids,
-            'param_sets': self.param_sets,
-        }
-        return remove_empty_values(d) if include_empty else d
+            and self.matches_termination(job_instance) \
+            and self.matches_jobs(job_instance)
 
     def __bool__(self):
-        return (bool(self.id_criteria) or bool(self.interval_criteria) or bool(self.state_criteria)
-                or bool(self.job_ids) or bool(self.param_sets))
+        return (bool(self.job_run_id_criteria)
+                or bool(self.interval_criteria)
+                or bool(self.termination_criteria)
+                or bool(self.jobs))
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(" \
-               f"id_criteria={self._id_criteria}," \
-               f"interval_criteria={self._interval_criteria}, " \
-               f"state_criteria={self.state_criteria}," \
-               f"jobs={self.job_ids}," \
-               f"param_sets={self.param_sets})"
+        return (f"{self.__class__.__name__}("
+                f"{self.job_run_id_criteria=}, "
+                f"{self.interval_criteria=}, "
+                f"{self.termination_criteria=}, "
+                f"{self.jobs=})")
 
 
 def parse_criteria(pattern: str, strategy: MatchingStrategy = MatchingStrategy.EXACT):
-    return InstanceCriteria.parse_pattern(pattern, strategy)
+    return JobInstanceAggregatedCriteria.parse_pattern(pattern, strategy)

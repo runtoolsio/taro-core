@@ -3,7 +3,7 @@ import pytest
 from tarotools.taro import TerminationStatus
 from tarotools.taro.client import APIClient, APIErrorType, ErrorCode, ReleaseResult, StopResult
 from tarotools.taro.jobs.api import APIServer
-from tarotools.taro.jobs.criteria import JobRunIdCriterion, InstanceCriteria
+from tarotools.taro.jobs.criteria import JobRunIdCriterion, JobInstanceAggregatedCriteria
 from tarotools.taro.test.inst import TestJobInstance
 
 
@@ -41,8 +41,8 @@ def test_instances_api(client):
     assert instances['j1'].lifecycle.phase == TerminationStatus.RUNNING
     assert instances['j2'].lifecycle.phase == TerminationStatus.PENDING
 
-    multi_resp_j1 = client.read_instances(InstanceCriteria(JobRunIdCriterion('j1', '')))
-    multi_resp_j2 = client.read_instances(InstanceCriteria(JobRunIdCriterion('j2', '')))
+    multi_resp_j1 = client.read_instances(JobInstanceAggregatedCriteria(JobRunIdCriterion('j1', '')))
+    multi_resp_j2 = client.read_instances(JobInstanceAggregatedCriteria(JobRunIdCriterion('j2', '')))
     assert multi_resp_j1.responses[0].job_id == 'j1'
     assert multi_resp_j2.responses[0].job_id == 'j2'
 
@@ -51,7 +51,7 @@ def test_instances_api(client):
 
 def test_release_waiting_state(client):
     instances, errors = client.release_waiting_instances(TerminationStatus.PENDING,
-                                                         InstanceCriteria(JobRunIdCriterion('j2', '')))
+                                                         JobInstanceAggregatedCriteria(JobRunIdCriterion('j2', '')))
     assert not errors
     assert instances[0].instance_metadata.id.job_id == 'j2'
     assert instances[0].release_result == ReleaseResult.RELEASED
@@ -59,7 +59,7 @@ def test_release_waiting_state(client):
 
 def test_not_released_waiting_state(client):
     instances, errors = client.release_waiting_instances(TerminationStatus.QUEUED,
-                                                         InstanceCriteria(JobRunIdCriterion('*', '')))
+                                                         JobInstanceAggregatedCriteria(JobRunIdCriterion('*', '')))
     assert not errors
     assert not instances
 
@@ -77,7 +77,7 @@ def test_release_pending_group(client, job_instances):
 
 
 def test_stop(client, job_instances):
-    instances, errors = client.stop_instances(InstanceCriteria(JobRunIdCriterion('j1', '')))
+    instances, errors = client.stop_instances(JobInstanceAggregatedCriteria(JobRunIdCriterion('j1', '')))
     assert not errors
     assert len(instances) == 1
     assert instances[0].instance_metadata.id.job_id == 'j1'

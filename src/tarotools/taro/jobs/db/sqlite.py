@@ -43,7 +43,7 @@ def _build_where_clause(instance_match, alias=''):
     job_conditions = [f'{alias}job_id = "{j}"' for j in instance_match.job_ids]
 
     id_conditions = []
-    for c in instance_match.id_criteria:
+    for c in instance_match.job_run_id_criteria:
         if c.strategy == MatchingStrategy.ALWAYS_TRUE:
             id_conditions.clear()
             break
@@ -96,12 +96,12 @@ def _build_where_clause(instance_match, alias=''):
         int_conditions.append("(" + " AND ".join(conditions) + ")")
 
     state_conditions = []
-    if instance_match.state_criteria:
+    if instance_match.termination_criteria:
         if instance_match.phases and (Phase.TERMINAL not in instance_match.phases or len(instance_match.phases) > 1):
             raise ValueError("Phase matching was requested but it is not supported: " + str(instance_match.phases))
-        if instance_match.state_criteria.warning:
+        if instance_match.termination_criteria.warning:
             state_conditions.append(f"{alias}warnings IS NOT NULL")
-        if flag_groups := instance_match.state_criteria.flag_groups:
+        if flag_groups := instance_match.termination_criteria.flag_groups:
             states = ",".join(f"'{s.name}'" for group in flag_groups
                               for s in TerminationStatus.with_flags(*group))
             state_conditions.append(f"{alias}terminal_state IN ({states})")
