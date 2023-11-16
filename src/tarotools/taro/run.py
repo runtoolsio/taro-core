@@ -209,13 +209,27 @@ class Lifecycle:
 
     @classmethod
     def deserialize(cls, as_dict):
-        phase_runs = [PhaseRun.deserialize(run) for run in as_dict['phase_runs']]
+        phase_runs = []
+        for transition in as_dict['transitions']:
+            phase_name = transition['phase']
+            run_state = RunState[transition['state']]
+            started_at = util.parse_datetime(transition['ts'])
+
+            # Determine the ended_at for each phase
+            # The end of a phase is the start of the next phase, if there is one
+            if phase_runs:
+                phase_runs[-1].ended_at = started_at
+
+            phase_runs.append(PhaseRun(phase_name, run_state, started_at, None))
+
         return cls(*phase_runs)
 
     def serialize(self) -> Dict[str, Any]:
-        return {"phase_runs": [run.serialize() for run in self._phase_runs.values()]}
+        return {
+            "transitions": [{'phase': run.phase_name, 'state': run.run_state.name, 'ts': format_dt_iso(run.started_at)}
+                            for run in self._phase_runs.values()]}
 
-    def dto(self, include_empty=True) -> Dict[str, Any]:
+    def to_dto(self, include_empty=True) -> Dict[str, Any]:
         d = {
             "phase_runs": [run.serialize() for run in self._phase_runs.values()],
             "current_run": self.current_run.serialize(),
@@ -458,15 +472,15 @@ class WaitWrapperPhase(Phase):
 
 @dataclass
 class Fault:
-    fault_type: str
+    category: str
     reason: str
 
     def serialize(self):
-        return {"fault_type": self.fault_type, "reason": self.reason}
+        return {"cat": self.category, "reason": self.reason}
 
     @classmethod
     def deserialize(cls, as_dict):
-        return cls(as_dict["fault_type"], as_dict["reason"])
+        return cls(as_dict["cat"], as_dict["reason"])
 
 
 @dataclass

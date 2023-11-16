@@ -1,5 +1,9 @@
 TODO:
-state_changes > phase_changes
-terminal_state -> termination_status
 
-last.terminal_state -> last.termination_status
+New fields:
+instance_id
+
+Renames:
+state_changes > lifecycle
+terminal_state -> termination_status
+tracking -> track

@@ -115,7 +115,7 @@ class SQLite(PhaseTransitionObserver):
 
     def new_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal):
         if new_phase.run_state == RunState.ENDED:
-            self.store_runs(job_run)
+            self.store_job_runs(job_run)
 
     def check_tables_exist(self):
         # Version 5
@@ -126,18 +126,16 @@ class SQLite(PhaseTransitionObserver):
                          (job_id text,
                          run_id text,
                          instance_id text,
+                         user_params text,
                          created timestamp,
                          ended timestamp,
                          exec_time real,
-                         state_changes text,
+                         lifecycle text,
                          termination_status text,
-                         tracking text,
-                         result text,
-                         error_output text,
-                         warnings text,
+                         failure text,
                          error text,
-                         user_params text,
-                         parameters text,
+                         track text,
+                         warnings text,
                          misc text)
                          ''')
             c.execute('''CREATE INDEX job_id_index ON history (job_id)''')
@@ -253,30 +251,28 @@ class SQLite(PhaseTransitionObserver):
 
         return [to_job_stats(row) for row in c.fetchall()]
 
-    def store_runs(self, *job_inst):
-        def to_tuple(j):
-            return (j.job_id,
-                    j.run_id,
-                    format_dt_sql(j.lifecycle.created_at),
-                    format_dt_sql(j.lifecycle.last_transition_at),
-                    round(j.lifecycle.total_executing_time.total_seconds(), 3) if j.lifecycle.total_executing_time else None,
-                    json.dumps(
-                        [(phase.name, float(changed.timestamp())) for phase, changed in j.lifecycle.phase_transitions]),
-                    j.lifecycle.phase.name if j.lifecycle.phase.in_phase(
-                        InstancePhase.TERMINAL) else TerminationStatus.UNKNOWN.name,
-                    json.dumps(j.tracking.serialize(include_empty=False)) if j.tracking else None,
-                    j.status,
-                    json.dumps(j.error_output) if j.error_output else None,
-                    json.dumps(j.warnings) if j.warnings else None,
-                    json.dumps(j.run_error.serialize(include_empty=False)) if j.run_error else None,
-                    json.dumps(j.metadata.user_params) if j.metadata.user_params else None,
-                    json.dumps(j.metadata.phase_parameters) if j.metadata.phase_parameters else None,
-                    json.dumps({"pending_group": j.metadata.pending_group}) if j.metadata.pending_group else None
+    def store_job_runs(self, *job_runs):
+        def to_tuple(r):
+            lifecycle = r.run.lifecycle
+            return (r.job_id,
+                    r.run_id,
+                    r.metadata.instance_id,
+                    json.dumps(r.metadata.user_params) if r.metadata.user_params else None,
+                    format_dt_sql(lifecycle.created_at),
+                    format_dt_sql(lifecycle.ended_at),
+                    round(lifecycle.total_executing_time.total_seconds(), 3) if lifecycle.total_executing_time else None,
+                    json.dumps(lifecycle.serialize()),
+                    r.run.termination.status.name,
+                    json.dumps(r.run.termination.failure.serialize()) if r.run.termination.failure else None,
+                    json.dumps(r.run.termination.error.serialize()) if r.run.termination.error else None,
+                    json.dumps(r.tracking.serialize()) if r.tracking else None,
+                    json.dumps(r.tracking.warnings.serialize()) if r.tracking else None,  # TODO
+                    None
                     )
 
-        jobs = [to_tuple(j) for j in job_inst]
+        jobs = [to_tuple(j) for j in job_runs]
         self._conn.executemany(
-            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             jobs
         )
         self._conn.commit()

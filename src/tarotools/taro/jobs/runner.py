@@ -150,10 +150,10 @@ class RunnerJobInstance(JobInstance):
         if termination:
             if termination.error:
                 log.error(self._log('unexpected_error', "error_type=[{}] reason=[{}]",
-                                    termination.error.fault_type, termination.error.reason))
+                                    termination.error.category, termination.error.reason))
             elif termination.failure:
                 log.warning(self._log('run_failed', "error_type=[{}] reason=[{}]",
-                                      termination.failure.fault_type, termination.failure.reason))
+                                      termination.failure.category, termination.failure.reason))
 
             if termination.status.has_flag(Flag.NONSUCCESS):
                 non_success = True
