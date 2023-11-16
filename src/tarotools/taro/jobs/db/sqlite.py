@@ -9,15 +9,12 @@ import sqlite3
 from datetime import timezone
 from typing import List
 
-from tarotools.taro import cfg, InstanceLifecycle, TerminationStatus
+from tarotools.taro import cfg
 from tarotools.taro import paths
-from tarotools.taro.execution import Flag
-from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobRun, JobRuns, JobRunId,
-                                          JobInstanceMetadata, InstancePhase)
+from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobRun, JobRuns, JobInstanceMetadata)
 from tarotools.taro.jobs.job import JobStats
 from tarotools.taro.jobs.persistence import SortCriteria
-from tarotools.taro.jobs.track import TrackedTaskInfo
-from tarotools.taro.run import FailedRun, RunState
+from tarotools.taro.run import RunState, Lifecycle, RunFailure, RunError, Run, TerminationInfo, TerminationStatus, Flag
 from tarotools.taro.util import MatchingStrategy, format_dt_sql, parse_dt_sql
 
 log = logging.getLogger(__name__)
@@ -167,20 +164,15 @@ class SQLite(PhaseTransitionObserver):
         c = self._conn.execute(statement, (limit, offset))
 
         def to_job_info(t):
-            phase_changes = ((InstancePhase[phase], datetime.datetime.fromtimestamp(changed, tz=timezone.utc))
-                             for phase, changed in json.loads(t[5]))
-            lifecycle = InstanceLifecycle(*phase_changes)
-            tracking = TrackedTaskInfo.from_dict(json.loads(t[7])) if t[7] else None
-            status = t[8]
-            error_output = json.loads(t[9]) if t[9] else tuple()
-            warnings = json.loads(t[10]) if t[10] else dict()
-            exec_error = FailedRun.from_dict(json.loads(t[11])) if t[11] else None
-            user_params = json.loads(t[12]) if t[12] else dict()
-            parameters = tuple((tuple(x) for x in json.loads(t[13]))) if t[13] else tuple()
-            pending_group = json.loads(t[14]).get("pending_group") if t[14] else None
-            metadata = JobInstanceMetadata(JobRunId(t[0], t[1]), parameters, user_params, pending_group)
+            metadata = JobInstanceMetadata(t[0], t[1], t[2], {}, json.loads(t[3]) if t[3] else dict())
+            ended_at = parse_dt_sql(t[5])
+            lifecycle = Lifecycle.deserialize(json.loads(t[7]))
+            term_status = TerminationStatus[t[8]]
+            failure = RunFailure.deserialize(json.loads(t[9])) if t[9] else None
+            error = RunError.deserialize(json.loads(t[10])) if t[10] else None
+            run = Run((), lifecycle, TerminationInfo(term_status, ended_at, failure, error))
 
-            return JobRun(metadata, lifecycle, tracking, status, error_output, warnings, exec_error)
+            return JobRun(metadata, run, None)
 
         return JobRuns((to_job_info(row) for row in c.fetchall()))
 
@@ -204,8 +196,8 @@ class SQLite(PhaseTransitionObserver):
                            ((datetime.datetime.now(tz=timezone.utc) - max_age),))
         self._conn.commit()
 
-    def read_stats(self, instance_match=None) -> List[JobStats]:
-        where = _build_where_clause(instance_match, alias='h')
+    def read_stats(self, run_match=None) -> List[JobStats]:
+        where = _build_where_clause(run_match, alias='h')
         failure_statuses = ",".join([f"'{s.name}'" for s in TerminationStatus.with_all_flags(Flag.FAILURE)])
         sql = f'''
             SELECT

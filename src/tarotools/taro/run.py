@@ -475,6 +475,10 @@ class Fault:
     category: str
     reason: str
 
+
+@dataclass
+class RunFailure(Fault):
+
     def serialize(self):
         return {"cat": self.category, "reason": self.reason}
 
@@ -484,13 +488,14 @@ class Fault:
 
 
 @dataclass
-class RunFailure(Fault):
-    pass
-
-
-@dataclass
 class RunError(Fault):
-    pass
+
+    def serialize(self):
+        return {"cat": self.category, "reason": self.reason}
+
+    @classmethod
+    def deserialize(cls, as_dict):
+        return cls(as_dict["cat"], as_dict["reason"])
 
 
 class FailedRun(Exception):
