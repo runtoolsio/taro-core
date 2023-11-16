@@ -28,7 +28,7 @@ def test_store_and_fetch(sut):
     inst = i('j1', 'i1', (('p1', 'v1'),), {'u1': 'v2'}, lc_failed(), MutableTrackedTask('task1'), exec_error=error)  # TODO add more fields
 
     sut.store_runs(inst)
-    jobs = sut.read_runs()
+    jobs = sut.read_job_runs()
 
     assert inst == jobs[0]
 
@@ -43,7 +43,7 @@ def test_last(sut):
         j(1, 'j1-1'), j(2, 'j2-1'), j(1, 'j1-2'), j(3, 'j3-1'),
         j(2, 'j2-2'))  # Stored chronologically
 
-    jobs = sut.read_runs(last=True)
+    jobs = sut.read_job_runs(last=True)
     assert len(jobs) == 3
     assert [job.run_id for job in jobs] == ['j1-2', 'j3-1', 'j2-2']
 
@@ -51,17 +51,17 @@ def test_last(sut):
 def test_sort(sut):
     sut.store_runs(j(1), j(2, delta=1), j(3, delta=-1))
 
-    jobs = sut.read_runs()
+    jobs = sut.read_job_runs()
     assert jobs.job_ids == ['j3', 'j1', 'j2']
 
-    jobs = sut.read_runs(asc=False)
+    jobs = sut.read_job_runs(asc=False)
     assert jobs.job_ids == ['j2', 'j1', 'j3']
 
 
 def test_limit(sut):
     sut.store_runs(j(1), j(2, delta=1), j(3, delta=-1))
 
-    jobs = sut.read_runs(limit=1)
+    jobs = sut.read_job_runs(limit=1)
     assert len(jobs) == 1
     assert jobs[0].job_id == 'j3'
 
@@ -69,7 +69,7 @@ def test_limit(sut):
 def test_offset(sut):
     sut.store_runs(j(1), j(2, delta=1), j(3, delta=-1))
 
-    jobs = sut.read_runs(offset=2)
+    jobs = sut.read_job_runs(offset=2)
     assert len(jobs) == 1
     assert jobs[0].job_id == 'j2'
 
@@ -77,30 +77,30 @@ def test_offset(sut):
 def test_job_id_match(sut):
     sut.store_runs(j(1, 'i1'), j(12, 'i12'), j(11, 'i11'), j(111, 'i111'), j(121, 'i121'))
 
-    assert len(sut.read_runs(parse_criteria('j1'))) == 1
-    assert len(sut.read_runs(parse_criteria('j1@'))) == 1
-    assert len(sut.read_runs(parse_criteria('j1@i1'))) == 1
-    assert len(sut.read_runs(parse_criteria('@i1'))) == 1
-    assert len(sut.read_runs(parse_criteria('i1'))) == 1
+    assert len(sut.read_job_runs(parse_criteria('j1'))) == 1
+    assert len(sut.read_job_runs(parse_criteria('j1@'))) == 1
+    assert len(sut.read_job_runs(parse_criteria('j1@i1'))) == 1
+    assert len(sut.read_job_runs(parse_criteria('@i1'))) == 1
+    assert len(sut.read_job_runs(parse_criteria('i1'))) == 1
 
-    assert len(sut.read_runs(parse_criteria('j1', MatchingStrategy.PARTIAL))) == 5
-    assert len(sut.read_runs(parse_criteria('j1@', MatchingStrategy.PARTIAL))) == 5
-    assert len(sut.read_runs(parse_criteria('j1@i1', MatchingStrategy.PARTIAL))) == 5
-    assert len(sut.read_runs(parse_criteria('@i1', MatchingStrategy.PARTIAL))) == 5
-    assert len(sut.read_runs(parse_criteria('i1', MatchingStrategy.PARTIAL))) == 5
+    assert len(sut.read_job_runs(parse_criteria('j1', MatchingStrategy.PARTIAL))) == 5
+    assert len(sut.read_job_runs(parse_criteria('j1@', MatchingStrategy.PARTIAL))) == 5
+    assert len(sut.read_job_runs(parse_criteria('j1@i1', MatchingStrategy.PARTIAL))) == 5
+    assert len(sut.read_job_runs(parse_criteria('@i1', MatchingStrategy.PARTIAL))) == 5
+    assert len(sut.read_job_runs(parse_criteria('i1', MatchingStrategy.PARTIAL))) == 5
 
-    assert len(sut.read_runs(parse_criteria('j1?1', MatchingStrategy.FN_MATCH))) == 2
-    assert len(sut.read_runs(parse_criteria('j1?1@', MatchingStrategy.FN_MATCH))) == 2
-    assert len(sut.read_runs(parse_criteria('j1?1@i1?1', MatchingStrategy.FN_MATCH))) == 2
-    assert len(sut.read_runs(parse_criteria('@i1?1', MatchingStrategy.FN_MATCH))) == 2
-    assert len(sut.read_runs(parse_criteria('i1?1', MatchingStrategy.FN_MATCH))) == 2
+    assert len(sut.read_job_runs(parse_criteria('j1?1', MatchingStrategy.FN_MATCH))) == 2
+    assert len(sut.read_job_runs(parse_criteria('j1?1@', MatchingStrategy.FN_MATCH))) == 2
+    assert len(sut.read_job_runs(parse_criteria('j1?1@i1?1', MatchingStrategy.FN_MATCH))) == 2
+    assert len(sut.read_job_runs(parse_criteria('@i1?1', MatchingStrategy.FN_MATCH))) == 2
+    assert len(sut.read_job_runs(parse_criteria('i1?1', MatchingStrategy.FN_MATCH))) == 2
 
 
 def test_cleanup(sut):
     sut.store_runs(j(1, delta=-120), j(2), j(3, delta=-240), j(4, delta=-10), j(5, delta=-60))
 
     sut.clean_up(1, parse_iso8601_duration('PT50S'))
-    jobs = sut.read_runs()
+    jobs = sut.read_job_runs()
     assert len(jobs) == 1
     assert jobs[0].job_id == 'j2'
 
@@ -111,24 +111,24 @@ def test_interval(sut):
     sut.store_runs(j(3, created=dt(2023, 4, 22), completed=dt(2023, 4, 22, 23, 59, 58)))
 
     ic = IntervalCriterion(run_state=LifecycleEvent.ENDED, from_dt=dt(2023, 4, 23))
-    jobs = sut.read_runs(JobRunAggregatedCriteria(interval_criteria=ic))
+    jobs = sut.read_job_runs(JobRunAggregatedCriteria(interval_criteria=ic))
     assert jobs.job_ids == ['j1']
 
     ic = IntervalCriterion(run_state=LifecycleEvent.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59))
-    jobs = sut.read_runs(JobRunAggregatedCriteria(interval_criteria=ic))
+    jobs = sut.read_job_runs(JobRunAggregatedCriteria(interval_criteria=ic))
     assert sorted(jobs.job_ids) == ['j2', 'j3']
 
     ic = IntervalCriterion(run_state=LifecycleEvent.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59), include_to=False)
-    jobs = sut.read_runs(JobRunAggregatedCriteria(interval_criteria=ic))
+    jobs = sut.read_job_runs(JobRunAggregatedCriteria(interval_criteria=ic))
     assert jobs.job_ids == ['j3']
 
     ic = IntervalCriterion(run_state=LifecycleEvent.ENDED, from_dt=dt(2023, 4, 22, 23, 59, 59), to_dt=dt(2023, 4, 23))
-    jobs = sut.read_runs(JobRunAggregatedCriteria(interval_criteria=ic))
+    jobs = sut.read_job_runs(JobRunAggregatedCriteria(interval_criteria=ic))
     assert sorted(jobs.job_ids) == ['j1', 'j2']
 
 
 def test_warning(sut):
     sut.store_runs(j(1), j(2, warnings={'w1': 1}), j(3))
-    jobs = sut.read_runs(JobRunAggregatedCriteria(state_criteria=TerminationCriterion(warning=True)))
+    jobs = sut.read_job_runs(JobRunAggregatedCriteria(state_criteria=TerminationCriterion(warning=True)))
 
     assert jobs.job_ids == ['j2']

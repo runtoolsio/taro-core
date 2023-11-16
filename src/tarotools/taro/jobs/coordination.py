@@ -7,7 +7,7 @@ from threading import Condition, Event, Lock
 from tarotools import taro
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.criteria import JobRunIdCriterion, TerminationCriterion, JobRunAggregatedCriteria
-from tarotools.taro.jobs.instance import JobInstances
+from tarotools.taro.jobs.instance import JobRuns
 from tarotools.taro.listening import PhaseReceiver, InstancePhaseEventObserver
 from tarotools.taro.run import RunState, Phase, TerminationStatus
 
@@ -61,7 +61,7 @@ class NoOverlapPhase(Phase):
 
     def run(self):
         # TODO Phase params criteria
-        runs, _ = taro.client.read_instances()
+        runs, _ = taro.client.get_active_runs()
         if any(r for r in runs if self._in_no_overlap_phase(r)):
             return TerminationStatus.INVALID_OVERLAP
 
@@ -109,7 +109,7 @@ class DependencyPhase(Phase):
         return self._parameters
 
     def run(self):
-        instances, _ = taro.client.read_instances()
+        instances, _ = taro.client.get_active_runs()
         if not any(i for i in instances if self._dependency_match.matches(i)):
             return TerminationStatus.UNSATISFIED
 
@@ -393,9 +393,9 @@ class ExecutionQueue(Queue, InstancePhaseEventObserver):
             state_criteria=TerminationCriterion(phases={Phase.QUEUED, Phase.EXECUTING}),
             param_sets=set(self._parameters)
         )
-        jobs, _ = taro.client.read_instances(criteria)
+        jobs, _ = taro.client.get_active_runs(criteria)
 
-        group_jobs_sorted = JobInstances(sorted(jobs, key=RunState.CREATED))
+        group_jobs_sorted = JobRuns(sorted(jobs, key=RunState.CREATED))
         next_count = self._max_executions - len(group_jobs_sorted.executing)
         if next_count <= 0:
             return False

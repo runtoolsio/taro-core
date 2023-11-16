@@ -278,7 +278,7 @@ class JobRun:
         return self.metadata.run_id
 
 
-class JobInstances(list):
+class JobRuns(list):
     """
     List of job instances with auxiliary methods.
     """

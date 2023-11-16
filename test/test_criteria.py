@@ -10,8 +10,8 @@ def test_interval_utc_conversion():
 
 
 def test_termination_criteria():
-    matching = TerminationCriterion(flag_groups=[{Flag.SUCCESS}, {Flag.UNEXECUTED, Flag.NONSUCCESS}])
-    not_matching = TerminationCriterion(flag_groups=[{Flag.SUCCESS}, {Flag.UNEXECUTED, Flag.ABORTED}])
+    matching = TerminationCriterion(status_flag_groups=[{Flag.SUCCESS}, {Flag.UNEXECUTED, Flag.NONSUCCESS}])
+    not_matching = TerminationCriterion(status_flag_groups=[{Flag.SUCCESS}, {Flag.UNEXECUTED, Flag.ABORTED}])
 
     tested_info = TerminationInfo(TerminationStatus.INVALID_OVERLAP, utc_now())
     assert matching(tested_info)

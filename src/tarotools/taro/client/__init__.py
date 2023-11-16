@@ -149,16 +149,16 @@ class SignalProceedResponse(JobInstanceResponse):
     executed: bool
 
 
-def read_instances(instance_match=None) -> AggregatedResponse[JobRun]:
+def get_active_runs(run_match=None) -> AggregatedResponse[JobRun]:
     """
     Retrieves instance information for all active job instances for the current user.
 
     Args:
-        instance_match (InstanceMatchCriteria, optional):
+        run_match (JobRunAggregatedCriteria, optional):
             A filter for instance matching. If provided, only instances that match will be included.
 
     Returns:
-        A container holding the :class:`JobInst` objects that represent job instances.
+        A container holding the :class:`JobRun` objects that represent job instances.
         It also includes any errors that may have happened, each one related to a specific server API.
 
     Raises:
@@ -166,7 +166,7 @@ def read_instances(instance_match=None) -> AggregatedResponse[JobRun]:
     """
 
     with APIClient() as client:
-        return client.read_instances(instance_match)
+        return client.get_active_runs(run_match)
 
 
 def release_waiting_instances(waiting_state, instance_match) -> AggregatedResponse[ReleaseResponse]:
@@ -210,12 +210,12 @@ def release_pending_instances(pending_group, instance_match=None) -> AggregatedR
         return client.release_pending_instances(pending_group, instance_match)
 
 
-def stop_instances(instance_match) -> AggregatedResponse[StopResponse]:
+def stop_instances(run_match) -> AggregatedResponse[StopResponse]:
     """
     This function stops job instances that match the provided criteria.
 
     Args:
-        instance_match (InstanceMatchCriteria, mandatory):
+        run_match (InstanceMatchCriteria, mandatory):
             The operation will affect only instances matching these criteria.
 
     Returns:
@@ -228,15 +228,15 @@ def stop_instances(instance_match) -> AggregatedResponse[StopResponse]:
     """
 
     with APIClient() as client:
-        return client.stop_instances(instance_match)
+        return client.stop_instances(run_match)
 
 
-def read_tail(instance_match=None) -> AggregatedResponse[TailResponse]:
+def read_tail(run_match=None) -> AggregatedResponse[TailResponse]:
     """
     This function requests the last lines of the output from job instances that optionally match the provided criteria.
 
     Args:
-        instance_match (InstanceMatchCriteria, optional):
+        run_match (InstanceMatchCriteria, optional):
             The operation will affect only instances matching these criteria.
             If not provided, the tail of all instances is read.
 
@@ -246,7 +246,7 @@ def read_tail(instance_match=None) -> AggregatedResponse[TailResponse]:
     """
 
     with APIClient() as client:
-        return client.read_tail(instance_match)
+        return client.read_tail(run_match)
 
 
 def signal_dispatch(instance_match) -> AggregatedResponse[SignalProceedResponse]:
@@ -277,23 +277,23 @@ class APIClient(SocketClient):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def send_request(self, api: str, instance_match=None, req_body=None,
+    def send_request(self, api: str, run_match=None, req_body=None,
                      resp_mapper: Callable[[InstanceResponse], T] = _no_resp_mapper) -> AggregatedResponse[T]:
         if not req_body:
             req_body = {}
         req_body["request_metadata"] = {"api": api}
-        if instance_match and instance_match.job_run_id_criteria:
-            req_body["request_metadata"]["instance_match"] = instance_match.serialize()
+        if run_match and run_match.job_run_id_criteria:
+            req_body["request_metadata"]["run_match"] = run_match.serialize()
 
         server_responses: List[ServerResponse] = self.communicate(json.dumps(req_body))
         return _process_responses(server_responses, resp_mapper)
 
-    def read_instances(self, instance_match=None) -> AggregatedResponse[JobRun]:
+    def get_active_runs(self, run_match=None) -> AggregatedResponse[JobRun]:
         """
         Retrieves instance information for all active job instances for the current user.
 
         Args:
-            instance_match (InstanceMatchCriteria, optional):
+            run_match (JobRunAggregatedCriteria, optional):
                 A filter for instance matching. If provided, only instances that match will be included.
 
         Returns:
@@ -305,9 +305,9 @@ class APIClient(SocketClient):
         """
 
         def resp_mapper(inst_resp: InstanceResponse) -> JobRun:
-            return JobRun.deserialize(inst_resp.body["job_instance"])
+            return JobRun.deserialize(inst_resp.body["job_run"])
 
-        return self.send_request('/instances', instance_match, resp_mapper=resp_mapper)
+        return self.send_request('/runs', run_match, resp_mapper=resp_mapper)
 
     def release_waiting_instances(self, waiting_state, instance_match) -> AggregatedResponse[ReleaseResponse]:
         """

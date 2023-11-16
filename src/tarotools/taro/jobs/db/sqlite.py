@@ -11,10 +11,8 @@ from typing import List
 
 from tarotools.taro import cfg, InstanceLifecycle, TerminationStatus
 from tarotools.taro import paths
-from tarotools.taro.execution import Flag, \
-    Phase
-from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobRun, JobInstances, JobRunId,
-                                          LifecycleEvent,
+from tarotools.taro.execution import Flag
+from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobRun, JobRuns, JobRunId,
                                           JobInstanceMetadata, InstancePhase)
 from tarotools.taro.jobs.job import JobStats
 from tarotools.taro.jobs.persistence import SortCriteria
@@ -32,18 +30,18 @@ def create_persistence():
     return sqlite_
 
 
-def _build_where_clause(instance_match, alias=''):
+def _build_where_clause(run_match, alias=''):
     # TODO Post fetch filter for criteria not supported in WHERE (instance parameters, etc.)
-    if not instance_match:
+    if not run_match:
         return ""
 
     if alias and not alias.endswith('.'):
         alias = alias + "."
 
-    job_conditions = [f'{alias}job_id = "{j}"' for j in instance_match.job_ids]
+    job_conditions = [f'{alias}job_id = "{j}"' for j in run_match.jobs]
 
     id_conditions = []
-    for c in instance_match.job_run_id_criteria:
+    for c in run_match.job_run_id_criteria:
         if c.strategy == MatchingStrategy.ALWAYS_TRUE:
             id_conditions.clear()
             break
@@ -64,22 +62,22 @@ def _build_where_clause(instance_match, alias=''):
                 raise ValueError(f"Matching strategy {c.strategy} is not supported")
         if c.run_id:
             if c.strategy == MatchingStrategy.PARTIAL:
-                conditions.append(f'{alias}instance_id GLOB "*{c.run_id}*"')
+                conditions.append(f'{alias}run_id GLOB "*{c.run_id}*"')
             elif c.strategy == MatchingStrategy.FN_MATCH:
-                conditions.append(f'{alias}instance_id GLOB "{c.run_id}"')
+                conditions.append(f'{alias}run_id GLOB "{c.run_id}"')
             elif c.strategy == MatchingStrategy.EXACT:
-                conditions.append(f'{alias}instance_id = "{c.run_id}"')
+                conditions.append(f'{alias}run_id = "{c.run_id}"')
             else:
                 raise ValueError(f"Matching strategy {c.strategy} is not supported")
 
         id_conditions.append(op.join(conditions))
 
-    int_criteria = instance_match.interval_criteria
+    int_criteria = run_match.interval_criteria
     int_conditions = []
     for c in int_criteria:
-        if c.run_state == LifecycleEvent.CREATED:
+        if c.run_state == RunState.CREATED:
             e = f'{alias}created'
-        elif c.run_state == LifecycleEvent.ENDED:
+        elif c.run_state == RunState.ENDED:
             e = f'{alias}ended'
         else:
             continue
@@ -95,18 +93,16 @@ def _build_where_clause(instance_match, alias=''):
 
         int_conditions.append("(" + " AND ".join(conditions) + ")")
 
-    state_conditions = []
-    if instance_match.termination_criteria:
-        if instance_match.phases and (Phase.TERMINAL not in instance_match.phases or len(instance_match.phases) > 1):
-            raise ValueError("Phase matching was requested but it is not supported: " + str(instance_match.phases))
-        if instance_match.termination_criteria.warning:
-            state_conditions.append(f"{alias}warnings IS NOT NULL")
-        if flag_groups := instance_match.termination_criteria.flag_groups:
-            states = ",".join(f"'{s.name}'" for group in flag_groups
-                              for s in TerminationStatus.with_flags(*group))
-            state_conditions.append(f"{alias}terminal_state IN ({states})")
+    term_conditions = []
+    if run_match.termination_criteria:
+        # TODO
+        # if run_match.termination_criteria.warning:
+        #     term_conditions.append(f"{alias}warnings IS NOT NULL")
+        if f_groups := run_match.termination_criteria.status_flag_groups:
+            statuses = ",".join(f"'{s.name}'" for flags in f_groups for s in TerminationStatus.with_all_flags(*flags))
+            term_conditions.append(f"{alias}termination_status IN ({statuses})")
 
-    all_conditions_list = (job_conditions, id_conditions, int_conditions, state_conditions)
+    all_conditions_list = (job_conditions, id_conditions, int_conditions, term_conditions)
     all_conditions_str = ["(" + " OR ".join(c_list) + ")" for c_list in all_conditions_list if c_list]
 
     return " WHERE {conditions}".format(conditions=" AND ".join(all_conditions_str))
@@ -122,18 +118,19 @@ class SQLite(PhaseTransitionObserver):
             self.store_runs(job_run)
 
     def check_tables_exist(self):
-        # Version 4
+        # Version 5
         c = self._conn.cursor()
         c.execute(''' SELECT count(name) FROM sqlite_master WHERE type='table' AND name='history' ''')
         if c.fetchone()[0] != 1:
             c.execute('''CREATE TABLE history
                          (job_id text,
+                         run_id text,
                          instance_id text,
                          created timestamp,
                          ended timestamp,
                          exec_time real,
                          state_changes text,
-                         terminal_state text,
+                         termination_status text,
                          tracking text,
                          result text,
                          error_output text,
@@ -149,8 +146,8 @@ class SQLite(PhaseTransitionObserver):
             log.debug('event=[table_created] table=[history]')
             self._conn.commit()
 
-    def read_runs(self, instance_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, offset=-1, last=False) \
-            -> JobInstances:
+    def read_job_runs(self, run_match=None, sort=SortCriteria.ENDED, *, asc=True, limit=-1, offset=-1, last=False) \
+            -> JobRuns:
         def sort_exp():
             if sort == SortCriteria.CREATED:
                 return 'h.created'
@@ -161,7 +158,7 @@ class SQLite(PhaseTransitionObserver):
             raise ValueError(sort)
 
         statement = "SELECT * FROM history h"
-        statement += _build_where_clause(instance_match, alias='h')
+        statement += _build_where_clause(run_match, alias='h')
 
         if last:
             statement += " GROUP BY h.job_id HAVING ROWID = max(ROWID) "
@@ -187,7 +184,7 @@ class SQLite(PhaseTransitionObserver):
 
             return JobRun(metadata, lifecycle, tracking, status, error_output, warnings, exec_error)
 
-        return JobInstances((to_job_info(row) for row in c.fetchall()))
+        return JobRuns((to_job_info(row) for row in c.fetchall()))
 
     def clean_up(self, max_records, max_age):
         if max_records >= 0:
@@ -211,7 +208,7 @@ class SQLite(PhaseTransitionObserver):
 
     def read_stats(self, instance_match=None) -> List[JobStats]:
         where = _build_where_clause(instance_match, alias='h')
-        failure_statuses = ",".join([f"'{s.name}'" for s in TerminationStatus.with_flags(Flag.FAILURE)])
+        failure_statuses = ",".join([f"'{s.name}'" for s in TerminationStatus.with_all_flags(Flag.FAILURE)])
         sql = f'''
             SELECT
                 h.job_id,
@@ -222,13 +219,13 @@ class SQLite(PhaseTransitionObserver):
                 avg(h.exec_time) AS "average_time",
                 max(h.exec_time) AS "slowest_time",
                 last.exec_time AS "last_time",
-                last.terminal_state AS "last_term_status",
-                COUNT(CASE WHEN h.terminal_state IN ({failure_statuses}) THEN 1 ELSE NULL END) AS failed,
+                last.termination_status AS "last_term_status",
+                COUNT(CASE WHEN h.termination_status IN ({failure_statuses}) THEN 1 ELSE NULL END) AS failed,
                 COUNT(h.warnings) AS warnings
             FROM
                 history h
             INNER JOIN
-                (SELECT job_id, exec_time, terminal_state FROM history h {where} GROUP BY job_id HAVING ROWID = max(ROWID)) AS last
+                (SELECT job_id, exec_time, termination_status FROM history h {where} GROUP BY job_id HAVING ROWID = max(ROWID)) AS last
                 ON h.job_id = last.job_id
             {where}
             GROUP BY

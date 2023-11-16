@@ -121,7 +121,16 @@ class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
         return obj
 
     @classmethod
-    def with_flags(cls, *flags):
+    def with_all_flags(cls, *flags) -> List['TerminationStatus']:
+        """
+        Creates a list of `TerminationStatus` instances that contain all specified flags.
+
+        Args:
+            *flags: A variable number of flag arguments to be checked in each TerminationStatus.
+
+        Returns:
+            List[TerminationStatus]: A list of statuses where each status contains all the provided flags.
+        """
         return [term_status for term_status in cls if all(flag in term_status.flags for flag in flags)]
 
     def __init__(self, flags: Set[TerminationStatusFlag]):

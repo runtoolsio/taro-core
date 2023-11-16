@@ -296,30 +296,30 @@ class TerminationCriterion(MatchCriteria[TerminationInfo]):
             Default is None.
     """
 
-    flag_groups: Iterable[Set[TerminationStatusFlag]] = ()
+    status_flag_groups: Iterable[Set[TerminationStatusFlag]] = ()
 
     @classmethod
     def deserialize(cls, data):
-        flag_groups = data.get('flag_groups', ())
-        return cls(flag_groups)
+        status_flag_groups = data.get('status_flag_groups', ())
+        return cls(status_flag_groups)
 
     def serialize(self):
         return {
-            "flag_groups": self.flag_groups,
+            "status_flag_groups": self.status_flag_groups,
         }
 
     def __call__(self, term_info):
         return self.matches(term_info)
 
     def matches(self, term_info):
-        if self.flag_groups and \
-                not any(all(f in term_info.status.flags for f in g) for g in self.flag_groups):
+        if self.status_flag_groups and \
+                not any(all(f in term_info.status.flags for f in g) for g in self.status_flag_groups):
             return False
 
         return True
 
     def __bool__(self):
-        return bool(self.flag_groups)
+        return bool(self.status_flag_groups)
 
 
 class JobRunAggregatedCriteria(MatchCriteria[JobRun]):
@@ -328,6 +328,9 @@ class JobRunAggregatedCriteria(MatchCriteria[JobRun]):
     An instance must meet all the provided criteria to be considered a match.
 
     Properties:
+        jobs (List[Job]):
+            A list of specific job IDs for matching.
+            An instance matches if its job ID is in this list.
         job_run_id_criteria (List[JobRunIdCriterion]):
             A list of criteria for matching based on job run IDs.
             An instance matches if it meets any of the criteria in this list.
@@ -337,56 +340,52 @@ class JobRunAggregatedCriteria(MatchCriteria[JobRun]):
         termination_criteria (List[TerminationCriterion]):
             A list of criteria for matching based on termination conditions.
             An instance matches if it meets any of the criteria in this list.
-        jobs (List[Job]):
-            A list of specific job IDs for matching.
-            An instance matches if its job ID is in this list.
 
     The class provides methods to check whether a given job instance matches the criteria,
     serialize and deserialize the criteria, and parse criteria from a pattern.
     """
 
     def __init__(self):
+        self.jobs = []
         self.job_run_id_criteria = []
         self.interval_criteria = []
         self.termination_criteria = []
-        self.jobs = []
 
     @classmethod
     def deserialize(cls, as_dict):
         new = cls()
+        new.jobs = as_dict.get('jobs', [])
         new.job_run_id_criteria = [JobRunIdCriterion.deserialize(c) for c in as_dict.get('job_run_id_criteria', ())]
         new.interval_criteria = [IntervalCriterion.deserialize(c) for c in as_dict.get('interval_criteria', ())]
-        new.termination_criteria = [TerminationCriterion.deserialize(c) for c in
-                                    as_dict.get('termination_criteria', ())]
-        new.jobs = as_dict.get('jobs', [])
+        new.termination_criteria = [TerminationCriterion.deserialize(c) for c in as_dict.get('termination_criteria', ())]
         return new
 
     def serialize(self):
         return {
+            'jobs': self.jobs,
             'job_run_id_criteria': [c.serialize() for c in self.job_run_id_criteria],
             'interval_criteria': [c.serialize() for c in self.interval_criteria],
             'state_criteria': [c.serialize() for c in self.termination_criteria],
-            'jobs': self.jobs,
         }
 
     @classmethod
     def parse_pattern(cls, pattern: str, strategy: MatchingStrategy = MatchingStrategy.EXACT):
         # TODO
         return cls()
-    
+
     def __iadd__(self, criterion):
         return self.add(criterion)
-    
+
     def add(self, criterion):
         match criterion:
+            case str():
+                self.jobs.append(criterion)
             case JobRunIdCriterion():
                 self.job_run_id_criteria.append(criterion)
             case IntervalCriterion():
                 self.interval_criteria.append(criterion)
             case TerminationCriterion():
                 self.termination_criteria.append(criterion)
-            case str():
-                self.jobs.append(criterion)
             case _:
                 raise ValueError("Invalid criterion type")
 
