@@ -14,7 +14,8 @@ from tarotools.taro import paths
 from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobRun, JobRuns, JobInstanceMetadata)
 from tarotools.taro.jobs.job import JobStats
 from tarotools.taro.jobs.persistence import SortCriteria
-from tarotools.taro.run import RunState, Lifecycle, RunFailure, RunError, Run, TerminationInfo, TerminationStatus, Flag
+from tarotools.taro.run import RunState, Lifecycle, PhaseMetadata, RunFailure, RunError, Run, TerminationInfo, \
+    TerminationStatus, Outcome
 from tarotools.taro.util import MatchingStrategy, format_dt_sql, parse_dt_sql
 
 log = logging.getLogger(__name__)
@@ -173,11 +174,12 @@ class SQLite(PhaseTransitionObserver):
         def to_job_info(t):
             metadata = JobInstanceMetadata(t[0], t[1], t[2], {}, json.loads(t[3]) if t[3] else dict())
             ended_at = parse_dt_sql(t[5])
-            lifecycle = Lifecycle.deserialize(json.loads(t[7]))
-            term_status = TerminationStatus[t[8]]
-            failure = RunFailure.deserialize(json.loads(t[9])) if t[9] else None
-            error = RunError.deserialize(json.loads(t[10])) if t[10] else None
-            run = Run((), lifecycle, TerminationInfo(term_status, ended_at, failure, error))
+            phases = tuple(PhaseMetadata.deserialize(p) for p in json.loads(t[7]))
+            lifecycle = Lifecycle.deserialize(json.loads(t[8]))
+            term_status = TerminationStatus[t[9]]
+            failure = RunFailure.deserialize(json.loads(t[10])) if t[10] else None
+            error = RunError.deserialize(json.loads(t[11])) if t[11] else None
+            run = Run(phases, lifecycle, TerminationInfo(term_status, ended_at, failure, error))
 
             return JobRun(metadata, run, None)
 
@@ -205,7 +207,6 @@ class SQLite(PhaseTransitionObserver):
 
     def read_stats(self, run_match=None) -> List[JobStats]:
         where = _build_where_clause(run_match, alias='h')
-        failure_statuses = ",".join([f"'{s.name}'" for s in TerminationStatus.with_all_flags(Flag.FAULT)])
         sql = f'''
             SELECT
                 h.job_id,
@@ -217,7 +218,7 @@ class SQLite(PhaseTransitionObserver):
                 max(h.exec_time) AS "slowest_time",
                 last.exec_time AS "last_time",
                 last.termination_status AS "last_term_status",
-                COUNT(CASE WHEN h.termination_status IN ({failure_statuses}) THEN 1 ELSE NULL END) AS failed,
+                COUNT(CASE WHEN h.termination_status BETWEEN {Outcome.FAULT.value.start} AND {Outcome.FAULT.value.stop} THEN 1 ELSE NULL END) AS failed,
                 COUNT(h.warnings) AS warnings
             FROM
                 history h
@@ -259,7 +260,9 @@ class SQLite(PhaseTransitionObserver):
                     json.dumps(r.metadata.user_params) if r.metadata.user_params else None,
                     format_dt_sql(lifecycle.created_at),
                     format_dt_sql(lifecycle.ended_at),
-                    round(lifecycle.total_executing_time.total_seconds(), 3) if lifecycle.total_executing_time else None,
+                    round(lifecycle.total_executing_time.total_seconds(),
+                          3) if lifecycle.total_executing_time else None,
+                    json.dumps((p.serialize() for p in r.run.phases)),
                     json.dumps(lifecycle.serialize()),
                     r.run.termination.status.value,
                     json.dumps(r.run.termination.failure.serialize()) if r.run.termination.failure else None,
@@ -271,7 +274,7 @@ class SQLite(PhaseTransitionObserver):
 
         jobs = [to_tuple(j) for j in job_runs]
         self._conn.executemany(
-            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO history VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             jobs
         )
         self._conn.commit()

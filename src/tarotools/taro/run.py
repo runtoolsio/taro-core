@@ -353,10 +353,13 @@ class PhaseMetadata:
 
     @classmethod
     def deserialize(cls, as_dict) -> 'PhaseMetadata':
-        return cls(as_dict["phase"], RunState[as_dict["state"]], as_dict["params"] or {})
+        return cls(as_dict["phase"], RunState[as_dict["state"]], as_dict.get("params") or {})
 
     def serialize(self):
-        return {"phase": self.phase_name, "state": self.run_state.value, "params": self.parameters}
+        d = {"phase": self.phase_name, "state": self.run_state.value}
+        if self.parameters:
+            d["params"] = self.parameters
+        return d
 
 
 class Phase(ABC):
