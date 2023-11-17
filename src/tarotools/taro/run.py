@@ -65,11 +65,11 @@ class RunState(Enum, metaclass=RunStateMeta):
 
 
 class Outcome(Enum):
-    NONE = range(-1, 0)  # Null value.
-    SUCCESS = range(1, 10)  # Completed successfully.
-    ABORT = range(11, 20)  # Aborted by user.
-    REJECT = range(21, 30)  # Rejected by not satisfying a condition.
-    FAULT = range(31, 40)  # Failed.
+    NONE = range(-1, 1)  # Null value.
+    SUCCESS = range(1, 11)  # Completed successfully.
+    ABORT = range(11, 21)  # Aborted by user.
+    REJECT = range(21, 31)  # Rejected by not satisfying a condition.
+    FAULT = range(31, 41)  # Failed.
 
 
 class TerminationStatusMeta(EnumMeta):
@@ -103,17 +103,15 @@ class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
     FAILED = (Outcome.FAULT, 31)
     ERROR = (Outcome.FAULT, 32)
 
-    def __new__(cls, outcome_tuple):
+    def __new__(cls, outcome, num_value):
         obj = object.__new__(cls)
-        outcome, value = outcome_tuple
-        if value not in outcome.value:
-            raise ValueError(f"Value {value} not in range for outcome {outcome}")
-        obj._value_ = value
-        cls._value2member_map_[value] = obj
+        obj._num_value = num_value  # Store the numerical value in a different attribute
+        obj.outcome = outcome
+        if num_value not in outcome.value:
+            raise ValueError(f"Value {num_value} not in range for outcome {outcome}")
+        obj._value_ = num_value
+        cls._value2member_map_[num_value] = obj
         return obj
-
-    def __init__(self, outcome_tuple):
-        self.outcome, self.value = outcome_tuple
 
     def __bool__(self):
         return self != TerminationStatus.NONE
@@ -121,6 +119,9 @@ class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
 
 class StandardPhaseNames:
     INIT = 'INIT'
+    APPROVAL = 'APPROVAL'
+    PROGRAM = 'PROGRAM'
+    PROCESS = 'PROCESS'
     TERMINAL = 'TERMINAL'
 
 
@@ -343,6 +344,16 @@ class Lifecycle:
         copied._current_run = copy(self._current_run)
         copied._previous_run = copy(self._previous_run)
         return copied
+
+    def __eq__(self, other):
+        if not isinstance(other, Lifecycle):
+            return NotImplemented
+
+        return self._phase_runs == other._phase_runs
+
+    def __repr__(self):
+        phase_runs_repr = ', '.join(repr(run) for run in self._phase_runs.values())
+        return f"{self.__class__.__name__}({phase_runs_repr})"
 
 
 @dataclass(frozen=True)

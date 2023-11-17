@@ -12,10 +12,9 @@ from threading import Event
 from time import sleep
 from typing import List
 
-from tarotools.taro import InstanceLifecycle, TerminationStatus
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.execution import OutputExecution
-from tarotools.taro.jobs.instance import InstancePhase
+from tarotools.taro.run import TerminationStatus
 from tarotools.taro.util import utc_now
 
 log = logging.getLogger(__name__)
@@ -27,7 +26,7 @@ class TestExecution(OutputExecution):
     def __init__(self, after_exec_state: TerminationStatus = None, raise_exc: Exception = None, *, wait: bool = False):
         if after_exec_state and raise_exc:
             raise ValueError("either after_exec_state or throw_exc must be set", after_exec_state, raise_exc)
-        self._after_exec_state = after_exec_state or (None if raise_exc else TerminationStatus.COMPLETED)
+        self._term_status = after_exec_state or (None if raise_exc else TerminationStatus.COMPLETED)
         self._raise_exc = raise_exc
         self._wait = Event() if wait else None
         self._execution_occurrences: List[datetime] = []
@@ -35,15 +34,15 @@ class TestExecution(OutputExecution):
 
     def __repr__(self):
         return "{}(ExecutionState.{}, {!r})".format(
-            self.__class__.__name__, self._after_exec_state.name, self._raise_exc)
+            self.__class__.__name__, self._term_status.name, self._raise_exc)
 
     def after_exec_state(self, state: TerminationStatus):
-        self._after_exec_state = state
+        self._term_status = state
         self._raise_exc = None
         return self
 
     def raise_exception(self, exc: Exception):
-        self._after_exec_state = None
+        self._term_status = None
         self._raise_exc = exc
         return self
 
@@ -57,9 +56,9 @@ class TestExecution(OutputExecution):
         self._execution_occurrences.append(datetime.now())
         if self._wait:
             self._wait.wait(5)
-        if self._after_exec_state:
-            log.info('event=[executed] new_state=[%s]', self._after_exec_state.name)
-            return self._after_exec_state
+        if self._term_status:
+            log.info('event=[executed] new_state=[%s]', self._term_status.name)
+            return self._term_status
         else:
             log.info('event=[executed] exception_raised=[%s]', self._raise_exc)
             raise self._raise_exc

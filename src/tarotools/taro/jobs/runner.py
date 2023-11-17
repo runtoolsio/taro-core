@@ -47,7 +47,7 @@ import logging
 
 from tarotools.taro import util
 from tarotools.taro.jobs.instance import JobInstance, JobRun, JobInstanceMetadata, PhaseTransitionObserver
-from tarotools.taro.run import Phaser, Flag, PhaseRun
+from tarotools.taro.run import Phaser, PhaseRun, Outcome
 from tarotools.taro.status import StatusObserver
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY, CallableNotification, ObservableNotification
 
@@ -146,7 +146,7 @@ class RunnerJobInstance(JobInstance):
         snapshot = self.job_run_info()
         termination = snapshot.run.termination
 
-        non_success = False
+        log_level = logging.INFO
         if termination:
             if termination.error:
                 log.error(self._log('unexpected_error', "error_type=[{}] reason=[{}]",
@@ -155,10 +155,10 @@ class RunnerJobInstance(JobInstance):
                 log.warning(self._log('run_failed', "error_type=[{}] reason=[{}]",
                                       termination.failure.category, termination.failure.reason))
 
-            if termination.status.has_flag(Flag.NONSUCCESS):
-                non_success = True
+            if termination.status.outcome in (Outcome.REJECT, Outcome.FAULT):
+                log_level = logging.WARN
 
-        log.log(logging.WARN if non_success else logging.INFO,
+        log.log(log_level,
                 self._log('new_phase', "prev_phase=[{}] prev_state=[{}] new_phase=[{}] new_state=[{}]",
                           old_phase.phase_name, old_phase.run_state, new_phase.run_state, new_phase.phase_name))
 

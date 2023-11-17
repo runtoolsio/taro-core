@@ -14,7 +14,7 @@ from json import JSONDecodeError
 
 from tarotools.taro.jobs.criteria import JobRunAggregatedCriteria
 from tarotools.taro.jobs.instance import JobInstanceManager
-from tarotools.taro.run import util, Flag, TerminationStatus
+from tarotools.taro.run import util, TerminationStatus, RunState
 from tarotools.taro.socket import SocketServer
 
 log = logging.getLogger(__name__)
@@ -73,7 +73,7 @@ class ReleaseWaitingResource(APIResource):
 
     def handle(self, job_instance, req_body):
         waiting_state = TerminationStatus[req_body['waiting_state'].upper()]
-        if not waiting_state.has_flag(Flag.WAITING):
+        if not waiting_state.has_flag(RunState.WAITING):
             raise _ApiError(422, f"Invalid waiting state: {waiting_state}")
         if job_instance.lifecycle.phase == waiting_state:
             job_instance.release()

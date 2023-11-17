@@ -2,15 +2,13 @@ import sqlite3
 from datetime import datetime as dt
 
 import pytest
-from tarotools.taro.test.inst import i
 
-from tarotools.taro import TerminationStatus, ExecutionError
 from tarotools.taro.jobs.criteria import IntervalCriterion, TerminationCriterion, JobRunAggregatedCriteria, \
     parse_criteria
 from tarotools.taro.jobs.db.sqlite import SQLite
-from tarotools.taro.jobs.instance import LifecycleEvent
-from tarotools.taro.jobs.track import MutableTrackedTask
-from tarotools.taro.test.execution import lc_failed, lc_completed
+from tarotools.taro.run import RunState
+from tarotools.taro.test.execution import lc_completed
+from tarotools.taro.test.testutil import run
 from tarotools.taro.util import parse_iso8601_duration, MatchingStrategy
 
 
@@ -24,13 +22,11 @@ def sut():
 
 
 def test_store_and_fetch(sut):
-    error = ExecutionError('e1', TerminationStatus.FAILED)
-    inst = i('j1', 'i1', (('p1', 'v1'),), {'u1': 'v2'}, lc_failed(), MutableTrackedTask('task1'), exec_error=error)  # TODO add more fields
-
-    sut.store_job_runs(inst)
+    test_run = run('j1')
+    sut.store_job_runs(test_run)
     jobs = sut.read_job_runs()
 
-    assert inst == jobs[0]
+    assert test_run == jobs[0]
 
 
 def j(c, instance=None, *, delta=0, created=None, completed=None, warnings=None):
@@ -110,19 +106,19 @@ def test_interval(sut):
     sut.store_job_runs(j(2, created=dt(2023, 4, 22), completed=dt(2023, 4, 22, 23, 59, 59)))
     sut.store_job_runs(j(3, created=dt(2023, 4, 22), completed=dt(2023, 4, 22, 23, 59, 58)))
 
-    ic = IntervalCriterion(run_state=LifecycleEvent.ENDED, from_dt=dt(2023, 4, 23))
+    ic = IntervalCriterion(run_state=RunState.ENDED, from_dt=dt(2023, 4, 23))
     jobs = sut.read_job_runs(JobRunAggregatedCriteria(interval_criteria=ic))
     assert jobs.job_ids == ['j1']
 
-    ic = IntervalCriterion(run_state=LifecycleEvent.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59))
+    ic = IntervalCriterion(run_state=RunState.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59))
     jobs = sut.read_job_runs(JobRunAggregatedCriteria(interval_criteria=ic))
     assert sorted(jobs.job_ids) == ['j2', 'j3']
 
-    ic = IntervalCriterion(run_state=LifecycleEvent.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59), include_to=False)
+    ic = IntervalCriterion(run_state=RunState.ENDED, to_dt=dt(2023, 4, 22, 23, 59, 59), include_to=False)
     jobs = sut.read_job_runs(JobRunAggregatedCriteria(interval_criteria=ic))
     assert jobs.job_ids == ['j3']
 
-    ic = IntervalCriterion(run_state=LifecycleEvent.ENDED, from_dt=dt(2023, 4, 22, 23, 59, 59), to_dt=dt(2023, 4, 23))
+    ic = IntervalCriterion(run_state=RunState.ENDED, from_dt=dt(2023, 4, 22, 23, 59, 59), to_dt=dt(2023, 4, 23))
     jobs = sut.read_job_runs(JobRunAggregatedCriteria(interval_criteria=ic))
     assert sorted(jobs.job_ids) == ['j1', 'j2']
 

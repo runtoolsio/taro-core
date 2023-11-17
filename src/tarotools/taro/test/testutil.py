@@ -1,12 +1,36 @@
+from datetime import datetime, timedelta
 from multiprocessing import Queue
 from pathlib import Path
-from typing import Dict, Tuple
 
 import tomli_w
 
-from tarotools.taro import cfg
-from tarotools.taro import paths, JobRun, InstanceWarningObserver, PhaseTransitionObserver
-from tarotools.taro.jobs.instance import WarnEventCtx
+from tarotools.taro import cfg, util
+from tarotools.taro import paths, JobRun, PhaseTransitionObserver
+from tarotools.taro.jobs.instance import JobInstanceMetadata
+from tarotools.taro.run import Run, PhaseMetadata, RunState, Lifecycle, PhaseRun, StandardPhaseNames, TerminationInfo, \
+    TerminationStatus, RunFailure
+
+
+def run(job_id, offset_minutes=0):
+    now = datetime.utcnow()
+    start_time = now.replace(microsecond=0) + timedelta(minutes=offset_minutes)
+
+    lifecycle_phases = [
+        PhaseRun(StandardPhaseNames.INIT, RunState.CREATED, start_time, start_time + timedelta(minutes=1)),
+        PhaseRun(StandardPhaseNames.APPROVAL, RunState.EXECUTING, start_time + timedelta(minutes=1),
+                 start_time + timedelta(minutes=2)),
+        PhaseRun(StandardPhaseNames.PROGRAM, RunState.EXECUTING, start_time + timedelta(minutes=2),
+                 start_time + timedelta(minutes=3)),
+        PhaseRun(StandardPhaseNames.TERMINAL, RunState.ENDED, start_time + timedelta(minutes=3), None),
+    ]
+    lifecycle = Lifecycle(*lifecycle_phases)
+
+    termination_info = TerminationInfo(TerminationStatus.FAILED, start_time + timedelta(minutes=3),
+                                       RunFailure('err1', 'reason'))
+    run_ = Run((PhaseMetadata('p1', RunState.EXECUTING, {'p': 'v'}),), lifecycle, termination_info)
+    metadata = JobInstanceMetadata(job_id, 'r1', util.unique_timestamp_hex(), {}, {'name': 'value'})
+
+    return JobRun(metadata, run_, None)
 
 
 def reset_config():
@@ -83,12 +107,3 @@ class PutPhaseToQueueObserver(PhaseTransitionObserver):
 
     def new_phase(self, job_run: JobRun, previous_phase, new_phase, changed):
         self.queue.put_nowait(new_phase)
-
-
-class TestWarningObserver(InstanceWarningObserver):
-
-    def __init__(self):
-        self.warnings: Dict[str, Tuple[JobRun, WarnEventCtx]] = {}
-
-    def new_instance_warning(self, job_inst: JobRun, warning_ctx):
-        self.warnings[warning_ctx.warning.name] = (job_inst, warning_ctx)
