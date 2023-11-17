@@ -15,9 +15,9 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from copy import copy
 from dataclasses import dataclass
-from enum import Enum, auto, EnumMeta
+from enum import Enum, EnumMeta
 from threading import Event, RLock
-from typing import Optional, List, Dict, Any, Set, TypeVar, Type, Callable, Tuple, Iterable
+from typing import Optional, List, Dict, Any, TypeVar, Type, Callable, Tuple, Iterable
 
 from tarotools.taro import util, status
 from tarotools.taro.err import InvalidStateError
@@ -29,25 +29,27 @@ log = logging.getLogger(__name__)
 
 
 class RunStateMeta(EnumMeta):
+    _value2member_map_ = {}
+
     def __getitem__(self, item):
-        if isinstance(item, str):
-            try:
-                return super().__getitem__(item.upper())
-            except KeyError:
-                return RunState.UNKNOWN
-        return super().__getitem__(item)
+        if isinstance(item, int):
+            return self._value2member_map_.get(item, RunState.UNKNOWN)
+        elif isinstance(item, str):
+            return super().__getitem__(item.upper())
+        else:
+            raise KeyError("Invalid key: must be integer or string")
 
 
-class RunState(Enum):
-    NONE = auto()
-    UNKNOWN = auto()
-    CREATED = auto()
-    PENDING = auto()
-    WAITING = auto()
-    EVALUATING = auto()
-    IN_QUEUE = auto()
-    EXECUTING = auto()
-    ENDED = auto()
+class RunState(Enum, metaclass=RunStateMeta):
+    NONE = 0
+    UNKNOWN = -1
+    CREATED = 1
+    PENDING = 2
+    WAITING = 3
+    EVALUATING = 4
+    IN_QUEUE = 5
+    EXECUTING = 6
+    ENDED = 100
 
     def __call__(self, lifecycle):
         if self == RunState.ENDED:
@@ -55,92 +57,66 @@ class RunState(Enum):
         else:
             return lifecycle.state_first_at(self)
 
-    @classmethod
-    def from_str(cls, value: str):
-        try:
-            return cls[value.upper()]
-        except KeyError:
-            return cls.UNKNOWN
+    def __new__(cls, value):
+        member = object.__new__(cls)
+        member._value_ = value
+        cls._value2member_map_[value] = member
+        return member
 
 
-class TerminationStatusFlag(Enum):
-    BEFORE_EXECUTION = auto()  # Not yet executed
-    UNEXECUTED = auto()  # Not yet executed or reached terminal phase without execution.
-    WAITING = auto()  # Waiting for a condition before execution.
-    DISCARDED = auto()  # Discarded automatically or by the user before execution.
-    REJECTED = auto()  # Automatically rejected before execution.
-    EXECUTED = auto()  # Reached the executing state.
-    SUCCESS = auto()  # Completed successfully.
-    NONSUCCESS = auto()  # Not completed successfully either before or after execution.
-    INCOMPLETE = auto()  # Not completed successfully after execution.
-    FAILURE = auto()  # Failed after or before execution.
-    ABORTED = auto()  # Interrupted by the user after or before execution.
+class Outcome(Enum):
+    NONE = range(-1, 0)  # Null value.
+    SUCCESS = range(1, 10)  # Completed successfully.
+    ABORT = range(11, 20)  # Aborted by user.
+    REJECT = range(21, 30)  # Rejected by not satisfying a condition.
+    FAULT = range(31, 40)  # Failed.
 
 
 class TerminationStatusMeta(EnumMeta):
+    _value2member_map_ = {}  # Stores mapping of integer values to enum members
 
-    def __getitem__(self, name):
-        if not name:
-            return TerminationStatus.NONE
-        try:
-            return super().__getitem__(name.upper())
-        except KeyError:
-            return TerminationStatus.UNKNOWN
-
-
-Flag = TerminationStatusFlag
+    def __getitem__(self, item):
+        if isinstance(item, int):
+            # Lookup by integer value
+            return self._value2member_map_.get(item, TerminationStatus.UNKNOWN)
+        elif isinstance(item, str):
+            # Lookup by string name, handling case insensitivity
+            return super().__getitem__(item.upper())
+        else:
+            raise KeyError("Invalid key: must be integer or string")
 
 
 class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
-    NONE = {}
-    UNKNOWN = {}
+    NONE = (Outcome.NONE, 0)
+    UNKNOWN = (Outcome.NONE, -1)
 
-    CREATED = {Flag.BEFORE_EXECUTION, Flag.UNEXECUTED}
+    COMPLETED = (Outcome.SUCCESS, 1)
 
-    PENDING = {Flag.BEFORE_EXECUTION, Flag.UNEXECUTED, Flag.WAITING}  # Until released
-    QUEUED = {Flag.BEFORE_EXECUTION, Flag.UNEXECUTED, Flag.WAITING}  # Wait for another job
+    CANCELLED = (Outcome.ABORT, 11)
+    STOPPED = (Outcome.ABORT, 12)
+    INTERRUPTED = (Outcome.ABORT, 13)
 
-    CANCELLED = {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.ABORTED}
-    TIMEOUT = {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.REJECTED}
-    INVALID_OVERLAP = {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.REJECTED}
-    UNSATISFIED = {Flag.UNEXECUTED, Flag.NONSUCCESS, Flag.DISCARDED, Flag.REJECTED}
+    TIMEOUT = (Outcome.REJECT, 21)
+    INVALID_OVERLAP = (Outcome.REJECT, 22)
+    UNSATISFIED = (Outcome.REJECT, 23)
 
-    RUNNING = {Flag.EXECUTED}
+    FAILED = (Outcome.FAULT, 31)
+    ERROR = (Outcome.FAULT, 32)
 
-    COMPLETED = {Flag.EXECUTED, Flag.SUCCESS}
-
-    STOPPED = {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.ABORTED}
-    INTERRUPTED = {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.ABORTED}
-    FAILED = {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.FAILURE}
-    ERROR = {Flag.EXECUTED, Flag.NONSUCCESS, Flag.INCOMPLETE, Flag.FAILURE}
-
-    def __new__(cls, *_, **__):
-        value = len(cls.__members__) + 1
+    def __new__(cls, outcome_tuple):
         obj = object.__new__(cls)
+        outcome, value = outcome_tuple
+        if value not in outcome.value:
+            raise ValueError(f"Value {value} not in range for outcome {outcome}")
         obj._value_ = value
+        cls._value2member_map_[value] = obj
         return obj
 
-    @classmethod
-    def with_all_flags(cls, *flags) -> List['TerminationStatus']:
-        """
-        Creates a list of `TerminationStatus` instances that contain all specified flags.
-
-        Args:
-            *flags: A variable number of flag arguments to be checked in each TerminationStatus.
-
-        Returns:
-            List[TerminationStatus]: A list of statuses where each status contains all the provided flags.
-        """
-        return [term_status for term_status in cls if all(flag in term_status.flags for flag in flags)]
-
-    def __init__(self, flags: Set[TerminationStatusFlag]):
-        self.flags = flags
+    def __init__(self, outcome_tuple):
+        self.outcome, self.value = outcome_tuple
 
     def __bool__(self):
         return self != TerminationStatus.NONE
-
-    def has_flag(self, flag: TerminationStatusFlag):
-        return flag in self.flags
 
 
 class StandardPhaseNames:
@@ -226,7 +202,7 @@ class Lifecycle:
 
     def serialize(self) -> Dict[str, Any]:
         return {
-            "transitions": [{'phase': run.phase_name, 'state': run.run_state.name, 'ts': format_dt_iso(run.started_at)}
+            "transitions": [{'phase': run.phase_name, 'state': run.run_state.value, 'ts': format_dt_iso(run.started_at)}
                             for run in self._phase_runs.values()]}
 
     def to_dto(self, include_empty=True) -> Dict[str, Any]:
@@ -377,10 +353,10 @@ class PhaseMetadata:
 
     @classmethod
     def deserialize(cls, as_dict) -> 'PhaseMetadata':
-        return cls(as_dict["phase_name"], RunState[as_dict["run_state"]], as_dict["parameters"] or {})
+        return cls(as_dict["phase"], RunState[as_dict["state"]], as_dict["params"] or {})
 
     def serialize(self):
-        return {"phase_name": self.phase_name, "run_state": self.run_state.name, "parameters": self.parameters}
+        return {"phase": self.phase_name, "state": self.run_state.value, "params": self.parameters}
 
 
 class Phase(ABC):
@@ -512,16 +488,16 @@ class FailedRun(Exception):
 class TerminationInfo:
     status: TerminationStatus
     terminated_at: datetime.datetime
-    failure: Optional[Fault] = None
-    error: Optional[Fault] = None
+    failure: Optional[RunFailure] = None
+    error: Optional[RunError] = None
 
     @classmethod
     def deserialize(cls, as_dict: Dict[str, Any]):
         return cls(
             status=TerminationStatus(as_dict['termination_status']),
             terminated_at=util.parse_datetime(as_dict['terminated_at']),
-            failure=Fault.deserialize(as_dict['failure']) if as_dict.get('failure') else None,
-            error=Fault.deserialize(as_dict['error']) if as_dict.get('error') else None
+            failure=RunFailure.deserialize(as_dict['failure']) if as_dict.get('failure') else None,
+            error=RunError.deserialize(as_dict['error']) if as_dict.get('error') else None
         )
 
     def serialize(self) -> Dict[str, Any]:
@@ -596,8 +572,8 @@ class Phaser:
         return TerminationInfo(termination_status, self._timestamp_generator(), failure, error)
 
     @property
-    def phases(self) -> List[Phase]:
-        return list(self._name_to_phase.values())
+    def phases(self) -> Dict[str, Phase]:
+        return self._name_to_phase.copy()
 
     def run_info(self) -> Run:
         with self._transition_lock:

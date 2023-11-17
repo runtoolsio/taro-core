@@ -6,12 +6,12 @@ TODO: Remove immutable properties
 
 import datetime
 from abc import abstractmethod, ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timezone, time, timedelta
-from typing import Dict, Any, Set, Iterable, Optional, TypeVar, Generic, Tuple
+from typing import Dict, Any, Set, Optional, TypeVar, Generic, Tuple
 
 from tarotools.taro.jobs.instance import JobRun
-from tarotools.taro.run import TerminationStatusFlag, RunState, Lifecycle, TerminationInfo
+from tarotools.taro.run import Outcome, RunState, Lifecycle, TerminationInfo
 from tarotools.taro.util import MatchingStrategy, and_, or_, parse, single_day_range, days_range, \
     format_dt_iso
 
@@ -279,47 +279,32 @@ class IntervalCriterion(MatchCriteria[Lifecycle]):
 @dataclass
 class TerminationCriterion(MatchCriteria[TerminationInfo]):
     """
-    This object can be used to filter job instances based on their state, such as instance phase or warnings.
-    For the whole criteria to match, all provided filters must be met.
+    This class is used to filter termination info instances.
 
-    Properties (filters):
-        phases (Set[ExecutionPhase]):
-            The criterion match if the instance is in any provided phases.
-        flag_groups (Iterable[Set[ExecutionStateFlag]]):
-            An iterable of sets, where each set contains flags that define a group. The criterion match if any of
-            the provided groups match the state, and a group matches when all flags in the group match the state.
-        warning (Optional[bool]):
-            A boolean value to filter job instances based on warnings.
-            If set to True, only job instances with warnings are matched.
-            If set to False, only job instances without warnings are matched.
-            If None, the warning status is ignored in the matching.
-            Default is None.
+    Attributes:
+        outcomes (Set[Outcome]): A set of outcomes to match against the termination status.
     """
 
-    status_flag_groups: Iterable[Set[TerminationStatusFlag]] = ()
+    outcomes: Set[Outcome] = field(default_factory=set)
 
     @classmethod
     def deserialize(cls, data):
-        status_flag_groups = data.get('status_flag_groups', ())
-        return cls(status_flag_groups)
+        outcomes = set(Outcome[outcome_str] for outcome_str in data.get('outcomes', []))
+        return cls(outcomes)
 
     def serialize(self):
         return {
-            "status_flag_groups": self.status_flag_groups,
+            "outcomes": [outcome.name for outcome in self.outcomes],
         }
 
     def __call__(self, term_info):
         return self.matches(term_info)
 
     def matches(self, term_info):
-        if self.status_flag_groups and \
-                not any(all(f in term_info.status.flags for f in g) for g in self.status_flag_groups):
-            return False
-
-        return True
+        return all(outcome in term_info.status.outcome for outcome in self.outcomes)
 
     def __bool__(self):
-        return bool(self.status_flag_groups)
+        return bool(self.outcomes)
 
 
 class JobRunAggregatedCriteria(MatchCriteria[JobRun]):

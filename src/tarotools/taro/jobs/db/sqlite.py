@@ -92,12 +92,18 @@ def _build_where_clause(run_match, alias=''):
 
     term_conditions = []
     if run_match.termination_criteria:
-        # TODO
-        # if run_match.termination_criteria.warning:
-        #     term_conditions.append(f"{alias}warnings IS NOT NULL")
-        if f_groups := run_match.termination_criteria.status_flag_groups:
-            statuses = ",".join(f"'{s.name}'" for flags in f_groups for s in TerminationStatus.with_all_flags(*flags))
-            term_conditions.append(f"{alias}termination_status IN ({statuses})")
+        term_conditions = []
+
+        if outcomes := run_match.termination_criteria.outcomes:
+            range_conditions = []
+            for outcome in outcomes:
+                start, end = outcome.value.start, outcome.value.stop
+                range_condition = f"({alias}termination_status BETWEEN {start} AND {end})"
+                range_conditions.append(range_condition)
+
+            if range_conditions:
+                combined_condition = " OR ".join(range_conditions)
+                term_conditions.append(f"({combined_condition})")
 
     all_conditions_list = (job_conditions, id_conditions, int_conditions, term_conditions)
     all_conditions_str = ["(" + " OR ".join(c_list) + ")" for c_list in all_conditions_list if c_list]
@@ -127,6 +133,7 @@ class SQLite(PhaseTransitionObserver):
                          created timestamp,
                          ended timestamp,
                          exec_time real,
+                         phases text,
                          lifecycle text,
                          termination_status text,
                          failure text,
@@ -198,7 +205,7 @@ class SQLite(PhaseTransitionObserver):
 
     def read_stats(self, run_match=None) -> List[JobStats]:
         where = _build_where_clause(run_match, alias='h')
-        failure_statuses = ",".join([f"'{s.name}'" for s in TerminationStatus.with_all_flags(Flag.FAILURE)])
+        failure_statuses = ",".join([f"'{s.name}'" for s in TerminationStatus.with_all_flags(Flag.FAULT)])
         sql = f'''
             SELECT
                 h.job_id,
@@ -254,7 +261,7 @@ class SQLite(PhaseTransitionObserver):
                     format_dt_sql(lifecycle.ended_at),
                     round(lifecycle.total_executing_time.total_seconds(), 3) if lifecycle.total_executing_time else None,
                     json.dumps(lifecycle.serialize()),
-                    r.run.termination.status.name,
+                    r.run.termination.status.value,
                     json.dumps(r.run.termination.failure.serialize()) if r.run.termination.failure else None,
                     json.dumps(r.run.termination.error.serialize()) if r.run.termination.error else None,
                     json.dumps(r.tracking.serialize()) if r.tracking else None,

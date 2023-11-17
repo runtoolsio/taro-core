@@ -103,14 +103,14 @@ class RunnerJobInstance(JobInstance):
 
     def run(self):
         observer_proxy = self._status_notification.observer_proxy
-        for phase_step in self._phaser.phases:
-            phase_step.add_status_observer(observer_proxy)
+        for phase in self._phaser.phases.values():
+            phase.add_status_observer(observer_proxy)
 
         try:
             self._phaser.run()
         finally:
-            for phase_step in self._phaser.phases:
-                phase_step.remove_status_observer(observer_proxy)
+            for phase in self._phaser.phases.values():
+                phase.remove_status_observer(observer_proxy)
 
     def stop(self):
         """
