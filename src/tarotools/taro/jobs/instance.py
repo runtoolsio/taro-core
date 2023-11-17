@@ -283,12 +283,12 @@ class JobRuns(list):
     List of job instances with auxiliary methods.
     """
 
-    def __init__(self, jobs):
-        super().__init__(jobs)
+    def __init__(self, runs):
+        super().__init__(runs)
 
     @property
     def job_ids(self) -> List[str]:
-        return [j.id.job_id for j in self]
+        return [r.job_id for r in self]
 
     def in_phase(self, phase):
         return [run for run in self if run.lifecycle.phase is phase]

@@ -13,7 +13,7 @@ from typing import Dict, Any, Set, Optional, TypeVar, Generic, Tuple
 from tarotools.taro.jobs.instance import JobRun
 from tarotools.taro.run import Outcome, RunState, Lifecycle, TerminationInfo
 from tarotools.taro.util import MatchingStrategy, and_, or_, parse, single_day_range, days_range, \
-    format_dt_iso
+    format_dt_iso, to_list
 
 T = TypeVar('T')
 
@@ -307,6 +307,10 @@ class TerminationCriterion(MatchCriteria[TerminationInfo]):
         return bool(self.outcomes)
 
 
+def parse_criteria(pattern: str, strategy: MatchingStrategy = MatchingStrategy.EXACT):
+    return JobRunAggregatedCriteria.parse_pattern(pattern, strategy)
+
+
 class JobRunAggregatedCriteria(MatchCriteria[JobRun]):
     """
     This object aggregates various criteria for querying and matching job instances.
@@ -330,11 +334,11 @@ class JobRunAggregatedCriteria(MatchCriteria[JobRun]):
     serialize and deserialize the criteria, and parse criteria from a pattern.
     """
 
-    def __init__(self):
-        self.jobs = []
-        self.job_run_id_criteria = []
-        self.interval_criteria = []
-        self.termination_criteria = []
+    def __init__(self, *, jobs=None, job_run_id_criteria=None, interval_criteria=None, termination_criteria=None):
+        self.jobs = to_list(jobs) or []
+        self.job_run_id_criteria = to_list(job_run_id_criteria) or []
+        self.interval_criteria = to_list(interval_criteria) or []
+        self.termination_criteria = to_list(termination_criteria) or []
 
     @classmethod
     def deserialize(cls, as_dict):
@@ -342,7 +346,8 @@ class JobRunAggregatedCriteria(MatchCriteria[JobRun]):
         new.jobs = as_dict.get('jobs', [])
         new.job_run_id_criteria = [JobRunIdCriterion.deserialize(c) for c in as_dict.get('job_run_id_criteria', ())]
         new.interval_criteria = [IntervalCriterion.deserialize(c) for c in as_dict.get('interval_criteria', ())]
-        new.termination_criteria = [TerminationCriterion.deserialize(c) for c in as_dict.get('termination_criteria', ())]
+        new.termination_criteria = [TerminationCriterion.deserialize(c) for c in
+                                    as_dict.get('termination_criteria', ())]
         return new
 
     def serialize(self):
@@ -355,8 +360,9 @@ class JobRunAggregatedCriteria(MatchCriteria[JobRun]):
 
     @classmethod
     def parse_pattern(cls, pattern: str, strategy: MatchingStrategy = MatchingStrategy.EXACT):
-        # TODO
-        return cls()
+        new = cls()
+        new += JobRunIdCriterion.parse_pattern(pattern, strategy)
+        return new
 
     def __iadd__(self, criterion):
         return self.add(criterion)
@@ -417,7 +423,3 @@ class JobRunAggregatedCriteria(MatchCriteria[JobRun]):
                 f"{self.interval_criteria=}, "
                 f"{self.termination_criteria=}, "
                 f"{self.jobs=})")
-
-
-def parse_criteria(pattern: str, strategy: MatchingStrategy = MatchingStrategy.EXACT):
-    return JobRunAggregatedCriteria.parse_pattern(pattern, strategy)
