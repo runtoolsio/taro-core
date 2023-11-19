@@ -9,7 +9,7 @@ import tarotools.taro
 import tarotools.taro.jobs.runner as runner
 from tarotools.taro import TerminationStatus
 from tarotools.taro.jobs import lock
-from tarotools.taro.jobs.instance import PhaseTransitionObserver, JobRun
+from tarotools.taro.jobs.instance import InstanceTransitionObserver, JobRun
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.observer import TestPhaseObserver
 
@@ -59,7 +59,7 @@ def test_observer_raises_exception():
     assert execution.executed_count() == 1  # No exception thrown before
 
 
-class ExceptionRaisingObserver(PhaseTransitionObserver):
+class ExceptionRaisingObserver(InstanceTransitionObserver):
 
     def __init__(self, raise_exc: Exception):
         self.raise_exc = raise_exc

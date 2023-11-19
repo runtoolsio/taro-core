@@ -19,8 +19,8 @@ from tarotools.taro import persistence as persistence_mod
 from tarotools.taro import plugins as plugins_mod
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.api import APIServer
-from tarotools.taro.jobs.events import PhaseTransitionDispatcher, OutputDispatcher
-from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobRun, JobInstance, JobInstanceManager,
+from tarotools.taro.jobs.events import InstanceTransitionDispatcher, OutputDispatcher
+from tarotools.taro.jobs.instance import (InstanceTransitionObserver, JobRun, JobInstance, JobInstanceManager,
                                           InstanceOutputObserver)
 from tarotools.taro.jobs.plugins import Plugin
 from tarotools.taro.run import RunState
@@ -160,7 +160,7 @@ class FeaturedContextBuilder:
         return self
 
     def phase_transition_dispatcher(self):
-        self.add_phase_transition_callback(PhaseTransitionDispatcher, close_hook=lambda dispatcher: dispatcher.close())
+        self.add_phase_transition_callback(InstanceTransitionDispatcher, close_hook=lambda dispatcher: dispatcher.close())
         return self
 
     def output_dispatcher(self):
@@ -202,7 +202,7 @@ class _ManagedInstance:
     released: bool = False
 
 
-class FeaturedContext(PhaseTransitionObserver):
+class FeaturedContext(InstanceTransitionObserver):
     """
     Represents a specialized context for job instances enriched with features.
 
@@ -239,7 +239,7 @@ class FeaturedContext(PhaseTransitionObserver):
 
     def __init__(self, instance_managers=(), state_observers=(), output_observers=(), *, transient=False):
         self._instance_managers: Tuple[ManagerFeature[JobInstanceManager]] = tuple(instance_managers)
-        self._state_observers: Tuple[ObserverFeature[PhaseTransitionObserver]] = tuple(state_observers)
+        self._state_observers: Tuple[ObserverFeature[InstanceTransitionObserver]] = tuple(state_observers)
         self._output_observers: Tuple[ObserverFeature[InstanceOutputObserver]] = tuple(output_observers)
         self._keep_removed = not transient
         self._managed_instances: Dict[str, _ManagedInstance] = {}

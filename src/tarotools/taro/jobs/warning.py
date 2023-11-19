@@ -3,7 +3,7 @@ from threading import Timer
 from typing import Sequence
 
 from tarotools.taro import util
-from tarotools.taro.jobs.instance import JobInstance, JobRun, PhaseTransitionObserver, Warn, \
+from tarotools.taro.jobs.instance import JobInstance, JobRun, InstanceTransitionObserver, Warn, \
     InstanceOutputObserver
 from tarotools.taro.run import RunState
 
@@ -25,7 +25,7 @@ def register(job_instance: JobInstance, *, warn_times: Sequence[str] = (), warn_
         output_matches(job_instance, f"output=~{warn_output}", warn_output)
 
 
-class _ExecTimeWarning(PhaseTransitionObserver):
+class _ExecTimeWarning(InstanceTransitionObserver):
 
     def __init__(self, job_instance, name, time: float):
         self.job_instance = job_instance

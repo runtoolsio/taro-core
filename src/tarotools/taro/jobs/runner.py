@@ -46,7 +46,7 @@ State lock
 import logging
 
 from tarotools.taro import util
-from tarotools.taro.jobs.instance import JobInstance, JobRun, JobInstanceMetadata, PhaseTransitionObserver
+from tarotools.taro.jobs.instance import JobInstance, JobRun, JobInstanceMetadata, InstanceTransitionObserver
 from tarotools.taro.run import Phaser, PhaseRun, Outcome
 from tarotools.taro.status import StatusObserver
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY, CallableNotification, ObservableNotification
@@ -73,7 +73,7 @@ class RunnerJobInstance(JobInstance):
         self._tracking = None  # TODO The output fields below will be moved to the tracker
         # self._last_output = deque(maxlen=10)  # TODO Max len configurable
         # self._error_output = deque(maxlen=1000)  # TODO Max len configurable
-        self._transition_notification = ObservableNotification[PhaseTransitionObserver](error_hook=log_observer_error)
+        self._transition_notification = ObservableNotification[InstanceTransitionObserver](error_hook=log_observer_error)
         self._status_notification = ObservableNotification[StatusObserver](error_hook=log_observer_error)
 
         self._phaser.transition_hook = self._transition_hook
@@ -91,6 +91,10 @@ class RunnerJobInstance(JobInstance):
         return self._metadata
 
     @property
+    def output(self):
+        return None  # TODO
+
+    @property
     def tracking(self):
         return self._tracking
 
@@ -98,19 +102,22 @@ class RunnerJobInstance(JobInstance):
     def status_observer(self):
         return self._status_notification.observer_proxy
 
+    def phases(self, phase_name):
+        pass
+
     def job_run_info(self) -> JobRun:
         return JobRun(self.metadata, self._phaser.run_info(), self.tracking.copy())
 
     def run(self):
         observer_proxy = self._status_notification.observer_proxy
         for phase in self._phaser.phases.values():
-            phase.add_status_observer(observer_proxy)
+            phase.add_observer_status(observer_proxy)
 
         try:
             self._phaser.run()
         finally:
             for phase in self._phaser.phases.values():
-                phase.remove_status_observer(observer_proxy)
+                phase.add_observer_status(observer_proxy)
 
     def stop(self):
         """

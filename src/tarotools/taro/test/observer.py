@@ -13,7 +13,7 @@ from threading import Condition
 from typing import Tuple, List, Callable
 
 from tarotools.taro import TerminationStatus
-from tarotools.taro.jobs.instance import JobRun, InstanceOutputObserver, PhaseTransitionObserver, \
+from tarotools.taro.jobs.instance import JobRun, InstanceOutputObserver, InstanceTransitionObserver, \
     InstancePhase
 from tarotools.taro.run import FailedRun
 
@@ -31,7 +31,7 @@ class GenericObserver:
         self.updates.put_nowait(args)
 
 
-class TestPhaseObserver(PhaseTransitionObserver):
+class TestPhaseObserver(InstanceTransitionObserver):
     __test__ = False  # To tell pytest it isn't a test class
 
     def __init__(self):

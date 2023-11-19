@@ -373,10 +373,17 @@ class PhaseMetadata:
         return d
 
 
+class PhaseOutputObserver(ABC):
+
+    def new_output(self, phase_meta, output: str, is_err: bool):
+        pass
+
+
 class Phase(ABC):
 
     def __init__(self, phase_name: str, run_state: RunState, parameters: Optional[Dict[str, str]] = None):
         self._metadata = PhaseMetadata(phase_name, run_state, parameters or {})
+        self._output_notification = ObservableNotification[PhaseOutputObserver]()
         self._status_notification = ObservableNotification[StatusObserver]()
 
     @property
@@ -400,10 +407,16 @@ class Phase(ABC):
     def stop(self):
         pass
 
-    def add_status_observer(self, observer, priority=status.DEFAULT_OBSERVER_PRIORITY):
+    def add_observer_output(self, observer, priority=status.DEFAULT_OBSERVER_PRIORITY):
+        self._output_notification.add_observer(observer, priority)
+
+    def remove_observer_output(self, observer):
+        self._output_notification.remove_observer(observer)
+
+    def add_observer_status(self, observer, priority=status.DEFAULT_OBSERVER_PRIORITY):
         self._status_notification.add_observer(observer, priority)
 
-    def remove_status_observer(self, observer):
+    def remove_observer_status(self, observer):
         self._status_notification.remove_observer(observer)
 
 

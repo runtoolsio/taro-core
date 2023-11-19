@@ -115,8 +115,23 @@ class JobInstance(abc.ABC):
 
     @property
     @abc.abstractmethod
+    def output(self):
+        """TODO: """
+
+    @property
+    @abc.abstractmethod
     def tracking(self):
         """TODO: Task tracking information, None if tracking is not supported"""
+
+    @property
+    @abc.abstractmethod
+    def status_observer(self):
+        """
+        Returned status observer allows to add status notifications also by a logic located outside the instance.
+
+        Returns:
+            Status observer for this instance.
+        """
 
     @abc.abstractmethod
     def job_run_info(self):
@@ -127,14 +142,12 @@ class JobInstance(abc.ABC):
             JobRun: A snapshot representing the current state of the job instance.
         """
 
-    @property
     @abc.abstractmethod
-    def status_observer(self):
+    def phases(self, phase_name):
         """
-        Returned status observer allows to add status notifications also by a logic located outside the instance.
-
+        TODO
         Returns:
-            Status observer for this instance.
+            Dict[str, Phase]: Dictionary of {phase name: phase} in the order as defined in the instance
         """
 
     @abc.abstractmethod
@@ -320,7 +333,7 @@ class JobRuns(list):
         return {"runs": [run.serialize(include_empty=include_empty) for run in self]}
 
 
-class PhaseTransitionObserver(abc.ABC):
+class InstanceTransitionObserver(abc.ABC):
 
     @abc.abstractmethod
     def new_phase(self, job_run: JobRun, previous_phase: PhaseRun, new_phase: PhaseRun, ordinal: int):

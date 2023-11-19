@@ -5,7 +5,7 @@ from pathlib import Path
 import tomli_w
 
 from tarotools.taro import cfg, util
-from tarotools.taro import paths, JobRun, PhaseTransitionObserver
+from tarotools.taro import paths, JobRun, InstanceTransitionObserver
 from tarotools.taro.jobs.instance import JobInstanceMetadata
 from tarotools.taro.run import Run, PhaseMetadata, RunState, Lifecycle, PhaseRun, StandardPhaseNames, TerminationInfo, \
     TerminationStatus, RunFailure
@@ -97,7 +97,7 @@ class StateWaiter:
                 return
 
 
-class PutPhaseToQueueObserver(PhaseTransitionObserver):
+class PutPhaseToQueueObserver(InstanceTransitionObserver):
     """
     This observer puts execution states into the provided queue. With multiprocessing queue this can be used for sending
     execution states into the parent process.

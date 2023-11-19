@@ -11,7 +11,7 @@ from typing import List
 
 from tarotools.taro import cfg
 from tarotools.taro import paths
-from tarotools.taro.jobs.instance import (PhaseTransitionObserver, JobRun, JobRuns, JobInstanceMetadata)
+from tarotools.taro.jobs.instance import (InstanceTransitionObserver, JobRun, JobRuns, JobInstanceMetadata)
 from tarotools.taro.jobs.job import JobStats
 from tarotools.taro.jobs.persistence import SortCriteria
 from tarotools.taro.run import RunState, Lifecycle, PhaseMetadata, RunFailure, RunError, Run, TerminationInfo, \
@@ -112,7 +112,7 @@ def _build_where_clause(run_match, alias=''):
     return " WHERE {conditions}".format(conditions=" AND ".join(all_conditions_str))
 
 
-class SQLite(PhaseTransitionObserver):
+class SQLite(InstanceTransitionObserver):
 
     def __init__(self, connection):
         self._conn = connection

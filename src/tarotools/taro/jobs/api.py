@@ -14,7 +14,7 @@ from json import JSONDecodeError
 
 from tarotools.taro.jobs.criteria import JobRunAggregatedCriteria
 from tarotools.taro.jobs.instance import JobInstanceManager
-from tarotools.taro.run import util, TerminationStatus, RunState
+from tarotools.taro.run import util
 from tarotools.taro.socket import SocketServer
 
 log = logging.getLogger(__name__)
@@ -58,47 +58,31 @@ class InstancesResource(APIResource):
         return '/instances'
 
     def handle(self, job_instance, req_body):
-        return {"job_instance": job_instance.job_run_info().serialize()}
+        return {"job_run": job_instance.job_run_info().serialize()}
 
 
-class ReleaseWaitingResource(APIResource):
-
-    @property
-    def path(self):
-        return '/instances/release/waiting'
-
-    def validate(self, req_body):
-        if 'waiting_state' not in req_body:
-            raise _missing_field_error('waiting_state')
-
-    def handle(self, job_instance, req_body):
-        waiting_state = TerminationStatus[req_body['waiting_state'].upper()]
-        if not waiting_state.has_flag(RunState.WAITING):
-            raise _ApiError(422, f"Invalid waiting state: {waiting_state}")
-        if job_instance.lifecycle.phase == waiting_state:
-            job_instance.release()
-            return {"release_result": 'released'}
-        else:
-            return {"release_result": 'not_applicable'}
-
-
-class ReleasePendingResource(APIResource):
+class ApproveResource(APIResource):
 
     @property
     def path(self):
-        return '/instances/release/pending'
+        return '/instances/approve'
 
     def validate(self, req_body):
-        if 'pending_group' not in req_body:
-            raise _missing_field_error('pending_group')
+        if 'phase' not in req_body:
+            raise _missing_field_error('phase')
 
     def handle(self, job_instance, req_body):
-        pending_group = req_body['pending_group']
-        if pending_group and job_instance.metadata.pending_group == pending_group:
-            job_instance.release()
-            return {"release_result": 'released'}
-        else:
-            return {"release_result": 'not_applicable'}
+        phase_name = req_body['phase']
+        phase = job_instance.phases.get(phase_name)
+        if not phase:
+            return {"approval_result": 'N/A'}
+
+        try:
+            phase.approve()
+        except AttributeError:
+            return {"approval_result": 'N/A'}  # Or an error?
+
+        return {"approval_result": 'APPROVED'}
 
 
 class StopResource(APIResource):
@@ -109,17 +93,17 @@ class StopResource(APIResource):
 
     def handle(self, job_instance, req_body):
         job_instance.stop()
-        return {"stop_result": "stop_performed"}
+        return {"stop_result": "INITIATED"}
 
 
-class TailResource(APIResource):
+class OutputResource(APIResource):
 
     @property
     def path(self):
-        return '/instances/tail'
+        return '/instances/output'
 
     def handle(self, job_instance, req_body):
-        return {"tail": job_instance.last_output}
+        return {"output": job_instance.output.fetch()}
 
 
 class SignalProceedResource(APIResource):
@@ -140,10 +124,9 @@ class SignalProceedResource(APIResource):
 
 DEFAULT_RESOURCES = (
     InstancesResource(),
-    ReleaseWaitingResource(),
-    ReleasePendingResource(),
+    ApproveResource(),
     StopResource(),
-    TailResource(),
+    OutputResource(),
     SignalProceedResource())
 
 

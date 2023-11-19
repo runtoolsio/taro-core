@@ -307,7 +307,7 @@ class APIClient(SocketClient):
         def resp_mapper(inst_resp: InstanceResponse) -> JobRun:
             return JobRun.deserialize(inst_resp.body["job_run"])
 
-        return self.send_request('/runs', run_match, resp_mapper=resp_mapper)
+        return self.send_request('/instances', run_match, resp_mapper=resp_mapper)
 
     def release_waiting_instances(self, waiting_state, instance_match) -> AggregatedResponse[ReleaseResponse]:
         """
