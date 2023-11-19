@@ -128,7 +128,7 @@ class ReleaseResponse(JobInstanceResponse):
 
 
 class StopResult(Enum):
-    STOP_PERFORMED = auto()
+    INITIATED = auto()
     NOT_APPLICABLE = auto()
     UNKNOWN = auto()
 

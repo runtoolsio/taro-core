@@ -674,7 +674,8 @@ class Phaser:
         self._lifecycle.add_phase_run(PhaseRun(phase.name, phase.metadata.run_state, self._timestamp_generator()))
         if self.transition_hook:
             self.execute_transition_hook_safely(self.transition_hook)
-        self._transition_lock.notify_all()
+        with self._transition_lock:
+            self._transition_lock.notify_all()
 
     def execute_transition_hook_safely(self, transition_hook: Optional[Callable[[PhaseRun, PhaseRun, int], None]]):
         with self._transition_lock:

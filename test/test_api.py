@@ -3,7 +3,7 @@ import pytest
 from tarotools.taro import client
 from tarotools.taro.client import APIClient, APIErrorType, ErrorCode, ApprovalResult, StopResult
 from tarotools.taro.jobs.api import APIServer
-from tarotools.taro.jobs.criteria import JobRunIdCriterion, JobRunAggregatedCriteria, parse_criteria
+from tarotools.taro.jobs.criteria import parse_criteria
 from tarotools.taro.run import RunState, StandardPhaseNames, TerminationStatus
 from tarotools.taro.test.instance import TestJobInstanceBuilder
 
@@ -64,15 +64,16 @@ def test_approve_pending_instance(job_instances):
     assert job_instances[1].job_run_info().run.termination.status == TerminationStatus.COMPLETED
 
 
-def test_stop(client, job_instances):
-    instances, errors = client.stop_instances(JobRunAggregatedCriteria(JobRunIdCriterion('j1', '')))
+def test_stop(job_instances):
+    instances, errors = client.stop_instances(parse_criteria('j1'))
     assert not errors
     assert len(instances) == 1
-    assert instances[0].instance_metadata.id.job_id == 'j1'
-    assert instances[0].stop_result == StopResult.STOP_PERFORMED
+    assert instances[0].instance_metadata.job_id == 'j1'
+    assert instances[0].stop_result == StopResult.INITIATED
 
-    assert job_instances[0].stopped
-    assert not job_instances[1].stopped
+    assert job_instances[0].wait_for_transition(run_state=RunState.ENDED, timeout=1)
+    assert job_instances[0].job_run_info().run.termination.status == TerminationStatus.STOPPED
+    assert not job_instances[1].job_run_info().run.termination
 
 
 def test_tail(client):
