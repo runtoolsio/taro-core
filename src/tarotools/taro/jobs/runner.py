@@ -101,8 +101,9 @@ class RunnerJobInstance(JobInstance):
     def status_observer(self):
         return self._status_notification.observer_proxy
 
-    def phases(self, phase_name):
-        pass
+    @property
+    def phases(self):
+        return self._phaser.phases
 
     def job_run_info(self) -> JobRun:
         return JobRun(self.metadata, self._phaser.run_info(), self.tracking.copy() if self.tracking else None)  # TODO

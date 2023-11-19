@@ -116,15 +116,15 @@ class JobInstanceResponse:
     instance_metadata: JobInstanceMetadata
 
 
-class ReleaseResult(Enum):
-    RELEASED = auto()
+class ApprovalResult(Enum):
+    APPROVED = auto()
     NOT_APPLICABLE = auto()
     UNKNOWN = auto()
 
 
 @dataclass
 class ReleaseResponse(JobInstanceResponse):
-    release_result: ReleaseResult
+    release_result: ApprovalResult
 
 
 class StopResult(Enum):
@@ -169,34 +169,14 @@ def get_active_runs(run_match=None) -> AggregatedResponse[JobRun]:
         return client.get_active_runs(run_match)
 
 
-def release_waiting_instances(waiting_state, instance_match) -> AggregatedResponse[ReleaseResponse]:
-    """
-    This function releases job instances that are waiting in the specified state and match the provided criteria.
-
-    Args:
-        waiting_state (ExecutionState, mandatory):
-            Only instances that are waiting for this state will be released.
-        instance_match (InstanceMatchCriteria, mandatory):
-            The operation will affect only instances matching these criteria.
-
-    Returns:
-        A container holding :class:`ReleaseResponse` objects, each representing the result of the release operation
-        for a respective job instance.
-        It also includes any errors that may have happened, each one related to a specific server API.
-    """
-
-    with APIClient() as client:
-        return client.release_waiting_instances(waiting_state, instance_match)
-
-
-def release_pending_instances(pending_group, instance_match=None) -> AggregatedResponse[ReleaseResponse]:
+def approve_pending_instances(phase_name, instance_match=None) -> AggregatedResponse[ReleaseResponse]:
     """
     This function releases job instances that are pending in the provided group
     and optionally match the provided criteria.
 
     Args:
-        pending_group (str, mandatory):
-            Only instances that are waiting in this group will be released.
+        phase_name (str, mandatory):
+            Name of the approval phase.
         instance_match (InstanceMatchCriteria, optional):
             The operation will affect only instances matching these criteria or all instances if not provided.
 
@@ -207,7 +187,7 @@ def release_pending_instances(pending_group, instance_match=None) -> AggregatedR
     """
 
     with APIClient() as client:
-        return client.release_pending_instances(pending_group, instance_match)
+        return client.approve_pending_instances(phase_name, instance_match)
 
 
 def stop_instances(run_match) -> AggregatedResponse[StopResponse]:
@@ -258,14 +238,6 @@ def _no_resp_mapper(api_instance_response: InstanceResponse) -> InstanceResponse
     return api_instance_response
 
 
-def _release_resp_mapper(inst_resp: InstanceResponse) -> ReleaseResponse:
-    try:
-        release_res = ReleaseResult[inst_resp.body["release_result"].upper()]
-    except KeyError:
-        release_res = ReleaseResult.UNKNOWN
-    return ReleaseResponse(inst_resp.instance_meta, release_res)
-
-
 class APIClient(SocketClient):
 
     def __init__(self):
@@ -309,36 +281,14 @@ class APIClient(SocketClient):
 
         return self.send_request('/instances', run_match, resp_mapper=resp_mapper)
 
-    def release_waiting_instances(self, waiting_state, instance_match) -> AggregatedResponse[ReleaseResponse]:
-        """
-        This function releases job instances that are waiting in the specified state and match the provided criteria.
-
-        Args:
-            waiting_state (ExecutionState, mandatory):
-                Only instances that are waiting for this state will be released.
-            instance_match (InstanceMatchCriteria, mandatory):
-                The operation will affect only instances matching these criteria.
-
-        Returns:
-            A container holding :class:ReleaseResponse objects, each representing the result of the release operation
-            for a respective job instance.
-            It also includes any errors that may have happened, each one related to a specific server API.
-        """
-
-        if not instance_match or not waiting_state:
-            raise ValueError("Arguments cannot be empty")
-
-        req_body = {"waiting_state": waiting_state.name}
-        return self.send_request('/instances/release/waiting', instance_match, req_body, _release_resp_mapper)
-
-    def release_pending_instances(self, pending_group, instance_match=None) -> AggregatedResponse[ReleaseResponse]:
+    def approve_pending_instances(self, phase_name, instance_match=None) -> AggregatedResponse[ReleaseResponse]:
         """
         This function releases job instances that are pending in the provided group
         and optionally match the provided criteria.
 
         Args:
-            pending_group (str, mandatory):
-                Only instances that are waiting in this group will be released.
+            phase_name (str, mandatory):
+                Name of the approval phase.
             instance_match (InstanceMatchCriteria, optional):
                 The operation will affect only instances matching these criteria or all instances if not provided.
 
@@ -348,11 +298,18 @@ class APIClient(SocketClient):
             It also includes any errors that may have happened, each one related to a specific server API.
         """
 
-        if not pending_group:
-            raise ValueError("Missing pending group")
+        if not phase_name:
+            raise ValueError("Missing phase name")
 
-        req_body = {"pending_group": pending_group}
-        return self.send_request('/instances/release/pending', instance_match, req_body, _release_resp_mapper)
+        def approve_resp_mapper(inst_resp: InstanceResponse) -> ReleaseResponse:
+            try:
+                release_res = ApprovalResult[inst_resp.body["approval_result"].upper()]
+            except KeyError:
+                release_res = ApprovalResult.UNKNOWN
+            return ReleaseResponse(inst_resp.instance_meta, release_res)
+
+        req_body = {"phase": phase_name}
+        return self.send_request('/instances/approve', instance_match, req_body, approve_resp_mapper)
 
     def stop_instances(self, instance_match) -> AggregatedResponse[StopResponse]:
         """
@@ -403,7 +360,7 @@ class APIClient(SocketClient):
         def resp_mapper(inst_resp: InstanceResponse) -> SignalProceedResponse:
             return SignalProceedResponse(
                 inst_resp.instance_meta, inst_resp.body["waiter_found"], inst_resp.body["executed"])
-        
+
         return self.send_request('/instances/_signal/dispatch', instance_match, resp_mapper=resp_mapper)
 
 

@@ -144,7 +144,7 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def phases(self, phase_name):
+    def phases(self):
         """
         TODO
         Returns:

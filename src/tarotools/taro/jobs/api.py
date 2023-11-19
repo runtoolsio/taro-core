@@ -75,12 +75,12 @@ class ApproveResource(APIResource):
         phase_name = req_body['phase']
         phase = job_instance.phases.get(phase_name)
         if not phase:
-            return {"approval_result": 'N/A'}
+            return {"approval_result": 'NOT_APPLICABLE'}
 
         try:
             phase.approve()
         except AttributeError:
-            return {"approval_result": 'N/A'}  # Or an error?
+            return {"approval_result": 'NOT_APPLICABLE'}  # Or an error?
 
         return {"approval_result": 'APPROVED'}
 

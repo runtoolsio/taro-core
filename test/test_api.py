@@ -1,10 +1,10 @@
 import pytest
 
 from tarotools.taro import client
-from tarotools.taro.client import APIClient, APIErrorType, ErrorCode, ReleaseResult, StopResult
+from tarotools.taro.client import APIClient, APIErrorType, ErrorCode, ApprovalResult, StopResult
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.criteria import JobRunIdCriterion, JobRunAggregatedCriteria, parse_criteria
-from tarotools.taro.run import TerminationStatus, RunState
+from tarotools.taro.run import RunState, StandardPhaseNames, TerminationStatus
 from tarotools.taro.test.instance import TestJobInstanceBuilder
 
 
@@ -25,6 +25,8 @@ def job_instances():
         j2.run_new_thread(daemon=True)
         yield j1, j2
     finally:
+        j1.stop()
+        j2.stop()
         server.close()
 
 
@@ -49,31 +51,16 @@ def test_instances_api():
     assert not any([multi_resp.errors, multi_resp_j1.errors, multi_resp_j2.errors])
 
 
-def test_release_waiting_state(client):
-    instances, errors = client.release_waiting_instances(TerminationStatus.PENDING,
-                                                         JobRunAggregatedCriteria(JobRunIdCriterion('j2', '')))
+def test_approve_pending_instance(job_instances):
+    instances, errors = client.approve_pending_instances(StandardPhaseNames.APPROVAL)
+
     assert not errors
-    assert instances[0].instance_metadata.id.job_id == 'j2'
-    assert instances[0].release_result == ReleaseResult.RELEASED
+    assert instances[0].instance_metadata.job_id == 'j1'
+    assert instances[0].release_result == ApprovalResult.NOT_APPLICABLE
+    assert instances[1].instance_metadata.job_id == 'j2'
+    assert instances[1].release_result == ApprovalResult.APPROVED
 
-
-def test_not_released_waiting_state(client):
-    instances, errors = client.release_waiting_instances(TerminationStatus.QUEUED,
-                                                         JobRunAggregatedCriteria(JobRunIdCriterion('*', '')))
-    assert not errors
-    assert not instances
-
-
-def test_release_pending_group(client, job_instances):
-    instances, errors = client.release_pending_instances('p1')
-    assert not errors
-    assert instances[0].instance_metadata.id.job_id == 'j1'
-    assert instances[0].release_result == ReleaseResult.NOT_APPLICABLE
-    assert instances[1].instance_metadata.id.job_id == 'j2'
-    assert instances[1].release_result == ReleaseResult.RELEASED
-
-    assert not job_instances[0].released
-    assert job_instances[1].released
+    assert job_instances[1].job_run_info().run.termination.status == TerminationStatus.COMPLETED
 
 
 def test_stop(client, job_instances):

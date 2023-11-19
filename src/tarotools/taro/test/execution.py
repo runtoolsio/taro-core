@@ -55,7 +55,7 @@ class TestExecution(OutputExecution):
     def execute(self) -> TerminationStatus:
         self._execution_occurrences.append(datetime.now())
         if self._wait:
-            self._wait.wait(1)
+            self._wait.wait(2)
         if self._term_status:
             log.info('event=[executed] new_state=[%s]', self._term_status.name)
             return self._term_status
@@ -86,7 +86,8 @@ class TestExecution(OutputExecution):
         return ('execution', 'test'),
 
     def stop(self):
-        raise NotImplementedError()
+        if self._wait:
+            self._wait.set()
 
     def interrupted(self):
         raise NotImplementedError()
