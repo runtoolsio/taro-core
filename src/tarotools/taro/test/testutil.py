@@ -1,39 +1,10 @@
-from datetime import datetime, timedelta
 from multiprocessing import Queue
 from pathlib import Path
 
 import tomli_w
 
-from tarotools.taro import cfg, util
+from tarotools.taro import cfg
 from tarotools.taro import paths, JobRun, InstanceTransitionObserver
-from tarotools.taro.jobs.instance import JobInstanceMetadata
-from tarotools.taro.run import Run, PhaseMetadata, RunState, Lifecycle, PhaseRun, StandardPhaseNames, TerminationInfo, \
-    TerminationStatus, RunFailure
-
-
-def run(job_id, run_id='r1', *, offset_min=0, term_status=TerminationStatus.COMPLETED, created=None, completed=None):
-    now = datetime.utcnow()
-    start_time = now.replace(microsecond=0) + timedelta(minutes=offset_min)
-
-    lifecycle_phases = [
-        PhaseRun(StandardPhaseNames.INIT, RunState.CREATED, created or start_time, start_time + timedelta(minutes=1)),
-        PhaseRun(StandardPhaseNames.APPROVAL, RunState.EXECUTING, start_time + timedelta(minutes=1),
-                 start_time + timedelta(minutes=2)),
-        PhaseRun(StandardPhaseNames.PROGRAM, RunState.EXECUTING, start_time + timedelta(minutes=2),
-                 start_time + timedelta(minutes=3)),
-        PhaseRun(StandardPhaseNames.TERMINAL, RunState.ENDED, completed or start_time + timedelta(minutes=3), None),
-    ]
-    lifecycle = Lifecycle(*lifecycle_phases)
-
-    if term_status == TerminationStatus.FAILED:
-        failure = RunFailure('err1', 'reason')
-    else:
-        failure = None
-    termination_info = TerminationInfo(term_status, start_time + timedelta(minutes=3), failure)
-    run_ = Run((PhaseMetadata('p1', RunState.EXECUTING, {'p': 'v'}),), lifecycle, termination_info)
-    metadata = JobInstanceMetadata(job_id, run_id, util.unique_timestamp_hex(), {}, {'name': 'value'})
-
-    return JobRun(metadata, run_, None)
 
 
 def reset_config():

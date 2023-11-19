@@ -47,7 +47,7 @@ import logging
 
 from tarotools.taro import util
 from tarotools.taro.jobs.instance import JobInstance, JobRun, JobInstanceMetadata, InstanceTransitionObserver
-from tarotools.taro.run import Phaser, PhaseRun, Outcome
+from tarotools.taro.run import PhaseRun, Outcome
 from tarotools.taro.status import StatusObserver
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY, CallableNotification, ObservableNotification
 
@@ -65,14 +65,12 @@ _warning_observers = CallableNotification(error_hook=log_observer_error)
 
 class RunnerJobInstance(JobInstance):
 
-    def __init__(self, job_id, phases, *, run_id=None, instance_id_gen=util.unique_timestamp_hex, **user_params):
+    def __init__(self, job_id, phaser, *, run_id=None, instance_id_gen=util.unique_timestamp_hex, **user_params):
         instance_id = instance_id_gen()
         parameters = {}  # TODO
         self._metadata = JobInstanceMetadata(job_id, run_id or instance_id, instance_id, parameters, user_params)
-        self._phaser = Phaser(phases)
+        self._phaser = phaser
         self._tracking = None  # TODO The output fields below will be moved to the tracker
-        # self._last_output = deque(maxlen=10)  # TODO Max len configurable
-        # self._error_output = deque(maxlen=1000)  # TODO Max len configurable
         self._transition_notification = ObservableNotification[InstanceTransitionObserver](error_hook=log_observer_error)
         self._status_notification = ObservableNotification[StatusObserver](error_hook=log_observer_error)
 
@@ -106,7 +104,7 @@ class RunnerJobInstance(JobInstance):
         pass
 
     def job_run_info(self) -> JobRun:
-        return JobRun(self.metadata, self._phaser.run_info(), self.tracking.copy())
+        return JobRun(self.metadata, self._phaser.run_info(), self.tracking.copy() if self.tracking else None)  # TODO
 
     def run(self):
         observer_proxy = self._status_notification.observer_proxy

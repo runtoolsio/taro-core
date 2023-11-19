@@ -2,19 +2,22 @@ import pytest
 
 from tarotools.taro.client import APIClient, APIErrorType, ErrorCode, ReleaseResult, StopResult
 from tarotools.taro.jobs.api import APIServer
-from tarotools.taro.jobs.criteria import JobRunIdCriterion, JobRunAggregatedCriteria
-from tarotools.taro.run import TerminationStatus
+from tarotools.taro.jobs.criteria import JobRunIdCriterion, JobRunAggregatedCriteria, parse_criteria
+from tarotools.taro.run import TerminationStatus, StandardPhaseNames, RunState
+from tarotools.taro.test.instance import TestJobInstanceBuilder
 
 
 @pytest.fixture(autouse=True)
 def job_instances():
     server = APIServer()
-    j1 = TestJobInstance('j1', 'i1', TerminationStatus.RUNNING)
+
+    j1 = TestJobInstanceBuilder('j1', 'i1').add_phase(StandardPhaseNames.PROGRAM, RunState.EXECUTING).build()
     j1.last_output = [('Meditate, do not delay, lest you later regret it.', False)]
     server.register_instance(j1)
-    j2 = TestJobInstance('j2', 'i2', TerminationStatus.PENDING)
-    j2.metadata.pending_group = 'p1'
+
+    j2 = TestJobInstanceBuilder('j2', 'i2').add_phase(StandardPhaseNames.PROGRAM, RunState.PENDING).build()
     server.register_instance(j2)
+
     assert server.start()
     try:
         yield j1, j2
@@ -37,11 +40,11 @@ def test_error_not_found(client):
 def test_instances_api(client):
     multi_resp = client.get_active_runs()
     instances = {inst.job_id: inst for inst in multi_resp.responses}
-    assert instances['j1'].lifecycle.phase == TerminationStatus.RUNNING
-    assert instances['j2'].lifecycle.phase == TerminationStatus.PENDING
+    assert instances['j1'].lifecycle.run_state == RunState.EXECUTING
+    assert instances['j2'].lifecycle.run_state == RunState.PENDING
 
-    multi_resp_j1 = client.get_active_runs(JobRunAggregatedCriteria(JobRunIdCriterion('j1', '')))
-    multi_resp_j2 = client.get_active_runs(JobRunAggregatedCriteria(JobRunIdCriterion('j2', '')))
+    multi_resp_j1 = client.get_active_runs(parse_criteria('j1'))
+    multi_resp_j2 = client.get_active_runs(parse_criteria('j2'))
     assert multi_resp_j1.responses[0].job_id == 'j1'
     assert multi_resp_j2.responses[0].job_id == 'j2'
 

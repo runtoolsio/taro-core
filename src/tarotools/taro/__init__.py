@@ -46,7 +46,7 @@ def configure(**kwargs):
 
 def execute(job_id, job_execution, coordinations=None, *, instance_id=None):
     plugins_ = cfg.plugins_load if cfg.plugins_enabled else None
-    with FeaturedContextBuilder().standard_features(plugins=plugins_).build() as ctx:
+    with FeaturedContextBuilder().standard_features(plugins=plugins_).build_as_run() as ctx:
         instance = ctx.add(job_instance(
             job_id,
             job_execution,
