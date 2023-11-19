@@ -1,9 +1,10 @@
 import pytest
 
+from tarotools.taro import client
 from tarotools.taro.client import APIClient, APIErrorType, ErrorCode, ReleaseResult, StopResult
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.criteria import JobRunIdCriterion, JobRunAggregatedCriteria, parse_criteria
-from tarotools.taro.run import TerminationStatus, StandardPhaseNames, RunState
+from tarotools.taro.run import TerminationStatus, RunState
 from tarotools.taro.test.instance import TestJobInstanceBuilder
 
 
@@ -11,37 +12,34 @@ from tarotools.taro.test.instance import TestJobInstanceBuilder
 def job_instances():
     server = APIServer()
 
-    j1 = TestJobInstanceBuilder('j1', 'i1').add_phase(StandardPhaseNames.PROGRAM, RunState.EXECUTING).build()
+    j1 = TestJobInstanceBuilder('j1', 'i1').add_exec_phase().build()
     j1.last_output = [('Meditate, do not delay, lest you later regret it.', False)]
     server.register_instance(j1)
 
-    j2 = TestJobInstanceBuilder('j2', 'i2').add_phase(StandardPhaseNames.PROGRAM, RunState.PENDING).build()
+    j2 = TestJobInstanceBuilder('j2', 'i2').add_approval_phase().build()
     server.register_instance(j2)
 
     assert server.start()
     try:
+        j1.run_new_thread(daemon=True)
+        j2.run_new_thread(daemon=True)
         yield j1, j2
     finally:
         server.close()
 
 
-@pytest.fixture
-def client():
+def test_error_not_found():
     with APIClient() as c:
-        yield c
-
-
-def test_error_not_found(client):
-    _, errors = client.send_request('/no-such-api')
+        _, errors = c.send_request('/no-such-api')
     assert errors[0].error_type == APIErrorType.API_CLIENT
     assert errors[0].response_error.code == ErrorCode.NOT_FOUND
 
 
-def test_instances_api(client):
+def test_instances_api():
     multi_resp = client.get_active_runs()
     instances = {inst.job_id: inst for inst in multi_resp.responses}
-    assert instances['j1'].lifecycle.run_state == RunState.EXECUTING
-    assert instances['j2'].lifecycle.run_state == RunState.PENDING
+    assert instances['j1'].run.lifecycle.run_state == RunState.EXECUTING
+    assert instances['j2'].run.lifecycle.run_state == RunState.PENDING
 
     multi_resp_j1 = client.get_active_runs(parse_criteria('j1'))
     multi_resp_j2 = client.get_active_runs(parse_criteria('j2'))

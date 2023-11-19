@@ -82,7 +82,7 @@ class OutputExecution(Execution):
 class ExecutingPhase(Phase):
 
     def __init__(self, phase_name, execution):
-        super().__init__(Phase(phase_name, RunState.EXECUTING))
+        super().__init__(phase_name, RunState.EXECUTING)
         self._execution = execution
 
     @property

@@ -127,9 +127,10 @@ class StandardPhaseNames:
 
 @dataclass
 class PhaseRun:
+
     phase_name: str
     run_state: RunState
-    started_at: datetime.datetime
+    started_at: Optional[datetime.datetime]
     ended_at: Optional[datetime.datetime] = None
 
     @classmethod
@@ -153,8 +154,14 @@ class PhaseRun:
     def run_time(self):
         return self.ended_at - self.started_at
 
+    def __bool__(self):
+        return bool(self.phase_name) and self.run_state != RunState.NONE
+
     def __copy__(self):
         return PhaseRun(self.phase_name, self.run_state, self.started_at, self.ended_at)
+
+
+NONE_PHASE_RUN = PhaseRun('', RunState.NONE, None, None)
 
 
 class Lifecycle:
@@ -224,7 +231,7 @@ class Lifecycle:
 
     @property
     def current_run(self) -> Optional[PhaseRun]:
-        return self._current_run
+        return self._current_run or NONE_PHASE_RUN
 
     @property
     def current_phase(self) -> Optional[str]:
@@ -232,7 +239,7 @@ class Lifecycle:
 
     @property
     def previous_run(self) -> Optional[PhaseRun]:
-        return self._previous_run
+        return self._previous_run or NONE_PHASE_RUN
 
     @property
     def previous_phase(self) -> Optional[str]:
@@ -264,7 +271,7 @@ class Lifecycle:
         return list(self._phase_runs.values())
 
     def phase_run(self, phase_name: str) -> Optional[PhaseRun]:
-        return self._phase_runs.get(phase_name)
+        return self._phase_runs.get(phase_name) or NONE_PHASE_RUN
 
     def runs_between(self, phase_from, phase_to) -> List[PhaseRun]:
         runs = []
@@ -521,7 +528,7 @@ class TerminationInfo:
     @classmethod
     def deserialize(cls, as_dict: Dict[str, Any]):
         return cls(
-            status=TerminationStatus(as_dict['termination_status']),
+            status=TerminationStatus[as_dict['termination_status']],
             terminated_at=util.parse_datetime(as_dict['terminated_at']),
             failure=RunFailure.deserialize(as_dict['failure']) if as_dict.get('failure') else None,
             error=RunError.deserialize(as_dict['error']) if as_dict.get('error') else None
@@ -547,7 +554,7 @@ class Run:
         return cls(
             phases=tuple(PhaseMetadata.deserialize(phase) for phase in as_dict['phases']),
             lifecycle=Lifecycle.deserialize(as_dict['lifecycle']),
-            termination=TerminationInfo.deserialize(as_dict['termination']) if 'termination' in as_dict else None,
+            termination=TerminationInfo.deserialize(as_dict['termination']) if as_dict.get('termination') else None,
         )
 
     def serialize(self) -> Dict[str, Any]:

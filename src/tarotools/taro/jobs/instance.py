@@ -64,7 +64,8 @@ class JobInstanceMetadata:
 
     def serialize(self) -> Dict[str, Any]:
         return {
-            "job_run_id": self.job_run_id.serialize(),
+            "job_id": self.job_id,
+            "run_id": self.run_id,
             "instance_id": self.instance_id,
             "system_parameters": self.system_parameters,
             "user_params": self.user_params,
@@ -158,6 +159,17 @@ class JobInstance(abc.ABC):
         This method is not expected to raise any errors. In case of any failure the error details can be retrieved
         by calling `exec_error` method.
         """
+
+    def run_new_thread(self, daemon=False):
+        """
+        Run the job.
+
+        This method is not expected to raise any errors. In case of any failure the error details can be retrieved
+        by calling `exec_error` method.
+        """
+
+        t = Thread(target=self.run, daemon=daemon)
+        t.start()
 
     @abc.abstractmethod
     def stop(self):
@@ -264,7 +276,7 @@ class JobRun:
         return cls(
             JobInstanceMetadata.deserialize(as_dict['metadata']),
             Run.deserialize(as_dict['run']),
-            TrackedTaskInfo.from_dict(as_dict['tracking']) if "tracking" in as_dict else None,
+            TrackedTaskInfo.from_dict(as_dict['tracking']) if as_dict.get("tracking") else None,
         )
 
     def serialize(self, include_empty=True) -> Dict[str, Any]:

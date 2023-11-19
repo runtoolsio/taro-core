@@ -99,7 +99,7 @@ class JobRunIdCriterion(MatchCriteria[Tuple[str, str]]):
     def serialize(self):
         return {
             'job_id': self.job_id,
-            'run_Id': self.run_id,
+            'run_id': self.run_id,
             'match_both_ids': self.match_both_ids,
             'strategy': self.strategy.name.lower(),
         }
@@ -391,7 +391,7 @@ class JobRunAggregatedCriteria(MatchCriteria[JobRun]):
         return not self.interval_criteria or any(c(job_run.lifecycle) for c in self.interval_criteria)
 
     def matches_termination(self, job_run):
-        return self.termination_criteria or any(c(job_run.run.termination) for c in self.termination_criteria)
+        return not self.termination_criteria or any(c(job_run.run.termination) for c in self.termination_criteria)
 
     def matches_jobs(self, job_run):
         return not self.jobs or job_run.job_id in self.jobs

@@ -187,14 +187,14 @@ class APIServer(SocketServer, JobInstanceManager):
         return resource
 
     def _matching_instances(self, req_body):
-        instance_match = req_body.get('request_metadata', {}).get('instance_match', None)
-        if not instance_match:
+        run_match = req_body.get('request_metadata', {}).get('run_match', None)
+        if not run_match:
             return self._job_instances
 
         try:
-            matching_criteria = JobRunAggregatedCriteria.deserialize(instance_match)
+            matching_criteria = JobRunAggregatedCriteria.deserialize(run_match)
         except ValueError:
-            raise _ApiError(422, f"Invalid instance match: {instance_match}")
+            raise _ApiError(422, f"Invalid run match: {run_match}")
         return [job_instance for job_instance in self._job_instances if matching_criteria.matches(job_instance)]
 
 

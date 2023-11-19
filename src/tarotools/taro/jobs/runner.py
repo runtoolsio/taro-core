@@ -75,6 +75,7 @@ class RunnerJobInstance(JobInstance):
         self._status_notification = ObservableNotification[StatusObserver](error_hook=log_observer_error)
 
         self._phaser.transition_hook = self._transition_hook
+        self._phaser.prime()  # TODO
 
     def _log(self, event: str, msg: str = '', *params):
         return ("event=[{}] job_run=[{}@{}] " + msg).format(
