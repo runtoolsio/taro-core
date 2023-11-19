@@ -16,7 +16,7 @@ from collections import OrderedDict
 from copy import copy
 from dataclasses import dataclass
 from enum import Enum, EnumMeta
-from threading import Event, RLock
+from threading import Event, Condition
 from typing import Optional, List, Dict, Any, TypeVar, Type, Callable, Tuple, Iterable
 
 from tarotools.taro import util, status
@@ -582,7 +582,7 @@ class Phaser:
         self._timestamp_generator = timestamp_generator
         self.transition_hook: Optional[Callable[[PhaseRun, PhaseRun, int], None]] = None
 
-        self._transition_lock = RLock()
+        self._transition_lock = Condition()
         # Guarded by the transition/state lock:
         self._lifecycle = lifecycle or Lifecycle()
         self._current_phase = None
@@ -674,6 +674,7 @@ class Phaser:
         self._lifecycle.add_phase_run(PhaseRun(phase.name, phase.metadata.run_state, self._timestamp_generator()))
         if self.transition_hook:
             self.execute_transition_hook_safely(self.transition_hook)
+        self._transition_lock.notify_all()
 
     def execute_transition_hook_safely(self, transition_hook: Optional[Callable[[PhaseRun, PhaseRun, int], None]]):
         with self._transition_lock:
@@ -694,3 +695,15 @@ class Phaser:
                 self._next_phase(TerminalPhase())
 
         self._current_phase.stop()
+
+    def wait_for_transition(self, phase_name=None, run_state=RunState.NONE, *, timeout=None):
+        with self._transition_lock:
+            while True:
+                for run in self._lifecycle.phase_runs:
+                    if run.phase_name == phase_name or run.run_state == run_state:
+                        return True
+
+                if not self._transition_lock.wait(timeout):
+                    return False
+                if not phase_name and not run_state:
+                    return True

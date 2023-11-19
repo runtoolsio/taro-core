@@ -60,6 +60,7 @@ def test_approve_pending_instance(job_instances):
     assert instances[1].instance_metadata.job_id == 'j2'
     assert instances[1].release_result == ApprovalResult.APPROVED
 
+    assert job_instances[1].wait_for_transition(run_state=RunState.ENDED, timeout=1)
     assert job_instances[1].job_run_info().run.termination.status == TerminationStatus.COMPLETED
 
 

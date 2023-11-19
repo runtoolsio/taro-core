@@ -47,7 +47,7 @@ import logging
 
 from tarotools.taro import util
 from tarotools.taro.jobs.instance import JobInstance, JobRun, JobInstanceMetadata, InstanceTransitionObserver
-from tarotools.taro.run import PhaseRun, Outcome
+from tarotools.taro.run import PhaseRun, Outcome, RunState
 from tarotools.taro.status import StatusObserver
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY, CallableNotification, ObservableNotification
 
@@ -134,6 +134,9 @@ class RunnerJobInstance(JobInstance):
         All execution implementations must cope with such scenario.
         """
         self._phaser.stop()  # TODO Interrupt
+        
+    def wait_for_transition(self, phase_name=None, run_state=RunState.NONE, *, timeout=None):
+        return self._phaser.wait_for_transition(phase_name, run_state, timeout=timeout)
 
     def add_observer_phase_transition(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
         if notify_on_register:
