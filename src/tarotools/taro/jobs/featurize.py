@@ -340,8 +340,8 @@ class FeaturedContext(InstanceTransitionObserver):
         #      will work regardless of the priority as the removal of the observers doesn't affect
         #      iteration/notification (`Notification` class)
         job_instance.add_observer_phase_transition(self, ctx_observer_priority + 1)
-        if job_instance.lifecycle.is_ended:
-            self._release_instance(job_instance.metadata.job_run_id, not self._keep_removed)
+        if job_instance.job_run_info().run.lifecycle.is_ended:
+            self._release_instance(job_instance.metadata.instance_id, not self._keep_removed)
 
         return job_instance
 
@@ -357,12 +357,12 @@ class FeaturedContext(InstanceTransitionObserver):
         """
         return self._release_instance(job_instance_id, True)
 
-    def new_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal, transitioned):
+    def new_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal):
         """
         DO NOT EXECUTE THIS METHOD! It is part of the internal mechanism.
         """
         if new_phase.run_state == RunState.ENDED:
-            self._release_instance(job_run.metadata.job_run_id, not self._keep_removed)
+            self._release_instance(job_run.metadata.instance_id, not self._keep_removed)
 
     def _release_instance(self, job_instance_id, remove):
         """

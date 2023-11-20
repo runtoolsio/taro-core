@@ -7,7 +7,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum, auto
 from json import JSONDecodeError
-from typing import List, Any, Dict, NamedTuple, Optional, TypeVar, Generic, Callable
+from typing import List, Any, Dict, NamedTuple, Optional, TypeVar, Generic, Callable, Tuple
 
 from tarotools.taro.jobs.api import API_FILE_EXTENSION
 from tarotools.taro.jobs.instance import JobRun, JobInstanceMetadata
@@ -139,8 +139,8 @@ class StopResponse(JobInstanceResponse):
 
 
 @dataclass
-class TailResponse(JobInstanceResponse):
-    tail: List[str]
+class OutputResponse(JobInstanceResponse):
+    output: List[Tuple[str, bool]]
 
 
 @dataclass
@@ -211,7 +211,7 @@ def stop_instances(run_match) -> AggregatedResponse[StopResponse]:
         return client.stop_instances(run_match)
 
 
-def read_tail(run_match=None) -> AggregatedResponse[TailResponse]:
+def fetch_output(run_match=None) -> AggregatedResponse[OutputResponse]:
     """
     This function requests the last lines of the output from job instances that optionally match the provided criteria.
 
@@ -226,7 +226,7 @@ def read_tail(run_match=None) -> AggregatedResponse[TailResponse]:
     """
 
     with APIClient() as client:
-        return client.read_tail(run_match)
+        return client.fetch_output(run_match)
 
 
 def signal_dispatch(instance_match) -> AggregatedResponse[SignalProceedResponse]:
@@ -336,7 +336,7 @@ class APIClient(SocketClient):
 
         return self.send_request('/instances/stop', instance_match, resp_mapper=resp_mapper)
 
-    def read_tail(self, instance_match=None) -> AggregatedResponse[TailResponse]:
+    def fetch_output(self, instance_match=None) -> AggregatedResponse[OutputResponse]:
         """
         This function requests the last lines of the output from job instances
         that optionally match the provided criteria.
@@ -351,10 +351,10 @@ class APIClient(SocketClient):
             It also includes any errors that may have happened, each one related to a specific server API.
         """
 
-        def resp_mapper(inst_resp: InstanceResponse) -> TailResponse:
-            return TailResponse(inst_resp.instance_meta, inst_resp.body["tail"])
+        def resp_mapper(inst_resp: InstanceResponse) -> OutputResponse:
+            return OutputResponse(inst_resp.instance_meta, inst_resp.body["output"])
 
-        return self.send_request('/instances/tail', instance_match, resp_mapper=resp_mapper)
+        return self.send_request('/instances/output', instance_match, resp_mapper=resp_mapper)
 
     def signal_dispatch(self, instance_match) -> AggregatedResponse[SignalProceedResponse]:
         def resp_mapper(inst_resp: InstanceResponse) -> SignalProceedResponse:

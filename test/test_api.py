@@ -13,7 +13,7 @@ def job_instances():
     server = APIServer()
 
     j1 = TestJobInstanceBuilder('j1', 'i1').add_exec_phase().build()
-    j1.last_output = [('Meditate, do not delay, lest you later regret it.', False)]
+    j1.output.output_lines = [('Meditate, do not delay, lest you later regret it.', False)]
     server.register_instance(j1)
 
     j2 = TestJobInstanceBuilder('j2', 'i2').add_approval_phase().build()
@@ -76,12 +76,12 @@ def test_stop(job_instances):
     assert not job_instances[1].job_run_info().run.termination
 
 
-def test_tail(client):
-    instances, errors = client.read_tail()
+def test_tail():
+    instances, errors = client.fetch_output()
     assert not errors
 
-    assert instances[0].instance_metadata.id.job_id == 'j1'
-    assert instances[0].tail == [['Meditate, do not delay, lest you later regret it.', False]]
+    assert instances[0].instance_metadata.job_id == 'j1'
+    assert instances[0].output == [['Meditate, do not delay, lest you later regret it.', False]]
 
-    assert instances[1].instance_metadata.id.job_id == 'j2'
-    assert not instances[1].tail
+    assert instances[1].instance_metadata.job_id == 'j2'
+    assert not instances[1].output
