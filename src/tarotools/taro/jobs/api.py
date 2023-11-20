@@ -103,7 +103,7 @@ class OutputResource(APIResource):
         return '/instances/output'
 
     def handle(self, job_instance, req_body):
-        return {"output": job_instance.output.fetch()}
+        return {"output": job_instance.fetch_output()}
 
 
 class SignalProceedResource(APIResource):

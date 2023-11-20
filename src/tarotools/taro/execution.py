@@ -86,17 +86,21 @@ class ExecutingPhase(Phase):
         self._execution = execution
 
     @property
+    def execution(self):
+        return self._execution
+
+    @property
     def stop_status(self):
         return TerminationStatus.STOPPED
 
     def run(self):
         if hasattr(self._execution, 'add_callback_output'):
-            self._execution.add_callback_output(super()._output_notification)
+            self._execution.add_callback_output(self._output_notification)
 
         self._execution.execute()
 
         if hasattr(self._execution, 'remove_callback_output'):
-            self._execution.remove_callback_output(super()._output_notification)
+            self._execution.remove_callback_output(self._output_notification)
 
     def stop(self):
         self._execution.stop()

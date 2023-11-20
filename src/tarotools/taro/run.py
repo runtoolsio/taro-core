@@ -567,6 +567,9 @@ def unique_phases_to_dict(phases) -> Dict[str, Phase]:
     return name_to_phase
 
 
+P = TypeVar('P')
+
+
 class Phaser:
 
     def __init__(self, phases: Iterable[Phase], lifecycle=None, *, timestamp_generator=util.utc_now):
@@ -582,8 +585,6 @@ class Phaser:
         self._abort = False
         self._termination: Optional[TerminationInfo] = None
         # ----------------------- #
-
-    P = TypeVar('P')
 
     def get_typed_phase(self, phase_type: Type[P], phase_name: str) -> Optional[P]:
         phase = self._name_to_phase.get(phase_name)

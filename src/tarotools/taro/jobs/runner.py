@@ -43,12 +43,13 @@ State lock
 
 """
 import logging
+from typing import Type, Optional
 
 from tarotools.taro import util
 from tarotools.taro.jobs.instance import JobInstance, JobRun, JobInstanceMetadata, InstanceTransitionObserver, \
     InstanceOutputObserver
 from tarotools.taro.output import InMemoryOutput
-from tarotools.taro.run import PhaseRun, Outcome, RunState
+from tarotools.taro.run import PhaseRun, Outcome, RunState, P
 from tarotools.taro.status import StatusObserver
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY, CallableNotification, ObservableNotification
 
@@ -104,6 +105,9 @@ class RunnerJobInstance(JobInstance):
     @property
     def phases(self):
         return self._phaser.phases
+
+    def get_typed_phase(self, phase_type: Type[P], phase_name: str) -> Optional[P]:
+        return self._phaser.get_typed_phase(phase_type, phase_name)
 
     def job_run_info(self) -> JobRun:
         return JobRun(self.metadata, self._phaser.run_info(), self.tracking.copy() if self.tracking else None)  # TODO

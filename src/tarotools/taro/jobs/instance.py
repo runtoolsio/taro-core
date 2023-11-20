@@ -16,10 +16,10 @@ import abc
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from threading import Thread
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Type
 
 from tarotools.taro.jobs.track import TrackedTaskInfo
-from tarotools.taro.run import TerminationStatus, RunState, PhaseRun, Run, PhaseMetadata
+from tarotools.taro.run import TerminationStatus, RunState, PhaseRun, Run, PhaseMetadata, P
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
 
@@ -146,6 +146,10 @@ class JobInstance(abc.ABC):
         Returns:
             Dict[str, Phase]: Dictionary of {phase name: phase} in the order as defined in the instance
         """
+
+    @abc.abstractmethod
+    def get_typed_phase(self, phase_type: Type[P], phase_name: str) -> Optional[P]:
+        """pass"""
 
     @abc.abstractmethod
     def fetch_output(self):

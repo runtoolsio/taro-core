@@ -30,8 +30,8 @@ class TestJobInstanceBuilder(AbstractBuilder):
         self.phases.append(ApprovalPhase(name, 2))
         return self
 
-    def add_exec_phase(self, name='EXEC'):
-        self.phases.append(ExecutingPhase(name, TestExecution(wait=True)))
+    def add_exec_phase(self, name='EXEC', *, output_text=None):
+        self.phases.append(ExecutingPhase(name, TestExecution(wait=True, output_text=output_text)))
         return self
 
     def build(self):

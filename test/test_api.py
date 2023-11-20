@@ -2,6 +2,7 @@ import pytest
 
 from tarotools.taro import client
 from tarotools.taro.client import APIClient, APIErrorType, ErrorCode, ApprovalResult, StopResult
+from tarotools.taro.execution import ExecutingPhase
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.criteria import parse_criteria
 from tarotools.taro.run import RunState, StandardPhaseNames, TerminationStatus
@@ -12,8 +13,8 @@ from tarotools.taro.test.instance import TestJobInstanceBuilder
 def job_instances():
     server = APIServer()
 
-    j1 = TestJobInstanceBuilder('j1', 'i1').add_exec_phase().build()
-    j1.output.output_lines = [('Meditate, do not delay, lest you later regret it.', False)]
+    output_text = ('Meditate, do not delay, lest you later regret it.', False)
+    j1 = TestJobInstanceBuilder('j1', 'i1').add_exec_phase(output_text=output_text).build()
     server.register_instance(j1)
 
     j2 = TestJobInstanceBuilder('j2', 'i2').add_approval_phase().build()
@@ -76,7 +77,10 @@ def test_stop(job_instances):
     assert not job_instances[1].job_run_info().run.termination
 
 
-def test_tail():
+def test_tail(job_instances):
+    assert job_instances[0].get_typed_phase(ExecutingPhase, 'EXEC').execution.executed_latch.wait(timeout=1)
+    assert job_instances[1].wait_for_transition(run_state=RunState.PENDING, timeout=1)
+
     instances, errors = client.fetch_output()
     assert not errors
 

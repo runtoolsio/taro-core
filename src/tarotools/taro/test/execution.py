@@ -7,15 +7,15 @@ Alternatively the execution can raise an exception set to raise_exc: :func:`Test
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from threading import Event
 from time import sleep
-from typing import List
 
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.execution import OutputExecution
 from tarotools.taro.run import TerminationStatus
 from tarotools.taro.util import utc_now
+from tarotools.taro.util.observer import CallableNotification
 
 log = logging.getLogger(__name__)
 
@@ -23,27 +23,31 @@ log = logging.getLogger(__name__)
 class TestExecution(OutputExecution):
     __test__ = False  # To tell pytest it isn't a test class
 
-    def __init__(self, after_exec_state: TerminationStatus = None, raise_exc: Exception = None, *, wait: bool = False):
+    def __init__(self,
+                 after_exec_state: TerminationStatus = None,
+                 raise_exc: Exception = None,
+                 *, wait: bool = False, output_text=None):
         if after_exec_state and raise_exc:
             raise ValueError("either after_exec_state or throw_exc must be set", after_exec_state, raise_exc)
-        self._term_status = after_exec_state or (None if raise_exc else TerminationStatus.COMPLETED)
-        self._raise_exc = raise_exc
+        self.term_status = after_exec_state or (None if raise_exc else TerminationStatus.COMPLETED)
+        self.raise_exc = raise_exc
+        self.output_text = output_text
+        self.executed_latch = Event()
+        self.output_notification = CallableNotification()
         self._wait = Event() if wait else None
-        self._execution_occurrences: List[datetime] = []
-        self._tracking = None
 
     def __repr__(self):
         return "{}(ExecutionState.{}, {!r})".format(
-            self.__class__.__name__, self._term_status.name, self._raise_exc)
+            self.__class__.__name__, self.term_status.name, self.raise_exc)
 
     def after_exec_state(self, state: TerminationStatus):
-        self._term_status = state
-        self._raise_exc = None
+        self.term_status = state
+        self.raise_exc = None
         return self
 
     def raise_exception(self, exc: Exception):
-        self._term_status = None
-        self._raise_exc = exc
+        self.term_status = None
+        self.raise_exc = exc
         return self
 
     def release(self):
@@ -53,33 +57,17 @@ class TestExecution(OutputExecution):
             raise InvalidStateError('Wait not set')
 
     def execute(self) -> TerminationStatus:
-        self._execution_occurrences.append(datetime.now())
+        if self.output_text:
+            self.output_notification(*self.output_text)
+        self.executed_latch.set()
         if self._wait:
             self._wait.wait(2)
-        if self._term_status:
-            log.info('event=[executed] new_state=[%s]', self._term_status.name)
-            return self._term_status
+        if self.term_status:
+            log.info('event=[executed] new_state=[%s]', self.term_status.name)
+            return self.term_status
         else:
-            log.info('event=[executed] exception_raised=[%s]', self._raise_exc)
-            raise self._raise_exc
-
-    def executed_count(self):
-        return len(self._execution_occurrences)
-
-    def last_execution_occurrence(self) -> datetime:
-        return self._execution_occurrences[-1]
-
-    @property
-    def tracking(self):
-        return self._tracking
-
-    @tracking.setter
-    def tracking(self, tracking):
-        self._tracking = tracking
-
-    @property
-    def status(self):
-        return None
+            log.info('event=[executed] exception_raised=[%s]', self.raise_exc)
+            raise self.raise_exc
 
     @property
     def parameters(self):
@@ -93,10 +81,10 @@ class TestExecution(OutputExecution):
         raise NotImplementedError()
 
     def add_callback_output(self, callback):
-        pass
+        self.output_notification.add_observer(callback)
 
     def remove_callback_output(self, callback):
-        pass
+        self.output_notification.remove_observer(callback)
 
 
 def lc_active(active_state: TerminationStatus, delta=0):
