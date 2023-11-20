@@ -108,5 +108,5 @@ class TestOutputObserver(InstanceOutputObserver):
     def __init__(self):
         self.outputs = []
 
-    def new_instance_output(self, job_info: JobRun, output, is_error):
-        self.outputs.append((job_info, output, is_error))
+    def new_instance_output(self, job_run: JobRun, output, is_error):
+        self.outputs.append((job_run, output, is_error))

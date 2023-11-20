@@ -42,11 +42,11 @@ State lock
 3. No race condition on state observer notify on register
 
 """
-
 import logging
 
 from tarotools.taro import util
-from tarotools.taro.jobs.instance import JobInstance, JobRun, JobInstanceMetadata, InstanceTransitionObserver
+from tarotools.taro.jobs.instance import JobInstance, JobRun, JobInstanceMetadata, InstanceTransitionObserver, \
+    InstanceOutputObserver
 from tarotools.taro.output import InMemoryOutput
 from tarotools.taro.run import PhaseRun, Outcome, RunState
 from tarotools.taro.status import StatusObserver
@@ -73,9 +73,11 @@ class RunnerJobInstance(JobInstance):
         self._phaser = phaser
         self._output = output or InMemoryOutput()
         self._tracking = None  # TODO The output fields below will be moved to the tracker
+        self._output_notification = ObservableNotification[InstanceOutputObserver](error_hook=log_observer_error)
         self._transition_notification = ObservableNotification[InstanceTransitionObserver](error_hook=log_observer_error)
         self._status_notification = ObservableNotification[StatusObserver](error_hook=log_observer_error)
 
+        # TODO Move the below out of constructor?
         self._phaser.transition_hook = self._transition_hook
         self._phaser.prime()  # TODO
 
@@ -92,10 +94,6 @@ class RunnerJobInstance(JobInstance):
         return self._metadata
 
     @property
-    def output(self):
-        return self._output
-
-    @property
     def tracking(self):
         return self._tracking
 
@@ -110,16 +108,26 @@ class RunnerJobInstance(JobInstance):
     def job_run_info(self) -> JobRun:
         return JobRun(self.metadata, self._phaser.run_info(), self.tracking.copy() if self.tracking else None)  # TODO
 
-    def run(self):
-        observer_proxy = self._status_notification.observer_proxy
-        for phase in self._phaser.phases.values():
-            phase.add_observer_status(observer_proxy)
+    def fetch_output(self):
+        return self._output.fetch()
 
+    def _process_output_callback(self, phase):
+        def process_output(output: str, is_error: bool):
+            self._output.add(phase.name, output, is_error)
+            self._output_notification.observer_proxy.new_output(self.job_run_info(), phase, output, is_error)
+
+        return process_output
+
+    def run(self):
+        for phase in self._phaser.phases.values():
+            phase.add_callback_output(self._process_output_callback(phase))
+            phase.add_observer_status(self._status_notification.observer_proxy)
         try:
             self._phaser.run()
         finally:
             for phase in self._phaser.phases.values():
-                phase.add_observer_status(observer_proxy)
+                phase.remove_callback_output(self._output_notification.observer_proxy)
+                phase.remove_observer_status(self._status_notification.observer_proxy)
 
     def stop(self):
         """

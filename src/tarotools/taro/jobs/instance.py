@@ -19,7 +19,7 @@ from threading import Thread
 from typing import Dict, Any, Optional, List
 
 from tarotools.taro.jobs.track import TrackedTaskInfo
-from tarotools.taro.run import TerminationStatus, RunState, PhaseRun, Run
+from tarotools.taro.run import TerminationStatus, RunState, PhaseRun, Run, PhaseMetadata
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
 
@@ -116,11 +116,6 @@ class JobInstance(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def output(self):
-        """TODO: """
-
-    @property
-    @abc.abstractmethod
     def tracking(self):
         """TODO: Task tracking information, None if tracking is not supported"""
 
@@ -128,6 +123,7 @@ class JobInstance(abc.ABC):
     @abc.abstractmethod
     def status_observer(self):
         """
+        TODO Remove - track instance can be use do set status info
         Returned status observer allows to add status notifications also by a logic located outside the instance.
 
         Returns:
@@ -150,6 +146,10 @@ class JobInstance(abc.ABC):
         Returns:
             Dict[str, Phase]: Dictionary of {phase name: phase} in the order as defined in the instance
         """
+
+    @abc.abstractmethod
+    def fetch_output(self):
+        """TODO"""
 
     @abc.abstractmethod
     def run(self):
@@ -369,6 +369,13 @@ class InstanceTransitionObserver(abc.ABC):
         """
 
 
+class InstanceOutputObserver(abc.ABC):
+
+    @abc.abstractmethod
+    def new_output(self, job_run: JobRun, phase: PhaseMetadata, output: str, is_error: bool):
+        """TODO"""
+
+
 @dataclass
 class Warn:
     """
@@ -398,12 +405,12 @@ class WarnEventCtx:
 class InstanceOutputObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_instance_output(self, job_info: JobRun, output: str, is_error: bool):
+    def new_instance_output(self, job_run: JobRun, output: str, is_error: bool):
         """
         Executed when a new output line is available.
 
         Args:
-            job_info (JobInstSnapshot): Job instance producing the output.
+            job_run (JobRun): Job instance producing the output.
             output (str): Job instance output text.
             is_error (bool): True if it is an error output, otherwise False.
         """

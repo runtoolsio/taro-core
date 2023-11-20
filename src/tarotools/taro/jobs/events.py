@@ -79,9 +79,9 @@ class OutputDispatcher(EventDispatcher, InstanceOutputObserver):
     def __init__(self):
         super(OutputDispatcher, self).__init__(SocketClient(OUTPUT_LISTENER_FILE_EXTENSION, bidirectional=False))
 
-    def new_instance_output(self, job_info: JobRun, output, is_error):
+    def new_instance_output(self, job_run: JobRun, output, is_error):
         event = {
             "output": util.truncate(output, 10000, truncated_suffix=".. (truncated)"),
             "is_error": is_error,
         }
-        self._send_event("new_instance_output", job_info.metadata, event)
+        self._send_event("new_instance_output", job_run.metadata, event)

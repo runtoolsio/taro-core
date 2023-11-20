@@ -108,10 +108,10 @@ class ProcessExecution(OutputExecution):
     def interrupted(self):
         self._interrupted = True
 
-    def add_output_callback(self, callback):
+    def add_callback_output(self, callback):
         self._output_notification.add_observer(callback)
 
-    def remove_output_callback(self, callback):
+    def remove_callback_output(self, callback):
         self._output_notification.remove_observer(callback)
 
     def _read_output(self):

@@ -54,7 +54,7 @@ class OutputExecution(Execution):
     """
 
     @abc.abstractmethod
-    def add_output_callback(self, callback):
+    def add_callback_output(self, callback):
         """
         Register a function to be called on output notification.
 
@@ -70,7 +70,7 @@ class OutputExecution(Execution):
         """
 
     @abc.abstractmethod
-    def remove_output_callback(self, callback):
+    def remove_callback_output(self, callback):
         """
         De-register the output callback function
 
@@ -90,7 +90,13 @@ class ExecutingPhase(Phase):
         return TerminationStatus.STOPPED
 
     def run(self):
+        if hasattr(self._execution, 'add_callback_output'):
+            self._execution.add_callback_output(super()._output_notification)
+
         self._execution.execute()
+
+        if hasattr(self._execution, 'remove_callback_output'):
+            self._execution.remove_callback_output(super()._output_notification)
 
     def stop(self):
         self._execution.stop()

@@ -23,7 +23,7 @@ from tarotools.taro import util, status
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.status import StatusObserver
 from tarotools.taro.util import format_dt_iso, is_empty
-from tarotools.taro.util.observer import ObservableNotification
+from tarotools.taro.util.observer import ObservableNotification, CallableNotification
 
 log = logging.getLogger(__name__)
 
@@ -127,7 +127,6 @@ class StandardPhaseNames:
 
 @dataclass
 class PhaseRun:
-
     phase_name: str
     run_state: RunState
     started_at: Optional[datetime.datetime]
@@ -380,17 +379,11 @@ class PhaseMetadata:
         return d
 
 
-class PhaseOutputObserver(ABC):
-
-    def new_output(self, phase_meta, output: str, is_err: bool):
-        pass
-
-
 class Phase(ABC):
 
     def __init__(self, phase_name: str, run_state: RunState, parameters: Optional[Dict[str, str]] = None):
         self._metadata = PhaseMetadata(phase_name, run_state, parameters or {})
-        self._output_notification = ObservableNotification[PhaseOutputObserver]()
+        self._output_notification = CallableNotification()
         self._status_notification = ObservableNotification[StatusObserver]()
 
     @property
@@ -414,11 +407,11 @@ class Phase(ABC):
     def stop(self):
         pass
 
-    def add_observer_output(self, observer, priority=status.DEFAULT_OBSERVER_PRIORITY):
-        self._output_notification.add_observer(observer, priority)
+    def add_callback_output(self, callback, priority=status.DEFAULT_OBSERVER_PRIORITY):
+        self._output_notification.add_observer(callback, priority)
 
-    def remove_observer_output(self, observer):
-        self._output_notification.remove_observer(observer)
+    def remove_callback_output(self, callback):
+        self._output_notification.remove_observer(callback)
 
     def add_observer_status(self, observer, priority=status.DEFAULT_OBSERVER_PRIORITY):
         self._status_notification.add_observer(observer, priority)

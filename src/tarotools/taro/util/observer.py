@@ -51,10 +51,11 @@ class ObservableNotification(Generic[O]):
     def __init__(self, error_hook: Optional[Callable[[O, Tuple[Any], Exception], None]] = None):
         self.error_hook: Optional[Callable[[O, Tuple[Any], Exception], None]] = error_hook
         self._prioritized_observers = []
+        self._observer_proxy = _Proxy(self)
 
     @property
     def observer_proxy(self) -> O:
-        return _Proxy(self)
+        return self._observer_proxy
 
     @property
     def observers(self) -> List[O]:
