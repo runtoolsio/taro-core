@@ -4,9 +4,9 @@ import logging
 from abc import abstractmethod
 from json import JSONDecodeError
 
-from tarotools.taro import util, JobRun, InstanceTransitionObserver
+from tarotools.taro import util
 from tarotools.taro.jobs.events import TRANSITION_LISTENER_FILE_EXTENSION, OUTPUT_LISTENER_FILE_EXTENSION
-from tarotools.taro.jobs.instance import JobInstanceMetadata, InstanceOutputObserver
+from tarotools.taro.jobs.instance import JobInstanceMetadata, InstanceOutputObserver, JobRun, InstanceTransitionObserver
 from tarotools.taro.run import PhaseRun, PhaseMetadata
 from tarotools.taro.socket import SocketServer
 from tarotools.taro.util.observer import ObservableNotification
@@ -88,6 +88,12 @@ class InstanceTransitionReceiver(EventReceiver):
 
         self._notification.observer_proxy.new_phase(job_run, previous_phase, new_phase, ordinal)
 
+    def add_observer_transition(self, observer):
+        self._notification.add_observer(observer)
+
+    def remove_observer_transition(self, observer):
+        self._notification.remove_observer(observer)
+
 
 class InstanceOutputReceiver(EventReceiver):
 
@@ -100,3 +106,9 @@ class InstanceOutputReceiver(EventReceiver):
         output = event['output']
         is_error = event['is_error']
         self._notification.observer_proxy.new_output(instance_meta, phase, output, is_error)
+
+    def add_observer_output(self, observer):
+        self._notification.add_observer(observer)
+
+    def remove_observer_output(self, observer):
+        self._notification.remove_observer(observer)

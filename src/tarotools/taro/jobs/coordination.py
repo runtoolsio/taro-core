@@ -7,9 +7,9 @@ from threading import Condition, Event, Lock
 from tarotools import taro
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.criteria import JobRunIdCriterion, TerminationCriterion, JobRunAggregatedCriteria
-from tarotools.taro.jobs.instance import JobRuns
-from tarotools.taro.listening import InstanceTransitionReceiver, TransitionEventObserver
-from tarotools.taro.run import RunState, Phase, TerminationStatus
+from tarotools.taro.jobs.instance import JobRuns, InstanceTransitionObserver, JobRun
+from tarotools.taro.listening import InstanceTransitionReceiver
+from tarotools.taro.run import RunState, Phase, TerminationStatus, PhaseRun
 
 log = logging.getLogger(__name__)
 
@@ -301,7 +301,7 @@ class ExecutionGroupLimit:
     max_executions: int
 
 
-class ExecutionQueue(Queue, TransitionEventObserver):
+class ExecutionQueue(Queue, InstanceTransitionObserver):
 
     def __init__(self, queue_id, max_executions, queue_locker=lock.default_queue_locker(),
                  state_receiver_factory=InstanceTransitionReceiver):
@@ -409,11 +409,11 @@ class ExecutionQueue(Queue, TransitionEventObserver):
                     if next_count <= 0:
                         return
 
-    def state_update(self, instance_meta, previous_phase, new_phase, changed, termination_status):
+    def new_phase(self, job_run: JobRun, previous_phase: PhaseRun, new_phase: PhaseRun, ordinal: int):
         with self._wait_guard:
             if not self._current_wait:
                 return
-            if new_phase.run_state == RunState.ENDED and instance_meta.contains_system_parameters(self._parameters):
+            if new_phase.run_state == RunState.ENDED and job_run.metadata.contains_system_parameters(self._parameters):
                 self._current_wait = False
                 self._stop_listening()
                 self._wait_guard.notify()

@@ -12,9 +12,7 @@ from queue import Queue
 from threading import Condition
 from typing import Tuple, List, Callable
 
-from tarotools.taro import TerminationStatus
-from tarotools.taro.jobs.instance import JobRun, InstanceStatusObserver, InstanceTransitionObserver, \
-    InstancePhase
+from tarotools.taro.jobs.instance import JobRun, InstanceStatusObserver, InstanceTransitionObserver
 from tarotools.taro.run import FailedRun
 
 log = logging.getLogger(__name__)
@@ -27,8 +25,14 @@ class GenericObserver:
     def __init__(self):
         self.updates = Queue()
 
+    def __getattr__(self, name):
+        def method(*args):
+            self.updates.put_nowait((name, args))
+
+        return method
+
     def __call__(self, *args):
-        self.updates.put_nowait(args)
+        self.updates.put_nowait(("__call__", args))
 
 
 class TestPhaseObserver(InstanceTransitionObserver):
@@ -50,16 +54,16 @@ class TestPhaseObserver(InstanceTransitionObserver):
         return self._events[-1][1]
 
     @property
-    def last_state_any_job(self) -> TerminationStatus:
+    def last_state_any_job(self):
         return self._events[-1][2]
 
-    def last_state(self, job_id) -> TerminationStatus:
+    def last_state(self, job_id):
         """
         :return: last state of the specified job
         """
         return next(e[2] for e in reversed(self._events) if e[1].job_id == job_id)
 
-    def exec_state(self, event_idx: int) -> TerminationStatus:
+    def exec_state(self, event_idx: int):
         """
         :param event_idx: event index
         :return: execution state of the event on given index
@@ -77,7 +81,7 @@ class TestPhaseObserver(InstanceTransitionObserver):
         with self.completion_lock:
             self.completion_lock.notify()  # Support only one-to-one thread sync to keep things simple
 
-    def wait_for_state(self, exec_state: TerminationStatus, timeout: float = 1) -> bool:
+    def wait_for_state(self, exec_state, timeout: float = 1) -> bool:
         """
         Wait for receiving notification with the specified state
 

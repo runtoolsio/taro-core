@@ -1,5 +1,5 @@
 from tarotools.taro.jobs.criteria import IntervalCriterion, TerminationCriterion
-from tarotools.taro.run import RunState, TerminationStatus, Flag, TerminationInfo
+from tarotools.taro.run import RunState, TerminationStatus, TerminationInfo, Outcome
 
 from tarotools.taro.util import utc_now
 
@@ -10,8 +10,8 @@ def test_interval_utc_conversion():
 
 
 def test_termination_criteria():
-    matching = TerminationCriterion(status_flag_groups=[{Flag.SUCCESS}, {Flag.UNEXECUTED, Flag.NONSUCCESS}])
-    not_matching = TerminationCriterion(status_flag_groups=[{Flag.SUCCESS}, {Flag.UNEXECUTED, Flag.ABORT}])
+    matching = TerminationCriterion(outcomes={Outcome.REJECT})
+    not_matching = TerminationCriterion(outcomes={Outcome.ABORT})
 
     tested_info = TerminationInfo(TerminationStatus.INVALID_OVERLAP, utc_now())
     assert matching(tested_info)
