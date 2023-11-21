@@ -12,10 +12,11 @@ import json
 import logging
 
 from tarotools.taro import util
-from tarotools.taro.jobs.instance import InstanceTransitionObserver, JobRun, InstanceOutputObserver
+from tarotools.taro.jobs.instance import InstanceTransitionObserver, JobRun, InstanceStatusObserver, JobInstanceMetadata
+from tarotools.taro.run import PhaseMetadata
 from tarotools.taro.socket import SocketClient, PayloadTooLarge
 
-PHASE_LISTENER_FILE_EXTENSION = '.plistener'
+TRANSITION_LISTENER_FILE_EXTENSION = '.tlistener'
 OUTPUT_LISTENER_FILE_EXTENSION = '.olistener'
 
 log = logging.getLogger(__name__)
@@ -48,14 +49,14 @@ class EventDispatcher(abc.ABC):
         self._client.close()
 
 
-class InstanceTransitionDispatcher(EventDispatcher, InstanceTransitionObserver):
+class TransitionDispatcher(EventDispatcher, InstanceTransitionObserver):
     """
     This producer emits an event when the state of a job instance changes. This dispatcher should be registered to
     the job instance as an `InstanceStateObserver`.
     """
 
     def __init__(self):
-        super(InstanceTransitionDispatcher, self).__init__(SocketClient(PHASE_LISTENER_FILE_EXTENSION, bidirectional=False))
+        super(TransitionDispatcher, self).__init__(SocketClient(TRANSITION_LISTENER_FILE_EXTENSION, bidirectional=False))
 
     def __call__(self, job_run: JobRun, previous_phase, new_phase, ordinal):
         self.new_phase(job_run, previous_phase, new_phase, ordinal)
@@ -70,7 +71,7 @@ class InstanceTransitionDispatcher(EventDispatcher, InstanceTransitionObserver):
         self._send_event("instance_phase_transition", job_run.metadata, event)
 
 
-class OutputDispatcher(EventDispatcher, InstanceOutputObserver):
+class OutputDispatcher(EventDispatcher, InstanceStatusObserver):
     """
     This producer emits an event when a job instance generates a new output. This dispatcher should be registered to
     the job instance as an `JobOutputObserver`.
@@ -79,9 +80,10 @@ class OutputDispatcher(EventDispatcher, InstanceOutputObserver):
     def __init__(self):
         super(OutputDispatcher, self).__init__(SocketClient(OUTPUT_LISTENER_FILE_EXTENSION, bidirectional=False))
 
-    def new_instance_output(self, job_run: JobRun, output, is_error):
+    def new_instance_output(self, instance_meta: JobInstanceMetadata, phase: PhaseMetadata, output, is_error):
         event = {
+            "phase": phase.serialize(),
             "output": util.truncate(output, 10000, truncated_suffix=".. (truncated)"),
             "is_error": is_error,
         }
-        self._send_event("new_instance_output", job_run.metadata, event)
+        self._send_event("new_instance_output", instance_meta, event)

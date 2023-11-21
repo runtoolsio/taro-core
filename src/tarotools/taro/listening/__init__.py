@@ -1,15 +1,15 @@
 #  Sender, Listening
-import abc
 import json
 import logging
 from abc import abstractmethod
 from json import JSONDecodeError
 
-from tarotools.taro import util
-from tarotools.taro.jobs.events import PHASE_LISTENER_FILE_EXTENSION, OUTPUT_LISTENER_FILE_EXTENSION
-from tarotools.taro.jobs.instance import JobInstanceMetadata
-from tarotools.taro.run import TerminationStatus, Phase
+from tarotools.taro import util, JobRun, InstanceTransitionObserver
+from tarotools.taro.jobs.events import TRANSITION_LISTENER_FILE_EXTENSION, OUTPUT_LISTENER_FILE_EXTENSION
+from tarotools.taro.jobs.instance import JobInstanceMetadata, InstanceOutputObserver
+from tarotools.taro.run import PhaseRun, PhaseMetadata
 from tarotools.taro.socket import SocketServer
+from tarotools.taro.util.observer import ObservableNotification
 
 log = logging.getLogger(__name__)
 
@@ -69,74 +69,34 @@ class EventReceiver(SocketServer):
         pass
 
 
-class PhaseReceiver(EventReceiver):
+class InstanceTransitionReceiver(EventReceiver):
 
     def __init__(self, id_match=None, phases=()):
-        super().__init__(_listener_socket_name(PHASE_LISTENER_FILE_EXTENSION), id_match)
+        super().__init__(_listener_socket_name(TRANSITION_LISTENER_FILE_EXTENSION), id_match)
         self.phases = phases
-        self.listeners = []
+        self._notification = ObservableNotification[InstanceTransitionObserver]()
 
     def handle_event(self, _, instance_meta, event):
-        new_phase = Phase.deserialize(event["new_phase"])
+        new_phase = PhaseRun.deserialize(event["new_phase"])
 
-        if self.phases and new_phase not in self.phases:
+        if self.phases and new_phase.phase_name not in self.phases:
             return
 
-        previous_phase = Phase.deserialize(event['previous_phase'])
-        changed = util.parse_datetime(event["changed"])
-        termination_status = TerminationStatus[
-            "termination_status"] if "termination_status" in event else TerminationStatus.NONE
+        job_run = JobRun.deserialize(event['job_run'])
+        previous_phase = PhaseRun.deserialize(event['previous_phase'])
+        ordinal = event['ordinal']
 
-        for listener in self.listeners:
-            if isinstance(listener, InstancePhaseEventObserver):
-                listener.state_update(instance_meta, previous_phase, new_phase, changed, termination_status)
-            elif callable(listener):
-                listener(instance_meta, previous_phase, new_phase, changed, termination_status)
-            else:
-                log.warning("event=[unsupported_phase_observer] observer=[%s]", listener)
+        self._notification.observer_proxy.new_phase(job_run, previous_phase, new_phase, ordinal)
 
 
-class InstancePhaseEventObserver(abc.ABC):
-
-    @abc.abstractmethod
-    def state_update(self, instance_meta, previous_phase, new_phase, changed, termination_status):
-        """
-        This method is called when a job instance's transitioned to a new phase.
-
-        :param instance_meta: job instance metadata
-        :param previous_phase: phase before
-        :param new_phase: new phase
-        :param changed: timestamp of the transition
-        :param termination_status: termination status of the new phase is TERMINAL
-        """
-
-
-class OutputReceiver(EventReceiver):
+class InstanceOutputReceiver(EventReceiver):
 
     def __init__(self, id_match=None):
         super().__init__(_listener_socket_name(OUTPUT_LISTENER_FILE_EXTENSION), id_match)
-        self.listeners = []
+        self._notification = ObservableNotification[InstanceOutputObserver]()
 
     def handle_event(self, _, instance_meta, event):
+        phase = PhaseMetadata.deserialize(event['phase'])
         output = event['output']
         is_error = event['is_error']
-        for listener in self.listeners:
-            if isinstance(listener, OutputEventObserver):
-                listener.output_event_update(instance_meta, output, is_error)
-            elif callable(listener):
-                listener(instance_meta, output, is_error)
-            else:
-                log.warning("event=[unsupported_output_event_observer] observer=[%s]", listener)
-
-
-class OutputEventObserver(abc.ABC):
-
-    @abc.abstractmethod
-    def output_event_update(self, instance_meta, output, is_error):
-        """
-        Executed when new output line is available.
-
-        :param instance_meta: data about the job instance producing the output
-        :param output: job instance output text
-        :param is_error: True when it is an error output
-        """
+        self._notification.observer_proxy.new_output(instance_meta, phase, output, is_error)

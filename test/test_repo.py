@@ -6,7 +6,6 @@ Description: Jobs file repository tests
 import pytest
 
 from tarotools.taro import paths
-from tarotools.taro.jobs import repo
 from tarotools.taro.test.testutil import create_custom_test_config, remove_custom_test_config
 
 

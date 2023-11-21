@@ -4,12 +4,12 @@ from typing import Sequence
 
 from tarotools.taro import util
 from tarotools.taro.jobs.instance import JobInstance, JobRun, InstanceTransitionObserver, Warn, \
-    InstanceOutputObserver
+    InstanceStatusObserver
 from tarotools.taro.run import RunState
 
 
 def exec_time_exceeded(job_instance: JobInstance, warning_name: str, time: float):
-    job_instance.add_observer_phase_transition(_ExecTimeWarning(job_instance, warning_name, time))
+    job_instance.add_observer_transition(_ExecTimeWarning(job_instance, warning_name, time))
 
 
 def output_matches(job_instance: JobInstance, warning_name: str, regex: str):
@@ -51,7 +51,7 @@ class _ExecTimeWarning(InstanceTransitionObserver):
             self.__class__.__name__, self.job_instance, self.name, self.time)
 
 
-class _OutputMatchesWarning(InstanceOutputObserver):
+class _OutputMatchesWarning(InstanceStatusObserver):
 
     def __init__(self, job_instance, w_id, regex):
         self.job_instance = job_instance

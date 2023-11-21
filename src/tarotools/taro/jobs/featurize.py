@@ -19,9 +19,9 @@ from tarotools.taro import persistence as persistence_mod
 from tarotools.taro import plugins as plugins_mod
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.api import APIServer
-from tarotools.taro.jobs.events import InstanceTransitionDispatcher, OutputDispatcher
+from tarotools.taro.jobs.events import TransitionDispatcher, OutputDispatcher
 from tarotools.taro.jobs.instance import (InstanceTransitionObserver, JobRun, JobInstance, JobInstanceManager,
-                                          InstanceOutputObserver)
+                                          InstanceStatusObserver)
 from tarotools.taro.jobs.plugins import Plugin
 from tarotools.taro.run import RunState
 
@@ -132,7 +132,7 @@ class FeaturedContextBuilder:
         self._instance_managers.append((factory, open_hook, close_hook, unregister_after_termination))
         return self
 
-    def add_phase_transition_callback(self, factory, open_hook=None, close_hook=None, priority=100) -> 'FeaturedContextBuilder':
+    def add_transition_observer(self, factory, open_hook=None, close_hook=None, priority=100) -> 'FeaturedContextBuilder':
         self._state_observers.append((factory, open_hook, close_hook, priority))
         return self
 
@@ -141,11 +141,11 @@ class FeaturedContextBuilder:
         return self
 
     def standard_features(
-            self, api_server=True, state_dispatcher=True, output_dispatcher=True, persistence=True, plugins=()):
+            self, api_server=True, transition_dispatcher=True, output_dispatcher=True, persistence=True, plugins=()):
         if api_server:
             self.api_server()
-        if state_dispatcher:
-            self.phase_transition_dispatcher()
+        if transition_dispatcher:
+            self.transition_dispatcher()
         if output_dispatcher:
             self.output_dispatcher()
         if persistence:
@@ -159,8 +159,8 @@ class FeaturedContextBuilder:
         self.add_instance_manager(APIServer, lambda api: api.start(), lambda api: api.close())
         return self
 
-    def phase_transition_dispatcher(self):
-        self.add_phase_transition_callback(InstanceTransitionDispatcher, close_hook=lambda dispatcher: dispatcher.close())
+    def transition_dispatcher(self):
+        self.add_transition_observer(TransitionDispatcher, close_hook=lambda dispatcher: dispatcher.close())
         return self
 
     def output_dispatcher(self):
@@ -169,7 +169,7 @@ class FeaturedContextBuilder:
 
     def persistence(self):
         # Lower default priority so other listeners can see the instance already persisted
-        self.add_phase_transition_callback(
+        self.add_transition_observer(
             persistence_mod.load_configured_persistence, close_hook=lambda db: db.close(), priority=50)
         return self
 
@@ -240,7 +240,7 @@ class FeaturedContext(InstanceTransitionObserver):
     def __init__(self, instance_managers=(), state_observers=(), output_observers=(), *, transient=False):
         self._instance_managers: Tuple[ManagerFeature[JobInstanceManager]] = tuple(instance_managers)
         self._state_observers: Tuple[ObserverFeature[InstanceTransitionObserver]] = tuple(state_observers)
-        self._output_observers: Tuple[ObserverFeature[InstanceOutputObserver]] = tuple(output_observers)
+        self._output_observers: Tuple[ObserverFeature[InstanceStatusObserver]] = tuple(output_observers)
         self._keep_removed = not transient
         self._managed_instances: Dict[str, _ManagedInstance] = {}
         self._ctx_lock = Lock()
@@ -323,7 +323,7 @@ class FeaturedContext(InstanceTransitionObserver):
 
         ctx_observer_priority = 1000
         for state_observer_feat in self._state_observers:
-            job_instance.add_observer_phase_transition(state_observer_feat.component, state_observer_feat.priority)
+            job_instance.add_observer_transition(state_observer_feat.component, state_observer_feat.priority)
             ctx_observer_priority = max(ctx_observer_priority, state_observer_feat.priority)
 
         for output_observer_feat in self._output_observers:
@@ -339,7 +339,7 @@ class FeaturedContext(InstanceTransitionObserver):
         #   2. Priority should be set to be the lowest from all observers, however the current implementation
         #      will work regardless of the priority as the removal of the observers doesn't affect
         #      iteration/notification (`Notification` class)
-        job_instance.add_observer_phase_transition(self, ctx_observer_priority + 1)
+        job_instance.add_observer_transition(self, ctx_observer_priority + 1)
         if job_instance.job_run_info().run.lifecycle.is_ended:
             self._release_instance(job_instance.metadata.instance_id, not self._keep_removed)
 
@@ -384,13 +384,13 @@ class FeaturedContext(InstanceTransitionObserver):
 
         job_instance = managed_instance.instance
         if release:
-            job_instance.remove_observer_phase_transition(self)
+            job_instance.remove_observer_transition(self)
 
             for output_observer_feat in self._output_observers:
                 job_instance.remove_observer_status(output_observer_feat.component)
 
             for state_observer_feat in self._state_observers:
-                job_instance.remove_observer_phase_transition(state_observer_feat.component)
+                job_instance.remove_observer_transition(state_observer_feat.component)
 
             for manager_feat in self._instance_managers:
                 if manager_feat.unregister_after_termination:

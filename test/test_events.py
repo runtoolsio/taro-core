@@ -3,14 +3,14 @@ from datetime import datetime
 from tarotools.taro.test.inst import TestJobInstance
 
 from tarotools.taro import TerminationStatus
-from tarotools.taro.jobs.events import InstanceTransitionDispatcher, OutputDispatcher
-from tarotools.taro.listening import PhaseReceiver, OutputReceiver
+from tarotools.taro.jobs.events import TransitionDispatcher, OutputDispatcher
+from tarotools.taro.listening import InstanceTransitionReceiver, InstanceOutputReceiver
 from tarotools.taro.test.observer import GenericObserver
 
 
 def test_state_dispatching():
-    dispatcher = InstanceTransitionDispatcher()
-    receiver = PhaseReceiver()
+    dispatcher = TransitionDispatcher()
+    receiver = InstanceTransitionReceiver()
     observer = GenericObserver()
     receiver.listeners.append(observer)
     receiver.start()
@@ -33,7 +33,7 @@ def test_state_dispatching():
 
 def test_output_dispatching():
     dispatcher = OutputDispatcher()
-    receiver = OutputReceiver()
+    receiver = InstanceOutputReceiver()
     observer = GenericObserver()
     receiver.listeners.append(observer)
     receiver.start()

@@ -54,7 +54,7 @@ def test_observer_raises_exception():
     observer = ExceptionRaisingObserver(Exception('Should be captured by runner'))
     execution = TestExecution(TerminationStatus.COMPLETED)
     job_instance = tarotools.taro.job_instance('j1', execution, state_locker=lock.NullStateLocker())
-    job_instance.add_observer_phase_transition(observer)
+    job_instance.add_observer_transition(observer)
     job_instance.run()
     assert execution.executed_count() == 1  # No exception thrown before
 

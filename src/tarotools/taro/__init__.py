@@ -11,12 +11,12 @@ from threading import Thread
 import tarotools.taro.cfg
 from tarotools.taro import cfg, client, log
 from tarotools.taro.hostinfo import read_hostinfo, HostinfoError
-from tarotools.taro.jobs import warning, persistence, plugins, repo, coordination, runner, lock
+from tarotools.taro.jobs import warning, persistence, plugins, jobrepo, coordination, runner, lock
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.jobs.instance import JobInstance, JobRun, InstanceTransitionObserver, Warn, \
-    WarnEventCtx, JobInstance, RunInNewThreadJobInstance
+    WarnEventCtx, JobInstance
 from tarotools.taro.jobs.plugins import Plugin, PluginDisabledError
-from tarotools.taro.jobs.runner import RunnerJobInstance, register_transition_callback
+from tarotools.taro.jobs.runner import RunnerJobInstance
 from tarotools.taro.paths import lookup_file_in_config_path
 from tarotools.taro.process import ProcessExecution
 from tarotools.taro.util import format_timedelta, read_toml_file_flatten
@@ -73,9 +73,9 @@ def job_instance(job_id, execution, sync_=None, state_locker=lock.default_queue_
 def job_instance_background(job_id, execution, sync_=None, state_locker=lock.default_queue_locker(), *,
                             instance_id=None, **user_params) \
         -> JobInstance:
-    instance = RunnerJobInstance(job_id, execution, sync_, state_locker, run_id=instance_id,
+    instance = JobInstance(job_id, execution, sync_, state_locker, run_id=instance_id,
                                  user_params=user_params)
-    return RunInNewThreadJobInstance(instance)
+    return JobInstance(instance)
 
 
 def run(job_id, execution, sync_=None, state_locker=lock.default_queue_locker(), *, instance_id=None,

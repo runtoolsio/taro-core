@@ -8,7 +8,7 @@ from tarotools import taro
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.criteria import JobRunIdCriterion, TerminationCriterion, JobRunAggregatedCriteria
 from tarotools.taro.jobs.instance import JobRuns
-from tarotools.taro.listening import PhaseReceiver, InstancePhaseEventObserver
+from tarotools.taro.listening import InstanceTransitionReceiver, TransitionEventObserver
 from tarotools.taro.run import RunState, Phase, TerminationStatus
 
 log = logging.getLogger(__name__)
@@ -301,10 +301,10 @@ class ExecutionGroupLimit:
     max_executions: int
 
 
-class ExecutionQueue(Queue, InstancePhaseEventObserver):
+class ExecutionQueue(Queue, TransitionEventObserver):
 
     def __init__(self, queue_id, max_executions, queue_locker=lock.default_queue_locker(),
-                 state_receiver_factory=PhaseReceiver):
+                 state_receiver_factory=InstanceTransitionReceiver):
         super().__init__("QUEUE", f"{queue_id}<={max_executions}")
         if not queue_id:
             raise ValueError('Queue ID must be specified')

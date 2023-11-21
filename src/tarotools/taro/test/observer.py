@@ -13,7 +13,7 @@ from threading import Condition
 from typing import Tuple, List, Callable
 
 from tarotools.taro import TerminationStatus
-from tarotools.taro.jobs.instance import JobRun, InstanceOutputObserver, InstanceTransitionObserver, \
+from tarotools.taro.jobs.instance import JobRun, InstanceStatusObserver, InstanceTransitionObserver, \
     InstancePhase
 from tarotools.taro.run import FailedRun
 
@@ -102,7 +102,7 @@ class TestPhaseObserver(InstanceTransitionObserver):
             return self.completion_lock.wait_for(state_condition, timeout)
 
 
-class TestOutputObserver(InstanceOutputObserver):
+class TestOutputObserver(InstanceStatusObserver):
     __test__ = False  # To tell pytest it isn't a test class
 
     def __init__(self):

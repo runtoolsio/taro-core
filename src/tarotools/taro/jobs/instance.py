@@ -131,15 +131,6 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def job_run_info(self):
-        """
-        Creates a consistent, thread-safe snapshot of the job instance's current state.
-
-        Returns:
-            JobRun: A snapshot representing the current state of the job instance.
-        """
-
-    @abc.abstractmethod
     def phases(self):
         """
         TODO
@@ -150,6 +141,15 @@ class JobInstance(abc.ABC):
     @abc.abstractmethod
     def get_typed_phase(self, phase_type: Type[P], phase_name: str) -> Optional[P]:
         """pass"""
+
+    @abc.abstractmethod
+    def job_run_info(self):
+        """
+        Creates a consistent, thread-safe snapshot of the job instance's current state.
+
+        Returns:
+            JobRun: A snapshot representing the current state of the job instance.
+        """
 
     @abc.abstractmethod
     def fetch_output(self):
@@ -198,7 +198,7 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def add_observer_phase_transition(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
+    def add_observer_transition(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
         """
         Register an instance state observer. Optionally, trigger a notification with the last known state
         upon registration.
@@ -217,7 +217,7 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def remove_observer_phase_transition(self, observer):
+    def remove_observer_transition(self, observer):
         """
         De-register an execution state observer.
         Note: The implementation must cope with the scenario when this method is executed during notification.
@@ -249,29 +249,10 @@ class JobInstance(abc.ABC):
         """
 
 
-class RunInNewThreadJobInstance:
-
-    def __init__(self, job_instance):
-        self.job_instance = job_instance
-
-    def __getattr__(self, name):
-        return getattr(self.job_instance, name)
-
-    def run(self):
-        t = Thread(target=self.delegated.run)
-        t.start()
-
-
-@dataclass(frozen=True)
-class InstanceMetadata:
-    instance_id: str
-
-
 @dataclass(frozen=True)
 class JobRun:
     """
     Immutable snapshot of job instance
-    TODO: Instance detail/info
     """
 
     """Descriptive information about this job run"""
@@ -376,8 +357,12 @@ class InstanceTransitionObserver(abc.ABC):
 class InstanceOutputObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_output(self, job_run: JobRun, phase: PhaseMetadata, output: str, is_error: bool):
+    def new_output(self, instance_meta: JobInstanceMetadata, phase: PhaseMetadata, output: str, is_error: bool):
         """TODO"""
+
+
+class InstanceStatusObserver(abc.ABC):
+    pass
 
 
 @dataclass
@@ -404,20 +389,6 @@ class WarnEventCtx:
     """
     warning: Warn
     count: int
-
-
-class InstanceOutputObserver(abc.ABC):
-
-    @abc.abstractmethod
-    def new_instance_output(self, job_run: JobRun, output: str, is_error: bool):
-        """
-        Executed when a new output line is available.
-
-        Args:
-            job_run (JobRun): Job instance producing the output.
-            output (str): Job instance output text.
-            is_error (bool): True if it is an error output, otherwise False.
-        """
 
 
 class JobInstanceManager(ABC):
@@ -452,12 +423,3 @@ class JobInstanceManager(ABC):
             job_instance: The job instance to be unregistered.
         """
         pass
-
-
-def _job_inst_to_args(job_inst):
-    states = job_inst.lifecycle.phases
-    previous_state = states[-2] if len(states) > 1 else TerminationStatus.NONE
-    new_state = job_inst.phase
-    changed = job_inst.lifecycle.last_transition_at
-
-    return job_inst, previous_state, new_state, changed

@@ -47,11 +47,10 @@ from typing import Type, Optional
 
 from tarotools.taro import util
 from tarotools.taro.jobs.instance import JobInstance, JobRun, JobInstanceMetadata, InstanceTransitionObserver, \
-    InstanceOutputObserver
+    InstanceStatusObserver, InstanceOutputObserver
 from tarotools.taro.output import InMemoryOutput
 from tarotools.taro.run import PhaseRun, Outcome, RunState, P
-from tarotools.taro.status import StatusObserver
-from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY, CallableNotification, ObservableNotification
+from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY, ObservableNotification
 
 log = logging.getLogger(__name__)
 
@@ -60,9 +59,9 @@ def log_observer_error(observer, args, exc):
     log.error("event=[observer_error] observer=[%s], args=[%s] error_type=[%s], error=[%s]", observer, args, exc)
 
 
-_transition_callback = CallableNotification(error_hook=log_observer_error)
-_status_observers = CallableNotification(error_hook=log_observer_error)
-_warning_observers = CallableNotification(error_hook=log_observer_error)
+_transition_observer = ObservableNotification[InstanceTransitionObserver](error_hook=log_observer_error)
+_output_observers = ObservableNotification[InstanceOutputObserver](error_hook=log_observer_error)
+_status_observers = ObservableNotification[InstanceStatusObserver](error_hook=log_observer_error)
 
 
 class RunnerJobInstance(JobInstance):
@@ -73,10 +72,10 @@ class RunnerJobInstance(JobInstance):
         self._metadata = JobInstanceMetadata(job_id, run_id or instance_id, instance_id, parameters, user_params)
         self._phaser = phaser
         self._output = output or InMemoryOutput()
-        self._tracking = None  # TODO The output fields below will be moved to the tracker
-        self._output_notification = ObservableNotification[InstanceOutputObserver](error_hook=log_observer_error)
+        self._tracking = None
         self._transition_notification = ObservableNotification[InstanceTransitionObserver](error_hook=log_observer_error)
-        self._status_notification = ObservableNotification[StatusObserver](error_hook=log_observer_error)
+        self._output_notification = ObservableNotification[InstanceOutputObserver](error_hook=log_observer_error)
+        self._status_notification = ObservableNotification[InstanceStatusObserver](error_hook=log_observer_error)
 
         # TODO Move the below out of constructor?
         self._phaser.transition_hook = self._transition_hook
@@ -118,11 +117,15 @@ class RunnerJobInstance(JobInstance):
     def _process_output_callback(self, phase):
         def process_output(output: str, is_error: bool):
             self._output.add(phase.name, output, is_error)
-            self._output_notification.observer_proxy.new_output(self.job_run_info(), phase, output, is_error)
+            self._output_notification.observer_proxy.new_output(self.metadata, phase, output, is_error)
 
         return process_output
 
     def run(self):
+        self._transition_notification.add_observer(_transition_observer.observer_proxy)
+        self._output_notification.add_observer(_output_observers.observer_proxy)
+        self._status_notification.add_observer(_status_observers.observer_proxy)
+
         for phase in self._phaser.phases.values():
             phase.add_callback_output(self._process_output_callback(phase))
             phase.add_observer_status(self._status_notification.observer_proxy)
@@ -132,6 +135,10 @@ class RunnerJobInstance(JobInstance):
             for phase in self._phaser.phases.values():
                 phase.remove_callback_output(self._output_notification.observer_proxy)
                 phase.remove_observer_status(self._status_notification.observer_proxy)
+
+            self._transition_notification.remove_observer(_transition_observer.observer_proxy)
+            self._output_notification.remove_observer(_output_observers.observer_proxy)
+            self._status_notification.remove_observer(_status_observers.observer_proxy)
 
     def stop(self):
         """
@@ -152,7 +159,7 @@ class RunnerJobInstance(JobInstance):
     def wait_for_transition(self, phase_name=None, run_state=RunState.NONE, *, timeout=None):
         return self._phaser.wait_for_transition(phase_name, run_state, timeout=timeout)
 
-    def add_observer_phase_transition(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
+    def add_observer_transition(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
         if notify_on_register:
             def add_and_notify_callback(*args):
                 self._transition_notification.add_observer(observer)
@@ -162,7 +169,7 @@ class RunnerJobInstance(JobInstance):
         else:
             self._transition_notification.add_observer(observer)
 
-    def remove_observer_phase_transition(self, callback):
+    def remove_observer_transition(self, callback):
         self._transition_notification.remove_observer(callback)
 
     def _transition_hook(self, old_phase: PhaseRun, new_phase: PhaseRun, ordinal):
@@ -195,14 +202,14 @@ class RunnerJobInstance(JobInstance):
         self._status_notification.remove_observer(observer)
 
 
-def register_transition_callback(observer, priority=DEFAULT_OBSERVER_PRIORITY):
-    global _transition_callback
-    _transition_callback.add_observer(observer, priority)
+def register_transition_observer(observer, priority=DEFAULT_OBSERVER_PRIORITY):
+    global _transition_observer
+    _transition_observer.add_observer(observer, priority)
 
 
-def deregister_transition_callback(observer):
-    global _transition_callback
-    _transition_callback.remove_observer(observer)
+def deregister_transition_observer(observer):
+    global _transition_observer
+    _transition_observer.remove_observer(observer)
 
 
 def register_status_observer(observer, priority=DEFAULT_OBSERVER_PRIORITY):
