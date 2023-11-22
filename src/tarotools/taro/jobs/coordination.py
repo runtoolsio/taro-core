@@ -35,6 +35,9 @@ class ApprovalPhase(Phase):
     def approve(self):
         self._event.set()
 
+    def is_approved(self):
+        self._event.is_set()
+
     def stop(self):
         self._event.set()
 

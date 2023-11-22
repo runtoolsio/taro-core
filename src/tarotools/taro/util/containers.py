@@ -42,3 +42,13 @@ def flatten_dict(dictionary, parent_key='', separator='_'):
             items.append((new_key, value))
 
     return dict(items)
+
+
+def get_next_item(dct, key, default=None):
+    keys = list(dct.keys())
+    try:
+        index = keys.index(key)
+        return dct[keys[index + 1]] if index + 1 < len(keys) else None
+    except ValueError:
+        # Key not found in the dictionary
+        return default

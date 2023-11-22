@@ -233,7 +233,7 @@ class Lifecycle:
         return self._current_run or NONE_PHASE_RUN
 
     @property
-    def current_phase(self) -> Optional[str]:
+    def current_phase_name(self) -> Optional[str]:
         return self._current_run.phase_name if self._current_run else None
 
     @property
@@ -241,7 +241,7 @@ class Lifecycle:
         return self._previous_run or NONE_PHASE_RUN
 
     @property
-    def previous_phase(self) -> Optional[str]:
+    def previous_phase_name(self) -> Optional[str]:
         return self._previous_run.phase_name if self._previous_run else None
 
     @property

@@ -33,7 +33,7 @@ def test_phases(sut):
         EXECUTING,
         StandardPhaseNames.TERMINAL
     ]
-    assert sut.current_phase == StandardPhaseNames.TERMINAL
+    assert sut.current_phase_name == StandardPhaseNames.TERMINAL
     assert sut.phase_count == 4
 
 
@@ -57,8 +57,8 @@ def test_states(sut):
 
 
 def test_current_and_previous_phase(sut):
-    assert sut.current_phase == StandardPhaseNames.TERMINAL
-    assert sut.previous_phase == EXECUTING
+    assert sut.current_phase_name == StandardPhaseNames.TERMINAL
+    assert sut.previous_phase_name == EXECUTING
 
 
 def test_phase_run(sut):

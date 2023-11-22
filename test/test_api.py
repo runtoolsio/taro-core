@@ -2,32 +2,28 @@ import pytest
 
 from tarotools.taro import client
 from tarotools.taro.client import APIClient, APIErrorType, ErrorCode, ApprovalResult, StopResult
-from tarotools.taro.execution import ExecutingPhase
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.criteria import parse_criteria
 from tarotools.taro.run import RunState, StandardPhaseNames, TerminationStatus
-from tarotools.taro.test.instance import TestJobInstanceBuilder
+from tarotools.taro.test.instance import MockJobInstanceBuilder, TestPhase
 
 
 @pytest.fixture(autouse=True)
 def job_instances():
     server = APIServer()
 
-    output_text = ('Meditate, do not delay, lest you later regret it.', False)
-    j1 = TestJobInstanceBuilder('j1', 'i1').add_exec_phase(output_text=output_text).build()
+    j1 = MockJobInstanceBuilder('j1', 'i1').add_phase('EXEC', RunState.EXECUTING).build()
     server.register_instance(j1)
+    j1.proceed_next_phase()
 
-    j2 = TestJobInstanceBuilder('j2', 'i2').add_approval_phase().build()
+    j2 = MockJobInstanceBuilder('j2', 'i2').add_phase(StandardPhaseNames.APPROVAL, RunState.PENDING).build()
     server.register_instance(j2)
+    j2.proceed_next_phase()
 
     assert server.start()
     try:
-        j1.run_new_thread(daemon=True)
-        j2.run_new_thread(daemon=True)
         yield j1, j2
     finally:
-        j1.stop()
-        j2.stop()
         server.close()
 
 
@@ -61,8 +57,8 @@ def test_approve_pending_instance(job_instances):
     assert instances[1].instance_metadata.job_id == 'j2'
     assert instances[1].release_result == ApprovalResult.APPROVED
 
-    assert job_instances[1].wait_for_transition(run_state=RunState.ENDED, timeout=1)
-    assert job_instances[1].job_run_info().run.termination.status == TerminationStatus.COMPLETED
+    _, j2 = job_instances
+    assert j2.get_typed_phase(TestPhase, StandardPhaseNames.APPROVAL).approved
 
 
 def test_stop(job_instances):
@@ -72,14 +68,14 @@ def test_stop(job_instances):
     assert instances[0].instance_metadata.job_id == 'j1'
     assert instances[0].stop_result == StopResult.INITIATED
 
-    assert job_instances[0].wait_for_transition(run_state=RunState.ENDED, timeout=1)
-    assert job_instances[0].job_run_info().run.termination.status == TerminationStatus.STOPPED
-    assert not job_instances[1].job_run_info().run.termination
+    j1, j2 = job_instances
+    assert j1.job_run_info().run.termination.status == TerminationStatus.STOPPED
+    assert not j2.job_run_info().run.termination
 
 
 def test_tail(job_instances):
-    assert job_instances[0].get_typed_phase(ExecutingPhase, 'EXEC').execution.executed_latch.wait(timeout=1)
-    assert job_instances[1].wait_for_transition(run_state=RunState.PENDING, timeout=1)
+    j1, j2 = job_instances
+    j1.output.add('EXEC', 'Meditate, do not delay, lest you later regret it.', False)
 
     instances, errors = client.fetch_output()
     assert not errors

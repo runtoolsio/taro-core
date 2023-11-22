@@ -53,7 +53,7 @@ def test_run_with_approval(sut_approve):
 
     wait_wrapper.wait(1)
     snapshot = sut_approve.run_info()
-    assert snapshot.lifecycle.current_phase == 'APPROVAL'
+    assert snapshot.lifecycle.current_phase_name == 'APPROVAL'
     assert snapshot.lifecycle.run_state == RunState.PENDING
 
     wait_wrapper.wrapped_step.approve()
@@ -71,7 +71,7 @@ def test_post_prime(sut):
     sut.prime()
 
     snapshot = sut.run_info()
-    assert snapshot.lifecycle.current_phase == StandardPhaseNames.INIT
+    assert snapshot.lifecycle.current_phase_name == StandardPhaseNames.INIT
     assert snapshot.lifecycle.run_state == RunState.CREATED
 
 

@@ -123,7 +123,7 @@ class ApprovalResult(Enum):
 
 
 @dataclass
-class ReleaseResponse(JobInstanceResponse):
+class ApprovalResponse(JobInstanceResponse):
     release_result: ApprovalResult
 
 
@@ -169,7 +169,7 @@ def get_active_runs(run_match=None) -> AggregatedResponse[JobRun]:
         return client.get_active_runs(run_match)
 
 
-def approve_pending_instances(phase_name, instance_match=None) -> AggregatedResponse[ReleaseResponse]:
+def approve_pending_instances(phase_name, instance_match=None) -> AggregatedResponse[ApprovalResponse]:
     """
     This function releases job instances that are pending in the provided group
     and optionally match the provided criteria.
@@ -281,7 +281,7 @@ class APIClient(SocketClient):
 
         return self.send_request('/instances', run_match, resp_mapper=resp_mapper)
 
-    def approve_pending_instances(self, phase_name, instance_match=None) -> AggregatedResponse[ReleaseResponse]:
+    def approve_pending_instances(self, phase_name, instance_match=None) -> AggregatedResponse[ApprovalResponse]:
         """
         This function releases job instances that are pending in the provided group
         and optionally match the provided criteria.
@@ -301,12 +301,12 @@ class APIClient(SocketClient):
         if not phase_name:
             raise ValueError("Missing phase name")
 
-        def approve_resp_mapper(inst_resp: InstanceResponse) -> ReleaseResponse:
+        def approve_resp_mapper(inst_resp: InstanceResponse) -> ApprovalResponse:
             try:
                 release_res = ApprovalResult[inst_resp.body["approval_result"].upper()]
             except KeyError:
                 release_res = ApprovalResult.UNKNOWN
-            return ReleaseResponse(inst_resp.instance_meta, release_res)
+            return ApprovalResponse(inst_resp.instance_meta, release_res)
 
         req_body = {"phase": phase_name}
         return self.send_request('/instances/approve', instance_match, req_body, approve_resp_mapper)
