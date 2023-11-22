@@ -8,10 +8,10 @@ from tarotools.taro.output import InMemoryOutput
 from tarotools.taro.run import PhaseRun, TerminationInfo, Lifecycle, RunState, PhaseMetadata, Run, StandardPhaseNames, \
     Phaser, TerminationStatus, RunFailure, Phase
 from tarotools.taro.test.execution import TestExecution
-from tarotools.taro.util import get_next_item, utc_now
+from tarotools.taro.test.run import FakePhaser
 
 
-class TestPhase(Phase):
+class FakePhase(Phase):
 
     def __init__(self, phase_name, run_state):
         super().__init__(phase_name, run_state)
@@ -43,7 +43,7 @@ class AbstractBuilder:
         self.termination_info = None
 
 
-class MockJobInstance(RunnerJobInstance):
+class FakeJobInstance(RunnerJobInstance):
 
     def __init__(self, job_id, phaser, lifecycle, *,
                  run_id=None, instance_id_gen=util.unique_timestamp_hex, **user_params):
@@ -53,38 +53,25 @@ class MockJobInstance(RunnerJobInstance):
         self.lifecycle = lifecycle
         self.output = output
 
-    def proceed_next_phase(self):
-        current = self.lifecycle.current_phase_name
-        if current == StandardPhaseNames.INIT:
-            self.proceed_phase(list(self.phaser.phases.values())[0].name)
-        else:
-            self.phaser.phases[current].run()
-
-            next_phase = get_next_item(self.phaser.phases, current)
-            if next_phase:
-                self.proceed_phase(next_phase.name)
-            else:
-                self.lifecycle.add_phase_run(PhaseRun(StandardPhaseNames.TERMINAL, RunState.ENDED, utc_now()))
-
-    def proceed_phase(self, phase_name):
-        next_phase = self.phaser.phases[phase_name]
-        self.lifecycle.add_phase_run(PhaseRun(next_phase.name, next_phase.metadata.run_state, utc_now()))
+    @property
+    def prioritized_transition_observers(self):
+        return self._transition_notification.prioritized_observers
 
 
-class MockJobInstanceBuilder(AbstractBuilder):
+class FakeJobInstanceBuilder(AbstractBuilder):
 
-    def __init__(self, job_id, run_id=None, system_params=None, user_params=None):
+    def __init__(self, job_id='j1', run_id=None, system_params=None, user_params=None):
         super().__init__(job_id, run_id, system_params, user_params)
         self.phases = []
 
     def add_phase(self, name, run_state):
-        self.phases.append(TestPhase(name, run_state))
+        self.phases.append(FakePhase(name, run_state))
         return self
 
-    def build(self) -> MockJobInstance:
+    def build(self) -> FakeJobInstance:
         lifecycle = Lifecycle()
-        phaser = Phaser(self.phases, lifecycle)
-        return MockJobInstance(self.metadata.job_id, phaser, lifecycle, run_id=self.metadata.run_id,
+        phaser = FakePhaser(self.phases, lifecycle)
+        return FakeJobInstance(self.metadata.job_id, phaser, lifecycle, run_id=self.metadata.run_id,
                                **self.metadata.user_params)
 
 

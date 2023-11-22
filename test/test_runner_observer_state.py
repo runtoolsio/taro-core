@@ -11,24 +11,24 @@ from tarotools.taro import TerminationStatus
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.instance import InstanceTransitionObserver, JobRun
 from tarotools.taro.test.execution import TestExecution
-from tarotools.taro.test.observer import TestPhaseObserver
+from tarotools.taro.test.observer import TestTransitionObserver
 
 
 @pytest.fixture
 def observer():
-    observer = TestPhaseObserver()
+    observer = TestTransitionObserver()
     runner.register_transition_callback(observer)
     yield observer
     runner.deregister_transition_callback(observer)
 
 
-def test_job_passed(observer: TestPhaseObserver):
+def test_job_passed(observer: TestTransitionObserver):
     tarotools.taro.run_uncoordinated('j1', TestExecution(TerminationStatus.COMPLETED))
 
     assert observer.last_job().job_id == 'j1'
 
 
-def test_execution_completed(observer: TestPhaseObserver):
+def test_execution_completed(observer: TestTransitionObserver):
     tarotools.taro.run_uncoordinated('j1', TestExecution(TerminationStatus.COMPLETED))
 
     assert observer.exec_state(0) == TerminationStatus.CREATED
@@ -36,7 +36,7 @@ def test_execution_completed(observer: TestPhaseObserver):
     assert observer.exec_state(2) == TerminationStatus.COMPLETED
 
 
-def test_execution_raises_exc(observer: TestPhaseObserver):
+def test_execution_raises_exc(observer: TestTransitionObserver):
     exc_to_raise = Exception()
     tarotools.taro.run_uncoordinated('j1', TestExecution(raise_exc=exc_to_raise))
 

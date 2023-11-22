@@ -2,7 +2,9 @@ from dataclasses import dataclass
 
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.jobs.instance import JobInstanceManager
-from tarotools.taro.test.observer import TestPhaseObserver, TestOutputObserver
+from tarotools.taro.run import RunState
+from tarotools.taro.test.instance import FakeJobInstanceBuilder, FakeJobInstance
+from tarotools.taro.test.observer import TestTransitionObserver, TestOutputObserver
 
 
 @dataclass
@@ -16,9 +18,6 @@ class TestJobInstanceManager(JobInstanceManager):
 
     def unregister_instance(self, job_instance):
         self.instances.remove(job_instance)
-
-def test_job_instance():
-
 
 
 class FeatHelper:
@@ -45,17 +44,17 @@ class TestEnv:
     def __init__(self, *, transient=True):
         self.instance_manager = FeatHelper(TestJobInstanceManager)
         self.instance_manager_volatile = FeatHelper(TestJobInstanceManager)
-        self.state_observer = FeatHelper(TestPhaseObserver)
+        self.transition_observer = FeatHelper(TestTransitionObserver)
         self.output_observer = FeatHelper(TestOutputObserver)
-        self.all_features = (self.instance_manager, self.state_observer, self.output_observer)
+        self.all_features = (self.instance_manager, self.transition_observer, self.output_observer)
         self.ctx = (FeaturedContextBuilder(transient=transient)
                     .add_instance_manager(self.instance_manager,
                                           open_hook=self.instance_manager.open,
                                           close_hook=self.instance_manager.close)
                     .add_instance_manager(self.instance_manager_volatile, unregister_after_termination=True)
-                    .add_transition_observer(self.state_observer,
-                                             open_hook=self.state_observer.open,
-                                             close_hook=self.state_observer.close,
+                    .add_transition_observer(self.transition_observer,
+                                             open_hook=self.transition_observer.open,
+                                             close_hook=self.transition_observer.close,
                                              priority=111)
                     .add_output_observer(self.output_observer,
                                          open_hook=self.output_observer.open,
@@ -72,15 +71,15 @@ class TestEnv:
     def closed(self):
         return all(f.closed for f in self.all_features)
 
-    def instance_registered(self, job_instance: TestJobInstance):
+    def instance_registered(self, job_instance: FakeJobInstance):
         added_to_manager = job_instance in self.instance_manager.feature.instances
         state_observer_registered = (
-                (111, self.state_observer.feature) in job_instance.state_notification.prioritized_observers)
+                (111, self.transition_observer.feature) in job_instance.prioritized_transition_observers)
         # TODO output observer
         return added_to_manager and state_observer_registered
 
-    def instance_contained(self, job_instance: TestJobInstance):
-        return bool(self.ctx.get_instance(job_instance.id)) and job_instance in self.ctx.instances
+    def instance_contained(self, job_instance: FakeJobInstance):
+        return bool(self.ctx.get_instance(job_instance.instance_id)) and job_instance in self.ctx.instances
 
 
 def test_instance_management():
@@ -91,7 +90,8 @@ def test_instance_management():
         assert env.opened()
         assert not env.closed()
 
-        inst = TestJobInstance()
+        inst = FakeJobInstanceBuilder().add_phase('EXEC', RunState.EXECUTING).build()
+        inst.phaser.next_phase()
         env.ctx.add(inst)
         assert env.instance_registered(inst)
         assert env.instance_contained(inst)
@@ -100,8 +100,8 @@ def test_instance_management():
     assert env.instance_registered(inst)
     assert env.instance_contained(inst)  # Instance removed only after is terminated
 
-    inst.change_phase(TerminationStatus.COMPLETED)  # Terminated
-    assert env.state_observer.feature.last_state_any_job == TerminationStatus.COMPLETED
+    inst.phaser.next_phase()  # Terminated
+    assert env.transition_observer.feature.last_state == RunState.ENDED
     assert env.closed()
     assert not env.instance_registered(inst)
     assert not env.instance_contained(inst)
@@ -111,12 +111,13 @@ def test_removed_when_terminated_before_closed():
     env = TestEnv()
 
     with env.ctx:
-        inst = TestJobInstance()
+        inst = FakeJobInstanceBuilder().add_phase('EXEC', RunState.EXECUTING).build()
         env.ctx.add(inst)
+        inst.phaser.next_phase()
         assert env.instance_registered(inst)
         assert env.instance_contained(inst)
 
-        inst.change_phase(TerminationStatus.COMPLETED)  # Terminated
+        inst.phaser.next_phase()  # Terminated
         assert not env.instance_registered(inst)
         assert not env.instance_contained(inst)
 
@@ -124,13 +125,14 @@ def test_removed_when_terminated_before_closed():
 def test_keep_removed():
     env = TestEnv(transient=False)
     with env.ctx:
-        inst = TestJobInstance()
+        inst = FakeJobInstanceBuilder().add_phase('EXEC', RunState.EXECUTING).build()
+        inst.phaser.next_phase()
         env.ctx.add(inst)
         assert env.instance_registered(inst)
         assert env.instance_contained(inst)
         assert env.instance_manager_volatile.feature.instances
 
-        inst.change_phase(TerminationStatus.COMPLETED)  # Terminated
+        inst.phaser.next_phase()  # Terminated
         assert not env.instance_registered(inst)
         assert env.instance_contained(inst)
         assert not env.instance_manager_volatile.feature.instances  # Set to unregister terminated

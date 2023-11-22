@@ -5,20 +5,20 @@ from tarotools.taro.client import APIClient, APIErrorType, ErrorCode, ApprovalRe
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.criteria import parse_criteria
 from tarotools.taro.run import RunState, StandardPhaseNames, TerminationStatus
-from tarotools.taro.test.instance import MockJobInstanceBuilder, TestPhase
+from tarotools.taro.test.instance import FakeJobInstanceBuilder, FakePhase
 
 
 @pytest.fixture(autouse=True)
 def job_instances():
     server = APIServer()
 
-    j1 = MockJobInstanceBuilder('j1', 'i1').add_phase('EXEC', RunState.EXECUTING).build()
+    j1 = FakeJobInstanceBuilder('j1', 'i1').add_phase('EXEC', RunState.EXECUTING).build()
     server.register_instance(j1)
-    j1.proceed_next_phase()
+    j1.phaser.next_phase()
 
-    j2 = MockJobInstanceBuilder('j2', 'i2').add_phase(StandardPhaseNames.APPROVAL, RunState.PENDING).build()
+    j2 = FakeJobInstanceBuilder('j2', 'i2').add_phase(StandardPhaseNames.APPROVAL, RunState.PENDING).build()
     server.register_instance(j2)
-    j2.proceed_next_phase()
+    j2.phaser.next_phase()
 
     assert server.start()
     try:
@@ -58,7 +58,7 @@ def test_approve_pending_instance(job_instances):
     assert instances[1].release_result == ApprovalResult.APPROVED
 
     _, j2 = job_instances
-    assert j2.get_typed_phase(TestPhase, StandardPhaseNames.APPROVAL).approved
+    assert j2.get_typed_phase(FakePhase, StandardPhaseNames.APPROVAL).approved
 
 
 def test_stop(job_instances):

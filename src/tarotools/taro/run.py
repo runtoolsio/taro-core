@@ -570,21 +570,13 @@ def unique_phases_to_dict(phases) -> Dict[str, Phase]:
 P = TypeVar('P')
 
 
-class Phaser:
+class AbstractPhaser:
 
-    def __init__(self, phases: Iterable[Phase], lifecycle=None, *, timestamp_generator=util.utc_now):
+    def __init__(self, phases: Iterable[Phase], *, timestamp_generator=util.utc_now):
         self._name_to_phase: Dict[str, Phase] = unique_phases_to_dict(phases)
         self._phase_meta: Tuple[PhaseMetadata] = tuple(phase.metadata for phase in phases)
         self._timestamp_generator = timestamp_generator
         self.transition_hook: Optional[Callable[[PhaseRun, PhaseRun, int], None]] = None
-
-        self._transition_lock = Condition()
-        # Guarded by the transition/state lock:
-        self._lifecycle = lifecycle or Lifecycle()
-        self._current_phase = None
-        self._abort = False
-        self._termination: Optional[TerminationInfo] = None
-        # ----------------------- #
 
     def get_typed_phase(self, phase_type: Type[P], phase_name: str) -> Optional[P]:
         phase = self._name_to_phase.get(phase_name)
@@ -596,12 +588,26 @@ class Phaser:
 
         return phase
 
-    def _term_info(self, termination_status, failure=None, error=None):
-        return TerminationInfo(termination_status, self._timestamp_generator(), failure, error)
-
     @property
     def phases(self) -> Dict[str, Phase]:
         return self._name_to_phase.copy()
+
+
+class Phaser(AbstractPhaser):
+
+    def __init__(self, phases: Iterable[Phase], lifecycle=None, *, timestamp_generator=util.utc_now):
+        super().__init__(phases, timestamp_generator=timestamp_generator)
+
+        self._transition_lock = Condition()
+        # Guarded by the transition/state lock:
+        self._lifecycle = lifecycle or Lifecycle()
+        self._current_phase = None
+        self._abort = False
+        self._termination: Optional[TerminationInfo] = None
+        # ----------------------- #
+
+    def _term_info(self, termination_status, failure=None, error=None):
+        return TerminationInfo(termination_status, self._timestamp_generator(), failure, error)
 
     def run_info(self) -> Run:
         with self._transition_lock:
