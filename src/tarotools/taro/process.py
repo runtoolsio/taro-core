@@ -102,6 +102,7 @@ class ProcessExecution(OutputExecution):
 
     def stop(self):
         self._stopped = True
+        self.output_queue.put_nowait((_QueueStop(), False))
         if self._process:
             self._process.terminate()
 

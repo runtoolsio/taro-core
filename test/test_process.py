@@ -7,8 +7,8 @@ from time import sleep
 
 import pytest
 
-from tarotools.taro import TerminationStatus, ExecutionError
 from tarotools.taro.process import ProcessExecution
+from tarotools.taro.run import TerminationStatus, FailedRun
 
 
 def test_exec():
@@ -26,7 +26,7 @@ def exec_hello(pipe):
 
 def test_failure_error():
     e = ProcessExecution(exec_failure_error, ())
-    with pytest.raises(ExecutionError):
+    with pytest.raises(FailedRun):
         e.execute()
 
 
@@ -36,7 +36,7 @@ def exec_failure_error():
 
 def test_failure_exit():
     e = ProcessExecution(exec_failure_exit, ())
-    with pytest.raises(ExecutionError):
+    with pytest.raises(FailedRun):
         e.execute()
 
 
@@ -44,7 +44,7 @@ def exec_failure_exit():
     exit(1)
 
 
-@pytest.mark.skip(reason="Hangs tests executed for all project")  # TODO
+# @pytest.mark.skip(reason="Hangs tests executed for all project")  # TODO
 def test_stop():
     e = ProcessExecution(exec_never_ending_story, ())
     t = Thread(target=stop_after, args=(0.5, e))
@@ -61,17 +61,3 @@ def exec_never_ending_story():
 def stop_after(sec, execution):
     sleep(sec)
     execution.stop()
-
-
-@pytest.mark.skip(reason="Hangs tests executed for all project")  # TODO
-def test_interrupt():
-    e = ProcessExecution(exec_never_ending_story, ())
-    t = Thread(target=interrupt_after, args=(0.5, e))
-    t.start()
-    with pytest.raises(ExecutionError):
-        e.execute()
-
-
-def interrupt_after(sec, execution):
-    sleep(sec)
-    execution.interrupted()

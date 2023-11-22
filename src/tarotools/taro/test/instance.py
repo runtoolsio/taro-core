@@ -77,7 +77,7 @@ class FakeJobInstanceBuilder(AbstractBuilder):
 
 class TestJobInstanceBuilder(AbstractBuilder):
 
-    def __init__(self, job_id, run_id=None, system_params=None, user_params=None):
+    def __init__(self, job_id='j1', run_id=None, system_params=None, user_params=None):
         super().__init__(job_id, run_id, system_params, user_params)
         self.phases = []
 
@@ -98,7 +98,7 @@ class TestJobInstanceBuilder(AbstractBuilder):
 
 class TestJobRunBuilder(AbstractBuilder):
 
-    def __init__(self, job_id, run_id=None, system_params=None, user_params=None):
+    def __init__(self, job_id='j1', run_id=None, system_params=None, user_params=None):
         super().__init__(job_id, run_id, system_params, user_params)
         self.phases = []
 
