@@ -7,16 +7,16 @@ from time import sleep
 
 import pytest
 
+from tarotools.taro.execution import ExecutionResult, ExecutionException
 from tarotools.taro.process import ProcessExecution
-from tarotools.taro.run import TerminationStatus, FailedRun
 
 
 def test_exec():
     parent, child = Pipe()
     e = ProcessExecution(exec_hello, (child,))
-    term_state = e.execute()
+    exec_res = e.execute()
     assert parent.recv() == ['hello']
-    assert term_state == TerminationStatus.COMPLETED
+    assert exec_res == ExecutionResult.DONE
 
 
 def exec_hello(pipe):
@@ -26,7 +26,7 @@ def exec_hello(pipe):
 
 def test_failure_error():
     e = ProcessExecution(exec_failure_error, ())
-    with pytest.raises(FailedRun):
+    with pytest.raises(ExecutionException):
         e.execute()
 
 
@@ -36,7 +36,7 @@ def exec_failure_error():
 
 def test_failure_exit():
     e = ProcessExecution(exec_failure_exit, ())
-    with pytest.raises(FailedRun):
+    with pytest.raises(ExecutionException):
         e.execute()
 
 
@@ -50,7 +50,7 @@ def test_stop():
     t = Thread(target=stop_after, args=(0.5, e))
     t.start()
     term_state = e.execute()
-    assert term_state == TerminationStatus.STOPPED
+    assert term_state == ExecutionResult.STOPPED
 
 
 def exec_never_ending_story():

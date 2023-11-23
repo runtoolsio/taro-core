@@ -12,8 +12,8 @@ from threading import Thread
 from typing import Union, Optional
 
 from tarotools.taro.execution import OutputExecution, \
-    ExecutionOutputNotification
-from tarotools.taro.run import FailedRun, TerminationStatus
+    ExecutionException, ExecutionResult
+from tarotools.taro.util.observer import CallableNotification
 
 USE_SHELL = False  # For testing only
 
@@ -30,7 +30,7 @@ class ProgramExecution(OutputExecution):
         self._status = None
         self._stopped: bool = False
         self._interrupted: bool = False
-        self._output_observers = ExecutionOutputNotification(log)
+        self._output_notification = CallableNotification()
 
     @property
     def ret_code(self) -> Optional[int]:
@@ -39,7 +39,7 @@ class ProgramExecution(OutputExecution):
 
         return self._popen.returncode
 
-    def execute(self) -> TerminationStatus:
+    def execute(self):
         if not self._stopped and not self._interrupted:
             stdout = PIPE if self.read_output else None
             stderr = PIPE if self.read_output else None
@@ -57,17 +57,17 @@ class ProgramExecution(OutputExecution):
                     stdout_reader.join(timeout=1)
                     stderr_reader.join(timeout=1)
                 if self.ret_code == 0:
-                    return TerminationStatus.COMPLETED
+                    return ExecutionResult.DONE
             except FileNotFoundError as e:
                 sys.stderr.write(str(e) + "\n")
                 """TODO Move exception level up"""
-                raise FailedRun('CommandNotFound', str(e)) from e
+                raise ExecutionException(str(e)) from e
 
         if self._interrupted or self.ret_code == -signal.SIGINT:
-            return TerminationStatus.INTERRUPTED
+            return ExecutionResult.INTERRUPTED
         if self._stopped or self.ret_code < 0:  # Negative exit code means terminated by a signal
-            return TerminationStatus.STOPPED
-        raise FailedRun("ExitCode", "Process returned non-zero code " + str(self.ret_code))
+            return ExecutionResult.STOPPED
+        raise ExecutionException("Process returned non-zero code " + str(self.ret_code))
 
     def _start_output_reader(self, infile, is_err):
         name = 'Stderr-Reader' if is_err else 'Stdout-Reader'
@@ -107,10 +107,10 @@ class ProgramExecution(OutputExecution):
         self._interrupted = True
 
     def add_callback_output(self, callback):
-        self._output_observers.add_observer(callback)
+        self._output_notification.add_observer(callback)
 
     def remove_callback_output(self, callback):
-        self._output_observers.remove_observer(callback)
+        self._output_notification.remove_observer(callback)
 
     def _process_output(self, infile, is_err):
         with infile:
@@ -118,4 +118,4 @@ class ProgramExecution(OutputExecution):
                 line_stripped = line.rstrip()
                 self._status = line_stripped
                 print(line_stripped, file=sys.stderr if is_err else sys.stdout)
-                self._output_observers.notify_all(line_stripped, is_err)
+                self._output_notification(line_stripped, is_err)

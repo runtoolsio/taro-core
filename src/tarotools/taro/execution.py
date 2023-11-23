@@ -9,9 +9,20 @@ TODO: Remove execution prefix where appropriate
 """
 
 import abc
+from enum import auto
 from typing import Tuple
 
-from tarotools.taro.run import TerminationStatus, Phase, RunState
+from tarotools.taro.run import TerminationStatus, Phase, RunState, TerminateRun
+
+
+class ExecutionException(Exception):
+    pass
+
+
+class ExecutionResult:
+    DONE = auto()
+    STOPPED = auto()
+    INTERRUPTED = auto()
 
 
 class Execution(abc.ABC):
@@ -28,7 +39,7 @@ class Execution(abc.ABC):
         """
 
     @abc.abstractmethod
-    def execute(self) -> TerminationStatus:
+    def execute(self) -> ExecutionResult:
         """
         Execute a task and return its termination status.
         """
@@ -97,10 +108,18 @@ class ExecutingPhase(Phase):
         if hasattr(self._execution, 'add_callback_output'):
             self._execution.add_callback_output(self._output_notification)
 
-        self._execution.execute()  # TODO
+        exec_res = self._execution.execute()
 
         if hasattr(self._execution, 'remove_callback_output'):
             self._execution.remove_callback_output(self._output_notification)
+
+        match exec_res:
+            case ExecutionResult.STOPPED:
+                raise TerminateRun(TerminationStatus.STOPPED)
+            case ExecutionResult.INTERRUPTED:
+                raise TerminateRun(TerminationStatus.INTERRUPTED)
+            case _:
+                pass
 
     def stop(self):
         self._execution.stop()
