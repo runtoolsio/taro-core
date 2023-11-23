@@ -5,7 +5,7 @@ import pytest
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.coordination import ApprovalPhase
 from tarotools.taro.run import Phaser, StandardPhaseNames, TerminationStatus, Phase, RunState, WaitWrapperPhase, \
-    FailedRun, RunError
+    FailedRun, RunError, TerminateRun
 
 
 class ExecTestPhase(Phase):
@@ -25,8 +25,8 @@ class ExecTestPhase(Phase):
             raise self.exception
         if self.failed_run:
             raise self.failed_run
-
-        return TerminationStatus.FAILED if self.fail else TerminationStatus.NONE
+        if self.fail:
+            raise TerminateRun(TerminationStatus.FAILED)
 
     def stop(self):
         pass
@@ -56,15 +56,10 @@ def test_run_with_approval(sut_approve):
     assert snapshot.lifecycle.current_phase_name == 'APPROVAL'
     assert snapshot.lifecycle.run_state == RunState.PENDING
 
-    wait_wrapper.wrapped_step.approve()
+    wait_wrapper.wrapped_phase.approve()
     run_thread.join(1)
     assert (sut_approve.run_info().lifecycle.phases ==
-            [
-                StandardPhaseNames.INIT,
-                Phase('APPROVAL', RunState.PENDING),
-                Phase('EXEC', RunState.EXECUTING),
-                StandardPhaseNames.TERMINAL
-            ])
+            [StandardPhaseNames.INIT, 'APPROVAL', 'EXEC', StandardPhaseNames.TERMINAL])
 
 
 def test_post_prime(sut):
@@ -114,9 +109,9 @@ def test_stop_in_run(sut_approve):
     sut_approve.stop()
     run_thread.join(1)  # Let the run end
 
-    snapshot = sut_approve.run_info()
-    assert (snapshot.lifecycle.phases == [StandardPhaseNames.INIT, 'APPROVAL', StandardPhaseNames.TERMINAL])
-    assert snapshot.termination.status == TerminationStatus.CANCELLED
+    run = sut_approve.run_info()
+    assert (run.lifecycle.phases == [StandardPhaseNames.INIT, 'APPROVAL', StandardPhaseNames.TERMINAL])
+    assert run.termination.status == TerminationStatus.CANCELLED
 
 
 def test_premature_termination(sut):
@@ -124,9 +119,9 @@ def test_premature_termination(sut):
     sut.prime()
     sut.run()
 
-    snapshot = sut.run_info()
-    assert snapshot.termination.status == TerminationStatus.FAILED
-    assert (snapshot.lifecycle.phases == [StandardPhaseNames.INIT, 'EXEC1', StandardPhaseNames.TERMINAL])
+    run = sut.run_info()
+    assert run.termination.status == TerminationStatus.FAILED
+    assert (run.lifecycle.phases == [StandardPhaseNames.INIT, 'EXEC1', StandardPhaseNames.TERMINAL])
 
 
 def test_transition_hook(sut):
@@ -141,7 +136,7 @@ def test_transition_hook(sut):
 
     assert len(transitions) == 1
     prev_run, new_run, ordinal = transitions[0]
-    assert prev_run is None
+    assert not prev_run
     assert new_run.phase_name is StandardPhaseNames.INIT
     assert ordinal == 1
 

@@ -9,7 +9,7 @@ from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.criteria import JobRunIdCriterion, TerminationCriterion, JobRunAggregatedCriteria
 from tarotools.taro.jobs.instance import JobRuns, InstanceTransitionObserver, JobRun
 from tarotools.taro.listening import InstanceTransitionReceiver
-from tarotools.taro.run import RunState, Phase, TerminationStatus, PhaseRun
+from tarotools.taro.run import RunState, Phase, TerminationStatus, PhaseRun, TerminateRun
 
 log = logging.getLogger(__name__)
 
@@ -25,12 +25,10 @@ class ApprovalPhase(Phase):
         self._timeout = timeout
         self._event = Event()
 
-    def run(self) -> TerminationStatus:
-        resolved = self._event.wait(self._timeout or None)
-        if resolved:
-            return TerminationStatus.NONE
-        else:
-            return TerminationStatus.TIMEOUT
+    def run(self):
+        approved = self._event.wait(self._timeout or None)
+        if not approved:
+            raise TerminateRun(TerminationStatus.TIMEOUT)
 
     def approve(self):
         self._event.set()
@@ -66,9 +64,7 @@ class NoOverlapPhase(Phase):
         # TODO Phase params criteria
         runs, _ = taro.client.get_active_runs()
         if any(r for r in runs if self._in_no_overlap_phase(r)):
-            return TerminationStatus.INVALID_OVERLAP
-
-        return TerminationStatus.NONE
+            return TerminateRun(TerminationStatus.INVALID_OVERLAP)
 
     def _in_no_overlap_phase(self, job_run):
         no_overlap_phase = None
@@ -114,9 +110,7 @@ class DependencyPhase(Phase):
     def run(self):
         instances, _ = taro.client.get_active_runs()
         if not any(i for i in instances if self._dependency_match.matches(i)):
-            return TerminationStatus.UNSATISFIED
-
-        return TerminationStatus.NONE
+            raise TerminateRun(TerminationStatus.UNSATISFIED)
 
     def stop(self):
         pass
@@ -148,7 +142,8 @@ class WaitingPhase(Phase):
             self._term_status = TerminationStatus.TIMEOUT
 
         self._stop_all()
-        return self._term_status
+        if self._term_status:
+            raise TerminateRun(self._term_status)
 
     def _result_observer(self, *_):
         wait = False

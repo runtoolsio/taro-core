@@ -103,14 +103,14 @@ class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
     FAILED = (Outcome.FAULT, 31)
     ERROR = (Outcome.FAULT, 32)
 
-    def __new__(cls, outcome, num_value):
+    def __new__(cls, outcome, code):
         obj = object.__new__(cls)
-        obj._num_value = num_value  # Store the numerical value in a different attribute
+        obj.code = code
         obj.outcome = outcome
-        if num_value not in outcome.value:
-            raise ValueError(f"Value {num_value} not in range for outcome {outcome}")
-        obj._value_ = num_value
-        cls._value2member_map_[num_value] = obj
+        if code not in outcome.value:
+            raise ValueError(f"Value {code} not in range for outcome {outcome}")
+        obj._value_ = code
+        cls._value2member_map_[code] = obj
         return obj
 
     def __bool__(self):
@@ -377,6 +377,14 @@ class PhaseMetadata:
         if self.parameters:
             d["params"] = self.parameters
         return d
+
+
+class TerminateRun(Exception):
+    def __init__(self, term_status: TerminationStatus):
+        if term_status.code <= 1:
+            raise ValueError("Termination status code must be >1 but it was: " + term_status.code)
+        self.term_status = term_status
+        super().__init__(f"Termination status: {term_status}")
 
 
 class Phase(ABC):
@@ -647,14 +655,16 @@ class Phaser(AbstractPhaser):
         self._next_phase(TerminalPhase())
 
     def _run_handle_errors(self, phase) -> Tuple[Optional[TerminationInfo], Optional[BaseException]]:
-
         try:
-            return phase.run(), None
+            phase.run()
+            return None, None
+        except TerminateRun as e:
+            return self._term_info(e.term_status), None
         except FailedRun as e:
-            return self._term_info(TerminationStatus.FAILED, e.fault), None
+            return self._term_info(TerminationStatus.FAILED, failure=e.fault), None
         except Exception as e:
             run_error = RunError(e.__class__.__name__, str(e))
-            return self._term_info(TerminationStatus.ERROR, run_error), None
+            return self._term_info(TerminationStatus.ERROR, error=run_error), None
         except KeyboardInterrupt as e:
             log.warning('keyboard_interruption')
             # Assuming child processes received SIGINT, TODO different state on other platforms?

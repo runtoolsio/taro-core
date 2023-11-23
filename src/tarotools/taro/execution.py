@@ -97,7 +97,7 @@ class ExecutingPhase(Phase):
         if hasattr(self._execution, 'add_callback_output'):
             self._execution.add_callback_output(self._output_notification)
 
-        self._execution.execute()
+        self._execution.execute()  # TODO
 
         if hasattr(self._execution, 'remove_callback_output'):
             self._execution.remove_callback_output(self._output_notification)
