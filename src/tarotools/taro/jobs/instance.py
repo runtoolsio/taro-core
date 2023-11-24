@@ -19,6 +19,7 @@ from threading import Thread
 from typing import Dict, Any, Optional, List, Type
 
 from tarotools.taro.jobs.track import TrackedTaskInfo
+from tarotools.taro.output import Mode
 from tarotools.taro.run import TerminationStatus, RunState, PhaseRun, Run, PhaseMetadata, P
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
@@ -152,7 +153,7 @@ class JobInstance(abc.ABC):
         """
 
     @abc.abstractmethod
-    def fetch_output(self):
+    def fetch_output(self, mode=Mode.HEAD, *, lines=0):
         """TODO"""
 
     @abc.abstractmethod
@@ -339,7 +340,7 @@ class JobRuns(list):
 class InstanceTransitionObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_phase(self, job_run: JobRun, previous_phase: PhaseRun, new_phase: PhaseRun, ordinal: int):
+    def new_instance_phase(self, job_run: JobRun, previous_phase: PhaseRun, new_phase: PhaseRun, ordinal: int):
         """
         Called when the instance transitions to a new phase.
 
@@ -357,7 +358,7 @@ class InstanceTransitionObserver(abc.ABC):
 class InstanceOutputObserver(abc.ABC):
 
     @abc.abstractmethod
-    def new_output(self, instance_meta: JobInstanceMetadata, phase: PhaseMetadata, output: str, is_error: bool):
+    def new_instance_output(self, instance_meta: JobInstanceMetadata, phase: PhaseMetadata, output: str, is_err: bool):
         """TODO"""
 
 

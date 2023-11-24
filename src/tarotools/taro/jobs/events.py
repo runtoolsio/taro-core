@@ -59,9 +59,9 @@ class TransitionDispatcher(EventDispatcher, InstanceTransitionObserver):
         super(TransitionDispatcher, self).__init__(SocketClient(TRANSITION_LISTENER_FILE_EXTENSION, bidirectional=False))
 
     def __call__(self, job_run: JobRun, previous_phase, new_phase, ordinal):
-        self.new_phase(job_run, previous_phase, new_phase, ordinal)
+        self.new_instance_phase(job_run, previous_phase, new_phase, ordinal)
 
-    def new_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal):
+    def new_instance_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal):
         event = {
             "job_run": job_run.serialize(),
             "previous_phase": previous_phase.serialize(),

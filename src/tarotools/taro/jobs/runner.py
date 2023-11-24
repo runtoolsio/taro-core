@@ -48,7 +48,7 @@ from typing import Type, Optional
 from tarotools.taro import util
 from tarotools.taro.jobs.instance import JobInstance, JobRun, JobInstanceMetadata, InstanceTransitionObserver, \
     InstanceStatusObserver, InstanceOutputObserver
-from tarotools.taro.output import InMemoryOutput
+from tarotools.taro.output import InMemoryOutput, Mode
 from tarotools.taro.run import PhaseRun, Outcome, RunState, P
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY, ObservableNotification
 
@@ -56,7 +56,7 @@ log = logging.getLogger(__name__)
 
 
 def log_observer_error(observer, args, exc):
-    log.error("event=[observer_error] observer=[%s], args=[%s] error_type=[%s], error=[%s]", observer, args, exc)
+    log.error("event=[observer_error] observer=[%s], args=[%s] error=[%s]", observer, args, exc)
 
 
 _transition_observer = ObservableNotification[InstanceTransitionObserver](error_hook=log_observer_error)
@@ -111,13 +111,13 @@ class RunnerJobInstance(JobInstance):
     def job_run_info(self) -> JobRun:
         return JobRun(self.metadata, self._phaser.run_info(), self.tracking.copy() if self.tracking else None)  # TODO
 
-    def fetch_output(self):
-        return self._output.fetch()
+    def fetch_output(self, mode=Mode.HEAD, *, lines=0):
+        return self._output.fetch(mode, lines=lines)
 
-    def _process_output_callback(self, phase):
+    def _process_output_callback(self, phase_meta):
         def process_output(output: str, is_error: bool):
-            self._output.add(phase.name, output, is_error)
-            self._output_notification.observer_proxy.new_output(self.metadata, phase, output, is_error)
+            self._output.add(phase_meta.phase_name, output, is_error)
+            self._output_notification.observer_proxy.new_instance_output(self.metadata, phase_meta, output, is_error)
 
         return process_output
 
@@ -127,7 +127,7 @@ class RunnerJobInstance(JobInstance):
         self._status_notification.add_observer(_status_observers.observer_proxy)
 
         for phase in self._phaser.phases.values():
-            phase.add_callback_output(self._process_output_callback(phase))
+            phase.add_callback_output(self._process_output_callback(phase.metadata))
             phase.add_observer_status(self._status_notification.observer_proxy)
         try:
             self._phaser.run()
@@ -163,7 +163,7 @@ class RunnerJobInstance(JobInstance):
         if notify_on_register:
             def add_and_notify_callback(*args):
                 self._transition_notification.add_observer(observer, priority)
-                observer.new_phase(self._phaser.run_info(), *args)
+                observer.new_instance_phase(self._phaser.run_info(), *args)
 
             self._phaser.execute_transition_hook_safely(add_and_notify_callback)
         else:
@@ -193,7 +193,13 @@ class RunnerJobInstance(JobInstance):
                 self._log('new_phase', "prev_phase=[{}] prev_state=[{}] new_phase=[{}] new_state=[{}]",
                           old_phase.phase_name, old_phase.run_state, new_phase.run_state, new_phase.phase_name))
 
-        self._transition_notification.observer_proxy.new_phase(snapshot, old_phase, new_phase, ordinal)
+        self._transition_notification.observer_proxy.new_instance_phase(snapshot, old_phase, new_phase, ordinal)
+
+    def add_observer_output(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+        self._output_notification.add_observer(observer, priority)
+
+    def remove_observer_output(self, observer):
+        self._output_notification.remove_observer(observer)
 
     def add_observer_status(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self._status_notification.add_observer(observer, priority)

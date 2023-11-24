@@ -33,7 +33,7 @@ class _ExecTimeWarning(InstanceTransitionObserver):
         self.time = time
         self.timer = None
 
-    def new_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal, changed):
+    def new_instance_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal, changed):
         if new_phase.run_state == RunState.EXECUTING:
             assert self.timer is None
             self.timer = Timer(self.time, self._check)

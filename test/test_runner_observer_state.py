@@ -64,5 +64,5 @@ class ExceptionRaisingObserver(InstanceTransitionObserver):
     def __init__(self, raise_exc: Exception):
         self.raise_exc = raise_exc
 
-    def new_phase(self, job_run: JobRun, previous_phase, new_phase, changed):
+    def new_instance_phase(self, job_run: JobRun, previous_phase, new_phase, changed):
         raise self.raise_exc

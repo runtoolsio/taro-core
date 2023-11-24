@@ -407,7 +407,7 @@ class ExecutionQueue(Queue, InstanceTransitionObserver):
                     if next_count <= 0:
                         return
 
-    def new_phase(self, job_run: JobRun, previous_phase: PhaseRun, new_phase: PhaseRun, ordinal: int):
+    def new_instance_phase(self, job_run: JobRun, previous_phase: PhaseRun, new_phase: PhaseRun, ordinal: int):
         with self._wait_guard:
             if not self._current_wait:
                 return

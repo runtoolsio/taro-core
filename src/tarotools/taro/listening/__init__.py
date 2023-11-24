@@ -86,7 +86,7 @@ class InstanceTransitionReceiver(EventReceiver):
         previous_phase = PhaseRun.deserialize(event['previous_phase'])
         ordinal = event['ordinal']
 
-        self._notification.observer_proxy.new_phase(job_run, previous_phase, new_phase, ordinal)
+        self._notification.observer_proxy.new_instance_phase(job_run, previous_phase, new_phase, ordinal)
 
     def add_observer_transition(self, observer):
         self._notification.add_observer(observer)
@@ -105,7 +105,7 @@ class InstanceOutputReceiver(EventReceiver):
         phase = PhaseMetadata.deserialize(event['phase'])
         output = event['output']
         is_error = event['is_error']
-        self._notification.observer_proxy.new_output(instance_meta, phase, output, is_error)
+        self._notification.observer_proxy.new_instance_output(instance_meta, phase, output, is_error)
 
     def add_observer_output(self, observer):
         self._notification.add_observer(observer)

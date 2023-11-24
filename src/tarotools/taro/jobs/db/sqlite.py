@@ -117,7 +117,7 @@ class SQLite(InstanceTransitionObserver):
     def __init__(self, connection):
         self._conn = connection
 
-    def new_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal):
+    def new_instance_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal):
         if new_phase.run_state == RunState.ENDED:
             self.store_job_runs(job_run)
 

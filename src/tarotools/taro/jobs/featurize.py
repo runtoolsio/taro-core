@@ -357,7 +357,7 @@ class FeaturedContext(InstanceTransitionObserver):
         """
         return self._release_instance(job_instance_id, True)
 
-    def new_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal):
+    def new_instance_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal):
         """
         DO NOT EXECUTE THIS METHOD! It is part of the internal mechanism.
         """

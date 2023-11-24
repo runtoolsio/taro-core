@@ -11,8 +11,9 @@ from queue import Queue
 from threading import Condition
 from typing import Tuple, List, Callable
 
-from tarotools.taro.jobs.instance import JobRun, InstanceStatusObserver, InstanceTransitionObserver
-from tarotools.taro.run import PhaseRun, RunState
+from tarotools.taro.jobs.instance import JobRun, InstanceTransitionObserver, \
+    InstanceOutputObserver
+from tarotools.taro.run import PhaseRun, RunState, PhaseMetadata
 
 log = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ class TestTransitionObserver(InstanceTransitionObserver):
         self._events: List[Tuple[JobRun, PhaseRun, PhaseRun, int]] = []
         self.completion_lock = Condition()
 
-    def new_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal):
+    def new_instance_phase(self, job_run: JobRun, previous_phase, new_phase, ordinal):
         self._events.append((job_run, previous_phase, new_phase, ordinal))
         log.info("event=[state_changed] job_info=[{}]".format(job_run))
         self._release_state_waiter()
@@ -98,11 +99,15 @@ class TestTransitionObserver(InstanceTransitionObserver):
             return self.completion_lock.wait_for(state_condition, timeout)
 
 
-class TestOutputObserver(InstanceStatusObserver):
+class TestOutputObserver(InstanceOutputObserver):
     __test__ = False  # To tell pytest it isn't a test class
 
     def __init__(self):
         self.outputs = []
 
-    def new_instance_output(self, job_run: JobRun, output, is_error):
-        self.outputs.append((job_run, output, is_error))
+    def new_instance_output(self, job_run: JobRun, phase_meta: PhaseMetadata, output: str, is_error: bool):
+        self.outputs.append((job_run, phase_meta, output, is_error))
+
+    @property
+    def last_line(self):
+        return self.outputs[-1][2]

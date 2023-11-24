@@ -19,7 +19,7 @@ def test_state_dispatching():
     prev = PhaseRun('prev', RunState.PENDING, utc_now(), utc_now())
     new = PhaseRun('next', RunState.EXECUTING, utc_now(), None)
     try:
-        dispatcher.new_phase(test_run, prev, new, 2)
+        dispatcher.new_instance_phase(test_run, prev, new, 2)
     finally:
         dispatcher.close()
         receiver.close()

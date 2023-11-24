@@ -388,6 +388,9 @@ class TerminateRun(Exception):
 
 
 class Phase(ABC):
+    """
+    TODO repr
+    """
 
     def __init__(self, phase_name: str, run_state: RunState, parameters: Optional[Dict[str, str]] = None):
         self._metadata = PhaseMetadata(phase_name, run_state, parameters or {})

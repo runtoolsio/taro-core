@@ -79,5 +79,5 @@ class PutPhaseToQueueObserver(InstanceTransitionObserver):
     def __init__(self, queue):
         self.queue = queue
 
-    def new_phase(self, job_run: JobRun, previous_phase, new_phase, changed):
+    def new_instance_phase(self, job_run: JobRun, previous_phase, new_phase, changed):
         self.queue.put_nowait(new_phase)

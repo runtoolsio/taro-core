@@ -1,4 +1,10 @@
+from enum import Enum, auto
 from typing import List, Tuple, Dict
+
+
+class Mode(Enum):
+    HEAD = auto()
+    TAIL = auto()
 
 
 class InMemoryOutput:
@@ -16,11 +22,26 @@ class InMemoryOutput:
             start = self._source_ranges[source].start
             self._source_ranges[source] = range(start, len(self._output_lines))
 
-    def fetch(self, source=None) -> List[Tuple[str, bool]]:
+    def fetch(self, mode=Mode.HEAD, *, source=None, lines=0) -> List[Tuple[str, bool]]:
+        if lines < 0:
+            raise ValueError("Invalid argument: arg `lines` cannot be negative but was " + str(lines))
+
         if source is not None:
             if source_range := self._source_ranges.get(source):
-                return self._output_lines[source_range.start:source_range.stop]
+                source_lines = self._output_lines[source_range.start:source_range.stop]
+                if lines:
+                    if mode == Mode.HEAD:
+                        return source_lines[:lines]
+                    elif mode == Mode.TAIL:
+                        return source_lines[-lines:]
+                return source_lines
             else:
                 return []
+
+        if lines:
+            if mode == Mode.HEAD:
+                return self._output_lines[:lines]
+            elif mode == Mode.TAIL:
+                return self._output_lines[-lines:]
 
         return self._output_lines
