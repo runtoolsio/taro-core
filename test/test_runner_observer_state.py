@@ -7,9 +7,10 @@ import pytest
 
 import tarotools.taro
 import tarotools.taro.jobs.runner as runner
-from tarotools.taro import TerminationStatus
+from tarotools.taro import PhaseNames
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.instance import InstanceTransitionObserver, JobRun
+from tarotools.taro.run import TerminationStatus, RunState
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.observer import TestTransitionObserver
 
@@ -17,34 +18,24 @@ from tarotools.taro.test.observer import TestTransitionObserver
 @pytest.fixture
 def observer():
     observer = TestTransitionObserver()
-    runner.register_transition_callback(observer)
+    runner.register_transition_observer(observer)
     yield observer
-    runner.deregister_transition_callback(observer)
+    runner.deregister_transition_observer(observer)
 
 
-def test_job_passed(observer: TestTransitionObserver):
-    tarotools.taro.run_uncoordinated('j1', TestExecution(TerminationStatus.COMPLETED))
+def test_passed_args(observer: TestTransitionObserver):
+    tarotools.taro.run_uncoordinated('j1', TestExecution())
 
-    assert observer.last_job().job_id == 'j1'
-
-
-def test_execution_completed(observer: TestTransitionObserver):
-    tarotools.taro.run_uncoordinated('j1', TestExecution(TerminationStatus.COMPLETED))
-
-    assert observer.exec_state(0) == TerminationStatus.CREATED
-    assert observer.exec_state(1) == TerminationStatus.RUNNING
-    assert observer.exec_state(2) == TerminationStatus.COMPLETED
+    assert observer.job_runs[0].metadata.job_id == 'j1'
+    assert observer.phases == [(PhaseNames.INIT, PhaseNames.EXEC), (PhaseNames.EXEC, PhaseNames.TERMINAL)]
+    assert observer.run_states == [RunState.EXECUTING, RunState.ENDED]
 
 
-def test_execution_raises_exc(observer: TestTransitionObserver):
-    exc_to_raise = Exception()
-    tarotools.taro.run_uncoordinated('j1', TestExecution(raise_exc=exc_to_raise))
+def test_raise_exc(observer: TestTransitionObserver):
+    tarotools.taro.run_uncoordinated('j1', TestExecution(raise_exc=Exception))
 
-    assert observer.exec_state(0) == TerminationStatus.CREATED
-    assert observer.exec_state(1) == TerminationStatus.RUNNING
-    assert observer.exec_state(2) == TerminationStatus.ERROR
-    assert not observer.exec_error(0)
-    assert observer.exec_error(2).unexpected_error == exc_to_raise
+    assert observer.run_states == [RunState.EXECUTING, RunState.ENDED]
+    assert observer.job_runs[-1].run.termination.failure.category == 'Exception'
 
 
 def test_observer_raises_exception():

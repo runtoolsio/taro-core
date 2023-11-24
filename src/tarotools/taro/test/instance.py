@@ -5,7 +5,7 @@ from tarotools.taro.execution import ExecutingPhase
 from tarotools.taro.jobs.coordination import ApprovalPhase
 from tarotools.taro.jobs.instance import JobInstanceMetadata
 from tarotools.taro.output import InMemoryOutput
-from tarotools.taro.run import PhaseRun, TerminationInfo, Lifecycle, RunState, PhaseMetadata, Run, StandardPhaseNames, \
+from tarotools.taro.run import PhaseRun, TerminationInfo, Lifecycle, RunState, PhaseMetadata, Run, PhaseNames, \
     Phaser, TerminationStatus, RunFailure, Phase
 from tarotools.taro.test.execution import TestExecution
 from tarotools.taro.test.run import FakePhaser
@@ -81,7 +81,7 @@ class TestJobInstanceBuilder(AbstractBuilder):
         super().__init__(job_id, run_id, system_params, user_params)
         self.phases = []
 
-    def add_approval_phase(self, name=StandardPhaseNames.APPROVAL):
+    def add_approval_phase(self, name=PhaseNames.APPROVAL):
         self.phases.append(ApprovalPhase(name, 2))
         return self
 
@@ -107,9 +107,9 @@ class TestJobRunBuilder(AbstractBuilder):
             start = super().current_ts
             end = start + timedelta(minutes=1)
 
-        if name != StandardPhaseNames.INIT and not self.phases:
+        if name != PhaseNames.INIT and not self.phases:
             self.add_phase(
-                StandardPhaseNames.INIT, RunState.CREATED, start - timedelta(minutes=2), start - timedelta(minutes=1))
+                PhaseNames.INIT, RunState.CREATED, start - timedelta(minutes=2), start - timedelta(minutes=1))
 
         phase_run = PhaseRun(name, state, start, end)
         self.phases.append(phase_run)
@@ -131,13 +131,13 @@ def ended_run(job_id, run_id='r1', *, offset_min=0, term_status=TerminationStatu
 
     builder = TestJobRunBuilder(job_id, run_id, user_params={'name': 'value'})
 
-    builder.add_phase(StandardPhaseNames.INIT, RunState.CREATED, created or start_time,
+    builder.add_phase(PhaseNames.INIT, RunState.CREATED, created or start_time,
                       start_time + timedelta(minutes=1))
-    builder.add_phase(StandardPhaseNames.APPROVAL, RunState.EXECUTING, start_time + timedelta(minutes=1),
+    builder.add_phase(PhaseNames.APPROVAL, RunState.EXECUTING, start_time + timedelta(minutes=1),
                       start_time + timedelta(minutes=2))
-    builder.add_phase(StandardPhaseNames.PROGRAM, RunState.EXECUTING, start_time + timedelta(minutes=2),
+    builder.add_phase(PhaseNames.PROGRAM, RunState.EXECUTING, start_time + timedelta(minutes=2),
                       start_time + timedelta(minutes=3))
-    builder.add_phase(StandardPhaseNames.TERMINAL, RunState.ENDED, completed or start_time + timedelta(minutes=3), None)
+    builder.add_phase(PhaseNames.TERMINAL, RunState.ENDED, completed or start_time + timedelta(minutes=3), None)
 
     failure = RunFailure('err1', 'reason') if term_status == TerminationStatus.FAILED else None
     builder.with_termination_info(term_status, start_time + timedelta(minutes=3), failure)

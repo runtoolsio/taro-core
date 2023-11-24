@@ -117,9 +117,10 @@ class TerminationStatus(Enum, metaclass=TerminationStatusMeta):
         return self != TerminationStatus.NONE
 
 
-class StandardPhaseNames:
+class PhaseNames:
     INIT = 'INIT'
     APPROVAL = 'APPROVAL'
+    EXEC = 'EXEC'
     PROGRAM = 'PROGRAM'
     PROCESS = 'PROCESS'
     TERMINAL = 'TERMINAL'
@@ -453,13 +454,13 @@ class NoOpsPhase(Phase):
 class InitPhase(NoOpsPhase):
 
     def __init__(self):
-        super().__init__(StandardPhaseNames.INIT, RunState.CREATED, TerminationStatus.STOPPED)
+        super().__init__(PhaseNames.INIT, RunState.CREATED, TerminationStatus.STOPPED)
 
 
 class TerminalPhase(NoOpsPhase):
 
     def __init__(self):
-        super().__init__(StandardPhaseNames.TERMINAL, RunState.ENDED, TerminationStatus.NONE)
+        super().__init__(PhaseNames.TERMINAL, RunState.ENDED, TerminationStatus.NONE)
 
 
 class WaitWrapperPhase(Phase):
@@ -703,7 +704,7 @@ class Phaser(AbstractPhaser):
             stop_status = self._current_phase.stop_status if self._current_phase else TerminationStatus.STOPPED
             self._termination = self._term_info(stop_status)
             assert self._termination.status
-            if not self._current_phase or (self._current_phase.name == StandardPhaseNames.INIT):
+            if not self._current_phase or (self._current_phase.name == PhaseNames.INIT):
                 # Not started yet
                 self._abort = True  # Prevent phase transition...
                 self._next_phase(TerminalPhase())

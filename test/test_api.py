@@ -4,7 +4,7 @@ from tarotools.taro import client
 from tarotools.taro.client import APIClient, APIErrorType, ErrorCode, ApprovalResult, StopResult
 from tarotools.taro.jobs.api import APIServer
 from tarotools.taro.jobs.criteria import parse_criteria
-from tarotools.taro.run import RunState, StandardPhaseNames, TerminationStatus
+from tarotools.taro.run import RunState, PhaseNames, TerminationStatus
 from tarotools.taro.test.instance import FakeJobInstanceBuilder, FakePhase
 
 
@@ -16,7 +16,7 @@ def job_instances():
     server.register_instance(j1)
     j1.phaser.next_phase()
 
-    j2 = FakeJobInstanceBuilder('j2', 'i2').add_phase(StandardPhaseNames.APPROVAL, RunState.PENDING).build()
+    j2 = FakeJobInstanceBuilder('j2', 'i2').add_phase(PhaseNames.APPROVAL, RunState.PENDING).build()
     server.register_instance(j2)
     j2.phaser.next_phase()
 
@@ -49,7 +49,7 @@ def test_instances_api():
 
 
 def test_approve_pending_instance(job_instances):
-    instances, errors = client.approve_pending_instances(StandardPhaseNames.APPROVAL)
+    instances, errors = client.approve_pending_instances(PhaseNames.APPROVAL)
 
     assert not errors
     assert instances[0].instance_metadata.job_id == 'j1'
@@ -58,7 +58,7 @@ def test_approve_pending_instance(job_instances):
     assert instances[1].release_result == ApprovalResult.APPROVED
 
     _, j2 = job_instances
-    assert j2.get_typed_phase(FakePhase, StandardPhaseNames.APPROVAL).approved
+    assert j2.get_typed_phase(FakePhase, PhaseNames.APPROVAL).approved
 
 
 def test_stop(job_instances):

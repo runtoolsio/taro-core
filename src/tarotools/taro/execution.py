@@ -12,7 +12,7 @@ import abc
 from enum import auto
 from typing import Tuple
 
-from tarotools.taro.run import TerminationStatus, Phase, RunState, TerminateRun
+from tarotools.taro.run import TerminationStatus, Phase, RunState, TerminateRun, FailedRun
 
 
 class ExecutionException(Exception):
@@ -108,10 +108,13 @@ class ExecutingPhase(Phase):
         if hasattr(self._execution, 'add_callback_output'):
             self._execution.add_callback_output(self._output_notification)
 
-        exec_res = self._execution.execute()
-
-        if hasattr(self._execution, 'remove_callback_output'):
-            self._execution.remove_callback_output(self._output_notification)
+        try:
+            exec_res = self._execution.execute()
+        except ExecutionException as e:
+            raise FailedRun('ExecutionException', str(e))
+        finally:
+            if hasattr(self._execution, 'remove_callback_output'):
+                self._execution.remove_callback_output(self._output_notification)
 
         match exec_res:
             case ExecutionResult.STOPPED:

@@ -4,7 +4,7 @@ import pytest
 
 from tarotools.taro.err import InvalidStateError
 from tarotools.taro.jobs.coordination import ApprovalPhase
-from tarotools.taro.run import Phaser, StandardPhaseNames, TerminationStatus, Phase, RunState, WaitWrapperPhase, \
+from tarotools.taro.run import Phaser, PhaseNames, TerminationStatus, Phase, RunState, WaitWrapperPhase, \
     FailedRun, RunError, TerminateRun
 
 
@@ -59,26 +59,26 @@ def test_run_with_approval(sut_approve):
     wait_wrapper.wrapped_phase.approve()
     run_thread.join(1)
     assert (sut_approve.run_info().lifecycle.phases ==
-            [StandardPhaseNames.INIT, 'APPROVAL', 'EXEC', StandardPhaseNames.TERMINAL])
+            [PhaseNames.INIT, 'APPROVAL', 'EXEC', PhaseNames.TERMINAL])
 
 
 def test_post_prime(sut):
     sut.prime()
 
     snapshot = sut.run_info()
-    assert snapshot.lifecycle.current_phase_name == StandardPhaseNames.INIT
+    assert snapshot.lifecycle.current_phase_name == PhaseNames.INIT
     assert snapshot.lifecycle.run_state == RunState.CREATED
 
 
 def test_empty_phaser():
     empty = Phaser([])
     empty.prime()
-    assert empty.run_info().lifecycle.phases == [StandardPhaseNames.INIT]
+    assert empty.run_info().lifecycle.phases == [PhaseNames.INIT]
 
     empty.run()
 
     snapshot = empty.run_info()
-    assert snapshot.lifecycle.phases == [StandardPhaseNames.INIT, StandardPhaseNames.TERMINAL]
+    assert snapshot.lifecycle.phases == [PhaseNames.INIT, PhaseNames.TERMINAL]
     assert snapshot.termination.status == TerminationStatus.COMPLETED
 
 
@@ -86,7 +86,7 @@ def test_stop_before_prime(sut):
     sut.stop()
 
     snapshot = sut.run_info()
-    assert snapshot.lifecycle.phases == [StandardPhaseNames.TERMINAL]
+    assert snapshot.lifecycle.phases == [PhaseNames.TERMINAL]
     assert snapshot.termination.status == TerminationStatus.STOPPED
 
 
@@ -95,7 +95,7 @@ def test_stop_before_run(sut):
     sut.stop()
 
     snapshot = sut.run_info()
-    assert snapshot.lifecycle.phases == [StandardPhaseNames.INIT, StandardPhaseNames.TERMINAL]
+    assert snapshot.lifecycle.phases == [PhaseNames.INIT, PhaseNames.TERMINAL]
     assert snapshot.termination.status == TerminationStatus.STOPPED
 
 
@@ -110,7 +110,7 @@ def test_stop_in_run(sut_approve):
     run_thread.join(1)  # Let the run end
 
     run = sut_approve.run_info()
-    assert (run.lifecycle.phases == [StandardPhaseNames.INIT, 'APPROVAL', StandardPhaseNames.TERMINAL])
+    assert (run.lifecycle.phases == [PhaseNames.INIT, 'APPROVAL', PhaseNames.TERMINAL])
     assert run.termination.status == TerminationStatus.CANCELLED
 
 
@@ -121,7 +121,7 @@ def test_premature_termination(sut):
 
     run = sut.run_info()
     assert run.termination.status == TerminationStatus.FAILED
-    assert (run.lifecycle.phases == [StandardPhaseNames.INIT, 'EXEC1', StandardPhaseNames.TERMINAL])
+    assert (run.lifecycle.phases == [PhaseNames.INIT, 'EXEC1', PhaseNames.TERMINAL])
 
 
 def test_transition_hook(sut):
@@ -137,7 +137,7 @@ def test_transition_hook(sut):
     assert len(transitions) == 1
     prev_run, new_run, ordinal = transitions[0]
     assert not prev_run
-    assert new_run.phase_name is StandardPhaseNames.INIT
+    assert new_run.phase_name is PhaseNames.INIT
     assert ordinal == 1
 
     sut.run()
@@ -153,7 +153,7 @@ def test_failed_run_exception(sut):
 
     snapshot = sut.run_info()
     assert snapshot.termination.status == TerminationStatus.FAILED
-    assert (snapshot.lifecycle.phases == [StandardPhaseNames.INIT, 'EXEC1', StandardPhaseNames.TERMINAL])
+    assert (snapshot.lifecycle.phases == [PhaseNames.INIT, 'EXEC1', PhaseNames.TERMINAL])
 
     assert snapshot.termination.failure == failed_run.fault
 
@@ -166,7 +166,7 @@ def test_exception(sut):
 
     snapshot = sut.run_info()
     assert snapshot.termination.status == TerminationStatus.ERROR
-    assert (snapshot.lifecycle.phases == [StandardPhaseNames.INIT, 'EXEC1', StandardPhaseNames.TERMINAL])
+    assert (snapshot.lifecycle.phases == [PhaseNames.INIT, 'EXEC1', PhaseNames.TERMINAL])
 
     assert snapshot.termination.error == RunError('InvalidStateError', 'reason')
 

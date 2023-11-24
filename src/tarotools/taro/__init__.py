@@ -10,6 +10,7 @@ from threading import Thread
 
 import tarotools.taro.cfg
 from tarotools.taro import cfg, client, log
+from tarotools.taro.execution import ExecutingPhase
 from tarotools.taro.hostinfo import read_hostinfo, HostinfoError
 from tarotools.taro.jobs import warning, persistence, plugins, jobrepo, coordination, runner, lock
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
@@ -19,6 +20,7 @@ from tarotools.taro.jobs.plugins import Plugin, PluginDisabledError
 from tarotools.taro.jobs.runner import RunnerJobInstance
 from tarotools.taro.paths import lookup_file_in_config_path
 from tarotools.taro.process import ProcessExecution
+from tarotools.taro.run import Phaser, PhaseNames
 from tarotools.taro.util import format_timedelta, read_toml_file_flatten
 
 __version__ = "0.11.0"
@@ -70,14 +72,6 @@ def job_instance(job_id, execution, sync_=None, state_locker=lock.default_queue_
     return RunnerJobInstance(job_id, execution, sync_, state_locker, run_id=instance_id, user_params=user_params)
 
 
-def job_instance_background(job_id, execution, sync_=None, state_locker=lock.default_queue_locker(), *,
-                            instance_id=None, **user_params) \
-        -> JobInstance:
-    instance = JobInstance(job_id, execution, sync_, state_locker, run_id=instance_id,
-                                 user_params=user_params)
-    return JobInstance(instance)
-
-
 def run(job_id, execution, sync_=None, state_locker=lock.default_queue_locker(), *, instance_id=None,
         **user_params) -> JobInstance:
     instance = job_instance(job_id, execution, sync_, state_locker, instance_id=instance_id, user_params=user_params)
@@ -85,14 +79,14 @@ def run(job_id, execution, sync_=None, state_locker=lock.default_queue_locker(),
     return instance
 
 
-def job_instance_uncoordinated(job_id, execution, *, instance_id=None, **user_params) \
+def job_instance_uncoordinated(job_id, exec_, *, instance_id=None, **user_params) \
         -> JobInstance:
-    return RunnerJobInstance(job_id, execution, coord_locker=lock.NullStateLocker(), run_id=instance_id,
+    return RunnerJobInstance(job_id, Phaser([ExecutingPhase(PhaseNames.EXEC, exec_)]), run_id=instance_id,
                              user_params=user_params)
 
 
-def run_uncoordinated(job_id, execution, *, instance_id=None, **user_params) -> JobInstance:
-    instance = job_instance_uncoordinated(job_id, execution, instance_id=instance_id,
+def run_uncoordinated(job_id, exec_, *, instance_id=None, **user_params) -> JobInstance:
+    instance = job_instance_uncoordinated(job_id, exec_, instance_id=instance_id,
                                           user_params=user_params)
     instance.run()
     return instance
