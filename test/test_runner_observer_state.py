@@ -9,7 +9,6 @@ import tarotools.taro
 import tarotools.taro.jobs.runner as runner
 from tarotools.taro import PhaseNames
 from tarotools.taro.execution import ExecutionException
-from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.instance import InstanceTransitionObserver, JobRun
 from tarotools.taro.run import TerminationStatus, RunState
 from tarotools.taro.test.execution import TestExecution
@@ -51,11 +50,12 @@ def test_observer_raises_exception():
     All exception raised by observer must be captured by runner and not to disrupt job execution
     """
     observer = ExceptionRaisingObserver(Exception('Should be captured by runner'))
-    execution = TestExecution(TerminationStatus.COMPLETED)
-    job_instance = tarotools.taro.job_instance('j1', execution, state_locker=lock.NullStateLocker())
+    execution = TestExecution()
+    job_instance = tarotools.taro.job_instance('j1', execution)
     job_instance.add_observer_transition(observer)
     job_instance.run()
-    assert execution.executed_count() == 1  # No exception thrown before
+    assert execution.executed_latch.is_set()
+    assert job_instance.job_run_info().run.termination.status == TerminationStatus.COMPLETED
 
 
 class ExceptionRaisingObserver(InstanceTransitionObserver):

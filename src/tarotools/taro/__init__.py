@@ -66,10 +66,8 @@ def close():
     persistence.close()
 
 
-def job_instance(job_id, execution, sync_=None, state_locker=lock.default_queue_locker(), *,
-                 instance_id=None, **user_params) \
-        -> JobInstance:
-    return RunnerJobInstance(job_id, execution, sync_, state_locker, run_id=instance_id, user_params=user_params)
+def job_instance(job_id, exec_, *, instance_id=None, **user_params) -> RunnerJobInstance:
+    return RunnerJobInstance(job_id, Phaser([ExecutingPhase(PhaseNames.EXEC, exec_)]), run_id=instance_id, user_params=user_params)
 
 
 def run(job_id, execution, sync_=None, state_locker=lock.default_queue_locker(), *, instance_id=None,
