@@ -8,6 +8,7 @@ import pytest
 import tarotools.taro
 import tarotools.taro.jobs.runner as runner
 from tarotools.taro import PhaseNames
+from tarotools.taro.execution import ExecutionException
 from tarotools.taro.jobs import lock
 from tarotools.taro.jobs.instance import InstanceTransitionObserver, JobRun
 from tarotools.taro.run import TerminationStatus, RunState
@@ -35,7 +36,14 @@ def test_raise_exc(observer: TestTransitionObserver):
     tarotools.taro.run_uncoordinated('j1', TestExecution(raise_exc=Exception))
 
     assert observer.run_states == [RunState.EXECUTING, RunState.ENDED]
-    assert observer.job_runs[-1].run.termination.failure.category == 'Exception'
+    assert observer.job_runs[-1].run.termination.error.category == 'Exception'
+
+
+def test_raise_exec_exc(observer: TestTransitionObserver):
+    tarotools.taro.run_uncoordinated('j1', TestExecution(raise_exc=ExecutionException))
+
+    assert observer.run_states == [RunState.EXECUTING, RunState.ENDED]
+    assert observer.job_runs[-1].run.termination.failure.category == 'ExecutionException'
 
 
 def test_observer_raises_exception():

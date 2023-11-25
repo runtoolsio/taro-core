@@ -614,6 +614,7 @@ class Phaser(AbstractPhaser):
         # Guarded by the transition/state lock:
         self._lifecycle = lifecycle or Lifecycle()
         self._current_phase = None
+        self._stop_status = TerminationStatus.NONE
         self._abort = False
         self._termination: Optional[TerminationInfo] = None
         # ----------------------- #
@@ -635,14 +636,21 @@ class Phaser(AbstractPhaser):
         if not self._current_phase:
             raise InvalidStateError('Prime not executed before run')
 
-        term_info = None
-        exc = None
         for phase in self._name_to_phase.values():
             with self._transition_lock:
                 if self._abort:
                     return
-                if term_info and not self._termination:  # Set only when not set by stop already
+
+                self._next_phase(phase)
+
+            term_info, exc = self._run_handle_errors(phase)
+
+            with self._transition_lock:
+                if self._stop_status:
+                    self._termination = self._term_info(self._stop_status)
+                elif term_info:
                     self._termination = term_info
+
                 if isinstance(exc, BaseException):
                     assert self._termination
                     self._next_phase(TerminalPhase())
@@ -651,12 +659,9 @@ class Phaser(AbstractPhaser):
                     self._next_phase(TerminalPhase())
                     return
 
-                self._next_phase(phase)
-
-            term_info, exc = self._run_handle_errors(phase)
-
-        self._termination = self._termination or self._term_info(TerminationStatus.COMPLETED)
-        self._next_phase(TerminalPhase())
+        with self._transition_lock:
+            self._next_phase(TerminalPhase())
+            self._termination = self._term_info(TerminationStatus.COMPLETED)
 
     def _run_handle_errors(self, phase) -> Tuple[Optional[TerminationInfo], Optional[BaseException]]:
         try:
@@ -701,12 +706,11 @@ class Phaser(AbstractPhaser):
             if self._termination:
                 return
 
-            stop_status = self._current_phase.stop_status if self._current_phase else TerminationStatus.STOPPED
-            self._termination = self._term_info(stop_status)
-            assert self._termination.status
+            self._stop_status = self._current_phase.stop_status if self._current_phase else TerminationStatus.STOPPED
             if not self._current_phase or (self._current_phase.name == PhaseNames.INIT):
                 # Not started yet
                 self._abort = True  # Prevent phase transition...
+                self._termination = self._term_info(self._stop_status)
                 self._next_phase(TerminalPhase())
 
         self._current_phase.stop()
