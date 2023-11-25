@@ -9,18 +9,16 @@ from threading import Thread
 from types import coroutine
 from typing import List, NamedTuple, Optional
 
-from tarotools.taro import paths
-
 # Default=32768, Max= 262142, https://docstore.mik.ua/manuals/hp-ux/en/B2355-60130/UNIX.7P.html
-RECV_BUFFER_LENGTH = 65536 # Can be increased to 163840?
+RECV_BUFFER_LENGTH = 65536  # Can be increased to 163840?
 
 log = logging.getLogger(__name__)
 
 
 class SocketServer(abc.ABC):
 
-    def __init__(self, socket_name, *, allow_ping=False):
-        self._socket_name = socket_name
+    def __init__(self, socket_path_provider, *, allow_ping=False):
+        self._socket_path_provider = socket_path_provider
         self._allow_ping = allow_ping
         self._server: socket = None
         self._serving_thread = Thread(target=self.serve, name='Thread-ApiServer')
@@ -30,7 +28,7 @@ class SocketServer(abc.ABC):
         if self._stopped:
             return False
         try:
-            socket_path = paths.socket_path(self._socket_name, create=True)
+            socket_path = self._socket_path_provider()
         except FileNotFoundError as e:
             log.error("event=[unable_create_socket_dir] socket_dir=[%s] message=[%s]", e.filename, e)
             return False
@@ -114,8 +112,8 @@ class ServerResponse(NamedTuple):
 
 class SocketClient:
 
-    def __init__(self, file_extension: str, bidirectional: bool, *, timeout=2):
-        self._file_extension = file_extension
+    def __init__(self, servers_provider, bidirectional: bool, *, timeout=2):
+        self._servers_provider = servers_provider
         self._bidirectional = bidirectional
         self._client = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         if bidirectional:
@@ -135,9 +133,9 @@ class SocketClient:
         req_body = '_'  # Dummy initialization to remove warnings
         resp = None
         skip = False
-        for api_file in paths.socket_files(self._file_extension):
-            server_id = api_file.stem
-            if (api_file in self.stale_sockets) or (include and server_id not in include):
+        for server_file in self._servers_provider():
+            server_id = server_file.stem
+            if (server_file in self.stale_sockets) or (include and server_id not in include):
                 continue
             while True:
                 if not skip:
@@ -148,17 +146,17 @@ class SocketClient:
 
                 encoded = req_body.encode()
                 try:
-                    self._client.sendto(encoded, str(api_file))
+                    self._client.sendto(encoded, str(server_file))
                     if self._bidirectional:
                         datagram = self._client.recv(RECV_BUFFER_LENGTH)
                         resp = ServerResponse(server_id, datagram.decode())
                 except TimeoutError:
-                    log.warning('event=[socket_timeout] socket=[{}]'.format(api_file))
+                    log.warning('event=[socket_timeout] socket=[{}]'.format(server_file))
                     self.timed_out_servers.append(server_id)
                     resp = ServerResponse(server_id, None, Error.TIMEOUT)
                 except ConnectionRefusedError:  # TODO what about other errors?
-                    log.warning('event=[stale_socket] socket=[{}]'.format(api_file))
-                    self.stale_sockets.append(api_file)
+                    log.warning('event=[stale_socket] socket=[{}]'.format(server_file))
+                    self.stale_sockets.append(server_file)
                     skip = True  # Ignore this one and continue with another one
                     break
                 except OSError as e:

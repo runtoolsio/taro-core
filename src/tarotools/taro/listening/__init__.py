@@ -4,12 +4,12 @@ import logging
 from abc import abstractmethod
 from json import JSONDecodeError
 
-from tarotools.taro import util
+from tarotools.taro import util, paths
 from tarotools.taro.jobs.events import TRANSITION_LISTENER_FILE_EXTENSION, OUTPUT_LISTENER_FILE_EXTENSION
 from tarotools.taro.jobs.instance import JobInstanceMetadata, InstanceOutputObserver, JobRun, InstanceTransitionObserver
 from tarotools.taro.run import PhaseRun, PhaseMetadata
-from tarotools.taro.socket import SocketServer
 from tarotools.taro.util.observer import ObservableNotification
+from tarotools.taro.util.socket import SocketServer
 
 log = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ def _read_metadata(req_body_json):
 class EventReceiver(SocketServer):
 
     def __init__(self, socket_name, id_match=None, event_types=()):
-        super().__init__(socket_name, allow_ping=True)
+        super().__init__(lambda: paths.socket_path(socket_name, create=True), allow_ping=True)
         self.id_match = id_match
         self.event_types = event_types
 

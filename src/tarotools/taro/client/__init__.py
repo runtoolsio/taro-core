@@ -9,9 +9,10 @@ from enum import Enum, auto
 from json import JSONDecodeError
 from typing import List, Any, Dict, NamedTuple, Optional, TypeVar, Generic, Callable, Tuple
 
+from tarotools.taro import paths
 from tarotools.taro.jobs.api import API_FILE_EXTENSION
 from tarotools.taro.jobs.instance import JobRun, JobInstanceMetadata
-from tarotools.taro.socket import SocketClient, ServerResponse, Error
+from tarotools.taro.util.socket import SocketClient, ServerResponse, Error
 
 log = logging.getLogger(__name__)
 
@@ -241,7 +242,7 @@ def _no_resp_mapper(api_instance_response: InstanceResponse) -> InstanceResponse
 class APIClient(SocketClient):
 
     def __init__(self):
-        super().__init__(API_FILE_EXTENSION, bidirectional=True)
+        super().__init__(lambda: paths.socket_files(API_FILE_EXTENSION), bidirectional=True)
 
     def __enter__(self):
         return self

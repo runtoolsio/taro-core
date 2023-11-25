@@ -14,7 +14,7 @@ import logging
 from tarotools.taro import util
 from tarotools.taro.jobs.instance import InstanceTransitionObserver, JobRun, InstanceStatusObserver, JobInstanceMetadata
 from tarotools.taro.run import PhaseMetadata
-from tarotools.taro.socket import SocketClient, PayloadTooLarge
+from tarotools.taro.util.socket import SocketClient, PayloadTooLarge
 
 TRANSITION_LISTENER_FILE_EXTENSION = '.tlistener'
 OUTPUT_LISTENER_FILE_EXTENSION = '.olistener'

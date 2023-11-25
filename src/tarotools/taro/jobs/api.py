@@ -12,10 +12,11 @@ import logging
 from abc import ABC, abstractmethod
 from json import JSONDecodeError
 
+from tarotools.taro import paths
 from tarotools.taro.jobs.criteria import JobRunAggregatedCriteria
 from tarotools.taro.jobs.instance import JobInstanceManager
 from tarotools.taro.run import util
-from tarotools.taro.socket import SocketServer
+from tarotools.taro.util.socket import SocketServer
 
 log = logging.getLogger(__name__)
 
@@ -103,7 +104,7 @@ class OutputResource(APIResource):
         return '/instances/output'
 
     def handle(self, job_instance, req_body):
-        return {"output": job_instance.fetch_output()}
+        return {"output": job_instance.fetch_output()}  # TODO Limit length
 
 
 class SignalProceedResource(APIResource):
@@ -133,7 +134,7 @@ DEFAULT_RESOURCES = (
 class APIServer(SocketServer, JobInstanceManager):
 
     def __init__(self, resources=DEFAULT_RESOURCES):
-        super().__init__(_create_socket_name(), allow_ping=True)
+        super().__init__(lambda: paths.socket_path(_create_socket_name(), create=True), allow_ping=True)
         self._resources = {resource.path: resource for resource in resources}
         self._job_instances = []
 
