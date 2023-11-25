@@ -11,7 +11,6 @@ from threading import Thread
 import tarotools.taro.cfg
 from tarotools.taro import cfg, client, log
 from tarotools.taro.execution import ExecutingPhase
-from tarotools.taro.hostinfo import read_hostinfo, HostinfoError
 from tarotools.taro.jobs import warning, persistence, plugins, jobrepo, coordination, runner, lock
 from tarotools.taro.jobs.featurize import FeaturedContextBuilder
 from tarotools.taro.jobs.instance import JobInstance, JobRun, InstanceTransitionObserver, Warn, \
@@ -22,6 +21,7 @@ from tarotools.taro.paths import lookup_file_in_config_path
 from tarotools.taro.process import ProcessExecution
 from tarotools.taro.run import Phaser, PhaseNames
 from tarotools.taro.util import format_timedelta, read_toml_file_flatten
+from tarotools.taro.util.hostinfo import read_hostinfo, HostinfoError
 
 __version__ = "0.11.0"
 
