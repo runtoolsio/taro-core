@@ -34,7 +34,7 @@ from enum import Enum
 from typing import List
 
 from tarotools import taro
-from tarotools.taro import paths
+from tarotools.taro import paths, db
 from tarotools.taro import util, cfg
 from tarotools.taro.common import TaroException
 from tarotools.taro.job import JobStats, JobRuns
