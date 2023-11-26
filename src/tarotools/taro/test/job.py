@@ -50,13 +50,13 @@ class FakeJobInstance(JobInstance):
         inst_id = instance_id_gen()
         parameters = {}  # TODO
         self._metadata = JobInstanceMetadata(job_id, run_id or inst_id, inst_id, parameters, user_params)
-        self._phaser = phaser
+        self.phaser = phaser
         self.lifecycle = lifecycle
-        self._output = InMemoryOutput()
+        self.output = InMemoryOutput()
         self._tracking = None
-        self._transition_notification = ObservableNotification[InstanceTransitionObserver]()
-        self._output_notification = ObservableNotification[InstanceOutputObserver]()
-        self._status_notification = ObservableNotification[InstanceStatusObserver]()
+        self.transition_notification = ObservableNotification[InstanceTransitionObserver]()
+        self.output_notification = ObservableNotification[InstanceOutputObserver]()
+        self.status_notification = ObservableNotification[InstanceStatusObserver]()
 
     @property
     def instance_id(self):
@@ -72,20 +72,20 @@ class FakeJobInstance(JobInstance):
 
     @property
     def status_observer(self):
-        return self._status_notification.observer_proxy
+        return self.status_notification.observer_proxy
 
     @property
     def phases(self):
-        return self._phaser.phases
+        return self.phaser.phases
 
     def get_typed_phase(self, phase_type: Type[P], phase_name: str) -> Optional[P]:
-        return self._phaser.get_typed_phase(phase_type, phase_name)
+        return self.phaser.get_typed_phase(phase_type, phase_name)
 
     def job_run_info(self) -> JobRun:
-        return JobRun(self.metadata, self._phaser.run_info(), self.tracking.copy() if self.tracking else None)  # TODO
+        return JobRun(self.metadata, self.phaser.run_info(), self.tracking.copy() if self.tracking else None)  # TODO
 
     def fetch_output(self, mode=Mode.HEAD, *, lines=0):
-        return self._output.fetch(mode, lines=lines)
+        return self.output.fetch(mode, lines=lines)
 
     def run(self):
         pass
@@ -96,7 +96,7 @@ class FakeJobInstance(JobInstance):
         Due to synchronous design there is a small window when an execution can be stopped before it is started.
         All execution implementations must cope with such scenario.
         """
-        self._phaser.stop()
+        self.phaser.stop()
 
     def interrupted(self):
         """
@@ -104,35 +104,35 @@ class FakeJobInstance(JobInstance):
         Due to synchronous design there is a small window when an execution can be interrupted before it is started.
         All execution implementations must cope with such scenario.
         """
-        self._phaser.stop()  # TODO Interrupt
+        self.phaser.stop()  # TODO Interrupt
 
     def wait_for_transition(self, phase_name=None, run_state=RunState.NONE, *, timeout=None):
-        return self._phaser.wait_for_transition(phase_name, run_state, timeout=timeout)
+        return self.phaser.wait_for_transition(phase_name, run_state, timeout=timeout)
 
     def add_observer_transition(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
-        self._transition_notification.add_observer(observer, priority)
+        self.transition_notification.add_observer(observer, priority)
 
     def remove_observer_transition(self, callback):
-        self._transition_notification.remove_observer(callback)
+        self.transition_notification.remove_observer(callback)
 
     def _transition_hook(self, old_phase: PhaseRun, new_phase: PhaseRun, ordinal):
         pass
 
     def add_observer_output(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self._output_notification.add_observer(observer, priority)
+        self.output_notification.add_observer(observer, priority)
 
     def remove_observer_output(self, observer):
-        self._output_notification.remove_observer(observer)
+        self.output_notification.remove_observer(observer)
 
     def add_observer_status(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self._status_notification.add_observer(observer, priority)
+        self.status_notification.add_observer(observer, priority)
 
     def remove_observer_status(self, observer):
-        self._status_notification.remove_observer(observer)
+        self.status_notification.remove_observer(observer)
 
     @property
     def prioritized_transition_observers(self):
-        return self._transition_notification.prioritized_observers
+        return self.transition_notification.prioritized_observers
 
 
 class FakeJobInstanceBuilder(AbstractBuilder):
