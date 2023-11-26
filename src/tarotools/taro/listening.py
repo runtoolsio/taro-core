@@ -4,8 +4,6 @@ import logging
 from abc import abstractmethod
 from json import JSONDecodeError
 
-from tarotools.job.events import TRANSITION_LISTENER_FILE_EXTENSION, OUTPUT_LISTENER_FILE_EXTENSION
-
 from tarotools.taro import util, paths
 from tarotools.taro.job import JobInstanceMetadata, JobRun, InstanceTransitionObserver, InstanceOutputObserver
 from tarotools.taro.run import PhaseRun, PhaseMetadata
@@ -13,6 +11,9 @@ from tarotools.taro.util.observer import ObservableNotification
 from tarotools.taro.util.socket import SocketServer
 
 log = logging.getLogger(__name__)
+
+TRANSITION_LISTENER_FILE_EXTENSION = '.tlistener'
+OUTPUT_LISTENER_FILE_EXTENSION = '.olistener'
 
 
 def _listener_socket_name(ext):
