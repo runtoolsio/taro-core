@@ -10,11 +10,12 @@ from json import JSONDecodeError
 from typing import List, Any, Dict, NamedTuple, Optional, TypeVar, Generic, Callable, Tuple
 
 from tarotools.taro import paths
-from tarotools.taro.jobs.api import API_FILE_EXTENSION
-from tarotools.taro.jobs.instance import JobRun, JobInstanceMetadata
+from tarotools.taro.job import JobInstanceMetadata, JobRun
 from tarotools.taro.util.socket import SocketClient, ServerResponse, Error
 
 log = logging.getLogger(__name__)
+
+API_FILE_EXTENSION = '.api'
 
 
 class InstanceResponse(NamedTuple):

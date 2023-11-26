@@ -3,11 +3,11 @@ from datetime import datetime as dt
 
 import pytest
 
-from tarotools.taro.jobs.criteria import IntervalCriterion, JobRunAggregatedCriteria, \
+from tarotools.taro.criteria import IntervalCriterion, JobRunAggregatedCriteria, \
     parse_criteria
-from tarotools.taro.jobs.db.sqlite import SQLite
+from tarotools.taro.db.sqlite import SQLite
 from tarotools.taro.run import RunState, TerminationStatus
-from tarotools.taro.test.instance import ended_run as run
+from tarotools.taro.test.job import ended_run as run
 from tarotools.taro.util import parse_iso8601_duration, MatchingStrategy
 
 

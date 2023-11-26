@@ -2,8 +2,8 @@ from typing import Optional
 
 import test.plugins
 from plugins import test_plugin
-from tarotools.taro import Plugin
 from tarotools.taro import plugins
+from tarotools.taro.plugins import Plugin
 
 
 def test_plugin_discovered():

@@ -1,4 +1,4 @@
-from tarotools.taro.jobs.criteria import IntervalCriterion, TerminationCriterion
+from tarotools.taro.criteria import IntervalCriterion, TerminationCriterion
 from tarotools.taro.run import RunState, TerminationStatus, TerminationInfo, Outcome
 
 from tarotools.taro.util import utc_now

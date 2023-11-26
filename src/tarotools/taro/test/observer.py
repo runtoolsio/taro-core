@@ -11,8 +11,7 @@ from queue import Queue
 from threading import Condition
 from typing import Tuple, List, Callable
 
-from tarotools.taro.jobs.instance import JobRun, InstanceTransitionObserver, \
-    InstanceOutputObserver
+from tarotools.taro.job import JobRun, InstanceTransitionObserver, InstanceOutputObserver
 from tarotools.taro.run import PhaseRun, RunState, PhaseMetadata
 
 log = logging.getLogger(__name__)

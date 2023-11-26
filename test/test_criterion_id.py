@@ -1,6 +1,6 @@
 from operator import eq
 
-from tarotools.taro.jobs.criteria import JobRunIdCriterion
+from tarotools.taro.criteria import JobRunIdCriterion
 
 
 def test_full_match():

@@ -1,26 +1,32 @@
-from threading import Thread
+from threading import Thread, Event
+from typing import Optional
 
 import pytest
 
-from tarotools.taro.err import InvalidStateError
-from tarotools.taro.jobs.coordination import ApprovalPhase
+from tarotools.taro.common import InvalidStateError
 from tarotools.taro.run import Phaser, PhaseNames, TerminationStatus, Phase, RunState, WaitWrapperPhase, \
     FailedRun, RunError, TerminateRun
 
 
-class ExecTestPhase(Phase):
+class TestPhase(Phase):
 
-    def __init__(self, name):
-        super().__init__(name, RunState.EXECUTING)
+    def __init__(self, name, wait=False):
+        super().__init__(name, RunState.PENDING if wait else RunState.EXECUTING)
         self.fail = False
         self.failed_run = None
         self.exception = None
+        self.wait: Optional[Event] = Event() if wait else None
 
     @property
     def stop_status(self):
-        return TerminationStatus.STOPPED
+        if self.wait:
+            return TerminationStatus.CANCELLED
+        else:
+            return TerminationStatus.STOPPED
 
     def run(self):
+        if self.wait:
+            self.wait.wait(2)
         if self.exception:
             raise self.exception
         if self.failed_run:
@@ -29,18 +35,19 @@ class ExecTestPhase(Phase):
             raise TerminateRun(TerminationStatus.FAILED)
 
     def stop(self):
-        pass
+        if self.wait:
+            self.wait.set()
 
 
 @pytest.fixture
 def sut():
-    phaser = Phaser([ExecTestPhase('EXEC1'), ExecTestPhase('EXEC2')])
+    phaser = Phaser([TestPhase('EXEC1'), TestPhase('EXEC2')])
     return phaser
 
 
 @pytest.fixture
 def sut_approve():
-    phaser = Phaser([WaitWrapperPhase(ApprovalPhase('APPROVAL')), ExecTestPhase('EXEC')])
+    phaser = Phaser([WaitWrapperPhase(TestPhase('APPROVAL', wait=True)), TestPhase('EXEC')])
     return phaser
 
 
@@ -56,7 +63,7 @@ def test_run_with_approval(sut_approve):
     assert snapshot.lifecycle.current_phase_name == 'APPROVAL'
     assert snapshot.lifecycle.run_state == RunState.PENDING
 
-    wait_wrapper.wrapped_phase.approve()
+    wait_wrapper.wrapped_phase.wait.set()
     run_thread.join(1)
     assert (sut_approve.run_info().lifecycle.phases ==
             [PhaseNames.INIT, 'APPROVAL', 'EXEC', PhaseNames.TERMINAL])
@@ -115,7 +122,7 @@ def test_stop_in_run(sut_approve):
 
 
 def test_premature_termination(sut):
-    sut.get_typed_phase(ExecTestPhase, 'EXEC1').fail = True
+    sut.get_typed_phase(TestPhase, 'EXEC1').fail = True
     sut.prime()
     sut.run()
 
@@ -147,7 +154,7 @@ def test_transition_hook(sut):
 
 def test_failed_run_exception(sut):
     failed_run = FailedRun('FaultType', 'reason')
-    sut.get_typed_phase(ExecTestPhase, 'EXEC1').failed_run = failed_run
+    sut.get_typed_phase(TestPhase, 'EXEC1').failed_run = failed_run
     sut.prime()
     sut.run()
 
@@ -160,7 +167,7 @@ def test_failed_run_exception(sut):
 
 def test_exception(sut):
     exc = InvalidStateError('reason')
-    sut.get_typed_phase(ExecTestPhase, 'EXEC1').exception = exc
+    sut.get_typed_phase(TestPhase, 'EXEC1').exception = exc
     sut.prime()
     sut.run()
 
@@ -172,7 +179,7 @@ def test_exception(sut):
 
 
 def test_interruption(sut):
-    sut.get_typed_phase(ExecTestPhase, 'EXEC1').exception = KeyboardInterrupt
+    sut.get_typed_phase(TestPhase, 'EXEC1').exception = KeyboardInterrupt
     sut.prime()
 
     exc_passed = False

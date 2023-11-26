@@ -1,9 +1,8 @@
 import sqlite3
 from pathlib import Path
 
-from tarotools.taro import cfg
-from tarotools.taro.jobs import persistence
-from tarotools.taro.jobs.db.sqlite import SQLite
+from tarotools.taro import cfg, persistence
+from tarotools.taro.db.sqlite import SQLite
 
 
 class TestPersistence:

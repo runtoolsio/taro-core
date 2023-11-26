@@ -4,9 +4,10 @@ import logging
 from abc import abstractmethod
 from json import JSONDecodeError
 
+from tarotools.job.events import TRANSITION_LISTENER_FILE_EXTENSION, OUTPUT_LISTENER_FILE_EXTENSION
+
 from tarotools.taro import util, paths
-from tarotools.taro.jobs.events import TRANSITION_LISTENER_FILE_EXTENSION, OUTPUT_LISTENER_FILE_EXTENSION
-from tarotools.taro.jobs.instance import JobInstanceMetadata, InstanceOutputObserver, JobRun, InstanceTransitionObserver
+from tarotools.taro.job import JobInstanceMetadata, JobRun, InstanceTransitionObserver, InstanceOutputObserver
 from tarotools.taro.run import PhaseRun, PhaseMetadata
 from tarotools.taro.util.observer import ObservableNotification
 from tarotools.taro.util.socket import SocketServer

@@ -15,7 +15,7 @@ import re
 from pathlib import Path
 from typing import Generator, List
 
-from tarotools.taro.err import ConfigFileNotFoundError
+from tarotools.taro.common import ConfigFileNotFoundError
 
 CONFIG_DIR = 'taro'
 CONFIG_FILE = 'taro.toml'

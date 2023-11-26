@@ -1,6 +1,6 @@
 import re
 
-from tarotools.taro.jobs.track import MutableTrackedTask, OperationInfo, ProgressInfo
+from tarotools.taro.track import MutableTrackedTask, OperationInfo, ProgressInfo
 from tarotools.taro.util import parse_datetime
 
 

@@ -1,14 +1,14 @@
 from datetime import datetime, timedelta
+from typing import Type, Optional
 
-from tarotools.taro import JobRun, util, RunnerJobInstance
-from tarotools.taro.execution import ExecutingPhase
-from tarotools.taro.jobs.coordination import ApprovalPhase
-from tarotools.taro.jobs.instance import JobInstanceMetadata
-from tarotools.taro.output import InMemoryOutput
+from tarotools.taro import util
+from tarotools.taro.job import JobInstance, JobRun, JobInstanceMetadata, InstanceTransitionObserver, \
+    InstanceOutputObserver, InstanceStatusObserver
+from tarotools.taro.output import InMemoryOutput, Mode
 from tarotools.taro.run import PhaseRun, TerminationInfo, Lifecycle, RunState, PhaseMetadata, Run, PhaseNames, \
-    Phaser, TerminationStatus, RunFailure, Phase
-from tarotools.taro.test.execution import TestExecution
+    TerminationStatus, RunFailure, Phase, P
 from tarotools.taro.test.run import FakePhaser
+from tarotools.taro.util.observer import ObservableNotification, DEFAULT_OBSERVER_PRIORITY
 
 
 class FakePhase(Phase):
@@ -43,15 +43,92 @@ class AbstractBuilder:
         self.termination_info = None
 
 
-class FakeJobInstance(RunnerJobInstance):
+class FakeJobInstance(JobInstance):
 
     def __init__(self, job_id, phaser, lifecycle, *,
                  run_id=None, instance_id_gen=util.unique_timestamp_hex, **user_params):
-        output = InMemoryOutput()
-        super().__init__(job_id, phaser, output, run_id=run_id, instance_id_gen=instance_id_gen, **user_params)
-        self.phaser = phaser
+        inst_id = instance_id_gen()
+        parameters = {}  # TODO
+        self._metadata = JobInstanceMetadata(job_id, run_id or inst_id, inst_id, parameters, user_params)
+        self._phaser = phaser
         self.lifecycle = lifecycle
-        self.output = output
+        self._output = InMemoryOutput()
+        self._tracking = None
+        self._transition_notification = ObservableNotification[InstanceTransitionObserver]()
+        self._output_notification = ObservableNotification[InstanceOutputObserver]()
+        self._status_notification = ObservableNotification[InstanceStatusObserver]()
+
+    @property
+    def instance_id(self):
+        return self._metadata.instance_id
+
+    @property
+    def metadata(self):
+        return self._metadata
+
+    @property
+    def tracking(self):
+        return self._tracking
+
+    @property
+    def status_observer(self):
+        return self._status_notification.observer_proxy
+
+    @property
+    def phases(self):
+        return self._phaser.phases
+
+    def get_typed_phase(self, phase_type: Type[P], phase_name: str) -> Optional[P]:
+        return self._phaser.get_typed_phase(phase_type, phase_name)
+
+    def job_run_info(self) -> JobRun:
+        return JobRun(self.metadata, self._phaser.run_info(), self.tracking.copy() if self.tracking else None)  # TODO
+
+    def fetch_output(self, mode=Mode.HEAD, *, lines=0):
+        return self._output.fetch(mode, lines=lines)
+
+    def run(self):
+        pass
+
+    def stop(self):
+        """
+        Cancel not yet started execution or stop started execution.
+        Due to synchronous design there is a small window when an execution can be stopped before it is started.
+        All execution implementations must cope with such scenario.
+        """
+        self._phaser.stop()
+
+    def interrupted(self):
+        """
+        Cancel not yet started execution or interrupt started execution.
+        Due to synchronous design there is a small window when an execution can be interrupted before it is started.
+        All execution implementations must cope with such scenario.
+        """
+        self._phaser.stop()  # TODO Interrupt
+
+    def wait_for_transition(self, phase_name=None, run_state=RunState.NONE, *, timeout=None):
+        return self._phaser.wait_for_transition(phase_name, run_state, timeout=timeout)
+
+    def add_observer_transition(self, observer, priority=DEFAULT_OBSERVER_PRIORITY, notify_on_register=False):
+        self._transition_notification.add_observer(observer, priority)
+
+    def remove_observer_transition(self, callback):
+        self._transition_notification.remove_observer(callback)
+
+    def _transition_hook(self, old_phase: PhaseRun, new_phase: PhaseRun, ordinal):
+        pass
+
+    def add_observer_output(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+        self._output_notification.add_observer(observer, priority)
+
+    def remove_observer_output(self, observer):
+        self._output_notification.remove_observer(observer)
+
+    def add_observer_status(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+        self._status_notification.add_observer(observer, priority)
+
+    def remove_observer_status(self, observer):
+        self._status_notification.remove_observer(observer)
 
     @property
     def prioritized_transition_observers(self):
@@ -73,27 +150,6 @@ class FakeJobInstanceBuilder(AbstractBuilder):
         phaser = FakePhaser(self.phases, lifecycle)
         return FakeJobInstance(self.metadata.job_id, phaser, lifecycle, run_id=self.metadata.run_id,
                                **self.metadata.user_params)
-
-
-class TestJobInstanceBuilder(AbstractBuilder):
-
-    def __init__(self, job_id='j1', run_id=None, system_params=None, user_params=None):
-        super().__init__(job_id, run_id, system_params, user_params)
-        self.phases = []
-
-    def add_approval_phase(self, name=PhaseNames.APPROVAL):
-        self.phases.append(ApprovalPhase(name, 2))
-        return self
-
-    def add_exec_phase(self, name='EXEC', *, output_text=None):
-        self.phases.append(ExecutingPhase(name, TestExecution(wait=True, output_text=output_text)))
-        return self
-
-    def build(self) -> RunnerJobInstance:
-        lifecycle = Lifecycle()
-        phaser = Phaser(self.phases, lifecycle)
-        return RunnerJobInstance(self.metadata.job_id, phaser, lifecycle, run_id=self.metadata.run_id,
-                                 **self.metadata.user_params)
 
 
 class TestJobRunBuilder(AbstractBuilder):

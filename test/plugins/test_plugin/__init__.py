@@ -2,8 +2,8 @@
 from typing import List, Optional
 from weakref import ref
 
-from tarotools.taro import JobInstance
-from tarotools.taro import Plugin
+from tarotools.taro.job import JobInstance
+from tarotools.taro.plugins import Plugin
 
 
 class TestPlugin(Plugin):

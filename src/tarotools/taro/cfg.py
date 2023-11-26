@@ -11,7 +11,7 @@ import sys
 from enum import Enum, auto
 
 from tarotools.taro import util, paths
-from tarotools.taro.err import ConfigFileNotFoundError, TaroException
+from tarotools.taro.common import ConfigFileNotFoundError, TaroException
 from tarotools.taro.util.attr import get_module_attributes
 
 

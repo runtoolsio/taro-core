@@ -2,7 +2,7 @@ from threading import Condition
 from typing import Iterable, Optional, Callable
 
 from tarotools.taro import util
-from tarotools.taro.err import InvalidStateError
+from tarotools.taro.common import InvalidStateError
 from tarotools.taro.run import Phase, PhaseRun, AbstractPhaser, TerminationInfo, Run, RunState, InitPhase, \
     TerminalPhase, TerminationStatus
 from tarotools.taro.util import utc_now

@@ -36,10 +36,8 @@ from typing import List
 from tarotools import taro
 from tarotools.taro import paths
 from tarotools.taro import util, cfg
-from tarotools.taro.err import TaroException
-from tarotools.taro.jobs import db
-from tarotools.taro.jobs.instance import JobRuns
-from tarotools.taro.jobs.job import JobStats
+from tarotools.taro.common import TaroException
+from tarotools.taro.job import JobStats, JobRuns
 from tarotools.taro.run import RunState
 
 
@@ -60,12 +58,12 @@ def load_persistence(persistence_type):
     if not cfg.persistence_enabled:
         return _NoPersistence()
 
-    for finder, name, is_pkg in pkgutil.iter_modules(taro.jobs.db.__path__, taro.jobs.db.__name__ + "."):
-        if name == taro.jobs.db.__name__ + "." + persistence_type:
+    for finder, name, is_pkg in pkgutil.iter_modules(taro.db.__path__, taro.db.__name__ + "."):
+        if name == taro.db.__name__ + "." + persistence_type:
             db_module = importlib.import_module(name)
             return db_module.create_persistence()
 
-    raise PersistenceNotFoundError(taro.jobs.db.__name__ + "." + persistence_type)
+    raise PersistenceNotFoundError(taro.db.__name__ + "." + persistence_type)
 
 
 class _PersistenceHolder(dict):

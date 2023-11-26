@@ -12,11 +12,10 @@ import os
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from tarotools.taro import paths
+from tarotools.taro import paths, persistence
 from tarotools.taro import util, client
-from tarotools.taro.jobs import persistence
-from tarotools.taro.jobs.job import Job
-from tarotools.taro.jobs.persistence import PersistenceDisabledError
+from tarotools.taro.job import Job
+from tarotools.taro.persistence import PersistenceDisabledError
 
 
 class JobRepository(ABC):

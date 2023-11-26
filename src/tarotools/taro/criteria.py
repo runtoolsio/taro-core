@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from datetime import timezone, time, timedelta
 from typing import Dict, Any, Set, Optional, TypeVar, Generic, Tuple
 
-from tarotools.taro.jobs.instance import JobRun
+from tarotools.taro.job import JobRun
 from tarotools.taro.run import Outcome, RunState, Lifecycle, TerminationInfo
 from tarotools.taro.util import MatchingStrategy, and_, or_, parse, single_day_range, days_range, \
     format_dt_iso, to_list
@@ -301,7 +301,7 @@ class TerminationCriterion(MatchCriteria[TerminationInfo]):
         return self.matches(term_info)
 
     def matches(self, term_info):
-        return all(outcome in term_info.status.outcome for outcome in self.outcomes)
+        return any(outcome == term_info.status.outcome for outcome in self.outcomes)
 
     def __bool__(self):
         return bool(self.outcomes)

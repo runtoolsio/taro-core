@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from tarotools.taro.jobs.track import MutableTrackedTask, OutputTracker, Fields
+from tarotools.taro.track import MutableTrackedTask, OutputTracker, Fields
 from tarotools.taro.util import KVParser, iso_date_time_parser
 
 

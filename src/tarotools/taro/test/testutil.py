@@ -4,7 +4,8 @@ from pathlib import Path
 import tomli_w
 
 from tarotools.taro import cfg
-from tarotools.taro import paths, JobRun, InstanceTransitionObserver
+from tarotools.taro import paths
+from tarotools.taro.job import JobRun, InstanceTransitionObserver
 
 
 def reset_config():

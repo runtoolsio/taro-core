@@ -20,7 +20,7 @@ from threading import Event, Condition
 from typing import Optional, List, Dict, Any, TypeVar, Type, Callable, Tuple, Iterable
 
 from tarotools.taro import util, status
-from tarotools.taro.err import InvalidStateError
+from tarotools.taro.common import InvalidStateError
 from tarotools.taro.status import StatusObserver
 from tarotools.taro.util import format_dt_iso, is_empty
 from tarotools.taro.util.observer import ObservableNotification, CallableNotification

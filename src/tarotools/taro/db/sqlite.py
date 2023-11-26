@@ -11,9 +11,8 @@ from typing import List
 
 from tarotools.taro import cfg
 from tarotools.taro import paths
-from tarotools.taro.jobs.instance import (InstanceTransitionObserver, JobRun, JobRuns, JobInstanceMetadata)
-from tarotools.taro.jobs.job import JobStats
-from tarotools.taro.jobs.persistence import SortCriteria
+from tarotools.taro.job import JobStats, JobInstanceMetadata, JobRun, JobRuns, InstanceTransitionObserver
+from tarotools.taro.persistence import SortCriteria
 from tarotools.taro.run import RunState, Lifecycle, PhaseMetadata, RunFailure, RunError, Run, TerminationInfo, \
     TerminationStatus, Outcome
 from tarotools.taro.util import MatchingStrategy, format_dt_sql, parse_dt_sql

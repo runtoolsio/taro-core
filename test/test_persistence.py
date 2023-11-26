@@ -1,4 +1,4 @@
-from tarotools.taro.jobs import persistence
+from tarotools.taro import persistence
 
 
 def test_load_sqlite():
