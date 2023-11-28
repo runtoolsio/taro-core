@@ -19,11 +19,9 @@ from enum import Enum, EnumMeta
 from threading import Event, Condition
 from typing import Optional, List, Dict, Any, TypeVar, Type, Callable, Tuple, Iterable
 
-from tarotools.taro import util, status
+from tarotools.taro import util
 from tarotools.taro.common import InvalidStateError
-from tarotools.taro.status import StatusObserver
 from tarotools.taro.util import format_dt_iso, is_empty
-from tarotools.taro.util.observer import ObservableNotification, CallableNotification
 
 log = logging.getLogger(__name__)
 
@@ -388,6 +386,18 @@ class TerminateRun(Exception):
         super().__init__(f"Termination status: {term_status}")
 
 
+class RunContext(ABC):
+
+    @property
+    @abstractmethod
+    def task_builder(self):
+        pass
+
+    @abstractmethod
+    def new_output(self, output, is_err):
+        pass
+
+
 class Phase(ABC):
     """
     TODO repr
@@ -395,8 +405,6 @@ class Phase(ABC):
 
     def __init__(self, phase_name: str, run_state: RunState, parameters: Optional[Dict[str, str]] = None):
         self._metadata = PhaseMetadata(phase_name, run_state, parameters or {})
-        self._output_notification = CallableNotification()
-        self._status_notification = ObservableNotification[StatusObserver]()
 
     @property
     def name(self):
@@ -412,24 +420,12 @@ class Phase(ABC):
         pass
 
     @abstractmethod
-    def run(self):
+    def run(self, run_ctx):
         pass
 
     @abstractmethod
     def stop(self):
         pass
-
-    def add_callback_output(self, callback, priority=status.DEFAULT_OBSERVER_PRIORITY):
-        self._output_notification.add_observer(callback, priority)
-
-    def remove_callback_output(self, callback):
-        self._output_notification.remove_observer(callback)
-
-    def add_observer_status(self, observer, priority=status.DEFAULT_OBSERVER_PRIORITY):
-        self._status_notification.add_observer(observer, priority)
-
-    def remove_observer_status(self, observer):
-        self._status_notification.remove_observer(observer)
 
 
 class NoOpsPhase(Phase):
@@ -442,7 +438,7 @@ class NoOpsPhase(Phase):
     def stop_status(self):
         return self._stop_status
 
-    def run(self):
+    def run(self, run_ctx):
         """No activity on run"""
         pass
 
@@ -477,9 +473,9 @@ class WaitWrapperPhase(Phase):
     def wait(self, timeout):
         self._run_event.wait(timeout)
 
-    def run(self):
+    def run(self, run_ctx):
         self._run_event.set()
-        self.wrapped_phase.run()
+        self.wrapped_phase.run(run_ctx)
 
     def stop(self):
         self.wrapped_phase.stop()
@@ -588,7 +584,9 @@ class AbstractPhaser:
         self._name_to_phase: Dict[str, Phase] = unique_phases_to_dict(phases)
         self._phase_meta: Tuple[PhaseMetadata] = tuple(phase.metadata for phase in phases)
         self._timestamp_generator = timestamp_generator
+
         self.transition_hook: Optional[Callable[[PhaseRun, PhaseRun, int], None]] = None
+        self.output_hook: Optional[Callable[[PhaseMetadata, str, bool], None]] = None
 
     def get_typed_phase(self, phase_type: Type[P], phase_name: str) -> Optional[P]:
         phase = self._name_to_phase.get(phase_name)
@@ -607,12 +605,13 @@ class AbstractPhaser:
 
 class Phaser(AbstractPhaser):
 
-    def __init__(self, phases: Iterable[Phase], lifecycle=None, *, timestamp_generator=util.utc_now):
+    def __init__(self, phases: Iterable[Phase], lifecycle=None, task_builder=None, *, timestamp_generator=util.utc_now):
         super().__init__(phases, timestamp_generator=timestamp_generator)
 
         self._transition_lock = Condition()
         # Guarded by the transition/state lock:
         self._lifecycle = lifecycle or Lifecycle()
+        self._task_builder = task_builder
         self._current_phase = None
         self._stop_status = TerminationStatus.NONE
         self._abort = False
@@ -636,6 +635,20 @@ class Phaser(AbstractPhaser):
         if not self._current_phase:
             raise InvalidStateError('Prime not executed before run')
 
+        class _RunContext(RunContext):
+
+            def __init__(self, phaser: Phaser, ctx_phase):
+                self._phaser = phaser
+                self._ctx_phase = ctx_phase
+                self._task_builder = phaser._task_builder.new_task(ctx_phase.name)
+
+            @property
+            def task_builder(self):
+                return self._task_builder
+
+            def new_output(self, output, is_err):
+                self._phaser.output_hook(self._ctx_phase.metadata, output, is_err)
+
         for phase in self._name_to_phase.values():
             with self._transition_lock:
                 if self._abort:
@@ -643,7 +656,7 @@ class Phaser(AbstractPhaser):
 
                 self._next_phase(phase)
 
-            term_info, exc = self._run_handle_errors(phase)
+            term_info, exc = self._run_handle_errors(phase, _RunContext(self, phase))
 
             with self._transition_lock:
                 if self._stop_status:
@@ -663,9 +676,10 @@ class Phaser(AbstractPhaser):
             self._next_phase(TerminalPhase())
             self._termination = self._term_info(TerminationStatus.COMPLETED)
 
-    def _run_handle_errors(self, phase) -> Tuple[Optional[TerminationInfo], Optional[BaseException]]:
+    def _run_handle_errors(self, phase: Phase, run_ctx: RunContext)\
+            -> Tuple[Optional[TerminationInfo], Optional[BaseException]]:
         try:
-            phase.run()
+            phase.run(run_ctx)
             return None, None
         except TerminateRun as e:
             return self._term_info(e.term_status), None

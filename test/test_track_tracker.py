@@ -112,8 +112,8 @@ def test_task_started_and_update_on_event():
     tracker = OutputTracker(task, [KVParser(), iso_date_time_parser(Fields.TIMESTAMP.value)])
     tracker.new_output('2020-10-01 10:30:30 event=[e1]')
     tracker.new_output('2020-10-01 11:45:00 event=[e2]')
-    assert task.started_at == datetime(2020, 10, 1, 10, 30, 30)
-    assert task.updated_at == datetime(2020, 10, 1, 11, 45, 0)
+    assert task.first_update_at == datetime(2020, 10, 1, 10, 30, 30)
+    assert task.last_update_at == datetime(2020, 10, 1, 11, 45, 0)
 
 
 def test_task_started_and_updated_on_operation():
@@ -123,10 +123,10 @@ def test_task_started_and_updated_on_operation():
     tracker.new_output('2020-10-01 15:30:30 event=[op1] total=[400]')
     started_ts = datetime(2020, 10, 1, 14, 40, 0)
     updated_ts = datetime(2020, 10, 1, 15, 30, 30)
-    assert task.started_at == started_ts
-    assert task.operation('op1').started_at == started_ts
-    assert task.updated_at == updated_ts
-    assert task.operation('op1').updated_at == updated_ts
+    assert task.first_update_at == started_ts
+    assert task.operation('op1').first_update_at == started_ts
+    assert task.last_update_at == updated_ts
+    assert task.operation('op1').last_update_at == updated_ts
 
 
 def test_op_end_date():
@@ -147,9 +147,9 @@ def test_subtask_started_and_updated_set():
 
     started_ts = datetime(2020, 10, 1, 12, 30, 0)
     updated_ts = datetime(2020, 10, 1, 13, 50, 0)
-    assert task.subtask('t1').started_at == started_ts
-    assert task.subtask('t1').updated_at == updated_ts
-    assert task.started_at is None  # TODO should this be set too?
+    assert task.subtask('t1').first_update_at == started_ts
+    assert task.subtask('t1').last_update_at == updated_ts
+    assert task.first_update_at is None  # TODO should this be set too?
 
 
 def test_timestamps():

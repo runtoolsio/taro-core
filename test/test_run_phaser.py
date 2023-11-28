@@ -24,7 +24,7 @@ class TestPhase(Phase):
         else:
             return TerminationStatus.STOPPED
 
-    def run(self):
+    def run(self, run_ctx):
         if self.wait:
             self.wait.wait(2)
         if self.exception:
