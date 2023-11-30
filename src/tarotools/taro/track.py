@@ -9,6 +9,7 @@ from enum import Enum
 from typing import Optional, Sequence, Tuple
 
 from tarotools.taro import util
+from tarotools.taro.instance import Warn
 from tarotools.taro.util import format_dt_iso, convert_if_number, is_empty
 
 log = logging.getLogger(__name__)
@@ -112,12 +113,39 @@ class Progress:
         return val
 
 
+class ProgressTracker(ABC):
+
+    @property
+    @abstractmethod
+    def progress(self):
+        pass
+
+    @abstractmethod
+    def incr_completed(self, completed):
+        pass
+
+    @abstractmethod
+    def set_completed(self, completed):
+        pass
+
+    @abstractmethod
+    def set_total(self, total):
+        pass
+
+    @abstractmethod
+    def set_unit(self, unit):
+        pass
+
+    @abstractmethod
+    def update(self, completed, total, unit=None):
+        pass
+
+
 @dataclass(frozen=True)
 class TrackedOperation(Temporal, Activatable):
-
     name: Optional[str]
     progress: Optional[Progress]
-    _first_update_at: Optional[datetime]
+    _first_updated_at: Optional[datetime]
     _last_updated_at: Optional[datetime]
     _active: bool
 
@@ -144,7 +172,7 @@ class TrackedOperation(Temporal, Activatable):
 
     @property
     def first_updated_at(self):
-        return self._first_update_at
+        return self._first_updated_at
 
     @property
     def last_updated_at(self):
@@ -164,14 +192,32 @@ class TrackedOperation(Temporal, Activatable):
         return " ".join(parts)
 
 
+class OperationTracker(ABC):
+
+    @property
+    @abstractmethod
+    def operation(self):
+        pass
+
+    @property
+    @abstractmethod
+    def progress_tracker(self):
+        pass
+
+    @abstractmethod
+    def finished(self):
+        pass
+
+
 @dataclass(frozen=True)
 class TrackedTask(Temporal, Activatable):
-    # TODO: warns, failure
+    # TODO: failure
     name: str
     current_event: Optional[Tuple[str, datetime]]
     operations: Sequence[TrackedOperation]
-    subtasks: Sequence[TrackedTask]
     result: str
+    subtasks: Sequence[TrackedTask]
+    warnings: Sequence[Warn]
     _first_updated_at: Optional[datetime]
     _last_updated_at: Optional[datetime]
     _active: bool
@@ -181,8 +227,8 @@ class TrackedTask(Temporal, Activatable):
         name = data.get("name")
         current_event = data.get("current_event")
         operations = [TrackedOperation.deserialize(op) for op in data.get("operations", ())]
-        subtasks = [TrackedTask.deserialize(task) for task in data.get("subtasks", ())]
         result = data.get("result")
+        subtasks = [TrackedTask.deserialize(task) for task in data.get("subtasks", ())]
         started_at = util.parse_datetime(data.get("first_update_at", None))
         updated_at = util.parse_datetime(data.get("last_updated_at", None))
         active = data.get("active")
@@ -191,8 +237,9 @@ class TrackedTask(Temporal, Activatable):
     def serialize(self, include_empty=True):
         d = {
             'name': self.name,
-            'events': [(event, format_dt_iso(ts)) for event, ts in self.events],
+            'current_event': self.current_event,
             'operations': [op.serialize() for op in self.operations],
+            'result': self.result,
             'subtasks': [task.serialize() for task in self.subtasks],
             'first_update_at': format_dt_iso(self.first_updated_at),
             'last_updated_at': format_dt_iso(self.last_updated_at),
@@ -246,7 +293,28 @@ class TrackedTask(Temporal, Activatable):
         return " ".join(parts)
 
 
-class ProgressTracker:
+class TaskTracker(ABC):
+
+    def event(self, event):
+        pass
+
+    def operation(self, op_name):
+        pass
+
+    def result(self, result):
+        pass
+
+    def task(self, task_name):
+        pass
+
+    def warning(self, warn):
+        pass
+
+    def failure(self, fault_type: str, reason):
+        pass
+
+
+class ProgressTrackerX:
 
     def __init__(self):
         self._completed = None
