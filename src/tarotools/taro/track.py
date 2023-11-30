@@ -1,85 +1,405 @@
+from __future__ import annotations
+
 import logging
-from abc import ABC
-from dataclasses import dataclass, field, replace
+from abc import ABC, abstractmethod
+from collections import deque, OrderedDict
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Optional, Sequence, Tuple
 
 from tarotools.taro import util
-from tarotools.taro.util import convert_if_number
+from tarotools.taro.util import format_dt_iso, convert_if_number, is_empty
 
 log = logging.getLogger(__name__)
 
 
-@dataclass
 class Temporal(ABC):
 
-    first_update_at: Optional[datetime] = None
-    last_update_at: Optional[datetime] = None
+    @property
+    @abstractmethod
+    def first_updated_at(self):
+        pass
+
+    @property
+    @abstractmethod
+    def last_updated_at(self):
+        pass
 
 
 @dataclass
+class MutableTemporal(Temporal):
+    _first_updated_at: Optional[datetime] = None
+    _last_updated_at: Optional[datetime] = None
+
+    @property
+    def first_updated_at(self) -> Optional[datetime]:
+        return self._first_updated_at
+
+    @first_updated_at.setter
+    def first_updated_at(self, started_at: datetime) -> None:
+        self._first_updated_at = started_at
+
+    @property
+    def last_updated_at(self) -> Optional[datetime]:
+        return self._last_updated_at
+
+    @last_updated_at.setter
+    def last_updated_at(self, updated_at: datetime) -> None:
+        self._last_updated_at = updated_at
+
+
 class Activatable(ABC):
-    active: bool = False
+
+    @property
+    @abstractmethod
+    def active(self):
+        pass
 
 
-@dataclass
-class Progress(ABC):
-    completed: float = 0
-    total: float = None
-    is_pct: bool = False
-    unit: str = ''
+@dataclass(frozen=True)
+class Progress:
+    _completed: Optional[float]
+    _total: Optional[float]
+    _unit: str = ''
+
+    @classmethod
+    def deserialize(cls, data):
+        completed = data.get("completed", None)
+        total = data.get("total", None)
+        unit = data.get("unit", '')
+        return cls(completed, total, unit)
+
+    def serialize(self):
+        return {
+            'completed': self.completed,
+            'total': self.total,
+            'unit': self.unit,
+        }
+
+    @property
+    def completed(self):
+        return self._completed
+
+    @property
+    def total(self):
+        return self._total
+
+    @property
+    def unit(self):
+        return self._unit
 
     @property
     def pct_done(self):
-        if not self.total:
-            return 0
-
-        return self.completed / self.total
+        if isinstance(self.completed, (int, float)) and isinstance(self.total, (int, float)):
+            return self.completed / self.total
+        else:
+            return None
 
     @property
     def finished(self):
         return self.completed and self.total and (self.completed == self.total)
 
-    def copy(self):
-        return replace(self)
+    def __str__(self):
+        val = f"{self.completed or '?'}"
+        if self.total:
+            val += f"/{self.total}"
+        if self.unit:
+            val += f" {self.unit}"
+        if pct_done := self.pct_done:
+            val += f" ({round(pct_done * 100, 0):.0f}%)"
+
+        return val
 
 
-@dataclass
-class Operation(Temporal, Activatable):
+@dataclass(frozen=True)
+class TrackedOperation(Temporal, Activatable):
 
-    name: Optional[str] = None
-    progress: Optional[Progress] = field(default_factory=Progress)
+    name: Optional[str]
+    progress: Optional[Progress]
+    _first_update_at: Optional[datetime]
+    _last_updated_at: Optional[datetime]
+    _active: bool
+
+    @classmethod
+    def deserialize(cls, data):
+        name = data.get("name")
+        if progress_data := data.get("progress", None):
+            progress = Progress.deserialize(progress_data)
+        else:
+            progress = None
+        first_update_at = util.parse_datetime(data.get("first_update_at", None))
+        last_updated_at = util.parse_datetime(data.get("last_updated_at", None))
+        active = data.get("active", False)
+        return cls(name, progress, first_update_at, last_updated_at, active)
+
+    def serialize(self):
+        return {
+            'first_update_at': format_dt_iso(self.first_updated_at),
+            'last_updated_at': format_dt_iso(self.last_updated_at),
+            'active': self.active,
+            'name': self.name,
+            'progress': self.progress.serialize(),
+        }
 
     @property
-    def finished(self):
-        # TODO is_finished field
-        return self.progress.finished
+    def first_updated_at(self):
+        return self._first_update_at
 
-    def copy(self):
-        return self  # TODO
+    @property
+    def last_updated_at(self):
+        return self._last_updated_at
+
+    @property
+    def active(self):
+        return self._active
+
+    def __str__(self):
+        parts = []
+        if self.name:
+            parts.append(self.name)
+        if self.progress:
+            parts.append(str(self.progress))
+
+        return " ".join(parts)
 
 
-@dataclass
+@dataclass(frozen=True)
 class TrackedTask(Temporal, Activatable):
-    name: str = ''
-    events: Sequence[Tuple[str, datetime]] = field(default_factory=list)
-    current_event: Optional[Tuple[str, datetime]] = None
-    operations: Sequence[Operation] = field(default_factory=list)
-    result: str = ''
+    # TODO: warns, failure
+    name: str
+    current_event: Optional[Tuple[str, datetime]]
+    operations: Sequence[TrackedOperation]
+    subtasks: Sequence[TrackedTask]
+    result: str
+    _first_updated_at: Optional[datetime]
+    _last_updated_at: Optional[datetime]
+    _active: bool
 
-    def copy(self):
-        return type(self)(
-            name=self.name,
-            events=list(self.events),
-            current_event=self.current_event,
-            operations=[op.copy() for op in self.operations],
-            result=self.result,
-            started_at=self.first_update_at,
-            updated_at=self.last_update_at,
-            ended_at=self.ended_at,
-            active=self.active,
-        )
+    @classmethod
+    def deserialize(cls, data):
+        name = data.get("name")
+        current_event = data.get("current_event")
+        operations = [TrackedOperation.deserialize(op) for op in data.get("operations", ())]
+        subtasks = [TrackedTask.deserialize(task) for task in data.get("subtasks", ())]
+        result = data.get("result")
+        started_at = util.parse_datetime(data.get("first_update_at", None))
+        updated_at = util.parse_datetime(data.get("last_updated_at", None))
+        active = data.get("active")
+        return cls(name, current_event, operations, subtasks, result, started_at, updated_at, active)
+
+    def serialize(self, include_empty=True):
+        d = {
+            'name': self.name,
+            'events': [(event, format_dt_iso(ts)) for event, ts in self.events],
+            'operations': [op.serialize() for op in self.operations],
+            'subtasks': [task.serialize() for task in self.subtasks],
+            'first_update_at': format_dt_iso(self.first_updated_at),
+            'last_updated_at': format_dt_iso(self.last_updated_at),
+            'active': self.active,
+        }
+        if include_empty:
+            return d
+        else:
+            return {k: v for k, v in d.items() if not is_empty(v)}
+
+    @property
+    def first_updated_at(self):
+        return self._first_updated_at
+
+    @property
+    def last_updated_at(self):
+        return self._last_updated_at
+
+    @property
+    def active(self):
+        return self._active
+
+    def __str__(self):
+        parts = []
+
+        if self.active:
+            if self.name:
+                parts.append(f"{self.name}:")
+
+            if self.result:
+                parts.append(self.result)
+                return " ".join(parts)
+
+            statuses = []
+            if self.current_event:
+                if self.current_event[1] and False:  # TODO configurable
+                    ts = util.format_time_local_tz(self.current_event[1], include_ms=False)
+                    event_str = f"{ts} {self.current_event[0]}"
+                else:
+                    event_str = self.current_event[0]
+                statuses.append(event_str)
+            statuses += [op for op in self.operations if op.active]
+            if statuses:
+                parts.append(" | ".join((str(s) for s in statuses)))
+
+        if self.subtasks:
+            if parts:
+                parts.append('/')
+            parts.append(' / '.join(str(task) for task in self.subtasks if task.active))
+
+        return " ".join(parts)
+
+
+class ProgressTracker:
+
+    def __init__(self):
+        self._completed = None
+        self._total = None
+        self._unit = ''
+
+    @property
+    def completed(self):
+        return self._completed
+
+    @property
+    def total(self):
+        return self._total
+
+    @property
+    def unit(self):
+        return self._unit
+
+    def update(self, completed, total=None, unit: str = '', *, increment=False):
+        if self.completed and increment:
+            self._completed += completed  # Must be a number if it's an increment
+        else:
+            self._completed = completed
+
+        if total:
+            self._total = total
+        if unit:
+            self._unit = unit
+
+
+class MutableOperation(MutableTemporal, TrackedOperation):
+
+    def __init__(self, name):
+        super().__init__()
+        self._name = name
+        self._progress = None
+        self._active = True
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def progress(self):
+        return self._progress
+
+    @property
+    def active(self):
+        return self._active
+
+    @active.setter
+    def active(self, active):
+        self._active = active
+
+    def update(self, completed, total=None, unit: str = '', timestamp=None, *, increment=False):
+        if not self._progress:
+            self._progress = ProgressTracker()
+
+        if not self.first_updated_at:
+            self.started_at = timestamp
+        self.updated_at = timestamp
+
+        self._progress.update(completed, total, unit, timestamp, increment=increment)
+
+        if not self.ended_at and self.progress.finished:
+            self._ended_at = timestamp
+
+
+class MutableTrackedTask(MutableTemporal, TrackedTask):
+
+    def __init__(self, name=None, max_events=1000):
+        super().__init__()
+        self._name = name
+        self._max_events = max_events
+        self._events = deque(maxlen=max_events)
+        self._current_event = None
+        self._operations = OrderedDict()
+        self._subtasks = OrderedDict()
+        self._result = None
+        self._active = True
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def events(self):
+        return list(self._events)
+
+    def add_event(self, name: str, timestamp=None):
+        event = (name, timestamp)
+        self._events.append(event)
+        self._current_event = event
+
+    @property
+    def current_event(self) -> Optional[str]:
+        return self._current_event
+
+    def reset_current_event(self):
+        self._current_event = None
+
+    def operation(self, name):
+        op = self._operations.get(name)
+        if not op:
+            self._operations[name] = (op := MutableOperation(name))
+
+        return op
+
+    @property
+    def operations(self):
+        return list(self._operations.values())
+
+    def has_operation(self, name):
+        if not self.operations:
+            return False
+
+        return any(1 for op in self.operations if op.name != name)
+
+    def deactivate_finished_operations(self):
+        for op in self.operations:
+            if op.finished:
+                op.active = False
+
+    def subtask(self, name):
+        task = self._subtasks.get(name)
+        if not task:
+            self._subtasks[name] = (task := MutableTrackedTask(name, max_events=self._max_events))
+
+        return task
+
+    @property
+    def subtasks(self):
+        return list(self._subtasks.values())
+
+    def deactivate_subtasks(self):
+        for subtask in self.subtasks:
+            subtask.active = False
+
+    @property
+    def result(self):
+        return self._result
+
+    @result.setter
+    def result(self, result):
+        self._result = result
+
+    @property
+    def active(self):
+        return self._active
+
+    @active.setter
+    def active(self, active):
+        self._active = active
 
 
 class Fields(Enum):

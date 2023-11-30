@@ -1,6 +1,6 @@
 import re
 
-from tarotools.taro.track import MutableTrackedTask, OperationInfo, ProgressInfo
+from tarotools.taro.track import MutableTrackedTask, TrackedOperation, Progress
 from tarotools.taro.util import parse_datetime
 
 
@@ -56,21 +56,21 @@ def test_subtask():
 
 
 def test_operation_str():
-    empty_op = OperationInfo('name', None, None, None, None, True)
+    empty_op = TrackedOperation('name', None, None, None, None, True)
     assert str(empty_op) == 'name'
 
-    assert len(str(OperationInfo(None, ProgressInfo(25, 100, 'files'), None, None, None, True)).split()) > 1
-    assert re.search(r"name .*", str(OperationInfo('name', ProgressInfo(25, 100, 'files'), None, None, None, True)))
+    assert len(str(TrackedOperation(None, Progress(25, 100, 'files'), None, None, None, True)).split()) > 1
+    assert re.search(r"name .*", str(TrackedOperation('name', Progress(25, 100, 'files'), None, None, None, True)))
 
 
 def test_progress_str():
-    progress = ProgressInfo(25, 100, 'files')
+    progress = Progress(25, 100, 'files')
     assert str(progress) == '25/100 files (25%)'
 
-    progress = ProgressInfo(None, 100, 'files')
+    progress = Progress(None, 100, 'files')
     assert str(progress) == '?/100 files'
 
-    progress = ProgressInfo(20, None, 'files')
+    progress = Progress(20, None, 'files')
     assert str(progress) == '20 files'
 
 
