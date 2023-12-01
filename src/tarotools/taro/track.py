@@ -59,7 +59,7 @@ class Activatable(ABC):
 
 
 @dataclass(frozen=True)
-class Progress:
+class TrackedProgress:
     _completed: Optional[float]
     _total: Optional[float]
     _unit: str = ''
@@ -141,10 +141,70 @@ class ProgressTracker(ABC):
         pass
 
 
+class Progress(ProgressTracker):
+
+    def __init__(self):
+        self._completed = None
+        self._total = None
+        self._unit = ''
+
+    @property
+    def progress(self):
+        return TrackedProgress(self._completed, self._total, self._unit)
+
+    def parse_value(self, value):
+        # Check if value is a string and extract number and unit
+        if isinstance(value, str):
+            match = re.match(r"(\d+(\.\d+)?)(\s*)(\w+)?", value)
+            if match:
+                number = float(match.group(1))
+                unit = match.group(4) if match.group(4) else ''
+                return number, unit
+            else:
+                raise ValueError("String format is not correct. Expected format: {number}{unit} or {number} {unit}")
+        elif isinstance(value, (float, int)):
+            return float(value), self._unit
+        else:
+            raise TypeError("Value must be a float, int, or a string in the format {number}{unit} or {number} {unit}")
+
+    def incr_completed(self, completed):
+        cnv_completed, unit = self.parse_value(completed)
+
+        if self._completed:
+            self._completed += cnv_completed
+        else:
+            self._completed = cnv_completed
+
+        if unit:
+            self._unit = unit
+
+    def set_completed(self, completed):
+        self._completed, unit = self.parse_value(completed)
+        if unit:
+            self._unit = unit
+
+    def set_total(self, total):
+        self._total, unit = self.parse_value(total)
+        if unit:
+            self._unit = unit
+
+    def set_unit(self, unit):
+        if not isinstance(unit, str):
+            raise TypeError("Unit must be a string")
+        self._unit = unit
+
+    def update(self, completed, total=None, unit: str = ''):
+        self.set_completed(completed)
+        if total:
+            self.set_total(total)
+        if unit:
+            self.set_unit(unit)
+
+
 @dataclass(frozen=True)
 class TrackedOperation(Temporal, Activatable):
     name: Optional[str]
-    progress: Optional[Progress]
+    progress: Optional[TrackedProgress]
     _first_updated_at: Optional[datetime]
     _last_updated_at: Optional[datetime]
     _active: bool
@@ -153,7 +213,7 @@ class TrackedOperation(Temporal, Activatable):
     def deserialize(cls, data):
         name = data.get("name")
         if progress_data := data.get("progress", None):
-            progress = Progress.deserialize(progress_data)
+            progress = TrackedProgress.deserialize(progress_data)
         else:
             progress = None
         first_update_at = util.parse_datetime(data.get("first_update_at", None))
@@ -312,37 +372,6 @@ class TaskTracker(ABC):
 
     def failure(self, fault_type: str, reason):
         pass
-
-
-class ProgressTrackerX:
-
-    def __init__(self):
-        self._completed = None
-        self._total = None
-        self._unit = ''
-
-    @property
-    def completed(self):
-        return self._completed
-
-    @property
-    def total(self):
-        return self._total
-
-    @property
-    def unit(self):
-        return self._unit
-
-    def update(self, completed, total=None, unit: str = '', *, increment=False):
-        if self.completed and increment:
-            self._completed += completed  # Must be a number if it's an increment
-        else:
-            self._completed = completed
-
-        if total:
-            self._total = total
-        if unit:
-            self._unit = unit
 
 
 class MutableOperation(MutableTemporal, TrackedOperation):
