@@ -21,6 +21,7 @@ from typing import Optional, List, Dict, Any, TypeVar, Type, Callable, Tuple, It
 
 from tarotools.taro import util
 from tarotools.taro.common import InvalidStateError
+from tarotools.taro.track import TrackedTask
 from tarotools.taro.util import format_dt_iso, is_empty
 
 log = logging.getLogger(__name__)
@@ -548,6 +549,7 @@ class TerminationInfo:
 class Run:
     phases: Tuple[PhaseMetadata]
     lifecycle: Lifecycle
+    task: TrackedTask
     termination: Optional[TerminationInfo]
 
     @classmethod
@@ -555,6 +557,7 @@ class Run:
         return cls(
             phases=tuple(PhaseMetadata.deserialize(phase) for phase in as_dict['phases']),
             lifecycle=Lifecycle.deserialize(as_dict['lifecycle']),
+            task=TrackedTask.deserialize('task'),
             termination=TerminationInfo.deserialize(as_dict['termination']) if as_dict.get('termination') else None,
         )
 
@@ -562,6 +565,7 @@ class Run:
         return {
             "phases": [phase.serialize() for phase in self.phases],
             "lifecycle": self.lifecycle.serialize(),
+            "task": self.task.serialize(),
             "termination": self.termination.serialize() if self.termination else None,
         }
 
@@ -605,13 +609,13 @@ class AbstractPhaser:
 
 class Phaser(AbstractPhaser):
 
-    def __init__(self, phases: Iterable[Phase], lifecycle=None, task_builder=None, *, timestamp_generator=util.utc_now):
+    def __init__(self, phases: Iterable[Phase], lifecycle=None, task_tracker=None, *, timestamp_generator=util.utc_now):
         super().__init__(phases, timestamp_generator=timestamp_generator)
 
         self._transition_lock = Condition()
         # Guarded by the transition/state lock:
         self._lifecycle = lifecycle or Lifecycle()
-        self._task_builder = task_builder
+        self._task_tracker = task_tracker
         self._current_phase = None
         self._stop_status = TerminationStatus.NONE
         self._abort = False
@@ -623,7 +627,7 @@ class Phaser(AbstractPhaser):
 
     def run_info(self) -> Run:
         with self._transition_lock:
-            return Run(self._phase_meta, copy(self._lifecycle), self._termination)
+            return Run(self._phase_meta, copy(self._lifecycle), self._task_tracker.task, self._termination)
 
     def prime(self):
         with self._transition_lock:
@@ -640,7 +644,7 @@ class Phaser(AbstractPhaser):
             def __init__(self, phaser: Phaser, ctx_phase):
                 self._phaser = phaser
                 self._ctx_phase = ctx_phase
-                self._task_builder = phaser._task_builder.new_task(ctx_phase.name)
+                self._task_builder = phaser._task_tracker.new_task(ctx_phase.name)
 
             @property
             def task_builder(self):
@@ -676,7 +680,7 @@ class Phaser(AbstractPhaser):
             self._next_phase(TerminalPhase())
             self._termination = self._term_info(TerminationStatus.COMPLETED)
 
-    def _run_handle_errors(self, phase: Phase, run_ctx: RunContext)\
+    def _run_handle_errors(self, phase: Phase, run_ctx: RunContext) \
             -> Tuple[Optional[TerminationInfo], Optional[BaseException]]:
         try:
             phase.run(run_ctx)

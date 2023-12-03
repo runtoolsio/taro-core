@@ -16,7 +16,6 @@ from typing import Dict, Any, List, Optional, Type
 
 from tarotools.taro.output import Mode
 from tarotools.taro.run import TerminationStatus, P, RunState, Run, PhaseRun, PhaseMetadata
-from tarotools.taro.track import TrackedTask
 from tarotools.taro.util import MatchingStrategy, format_dt_iso
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
@@ -446,22 +445,18 @@ class JobRun:
     metadata: JobInstanceMetadata
     """The snapshot of the job run represented by this instance"""
     run: Run
-    # TODO textwrap.shorten(status, 1000, placeholder=".. (truncated)", break_long_words=False)
-    tracking: TrackedTask
 
     @classmethod
     def deserialize(cls, as_dict):
         return cls(
             JobInstanceMetadata.deserialize(as_dict['metadata']),
             Run.deserialize(as_dict['run']),
-            TrackedTask.deserialize(as_dict['tracking']) if as_dict.get("tracking") else None,
         )
 
-    def serialize(self, include_empty=True) -> Dict[str, Any]:
+    def serialize(self) -> Dict[str, Any]:
         return {
             "metadata": self.metadata.serialize(),
             "run": self.run.serialize(),
-            "tracking": self.tracking.to_dict(include_empty) if self.tracking else None,
         }
 
     @property

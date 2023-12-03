@@ -223,12 +223,12 @@ class OperationTracker(ABC):
 
     @property
     @abstractmethod
-    def operation(self):
+    def tracked_operation(self):
         pass
 
     @property
     @abstractmethod
-    def progress_tracker(self):
+    def progress(self):
         pass
 
     @abstractmethod
@@ -246,11 +246,11 @@ class Operation(MutableTemporal, OperationTracker):
         self._finished = False
 
     @property
-    def operation(self):
+    def tracked_operation(self):
         return TrackedOperation(self._name, self._progress, self._first_updated_at, self._last_updated_at, self._active)
 
     @property
-    def progress_tracker(self):
+    def progress(self):
         return self._progress
 
     def finished(self):
@@ -335,6 +335,11 @@ class TrackedTask(Temporal, Activatable):
 
 class TaskTracker(ABC):
 
+    @property
+    @abstractmethod
+    def tracked_task(self):
+        pass
+
     @abstractmethod
     def event(self, event, timestamp=None):
         pass
@@ -370,6 +375,13 @@ class Task(MutableTemporal, TaskTracker):
         self._subtasks = OrderedDict()
         self._result = None
         self._active = True
+
+    @property
+    def tracked_task(self):
+        ops = [op.tracked_operation for op in self._operations]
+        tasks = [t.tracked_task for t in self._subtasks]
+        return TrackedTask(self._first_updated_at, self._last_updated_at, self._name, self._current_event, ops,
+                           self._result, tasks, None, self._active)  # TODO
 
     def event(self, name: str, timestamp=None):
         self._current_event = (name, timestamp)
