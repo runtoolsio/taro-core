@@ -15,6 +15,7 @@ from tarotools.taro.job import JobStats, JobInstanceMetadata, JobRun, JobRuns, I
 from tarotools.taro.persistence import SortCriteria
 from tarotools.taro.run import RunState, Lifecycle, PhaseMetadata, RunFailure, RunError, Run, TerminationInfo, \
     TerminationStatus, Outcome
+from tarotools.taro.track import TrackedTask
 from tarotools.taro.util import MatchingStrategy, format_dt_sql, parse_dt_sql
 
 log = logging.getLogger(__name__)
@@ -178,9 +179,10 @@ class SQLite(InstanceTransitionObserver):
             term_status = TerminationStatus[t[9]]
             failure = RunFailure.deserialize(json.loads(t[10])) if t[10] else None
             error = RunError.deserialize(json.loads(t[11])) if t[11] else None
-            run = Run(phases, lifecycle, TerminationInfo(term_status, ended_at, failure, error))
+            task = TrackedTask.deserialize(json.loads(t[12])) if t[12] else None
+            run = Run(phases, lifecycle, task, TerminationInfo(term_status, ended_at, failure, error))
 
-            return JobRun(metadata, run, None)
+            return JobRun(metadata, run)
 
         return JobRuns((to_job_info(row) for row in c.fetchall()))
 
@@ -266,8 +268,8 @@ class SQLite(InstanceTransitionObserver):
                     r.run.termination.status.value,
                     json.dumps(r.run.termination.failure.serialize()) if r.run.termination.failure else None,
                     json.dumps(r.run.termination.error.serialize()) if r.run.termination.error else None,
-                    json.dumps(r.tracking.serialize()) if r.tracking else None,
-                    json.dumps(r.tracking.warnings.serialize()) if r.tracking else None,  # TODO
+                    json.dumps(r.run.task.serialize()) if r.run.task else None,
+                    None,  # TODO Warnings as a separate column?
                     None
                     )
 

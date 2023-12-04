@@ -392,7 +392,7 @@ class Task(MutableTemporal, TaskTracker):
         ops = [op.tracked_operation for op in self._operations.values()]
         tasks = [t.tracked_task for t in self._subtasks.values()]
         return TrackedTask(self._first_updated_at, self._last_updated_at, self._name, self._current_event, ops,
-                           self._result, tasks, None, self._active)  # TODO
+                           self._result, tasks, [], self._active)  # TODO
 
     def event(self, name: str, timestamp=None):
         self._current_event = (name, timestamp)
