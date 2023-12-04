@@ -37,9 +37,9 @@ class Activatable(ABC):
 
 @dataclass(frozen=True)
 class TrackedProgress:
-    _completed: Optional[float]
-    _total: Optional[float]
-    _unit: str = ''
+    completed: Optional[float]
+    total: Optional[float]
+    unit: str = ''
 
     @classmethod
     def deserialize(cls, data):
@@ -54,18 +54,6 @@ class TrackedProgress:
             'total': self.total,
             'unit': self.unit,
         }
-
-    @property
-    def completed(self):
-        return self._completed
-
-    @property
-    def total(self):
-        return self._total
-
-    @property
-    def unit(self):
-        return self._unit
 
     @property
     def pct_done(self):
@@ -94,7 +82,7 @@ class ProgressTracker(ABC):
 
     @property
     @abstractmethod
-    def progress(self):
+    def tracked_progress(self):
         pass
 
     @abstractmethod
@@ -125,8 +113,11 @@ class Progress(ProgressTracker):
         self._total = None
         self._unit = ''
 
+    def __bool__(self):
+        return bool(self._completed or self._total or self._unit)
+
     @property
-    def progress(self):
+    def tracked_progress(self):
         return TrackedProgress(self._completed, self._total, self._unit)
 
     def parse_value(self, value):
@@ -170,8 +161,12 @@ class Progress(ProgressTracker):
             raise TypeError("Unit must be a string")
         self._unit = unit
 
-    def update(self, completed, total=None, unit: str = ''):
-        self.set_completed(completed)
+    def update(self, completed, total=None, unit: str = '', *, increment=False):
+        if increment:
+            self.incr_completed(completed)
+        else:
+            self.set_completed(completed)
+
         if total:
             self.set_total(total)
         if unit:
@@ -247,10 +242,18 @@ class Operation(MutableTemporal, OperationTracker):
 
     @property
     def tracked_operation(self):
-        return TrackedOperation(self._name, self._progress, self._first_updated_at, self._last_updated_at, self._active)
+        return TrackedOperation(
+            self._first_updated_at,
+            self._last_updated_at,
+            self._name,
+            self._progress.tracked_progress if self.progress else None,
+            self._active)
 
     @property
     def progress(self):
+        if not self._progress:
+            self._progress = Progress()
+
         return self._progress
 
     def finished(self):
@@ -378,8 +381,8 @@ class Task(MutableTemporal, TaskTracker):
 
     @property
     def tracked_task(self):
-        ops = [op.tracked_operation for op in self._operations]
-        tasks = [t.tracked_task for t in self._subtasks]
+        ops = [op.tracked_operation for op in self._operations.values()]
+        tasks = [t.tracked_task for t in self._subtasks.values()]
         return TrackedTask(self._first_updated_at, self._last_updated_at, self._name, self._current_event, ops,
                            self._result, tasks, None, self._active)  # TODO
 
