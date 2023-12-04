@@ -84,19 +84,19 @@ def test_task_str():
     task.operation('downloading')
     task.reset_current_event()
     assert str(task.tracked_task) == 'task1: downloading'
-    task.operation('downloading').progress.update(None, None, 'files')
+    task.operation('downloading').progress.set_unit('files')
     assert str(task.tracked_task) == 'task1: downloading ? files'
     task.operation('uploading')
     assert str(task.tracked_task) == 'task1: downloading ? files | uploading'
-    task.operation('downloading').active = False
+    task.operation('downloading').deactivate()
     assert str(task.tracked_task) == 'task1: uploading'
     task.event('e3', parse_datetime('2023-01-01T02:00:00'))
     assert str(task.tracked_task) == 'task1: e3 | uploading'
     task.task('sub-zero').operation('freezing')
     assert str(task.tracked_task) == 'task1: e3 | uploading / sub-zero: freezing'
-    task.active = False
+    task.deactivate()
     assert str(task.tracked_task) == 'sub-zero: freezing'
     task.task('scorpion').event('burning', parse_datetime('2023-01-01T05:00:00'))
     assert str(task.tracked_task) == 'sub-zero: freezing / scorpion: burning'
-    task.task('scorpion').result = 'fatality'
+    task.task('scorpion').result('fatality')
     assert str(task.tracked_task) == 'sub-zero: freezing / scorpion: fatality'

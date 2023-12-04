@@ -133,7 +133,8 @@ class Progress(ProgressTracker):
         elif isinstance(value, (float, int)):
             return float(value), self._unit
         else:
-            raise TypeError("Value must be a float, int, or a string in the format {number}{unit} or {number} {unit}")
+            raise TypeError("Value must be in the format `{number}{unit}` or `{number} {unit}`, but it was: "
+                            + str(value))
 
     def incr_completed(self, completed):
         cnv_completed, unit = self.parse_value(completed)
@@ -162,6 +163,9 @@ class Progress(ProgressTracker):
         self._unit = unit
 
     def update(self, completed, total=None, unit: str = '', *, increment=False):
+        if completed is None:
+            raise ValueError("Value completed must be specified")
+
         if increment:
             self.incr_completed(completed)
         else:
@@ -256,6 +260,9 @@ class Operation(MutableTemporal, OperationTracker):
 
         return self._progress
 
+    def deactivate(self):
+        self._active = False
+
     def finished(self):
         self._finished = True
 
@@ -282,7 +289,8 @@ class TrackedTask(Temporal, Activatable):
         subtasks = [TrackedTask.deserialize(task) for task in data.get("subtasks", ())]
         warnings = [Warn.deserialize(warn) for warn in data.get("warnings", ())]
         active = data.get("active")
-        return cls(first_updated_at, last_updated_at, name, current_event, operations, result, subtasks, warnings, active)
+        return cls(first_updated_at, last_updated_at, name, current_event, operations, result, subtasks, warnings,
+                   active)
 
     def serialize(self, include_empty=True):
         d = {
@@ -413,6 +421,9 @@ class Task(MutableTemporal, TaskTracker):
             self._subtasks[name] = (task := Task(name))
 
         return task
+
+    def deactivate(self):
+        self._active = False
 
     def deactivate_subtasks(self):
         for subtask in self._subtasks:
