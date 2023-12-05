@@ -8,7 +8,7 @@ from tarotools.taro.output import InMemoryOutput, Mode
 from tarotools.taro.run import PhaseRun, TerminationInfo, Lifecycle, RunState, PhaseMetadata, Run, PhaseNames, \
     TerminationStatus, RunFailure, Phase, P
 from tarotools.taro.test.run import FakePhaser
-from tarotools.taro.track import Task
+from tarotools.taro.track import TaskTrackerMem
 from tarotools.taro.util.observer import ObservableNotification, DEFAULT_OBSERVER_PRIORITY
 
 
@@ -158,7 +158,7 @@ class TestJobRunBuilder(AbstractBuilder):
     def __init__(self, job_id='j1', run_id=None, system_params=None, user_params=None):
         super().__init__(job_id, run_id, system_params, user_params)
         self.phases = []
-        self.task = Task()
+        self.tracker = TaskTrackerMem()
 
     def add_phase(self, name, state, start=None, end=None):
         if not start:
@@ -180,7 +180,7 @@ class TestJobRunBuilder(AbstractBuilder):
     def build(self):
         meta = (PhaseMetadata('p1', RunState.EXECUTING, {'p': 'v'}),)
         lifecycle = Lifecycle(*self.phases)
-        run = Run(meta, lifecycle, self.task.tracked_task, self.termination_info)
+        run = Run(meta, lifecycle, self.tracker.tracked_task, self.termination_info)
         return JobRun(self.metadata, run)
 
 

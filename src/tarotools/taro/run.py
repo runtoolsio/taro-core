@@ -21,7 +21,7 @@ from typing import Optional, List, Dict, Any, TypeVar, Type, Callable, Tuple, It
 
 from tarotools.taro import util
 from tarotools.taro.common import InvalidStateError
-from tarotools.taro.track import TrackedTask, Task
+from tarotools.taro.track import TrackedTask, TaskTrackerMem
 from tarotools.taro.util import format_dt_iso, is_empty
 
 log = logging.getLogger(__name__)
@@ -615,7 +615,7 @@ class Phaser(AbstractPhaser):
         self._transition_lock = Condition()
         # Guarded by the transition/state lock:
         self._lifecycle = lifecycle or Lifecycle()
-        self._task_tracker = task_tracker or Task()
+        self._task_tracker = task_tracker or TaskTrackerMem()
         self._current_phase = None
         self._stop_status = TerminationStatus.NONE
         self._abort = False

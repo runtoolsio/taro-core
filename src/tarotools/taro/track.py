@@ -106,7 +106,7 @@ class ProgressTracker(ABC):
         pass
 
 
-class Progress(ProgressTracker):
+class ProgressTrackerMem(ProgressTracker):
 
     def __init__(self):
         self._completed = None
@@ -235,7 +235,7 @@ class OperationTracker(ABC):
         pass
 
 
-class Operation(MutableTemporal, OperationTracker):
+class OperationTrackerMem(MutableTemporal, OperationTracker):
 
     def __init__(self, name):
         super().__init__()
@@ -256,7 +256,7 @@ class Operation(MutableTemporal, OperationTracker):
     @property
     def progress(self):
         if not self._progress:
-            self._progress = Progress()
+            self._progress = ProgressTrackerMem()
 
         return self._progress
 
@@ -376,7 +376,7 @@ class TaskTracker(ABC):
         pass
 
 
-class Task(MutableTemporal, TaskTracker):
+class TaskTrackerMem(MutableTemporal, TaskTracker):
 
     def __init__(self, name=None):
         super().__init__()
@@ -403,7 +403,7 @@ class Task(MutableTemporal, TaskTracker):
     def operation(self, name):
         op = self._operations.get(name)
         if not op:
-            self._operations[name] = (op := Operation(name))
+            self._operations[name] = (op := OperationTrackerMem(name))
 
         return op
 
@@ -418,7 +418,7 @@ class Task(MutableTemporal, TaskTracker):
     def task(self, name):
         task = self._subtasks.get(name)
         if not task:
-            self._subtasks[name] = (task := Task(name))
+            self._subtasks[name] = (task := TaskTrackerMem(name))
 
         return task
 
