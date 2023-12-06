@@ -11,6 +11,7 @@ from typing import Optional, Sequence, Tuple
 from tarotools.taro import util
 from tarotools.taro.instance import Warn
 from tarotools.taro.util import format_dt_iso, is_empty
+from tarotools.taro.util.observer import ObservableNotification
 
 log = logging.getLogger(__name__)
 
@@ -32,6 +33,12 @@ class Activatable(ABC):
     @property
     @abstractmethod
     def active(self):
+        pass
+
+
+class TrackedTaskObserver(ABC):
+
+    def new_task_update(self):
         pass
 
 
@@ -380,12 +387,27 @@ class TaskTrackerMem(MutableTemporal, TaskTracker):
 
     def __init__(self, name=None):
         super().__init__()
+        self._parent = None
         self._name = name
         self._current_event = None
         self._operations = OrderedDict()
         self._subtasks = OrderedDict()
         self._result = None
         self._active = True
+        self._notification = ObservableNotification[TrackedTaskObserver]()  # TODO Error hook
+
+    def _notify_update(self):
+        self._notification.observer_proxy.new_task_update()
+
+    @staticmethod
+    def _notify(func):
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+            # args[0] should be the instance of TaskTrackerMem
+            tracker: TaskTrackerMem = args[0]
+            tracker._notify_update()
+            return result
+        return wrapper
 
     @property
     def tracked_task(self):
@@ -394,9 +416,11 @@ class TaskTrackerMem(MutableTemporal, TaskTracker):
         return TrackedTask(self._first_updated_at, self._last_updated_at, self._name, self._current_event, ops,
                            self._result, tasks, [], self._active)  # TODO
 
+    @_notify
     def event(self, name: str, timestamp=None):
         self._current_event = (name, timestamp)
 
+    @_notify
     def reset_current_event(self):
         self._current_event = None
 
@@ -404,6 +428,7 @@ class TaskTrackerMem(MutableTemporal, TaskTracker):
         op = self._operations.get(name)
         if not op:
             self._operations[name] = (op := OperationTrackerMem(name))
+            self._notify_update()
 
         return op
 
@@ -412,6 +437,7 @@ class TaskTrackerMem(MutableTemporal, TaskTracker):
             if op.finished:
                 op.active = False
 
+    @_notify
     def result(self, result):
         self._result = result
 
@@ -419,6 +445,9 @@ class TaskTrackerMem(MutableTemporal, TaskTracker):
         task = self._subtasks.get(name)
         if not task:
             self._subtasks[name] = (task := TaskTrackerMem(name))
+            task._parent = self
+            task._notification.add_observer(self._notification.observer_proxy)
+            self._notify_update()
 
         return task
 
@@ -429,8 +458,10 @@ class TaskTrackerMem(MutableTemporal, TaskTracker):
         for subtask in self._subtasks:
             subtask.active = False
 
+    @_notify
     def warning(self, warn):
         pass
 
+    @_notify
     def failure(self, fault_type: str, reason):
         pass
