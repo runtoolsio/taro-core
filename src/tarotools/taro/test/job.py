@@ -59,6 +59,8 @@ class FakeJobInstance(JobInstance):
         self.output_notification = ObservableNotification[InstanceOutputObserver]()
         self.status_notification = ObservableNotification[InstanceStatusObserver]()
 
+        phaser.transition_hook = self._transition_hook
+
     @property
     def instance_id(self):
         return self._metadata.instance_id
@@ -117,7 +119,8 @@ class FakeJobInstance(JobInstance):
         self.transition_notification.remove_observer(callback)
 
     def _transition_hook(self, old_phase: PhaseRun, new_phase: PhaseRun, ordinal):
-        pass
+        job_run = JobRun(self.metadata, self.phaser.run_info())
+        self.transition_notification.observer_proxy.new_instance_phase(job_run, old_phase, new_phase, ordinal)
 
     def add_observer_output(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
         self.output_notification.add_observer(observer, priority)

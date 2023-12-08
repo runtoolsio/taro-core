@@ -339,7 +339,7 @@ class JobInstance(abc.ABC):
 
     @abc.abstractmethod
     def fetch_output(self, mode=Mode.HEAD, *, lines=0):
-        """TODO"""
+        """TODO Return an output reader object"""
 
     @abc.abstractmethod
     def run(self):

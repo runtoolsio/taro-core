@@ -5,6 +5,7 @@ from tarotools.taro import util
 from tarotools.taro.common import InvalidStateError
 from tarotools.taro.run import Phase, PhaseRun, AbstractPhaser, TerminationInfo, Run, RunState, InitPhase, \
     TerminalPhase, TerminationStatus
+from tarotools.taro.track import TaskTrackerMem
 from tarotools.taro.util import utc_now
 
 
@@ -14,12 +15,13 @@ class FakePhaser(AbstractPhaser):
         super().__init__(phases, timestamp_generator=timestamp_generator)
         self.phases_list = list(phases)
         self.lifecycle = lifecycle
+        self.task_tracker = TaskTrackerMem()
         self.termination: Optional[TerminationInfo] = None
         self._current_phase_index = -1
         self._condition = Condition()
 
     def run_info(self) -> Run:
-        return Run(self._phase_meta, self.lifecycle, self.termination)
+        return Run(self._phase_meta, self.lifecycle, self.task_tracker.tracked_task, self.termination)
 
     def prime(self):
         if self._current_phase_index != -1:

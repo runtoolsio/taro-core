@@ -395,7 +395,7 @@ class RunContext(ABC):
         pass
 
     @abstractmethod
-    def new_output(self, output, is_err):
+    def new_output(self, output, is_err=False):
         pass
 
 
@@ -650,7 +650,7 @@ class Phaser(AbstractPhaser):
             def task_builder(self):
                 return self._task_builder
 
-            def new_output(self, output, is_err):
+            def new_output(self, output, is_err=False):
                 self._phaser.output_hook(self._ctx_phase.metadata, output, is_err)
 
         for phase in self._name_to_phase.values():
@@ -691,7 +691,7 @@ class Phaser(AbstractPhaser):
             return self._term_info(TerminationStatus.FAILED, failure=e.fault), None
         except Exception as e:
             run_error = RunError(e.__class__.__name__, str(e))
-            return self._term_info(TerminationStatus.ERROR, error=run_error), None
+            return self._term_info(TerminationStatus.ERROR, error=run_error), e
         except KeyboardInterrupt as e:
             log.warning('keyboard_interruption')
             # Assuming child processes received SIGINT, TODO different state on other platforms?
