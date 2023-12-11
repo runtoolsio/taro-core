@@ -169,7 +169,9 @@ def test_exception(sut):
     exc = InvalidStateError('reason')
     sut.get_typed_phase(TestPhase, 'EXEC1').exception = exc
     sut.prime()
-    sut.run()
+
+    with pytest.raises(InvalidStateError):
+        sut.run()
 
     snapshot = sut.run_info()
     assert snapshot.termination.status == TerminationStatus.ERROR
@@ -182,12 +184,8 @@ def test_interruption(sut):
     sut.get_typed_phase(TestPhase, 'EXEC1').exception = KeyboardInterrupt
     sut.prime()
 
-    exc_passed = False
-    try:
+    with pytest.raises(KeyboardInterrupt):
         sut.run()
-    except KeyboardInterrupt:
-        exc_passed = True
 
     snapshot = sut.run_info()
     assert snapshot.termination.status == TerminationStatus.INTERRUPTED
-    assert exc_passed

@@ -6,10 +6,9 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Sequence, Tuple
+from typing import Optional, Sequence, Tuple, Dict, Any
 
 from tarotools.taro import util
-from tarotools.taro.instance import Warn
 from tarotools.taro.util import format_dt_iso, is_empty
 from tarotools.taro.util.observer import ObservableNotification
 
@@ -274,6 +273,29 @@ class OperationTrackerMem(MutableTemporal, OperationTracker):
         self._finished = True
 
 
+@dataclass
+class Warn:
+    """
+    This class represents a warning.
+
+    Attributes:
+        category (str): Category is used to identify the type of the warning.
+        params (Optional[Dict[str, Any]]): Arbitrary parameters describing the warning.
+    """
+    category: str
+    params: Optional[Dict[str, Any]] = None
+
+    @classmethod
+    def deserialize(cls, as_dict):
+        return cls(as_dict["category"], as_dict.get("params"))
+
+    def serialize(self):
+        return {
+            "category": self.category,
+            "params": self.params,
+        }
+
+
 @dataclass(frozen=True)
 class TrackedTask(Temporal, Activatable):
     # TODO: failure
@@ -407,6 +429,7 @@ class TaskTrackerMem(MutableTemporal, TaskTracker):
             tracker: TaskTrackerMem = args[0]
             tracker._notify_update()
             return result
+
         return wrapper
 
     @property
