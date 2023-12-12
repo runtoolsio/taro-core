@@ -56,11 +56,11 @@ def test_subtask():
 
 
 def test_operation_str():
-    empty_op = TrackedOperation(None, None, 'name', None, True)
+    empty_op = TrackedOperation('name', None, None, None, True)
     assert str(empty_op) == 'name'
 
-    assert '25/100 files (25%)' == str(TrackedOperation(None, None, None, TrackedProgress(25, 100, 'files'), True))
-    assert 'Op 25/100 files (25%)' == str(TrackedOperation(None, None, 'Op', TrackedProgress(25, 100, 'files'), True))
+    assert '25/100 files (25%)' == str(TrackedOperation(None, TrackedProgress(25, 100, 'files'), None, None, True))
+    assert 'Op 25/100 files (25%)' == str(TrackedOperation('Op', TrackedProgress(25, 100, 'files'), None, None, True))
 
 
 def test_progress_str():
