@@ -15,7 +15,7 @@ from tarotools.taro.util.observer import ObservableNotification
 log = logging.getLogger(__name__)
 
 
-class Temporal(ABC):
+class Tracked(ABC):
 
     @property
     @abstractmethod
@@ -27,40 +27,90 @@ class Temporal(ABC):
     def last_updated_at(self):
         pass
 
-
-@dataclass
-class MutableTemporal:
-    _first_updated_at: Optional[datetime] = None
-    _last_updated_at: Optional[datetime] = None
-
-
-class Activatable(ABC):
-
     @property
     @abstractmethod
     def active(self):
         pass
 
 
+class Trackable:
+
+    def __init__(self, *, parent=None, timestamp_gen=util.utc_now):
+        self._parent: Optional[Trackable] = parent
+        self._timestamp_gen = timestamp_gen
+        self._first_updated_at: Optional[datetime] = None
+        self._last_updated_at: Optional[datetime] = None
+        self._notification = ObservableNotification[TrackedTaskObserver]()
+        self._active = True
+
+    def _updated(self, timestamp):
+        timestamp = timestamp or self._timestamp_gen()
+
+        if not self._first_updated_at:
+            self._first_updated_at = timestamp
+        self._last_updated_at = timestamp
+
+        self._notification.observer_proxy.new_trackable_update()
+
+        if self._parent:
+            self._parent._updated(timestamp)
+
+    @staticmethod
+    def _update(func):
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+            # args[0] should be the instance of TaskTrackerMem
+            tracker: Trackable = args[0]
+            ts = kwargs.get('timestamp')
+            tracker._updated(ts)
+            return result
+
+        return wrapper
+
+
 @dataclass(frozen=True)
-class TrackedProgress:
+class TrackedOperation(Tracked):
+    name: Optional[str]
     completed: Optional[float]
     total: Optional[float]
     unit: str = ''
+    _first_updated_at: Optional[datetime] = None
+    _last_updated_at: Optional[datetime] = None
+    _active: bool = False
 
     @classmethod
     def deserialize(cls, data):
+        name = data.get("name")
         completed = data.get("completed", None)
         total = data.get("total", None)
         unit = data.get("unit", '')
-        return cls(completed, total, unit)
+        first_update_at = util.parse_datetime(data.get("first_update_at", None))
+        last_updated_at = util.parse_datetime(data.get("last_updated_at", None))
+        active = data.get("active", False)
+        return cls(name, completed, total, unit, first_update_at, last_updated_at, active)
 
     def serialize(self):
         return {
+            'name': self.name,
             'completed': self.completed,
             'total': self.total,
             'unit': self.unit,
+            'first_update_at': format_dt_iso(self.first_updated_at),
+            'last_updated_at': format_dt_iso(self.last_updated_at),
+            'active': self.active,
         }
+
+    @property
+    def first_updated_at(self):
+        return self._first_updated_at
+
+    @property
+    def last_updated_at(self):
+        return self._last_updated_at
+
+    @property
+    def active(self):
+        return self._active
 
     @property
     def pct_done(self):
@@ -73,7 +123,11 @@ class TrackedProgress:
     def finished(self):
         return self.completed and self.total and (self.completed == self.total)
 
-    def __str__(self):
+    @property
+    def has_progress(self):
+        return self.completed or self.total or self.unit
+
+    def _progress_str(self):
         val = f"{self.completed or '?'}"
         if self.total:
             val += f"/{self.total}"
@@ -84,12 +138,21 @@ class TrackedProgress:
 
         return val
 
+    def __str__(self):
+        parts = []
+        if self.name:
+            parts.append(self.name)
+        if self.has_progress:
+            parts.append(self._progress_str())
 
-class ProgressTracker(ABC):
+        return " ".join(parts)
+
+
+class OperationTracker(ABC):
 
     @property
     @abstractmethod
-    def tracked_progress(self):
+    def tracked_operation(self):
         pass
 
     @abstractmethod
@@ -112,20 +175,32 @@ class ProgressTracker(ABC):
     def update(self, completed, total, unit=None):
         pass
 
+    @abstractmethod
+    def finished(self):
+        pass
 
-class ProgressTrackerMem(ProgressTracker):
 
-    def __init__(self):
+class OperationTrackerMem(Trackable, OperationTracker):
+
+    def __init__(self, name):
+        super().__init__()
+        self._name = name
         self._completed = None
         self._total = None
         self._unit = ''
-
-    def __bool__(self):
-        return bool(self._completed or self._total or self._unit)
+        self._active = True
+        self._finished = False
 
     @property
-    def tracked_progress(self):
-        return TrackedProgress(self._completed, self._total, self._unit)
+    def tracked_operation(self):
+        return TrackedOperation(
+            self._name,
+            self._completed,
+            self._total,
+            self._unit,
+            self._first_updated_at,
+            self._last_updated_at,
+            self._active)
 
     def parse_value(self, value):
         # Check if value is a string and extract number and unit
@@ -143,7 +218,8 @@ class ProgressTrackerMem(ProgressTracker):
             raise TypeError("Value must be in the format `{number}{unit}` or `{number} {unit}`, but it was: "
                             + str(value))
 
-    def incr_completed(self, completed):
+    @Trackable._update
+    def incr_completed(self, completed, *, timestamp=None):
         cnv_completed, unit = self.parse_value(completed)
 
         if self._completed:
@@ -154,22 +230,26 @@ class ProgressTrackerMem(ProgressTracker):
         if unit:
             self._unit = unit
 
-    def set_completed(self, completed):
+    @Trackable._update
+    def set_completed(self, completed, *, timestamp=None):
         self._completed, unit = self.parse_value(completed)
         if unit:
             self._unit = unit
 
+    @Trackable._update
     def set_total(self, total):
         self._total, unit = self.parse_value(total)
         if unit:
             self._unit = unit
 
-    def set_unit(self, unit):
+    @Trackable._update
+    def set_unit(self, unit, *, timestamp=None):
         if not isinstance(unit, str):
             raise TypeError("Unit must be a string")
         self._unit = unit
 
-    def update(self, completed, total=None, unit: str = '', *, increment=False):
+    @Trackable._update
+    def update(self, completed, total=None, unit: str = '', *, increment=False, timestamp=None):
         if completed is None:
             raise ValueError("Value completed must be specified")
 
@@ -183,103 +263,11 @@ class ProgressTrackerMem(ProgressTracker):
         if unit:
             self.set_unit(unit)
 
-
-@dataclass(frozen=True)
-class TrackedOperation(Temporal, Activatable):
-    name: Optional[str]
-    progress: Optional[TrackedProgress]
-    _first_updated_at: Optional[datetime]
-    _last_updated_at: Optional[datetime]
-    _active: bool = False
-
-    @classmethod
-    def deserialize(cls, data):
-        name = data.get("name")
-        if progress_data := data.get("progress", None):
-            progress = TrackedProgress.deserialize(progress_data)
-        else:
-            progress = None
-        first_update_at = util.parse_datetime(data.get("first_update_at", None))
-        last_updated_at = util.parse_datetime(data.get("last_updated_at", None))
-        active = data.get("active", False)
-        return cls(name, progress, first_update_at, last_updated_at, active)
-
-    def serialize(self):
-        return {
-            'name': self.name,
-            'progress': self.progress.serialize(),
-            'first_update_at': format_dt_iso(self.first_updated_at),
-            'last_updated_at': format_dt_iso(self.last_updated_at),
-            'active': self.active,
-        }
-
-    @property
-    def first_updated_at(self):
-        return self._first_updated_at
-
-    @property
-    def last_updated_at(self):
-        return self._last_updated_at
-
-    @property
-    def active(self):
-        return self._active
-
-    def __str__(self):
-        parts = []
-        if self.name:
-            parts.append(self.name)
-        if self.progress:
-            parts.append(str(self.progress))
-
-        return " ".join(parts)
-
-
-class OperationTracker(ABC):
-
-    @property
-    @abstractmethod
-    def tracked_operation(self):
-        pass
-
-    @property
-    @abstractmethod
-    def progress(self):
-        pass
-
-    @abstractmethod
-    def finished(self):
-        pass
-
-
-class OperationTrackerMem(MutableTemporal, OperationTracker):
-
-    def __init__(self, name):
-        super().__init__()
-        self._name = name
-        self._progress = None
-        self._active = True
-        self._finished = False
-
-    @property
-    def tracked_operation(self):
-        return TrackedOperation(
-            self._name,
-            self._progress.tracked_progress if self.progress else None,
-            self._first_updated_at,
-            self._last_updated_at,
-            self._active)
-
-    @property
-    def progress(self):
-        if not self._progress:
-            self._progress = ProgressTrackerMem()
-
-        return self._progress
-
+    @Trackable._update
     def deactivate(self):
         self._active = False
 
+    @Trackable._update
     def finished(self):
         self._finished = True
 
@@ -308,7 +296,7 @@ class Warn:
 
 
 @dataclass(frozen=True)
-class TrackedTask(Temporal, Activatable):
+class TrackedTask(Tracked):
     # TODO: failure
     name: str
     current_event: Optional[Tuple[str, datetime]]
@@ -426,11 +414,11 @@ class TaskTracker(ABC):
         pass
 
 
-class TaskTrackerMem(MutableTemporal, TaskTracker):
+class TaskTrackerMem(Trackable, TaskTracker):
 
     def __init__(self, name=None):
         super().__init__()
-        self._parent = None
+        self._parent: Optional[TaskTrackerMem] = None
         self._name = name
         self._current_event = None
         self._operations = OrderedDict()
@@ -439,20 +427,6 @@ class TaskTrackerMem(MutableTemporal, TaskTracker):
         self._active = True
         self._notification = ObservableNotification[TrackedTaskObserver]()  # TODO Error hook
 
-    def _notify_update(self):
-        self._notification.observer_proxy.new_task_update()
-
-    @staticmethod
-    def _notify(func):
-        def wrapper(*args, **kwargs):
-            result = func(*args, **kwargs)
-            # args[0] should be the instance of TaskTrackerMem
-            tracker: TaskTrackerMem = args[0]
-            tracker._notify_update()
-            return result
-
-        return wrapper
-
     @property
     def tracked_task(self):
         ops = [op.tracked_operation for op in self._operations.values()]
@@ -460,19 +434,19 @@ class TaskTrackerMem(MutableTemporal, TaskTracker):
         return TrackedTask(self._name, self._current_event, ops,
                            self._result, tasks, [], self._first_updated_at, self._last_updated_at, self._active)  # TODO
 
-    @_notify
-    def event(self, name: str, timestamp=None):
+    @Trackable._update
+    def event(self, name: str, *, timestamp=None):
         self._current_event = (name, timestamp)
 
-    @_notify
-    def reset_current_event(self):
+    @Trackable._update
+    def reset_current_event(self, *, timestamp=None):
         self._current_event = None
 
-    def operation(self, name):
+    def operation(self, name, *, timestamp=None):
         op = self._operations.get(name)
         if not op:
             self._operations[name] = (op := OperationTrackerMem(name))
-            self._notify_update()
+            self._updated(timestamp)
 
         return op
 
@@ -481,20 +455,21 @@ class TaskTrackerMem(MutableTemporal, TaskTracker):
             if op.finished:
                 op.active = False
 
-    @_notify
-    def result(self, result):
+    @Trackable._update
+    def result(self, result, *, timestamp=None):
         self._result = result
 
-    def task(self, name):
+    def task(self, name, *, timestamp=None):
         task = self._subtasks.get(name)
         if not task:
             self._subtasks[name] = (task := TaskTrackerMem(name))
             task._parent = self
             task._notification.add_observer(self._notification.observer_proxy)
-            self._notify_update()
+            self._updated(timestamp)
 
         return task
 
+    @Trackable._update
     def deactivate(self):
         self._active = False
 
@@ -502,16 +477,16 @@ class TaskTrackerMem(MutableTemporal, TaskTracker):
         for subtask in self._subtasks:
             subtask.active = False
 
-    @_notify
+    @Trackable._update
     def warning(self, warn):
         pass
 
-    @_notify
+    @Trackable._update
     def failure(self, fault_type: str, reason):
         pass
 
 
 class TrackedTaskObserver(ABC):
 
-    def new_task_update(self):
+    def new_trackable_update(self):
         pass
