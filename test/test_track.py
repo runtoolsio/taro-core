@@ -44,9 +44,9 @@ def test_operation_incr_update():
 
 def test_subtask():
     tracker = TaskTrackerMem('main')
-    tracker.task('s1').event('e1')
-    tracker.task('s1').operation('01').update(2)
-    tracker.task(2).event('e2')
+    tracker.subtask('s1').event('e1')
+    tracker.subtask('s1').operation('01').update(2)
+    tracker.subtask(2).event('e2')
 
     tracked_task = tracker.tracked_task
     assert tracked_task.current_event is None
@@ -82,7 +82,6 @@ def test_task_str():
     tracker.event('e2', timestamp=parse_datetime('2023-01-01T01:00:00'))
     assert str(tracker.tracked_task) == 'task1: e2'
     tracker.operation('downloading')
-    tracker.reset_current_event()
     assert str(tracker.tracked_task) == 'task1: downloading'
     tracker.operation('downloading').set_unit('files')
     assert str(tracker.tracked_task) == 'task1: downloading ? files'
@@ -92,11 +91,11 @@ def test_task_str():
     assert str(tracker.tracked_task) == 'task1: uploading'
     tracker.event('e3', timestamp=parse_datetime('2023-01-01T02:00:00'))
     assert str(tracker.tracked_task) == 'task1: e3 | uploading'
-    tracker.task('sub-zero').operation('freezing')
+    tracker.subtask('sub-zero').operation('freezing')
     assert str(tracker.tracked_task) == 'task1: e3 | uploading / sub-zero: freezing'
     tracker.deactivate()
     assert str(tracker.tracked_task) == 'sub-zero: freezing'
-    tracker.task('scorpion').event('burning', timestamp=parse_datetime('2023-01-01T05:00:00'))
+    tracker.subtask('scorpion').event('burning', timestamp=parse_datetime('2023-01-01T05:00:00'))
     assert str(tracker.tracked_task) == 'sub-zero: freezing / scorpion: burning'
-    tracker.task('scorpion').result('fatality')
+    tracker.subtask('scorpion').result('fatality')
     assert str(tracker.tracked_task) == 'sub-zero: freezing / scorpion: fatality'

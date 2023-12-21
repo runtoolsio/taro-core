@@ -40,7 +40,7 @@ class Trackable:
         self._timestamp_gen = timestamp_gen
         self._first_updated_at: Optional[datetime] = None
         self._last_updated_at: Optional[datetime] = None
-        self._notification = ObservableNotification[TrackedTaskObserver]()
+        self._notification = ObservableNotification[TrackedTaskObserver]()  # TODO Error hook
         self._active = True
 
     def _updated(self, timestamp):
@@ -398,11 +398,21 @@ class TaskTracker(ABC):
         pass
 
     @abstractmethod
-    def result(self, result):
+    def finished(self, result=None, *, timestamp=None):
+        pass
+
+    @property
+    @abstractmethod
+    def is_finished(self):
         pass
 
     @abstractmethod
-    def task(self, task_name):
+    def subtask(self, task_name):
+        pass
+
+    @property
+    @abstractmethod
+    def subtasks(self):
         pass
 
     @abstractmethod
@@ -418,14 +428,12 @@ class TaskTrackerMem(Trackable, TaskTracker):
 
     def __init__(self, name=None):
         super().__init__()
-        self._parent: Optional[TaskTrackerMem] = None
         self._name = name
         self._current_event = None
         self._operations = OrderedDict()
         self._subtasks = OrderedDict()
         self._result = None
         self._active = True
-        self._notification = ObservableNotification[TrackedTaskObserver]()  # TODO Error hook
 
     @property
     def tracked_task(self):
@@ -437,10 +445,6 @@ class TaskTrackerMem(Trackable, TaskTracker):
     @Trackable._update
     def event(self, name: str, *, timestamp=None):
         self._current_event = (name, timestamp)
-
-    @Trackable._update
-    def reset_current_event(self, *, timestamp=None):
-        self._current_event = None
 
     def operation(self, name, *, timestamp=None):
         op = self._operations.get(name)
@@ -456,10 +460,14 @@ class TaskTrackerMem(Trackable, TaskTracker):
                 op.active = False
 
     @Trackable._update
-    def result(self, result, *, timestamp=None):
+    def finished(self, result=None, *, timestamp=None):
         self._result = result
 
-    def task(self, name, *, timestamp=None):
+    @property
+    def is_finished(self):
+        return self._active
+
+    def subtask(self, name, *, timestamp=None):
         task = self._subtasks.get(name)
         if not task:
             self._subtasks[name] = (task := TaskTrackerMem(name))
@@ -468,6 +476,10 @@ class TaskTrackerMem(Trackable, TaskTracker):
             self._updated(timestamp)
 
         return task
+
+    @property
+    def subtasks(self):
+        return self._subtasks.copy()
 
     @Trackable._update
     def deactivate(self):
