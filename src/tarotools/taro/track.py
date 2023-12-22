@@ -479,7 +479,7 @@ class TaskTrackerMem(Trackable, TaskTracker):
 
     @property
     def subtasks(self):
-        return self._subtasks.copy()
+        return list(self._subtasks.values())
 
     @Trackable._update
     def deactivate(self):
