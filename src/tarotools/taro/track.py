@@ -35,7 +35,7 @@ class Tracked(ABC):
 
 class Trackable:
 
-    def __init__(self, *, parent=None, timestamp_gen=util.utc_now):
+    def __init__(self, parent=None, *, timestamp_gen=util.utc_now):
         self._parent: Optional[Trackable] = parent
         self._timestamp_gen = timestamp_gen
         self._first_updated_at: Optional[datetime] = None
@@ -156,34 +156,34 @@ class OperationTracker(ABC):
         pass
 
     @abstractmethod
-    def incr_completed(self, completed):
+    def incr_completed(self, completed, *, timestamp=None):
         pass
 
     @abstractmethod
-    def set_completed(self, completed):
+    def set_completed(self, completed, *, timestamp=None):
         pass
 
     @abstractmethod
-    def set_total(self, total):
+    def set_total(self, total, *, timestamp=None):
         pass
 
     @abstractmethod
-    def set_unit(self, unit):
+    def set_unit(self, unit, *, timestamp=None):
         pass
 
     @abstractmethod
-    def update(self, completed, total, unit=None):
+    def update(self, completed, total, unit=None, *, timestamp=None):
         pass
 
     @abstractmethod
-    def finished(self):
+    def finished(self, *, timestamp=None):
         pass
 
 
 class OperationTrackerMem(Trackable, OperationTracker):
 
-    def __init__(self, name):
-        super().__init__()
+    def __init__(self, name, parent):
+        super().__init__(parent)
         self._name = name
         self._completed = None
         self._total = None
@@ -237,7 +237,7 @@ class OperationTrackerMem(Trackable, OperationTracker):
             self._unit = unit
 
     @Trackable._update
-    def set_total(self, total):
+    def set_total(self, total, *, timestamp=None):
         self._total, unit = self.parse_value(total)
         if unit:
             self._unit = unit
@@ -254,21 +254,21 @@ class OperationTrackerMem(Trackable, OperationTracker):
             raise ValueError("Value completed must be specified")
 
         if increment:
-            self.incr_completed(completed)
+            self.incr_completed(completed, timestamp=timestamp)
         else:
-            self.set_completed(completed)
+            self.set_completed(completed, timestamp=timestamp)
 
         if total:
-            self.set_total(total)
+            self.set_total(total, timestamp=timestamp)
         if unit:
-            self.set_unit(unit)
+            self.set_unit(unit, timestamp=timestamp)
 
     @Trackable._update
     def deactivate(self):
         self._active = False
 
     @Trackable._update
-    def finished(self):
+    def finished(self, *, timestamp=None):
         self._finished = True
 
 
@@ -338,6 +338,12 @@ class TrackedTask(Tracked):
             return d
         else:
             return {k: v for k, v in d.items() if not is_empty(v)}
+
+    def find_operation(self, name):
+        for operation in self.operations:
+            if operation.name == name:
+                return operation
+        return None
 
     @property
     def first_updated_at(self):
@@ -426,8 +432,8 @@ class TaskTracker(ABC):
 
 class TaskTrackerMem(Trackable, TaskTracker):
 
-    def __init__(self, name=None):
-        super().__init__()
+    def __init__(self, name=None, parent=None):
+        super().__init__(parent)
         self._name = name
         self._current_event = None
         self._operations = OrderedDict()
@@ -449,7 +455,7 @@ class TaskTrackerMem(Trackable, TaskTracker):
     def operation(self, name, *, timestamp=None):
         op = self._operations.get(name)
         if not op:
-            self._operations[name] = (op := OperationTrackerMem(name))
+            self._operations[name] = (op := OperationTrackerMem(name, self))
             self._updated(timestamp)
 
         return op
@@ -470,7 +476,7 @@ class TaskTrackerMem(Trackable, TaskTracker):
     def subtask(self, name, *, timestamp=None):
         task = self._subtasks.get(name)
         if not task:
-            self._subtasks[name] = (task := TaskTrackerMem(name))
+            self._subtasks[name] = (task := TaskTrackerMem(name, self))
             task._parent = self
             task._notification.add_observer(self._notification.observer_proxy)
             self._updated(timestamp)
