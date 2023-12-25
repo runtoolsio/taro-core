@@ -70,8 +70,8 @@ class TrackedOperation(Tracked):
     completed: Optional[float]
     total: Optional[float]
     unit: str = ''
-    _first_updated_at: Optional[datetime] = None
-    _last_updated_at: Optional[datetime] = None
+    _created_at: Optional[datetime] = None
+    _updated_at: Optional[datetime] = None
     _active: bool = False
 
     @classmethod
@@ -80,10 +80,10 @@ class TrackedOperation(Tracked):
         completed = data.get("completed", None)
         total = data.get("total", None)
         unit = data.get("unit", '')
-        first_update_at = util.parse_datetime(data.get("first_update_at", None))
-        last_updated_at = util.parse_datetime(data.get("last_updated_at", None))
+        created_at = util.parse_datetime(data.get("created_at", None))
+        updated_at = util.parse_datetime(data.get("updated_at", None))
         active = data.get("active", False)
-        return cls(name, completed, total, unit, first_update_at, last_updated_at, active)
+        return cls(name, completed, total, unit, created_at, updated_at, active)
 
     def serialize(self):
         return {
@@ -91,18 +91,18 @@ class TrackedOperation(Tracked):
             'completed': self.completed,
             'total': self.total,
             'unit': self.unit,
-            'first_update_at': format_dt_iso(self.created_at),
-            'last_updated_at': format_dt_iso(self.updated_at),
+            'created_at': format_dt_iso(self.created_at),
+            'updated_at': format_dt_iso(self.updated_at),
             'active': self.finished,
         }
 
     @property
     def created_at(self):
-        return self._first_updated_at
+        return self._created_at
 
     @property
     def updated_at(self):
-        return self._last_updated_at
+        return self._updated_at
 
     @property
     def finished(self):
@@ -300,8 +300,8 @@ class TrackedTask(Tracked):
     result: str
     subtasks: Sequence[TrackedTask]
     warnings: Sequence[Warn]
-    _first_updated_at: Optional[datetime]
-    _last_updated_at: Optional[datetime]
+    _created_at: Optional[datetime]
+    _updated_at: Optional[datetime]
     _finished: bool
 
     @classmethod
@@ -312,11 +312,10 @@ class TrackedTask(Tracked):
         result = data.get("result")
         subtasks = [TrackedTask.deserialize(task) for task in data.get("subtasks", ())]
         warnings = [Warn.deserialize(warn) for warn in data.get("warnings", ())]
-        first_updated_at = util.parse_datetime(data.get("first_updated_at", None))
-        last_updated_at = util.parse_datetime(data.get("last_updated_at", None))
+        created_at = util.parse_datetime(data.get("created_at", None))
+        updated_at = util.parse_datetime(data.get("updated_at", None))
         finished = data.get("finished")
-        return cls(name, current_event, operations, result, subtasks, warnings, first_updated_at, last_updated_at,
-                   finished)
+        return cls(name, current_event, operations, result, subtasks, warnings, created_at, updated_at, finished)
 
     def serialize(self, include_empty=True):
         d = {
@@ -326,9 +325,9 @@ class TrackedTask(Tracked):
             'result': self.result,
             'subtasks': [task.serialize() for task in self.subtasks],
             'warnings': [warn.serialize() for warn in self.warnings],
-            'first_update_at': format_dt_iso(self.created_at),
-            'last_updated_at': format_dt_iso(self.updated_at),
-            'active': self.finished,
+            'created_at': format_dt_iso(self.created_at),
+            'updated_at': format_dt_iso(self.updated_at),
+            'finished': self.finished,
         }
         if include_empty:
             return d
@@ -349,11 +348,11 @@ class TrackedTask(Tracked):
 
     @property
     def created_at(self):
-        return self._first_updated_at
+        return self._created_at
 
     @property
     def updated_at(self):
-        return self._last_updated_at
+        return self._updated_at
 
     @property
     def finished(self):
