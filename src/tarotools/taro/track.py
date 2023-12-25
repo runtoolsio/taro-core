@@ -19,37 +19,33 @@ class Tracked(ABC):
 
     @property
     @abstractmethod
-    def first_updated_at(self):
+    def created_at(self):
         pass
 
     @property
     @abstractmethod
-    def last_updated_at(self):
+    def updated_at(self):
         pass
 
     @property
     @abstractmethod
-    def active(self):
+    def finished(self):
         pass
 
 
 class Trackable:
 
-    def __init__(self, parent=None, *, timestamp_gen=util.utc_now):
+    def __init__(self, parent=None, *, created_at=None, timestamp_gen=util.utc_now):
         self._parent: Optional[Trackable] = parent
         self._timestamp_gen = timestamp_gen
-        self._first_updated_at: Optional[datetime] = None
-        self._last_updated_at: Optional[datetime] = None
+        self._created_at: Optional[datetime] = created_at or timestamp_gen()
+        self._updated_at: Optional[datetime] = None
         self._notification = ObservableNotification[TrackedTaskObserver]()  # TODO Error hook
         self._active = True
 
     def _updated(self, timestamp):
         timestamp = timestamp or self._timestamp_gen()
-
-        if not self._first_updated_at:
-            self._first_updated_at = timestamp
-        self._last_updated_at = timestamp
-
+        self._updated_at = timestamp
         self._notification.observer_proxy.new_trackable_update()
 
         if self._parent:
@@ -95,21 +91,21 @@ class TrackedOperation(Tracked):
             'completed': self.completed,
             'total': self.total,
             'unit': self.unit,
-            'first_update_at': format_dt_iso(self.first_updated_at),
-            'last_updated_at': format_dt_iso(self.last_updated_at),
-            'active': self.active,
+            'first_update_at': format_dt_iso(self.created_at),
+            'last_updated_at': format_dt_iso(self.updated_at),
+            'active': self.finished,
         }
 
     @property
-    def first_updated_at(self):
+    def created_at(self):
         return self._first_updated_at
 
     @property
-    def last_updated_at(self):
+    def updated_at(self):
         return self._last_updated_at
 
     @property
-    def active(self):
+    def finished(self):
         return self._active
 
     @property
@@ -182,8 +178,8 @@ class OperationTracker(ABC):
 
 class OperationTrackerMem(Trackable, OperationTracker):
 
-    def __init__(self, name, parent):
-        super().__init__(parent)
+    def __init__(self, name, parent, *, created_at=None, timestamp_gen=util.utc_now):
+        super().__init__(parent, created_at=created_at, timestamp_gen=timestamp_gen)
         self._name = name
         self._completed = None
         self._total = None
@@ -198,8 +194,8 @@ class OperationTrackerMem(Trackable, OperationTracker):
             self._completed,
             self._total,
             self._unit,
-            self._first_updated_at,
-            self._last_updated_at,
+            self._created_at,
+            self._updated_at,
             self._active)
 
     def parse_value(self, value):
@@ -306,7 +302,7 @@ class TrackedTask(Tracked):
     warnings: Sequence[Warn]
     _first_updated_at: Optional[datetime]
     _last_updated_at: Optional[datetime]
-    _active: bool
+    _finished: bool
 
     @classmethod
     def deserialize(cls, data):
@@ -318,9 +314,9 @@ class TrackedTask(Tracked):
         warnings = [Warn.deserialize(warn) for warn in data.get("warnings", ())]
         first_updated_at = util.parse_datetime(data.get("first_updated_at", None))
         last_updated_at = util.parse_datetime(data.get("last_updated_at", None))
-        active = data.get("active")
+        finished = data.get("finished")
         return cls(name, current_event, operations, result, subtasks, warnings, first_updated_at, last_updated_at,
-                   active)
+                   finished)
 
     def serialize(self, include_empty=True):
         d = {
@@ -330,14 +326,20 @@ class TrackedTask(Tracked):
             'result': self.result,
             'subtasks': [task.serialize() for task in self.subtasks],
             'warnings': [warn.serialize() for warn in self.warnings],
-            'first_update_at': format_dt_iso(self.first_updated_at),
-            'last_updated_at': format_dt_iso(self.last_updated_at),
-            'active': self.active,
+            'first_update_at': format_dt_iso(self.created_at),
+            'last_updated_at': format_dt_iso(self.updated_at),
+            'active': self.finished,
         }
         if include_empty:
             return d
         else:
             return {k: v for k, v in d.items() if not is_empty(v)}
+
+    def find_subtask(self, name):
+        for subtask in self.subtasks:
+            if subtask.name == name:
+                return subtask
+        return None
 
     def find_operation(self, name):
         for operation in self.operations:
@@ -346,21 +348,21 @@ class TrackedTask(Tracked):
         return None
 
     @property
-    def first_updated_at(self):
+    def created_at(self):
         return self._first_updated_at
 
     @property
-    def last_updated_at(self):
+    def updated_at(self):
         return self._last_updated_at
 
     @property
-    def active(self):
-        return self._active
+    def finished(self):
+        return self._finished
 
     def __str__(self):
         parts = []
 
-        if self.active:
+        if self.finished:
             if self.name:
                 parts.append(f"{self.name}:")
 
@@ -376,14 +378,14 @@ class TrackedTask(Tracked):
                 else:
                     event_str = self.current_event[0]
                 statuses.append(event_str)
-            statuses += [op for op in self.operations if op.active]
+            statuses += [op for op in self.operations if op.finished]
             if statuses:
                 parts.append(" | ".join((str(s) for s in statuses)))
 
         if self.subtasks:
             if parts:
                 parts.append('/')
-            parts.append(' / '.join(str(task) for task in self.subtasks if task.active))
+            parts.append(' / '.join(str(task) for task in self.subtasks if task.finished))
 
         return " ".join(parts)
 
@@ -432,8 +434,8 @@ class TaskTracker(ABC):
 
 class TaskTrackerMem(Trackable, TaskTracker):
 
-    def __init__(self, name=None, parent=None):
-        super().__init__(parent)
+    def __init__(self, name=None, parent=None, *, created_at=None, timestamp_gen=util.utc_now):
+        super().__init__(parent, created_at=created_at, timestamp_gen=timestamp_gen)
         self._name = name
         self._current_event = None
         self._operations = OrderedDict()
@@ -446,7 +448,7 @@ class TaskTrackerMem(Trackable, TaskTracker):
         ops = [op.tracked_operation for op in self._operations.values()]
         tasks = [t.tracked_task for t in self._subtasks.values()]
         return TrackedTask(self._name, self._current_event, ops,
-                           self._result, tasks, [], self._first_updated_at, self._last_updated_at, self._active)  # TODO
+                           self._result, tasks, [], self._created_at, self._updated_at, self._active)  # TODO
 
     @Trackable._update
     def event(self, name: str, *, timestamp=None):
@@ -455,7 +457,7 @@ class TaskTrackerMem(Trackable, TaskTracker):
     def operation(self, name, *, timestamp=None):
         op = self._operations.get(name)
         if not op:
-            self._operations[name] = (op := OperationTrackerMem(name, self))
+            self._operations[name] = (op := OperationTrackerMem(name, self, created_at=timestamp))
             self._updated(timestamp)
 
         return op
@@ -463,7 +465,7 @@ class TaskTrackerMem(Trackable, TaskTracker):
     def deactivate_finished_operations(self):
         for op in self._operations:
             if op.finished:
-                op.active = False
+                op.finished = False
 
     @Trackable._update
     def finished(self, result=None, *, timestamp=None):
@@ -476,7 +478,8 @@ class TaskTrackerMem(Trackable, TaskTracker):
     def subtask(self, name, *, timestamp=None):
         task = self._subtasks.get(name)
         if not task:
-            self._subtasks[name] = (task := TaskTrackerMem(name, self))
+            self._subtasks[name] =\
+                (task := TaskTrackerMem(name, self, created_at=timestamp, timestamp_gen=self._timestamp_gen))
             task._parent = self
             task._notification.add_observer(self._notification.observer_proxy)
             self._updated(timestamp)
@@ -493,7 +496,7 @@ class TaskTrackerMem(Trackable, TaskTracker):
 
     def deactivate_subtasks(self):
         for subtask in self._subtasks:
-            subtask.active = False
+            subtask.finished = False
 
     @Trackable._update
     def warning(self, warn):
