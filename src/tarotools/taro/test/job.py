@@ -3,7 +3,7 @@ from typing import Type, Optional
 
 from tarotools.taro import util
 from tarotools.taro.job import JobInstance, JobRun, JobInstanceMetadata, InstanceTransitionObserver, \
-    InstanceOutputObserver, InstanceStatusObserver
+    InstanceOutputObserver
 from tarotools.taro.output import InMemoryOutput, Mode
 from tarotools.taro.run import PhaseRun, TerminationInfo, Lifecycle, RunState, PhaseMetadata, Run, PhaseNames, \
     TerminationStatus, RunFailure, Phase, P
@@ -54,10 +54,9 @@ class FakeJobInstance(JobInstance):
         self.phaser = phaser
         self.lifecycle = lifecycle
         self.output = InMemoryOutput()
-        self._tracking = None
+        self._task_tracker = None or TaskTrackerMem()
         self.transition_notification = ObservableNotification[InstanceTransitionObserver]()
         self.output_notification = ObservableNotification[InstanceOutputObserver]()
-        self.status_notification = ObservableNotification[InstanceStatusObserver]()
 
         phaser.transition_hook = self._transition_hook
 
@@ -70,12 +69,8 @@ class FakeJobInstance(JobInstance):
         return self._metadata
 
     @property
-    def tracking(self):
-        return self._tracking
-
-    @property
-    def status_observer(self):
-        return self.status_notification.observer_proxy
+    def task_tracker(self):
+        return self._task_tracker
 
     @property
     def phases(self):
@@ -85,7 +80,7 @@ class FakeJobInstance(JobInstance):
         return self.phaser.get_typed_phase(phase_type, phase_name)
 
     def job_run_info(self) -> JobRun:
-        return JobRun(self.metadata, self.phaser.run_info())
+        return JobRun(self.metadata, self.phaser.run_info(), self._task_tracker.tracked_task)
 
     def fetch_output(self, mode=Mode.HEAD, *, lines=0):
         return self.output.fetch(mode, lines=lines)
@@ -119,7 +114,7 @@ class FakeJobInstance(JobInstance):
         self.transition_notification.remove_observer(callback)
 
     def _transition_hook(self, old_phase: PhaseRun, new_phase: PhaseRun, ordinal):
-        job_run = JobRun(self.metadata, self.phaser.run_info())
+        job_run = JobRun(self.metadata, self.phaser.run_info(), self._task_tracker.tracked_task)
         self.transition_notification.observer_proxy.new_instance_phase(job_run, old_phase, new_phase, ordinal)
 
     def add_observer_output(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
@@ -127,12 +122,6 @@ class FakeJobInstance(JobInstance):
 
     def remove_observer_output(self, observer):
         self.output_notification.remove_observer(observer)
-
-    def add_observer_status(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        self.status_notification.add_observer(observer, priority)
-
-    def remove_observer_status(self, observer):
-        self.status_notification.remove_observer(observer)
 
     @property
     def prioritized_transition_observers(self):
@@ -183,8 +172,8 @@ class TestJobRunBuilder(AbstractBuilder):
     def build(self):
         meta = (PhaseMetadata('p1', RunState.EXECUTING, {'p': 'v'}),)
         lifecycle = Lifecycle(*self.phases)
-        run = Run(meta, lifecycle, self.tracker.tracked_task, self.termination_info)
-        return JobRun(self.metadata, run)
+        run = Run(meta, lifecycle, self.termination_info)
+        return JobRun(self.metadata, run, self.tracker.tracked_task)
 
 
 def ended_run(job_id, run_id='r1', *, offset_min=0, term_status=TerminationStatus.COMPLETED, created=None,

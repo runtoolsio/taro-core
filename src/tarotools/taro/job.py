@@ -16,6 +16,7 @@ from typing import Dict, Any, List, Optional, Type
 
 from tarotools.taro.output import Mode
 from tarotools.taro.run import TerminationStatus, P, RunState, Run, PhaseRun, PhaseMetadata
+from tarotools.taro.track import TrackedTask
 from tarotools.taro.util import MatchingStrategy, format_dt_iso
 from tarotools.taro.util.observer import DEFAULT_OBSERVER_PRIORITY
 
@@ -266,6 +267,8 @@ class JobInstance(abc.ABC):
     The `JobInstance` class is a central component of this package. It denotes a single occurrence of a job.
     While the job itself describes static attributes common to all its instances, the JobInstance class
     represents a specific run of that job.
+
+    TODO add/remove observer output
     """
 
     @property
@@ -302,19 +305,8 @@ class JobInstance(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def tracking(self):
-        """TODO: Task tracking information, None if tracking is not supported"""
-
-    @property
-    @abc.abstractmethod
-    def status_observer(self):
-        """
-        TODO Remove - track instance can be use do set status info
-        Returned status observer allows to add status notifications also by a logic located outside the instance.
-
-        Returns:
-            Status observer for this instance.
-        """
+    def task_tracker(self):
+        """TODO: Task tracking information ..."""
 
     @abc.abstractmethod
     def phases(self):
@@ -412,28 +404,6 @@ class JobInstance(abc.ABC):
             observer: The observer to de-register.
         """
 
-    @abc.abstractmethod
-    def add_observer_status(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
-        """
-        Register an output observer.
-        The observer can be:
-            1. An instance of `InstanceOutputObserver`.
-            2. A callable object with the signature of `InstanceOutputObserver.instance_output_update`.
-
-        Args:
-            observer: The observer to register.
-            priority (int, optional): The observer's priority as a number. Lower numbers are notified first.
-        """
-
-    @abc.abstractmethod
-    def remove_observer_status(self, observer):
-        """
-        De-register an output observer.
-
-        Args:
-            observer: The observer to de-register.
-        """
-
 
 @dataclass(frozen=True)
 class JobRun:
@@ -445,18 +415,22 @@ class JobRun:
     metadata: JobInstanceMetadata
     """The snapshot of the job run represented by this instance"""
     run: Run
+    """Detailed information about the run in the form of the tracked task"""
+    task: TrackedTask
 
     @classmethod
     def deserialize(cls, as_dict):
         return cls(
             JobInstanceMetadata.deserialize(as_dict['metadata']),
             Run.deserialize(as_dict['run']),
+            TrackedTask.deserialize(as_dict['task']),
         )
 
     def serialize(self) -> Dict[str, Any]:
         return {
             "metadata": self.metadata.serialize(),
             "run": self.run.serialize(),
+            "task": self.task.serialize(),
         }
 
     @property
@@ -541,10 +515,6 @@ class InstanceOutputObserver(abc.ABC):
     @abc.abstractmethod
     def new_instance_output(self, instance_meta: JobInstanceMetadata, phase: PhaseMetadata, output: str, is_err: bool):
         """TODO"""
-
-
-class InstanceStatusObserver(abc.ABC):
-    pass
 
 
 class JobInstanceManager(ABC):

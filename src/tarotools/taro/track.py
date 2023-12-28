@@ -3,10 +3,10 @@ from __future__ import annotations
 import logging
 import re
 from abc import ABC, abstractmethod
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Sequence, Tuple, Dict, Any
+from typing import Optional, Sequence
 
 from tarotools.taro import util
 from tarotools.taro.util import format_dt_iso, is_empty
@@ -268,38 +268,18 @@ class OperationTrackerMem(Trackable, OperationTracker):
         self._finished = True
 
 
-@dataclass
-class Warn:
-    """
-    This class represents a warning.
-
-    Attributes:
-        category (str): Category is used to identify the type of the warning.
-        params (Optional[Dict[str, Any]]): Arbitrary parameters describing the warning.
-    """
-    category: str
-    params: Optional[Dict[str, Any]] = None
-
-    @classmethod
-    def deserialize(cls, as_dict):
-        return cls(as_dict["category"], as_dict.get("params"))
-
-    def serialize(self):
-        return {
-            "category": self.category,
-            "params": self.params,
-        }
+Event = namedtuple('Event', ['text', 'timestamp'])
 
 
 @dataclass(frozen=True)
 class TrackedTask(Tracked):
     # TODO: failure
     name: str
-    current_event: Optional[Tuple[str, datetime]]
+    current_event: Optional[Event]
     operations: Sequence[TrackedOperation]
     result: str
     subtasks: Sequence[TrackedTask]
-    warnings: Sequence[Warn]
+    warnings: Sequence[Event]
     _created_at: Optional[datetime]
     _updated_at: Optional[datetime]
     _finished: bool
@@ -307,11 +287,11 @@ class TrackedTask(Tracked):
     @classmethod
     def deserialize(cls, data):
         name = data.get("name")
-        current_event = data.get("current_event")
+        current_event = Event(*data.get("current_event")) if data.get("current_event") else None
         operations = [TrackedOperation.deserialize(op) for op in data.get("operations", ())]
         result = data.get("result")
         subtasks = [TrackedTask.deserialize(task) for task in data.get("subtasks", ())]
-        warnings = [Warn.deserialize(warn) for warn in data.get("warnings", ())]
+        warnings = [Event(*warn) for warn in data.get("warnings", ())]
         created_at = util.parse_datetime(data.get("created_at", None))
         updated_at = util.parse_datetime(data.get("updated_at", None))
         finished = data.get("finished")
@@ -320,11 +300,11 @@ class TrackedTask(Tracked):
     def serialize(self, include_empty=True):
         d = {
             'name': self.name,
-            'current_event': self.current_event,
+            'current_event': tuple(self.current_event) if self.current_event else None,
             'operations': [op.serialize() for op in self.operations],
             'result': self.result,
             'subtasks': [task.serialize() for task in self.subtasks],
-            'warnings': [warn.serialize() for warn in self.warnings],
+            'warnings': [tuple(warn) for warn in self.warnings],
             'created_at': format_dt_iso(self.created_at),
             'updated_at': format_dt_iso(self.updated_at),
             'finished': self.finished,
@@ -426,10 +406,6 @@ class TaskTracker(ABC):
     def warning(self, warn):
         pass
 
-    @abstractmethod
-    def failure(self, fault_type: str, reason):
-        pass
-
 
 class TaskTrackerMem(Trackable, TaskTracker):
 
@@ -439,6 +415,7 @@ class TaskTrackerMem(Trackable, TaskTracker):
         self._current_event = None
         self._operations = OrderedDict()
         self._subtasks = OrderedDict()
+        self._warnings = []
         self._result = None
         self._active = True
 
@@ -446,12 +423,12 @@ class TaskTrackerMem(Trackable, TaskTracker):
     def tracked_task(self):
         ops = [op.tracked_operation for op in self._operations.values()]
         tasks = [t.tracked_task for t in self._subtasks.values()]
-        return TrackedTask(self._name, self._current_event, ops,
-                           self._result, tasks, [], self._created_at, self._updated_at, self._active)  # TODO
+        return TrackedTask(self._name, self._current_event, ops, self._result, tasks, self._warnings,
+                           self._created_at, self._updated_at, self._active)
 
     @Trackable._update
     def event(self, name: str, *, timestamp=None):
-        self._current_event = (name, timestamp)
+        self._current_event = (name, timestamp or self._timestamp_gen())
 
     def operation(self, name, *, timestamp=None):
         op = self._operations.get(name)
@@ -477,7 +454,7 @@ class TaskTrackerMem(Trackable, TaskTracker):
     def subtask(self, name, *, timestamp=None):
         task = self._subtasks.get(name)
         if not task:
-            self._subtasks[name] =\
+            self._subtasks[name] = \
                 (task := TaskTrackerMem(name, self, created_at=timestamp, timestamp_gen=self._timestamp_gen))
             task._parent = self
             task._notification.add_observer(self._notification.observer_proxy)
@@ -498,12 +475,9 @@ class TaskTrackerMem(Trackable, TaskTracker):
             subtask.finished = False
 
     @Trackable._update
-    def warning(self, warn):
-        pass
+    def warning(self, warn, *, timestamp=None):
+        self._warnings.append(Event(warn, timestamp or self._timestamp_gen()))
 
-    @Trackable._update
-    def failure(self, fault_type: str, reason):
-        pass
 
 
 class TrackedTaskObserver(ABC):
