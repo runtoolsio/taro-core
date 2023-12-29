@@ -404,6 +404,12 @@ class JobInstance(abc.ABC):
             observer: The observer to de-register.
         """
 
+    def add_observer_output(self, observer, priority=DEFAULT_OBSERVER_PRIORITY):
+        pass
+
+    def remove_observer_output(self, observer):
+        pass
+
 
 @dataclass(frozen=True)
 class JobRun:

@@ -479,7 +479,6 @@ class TaskTrackerMem(Trackable, TaskTracker):
         self._warnings.append(Event(warn, timestamp or self._timestamp_gen()))
 
 
-
 class TrackedTaskObserver(ABC):
 
     def new_trackable_update(self):
