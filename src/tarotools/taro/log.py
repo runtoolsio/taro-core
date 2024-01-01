@@ -1,6 +1,6 @@
 """
-This module is used for configuring the `tarotools` logger. The convention is to use this logger as a parent logger
-in all tarotools libraries, plugins, and related components. In doing so, all logging related to tarotools is unified
+This module is used for configuring the `runtoolsio` logger. The convention is to use this logger as a parent logger
+in all runtoolsio libraries, plugins, and related components. In doing so, all logging related to runtoolsio is unified
 and can be configured from a single location (this module).
 
 By default, no handlers are provided and propagation is turned off. If any logging is needed, the user of the library
@@ -19,17 +19,18 @@ Note:
 """
 
 import logging
-import sys
-import time
 from functools import wraps
 from logging import handlers
+
+import sys
+import time
 
 from tarotools.taro import cfg
 from tarotools.taro import paths
 from tarotools.taro.cfg import LogMode
 from tarotools.taro.util import expand_user
 
-tarotools_logger = logging.getLogger('tarotools')
+tarotools_logger = logging.getLogger('runtoolsio')
 tarotools_logger.propagate = False
 
 
@@ -143,7 +144,7 @@ def _get_handler_level(name):
 
 
 def timing(operation, *, args_idx=()):
-    timer_logger = logging.getLogger('taro.timer')
+    timer_logger = logging.getLogger('runcore.timer')
 
     def decorator(func):
 

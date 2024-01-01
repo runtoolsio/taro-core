@@ -7,14 +7,14 @@ level = "warn"
 
 [log.file]
 level = "info"
-# path = "~/.cache/taro/taro.log"
+# path = "~/.cache/runcore/runcore.log"
 
 [persistence]
 enabled = true
 type = "sqlite"
 max_records = -1
 max_age = "" #ISO 8601 duration format
-# database = "~/.local/share/taro/jobs.db"
+# database = "~/.local/share/runcore/jobs.db"
 
 [plugins]
 enabled = false

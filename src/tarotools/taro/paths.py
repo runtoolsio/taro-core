@@ -17,11 +17,11 @@ from typing import Generator, List
 
 from tarotools.taro.common import ConfigFileNotFoundError
 
-CONFIG_DIR = 'taro'
-CONFIG_FILE = 'taro.toml'
+CONFIG_DIR = 'runcore'
+CONFIG_FILE = 'runcore.toml'
 JOBS_FILE = 'jobs.yaml'
 _HOSTINFO_FILE = 'hostinfo'
-_LOG_FILE = 'taro.log'
+_LOG_FILE = 'runcore.log'
 
 
 def _is_root():
@@ -113,8 +113,8 @@ def xdg_config_dirs() -> List[Path]:
 
 def log_file_path(create: bool) -> Path:
     """
-    1. Root user: /var/log/taro/{log-file}
-    2. Non-root user: ${XDG_CACHE_HOME}/taro/{log-file} or default to ${HOME}/.cache/taro
+    1. Root user: /var/log/runcore/{log-file}
+    2. Non-root user: ${XDG_CACHE_HOME}/runcore/{log-file} or default to ${HOME}/.cache/runcore
 
     :param create: create path directories if not exist
     :return: log file path
@@ -130,9 +130,9 @@ def log_file_path(create: bool) -> Path:
             path = home / '.cache'
 
     if create:
-        os.makedirs(path / 'taro', exist_ok=True)
+        os.makedirs(path / 'runcore', exist_ok=True)
 
-    return path / 'taro' / 'taro.log'
+    return path / 'runcore' / 'runcore.log'
 
 
 """
@@ -155,8 +155,8 @@ https://unix.stackexchange.com/questions/313036/is-a-subdirectory-of-tmp-a-suita
 
 def socket_dir(create: bool) -> Path:
     """
-    1. Root user: /run/taro
-    2. Non-root user: /tmp/taro_${USER} (An alternative may be: ${HOME}/.cache/taro)
+    1. Root user: /run/runcore
+    2. Non-root user: /tmp/taro_${USER} (An alternative may be: ${HOME}/.cache/runcore)
 
     TODO taro_${USER} should be unique to prevent denial of service attempts:
 
@@ -166,7 +166,7 @@ def socket_dir(create: bool) -> Path:
     """
 
     if _is_root():
-        path = Path('/run/taro')
+        path = Path('/run/runcore')
     else:
         path = Path(f"/tmp/taro_{getpass.getuser()}")
 
@@ -178,8 +178,8 @@ def socket_dir(create: bool) -> Path:
 
 def socket_path(socket_name: str, create: bool) -> Path:
     """
-    1. Root user: /run/taro/{socket-name}
-    2. Non-root user: /tmp/taro_${USER}/{socket-name} (An alternative may be: ${HOME}/.cache/taro/{socket-name})
+    1. Root user: /run/runcore/{socket-name}
+    2. Non-root user: /tmp/taro_${USER}/{socket-name} (An alternative may be: ${HOME}/.cache/runcore/{socket-name})
 
     :param socket_name: socket file name
     :param create: create path directories if not exist
@@ -199,7 +199,7 @@ def socket_files(file_extension: str) -> Generator[Path, None, None]:
 
 def lock_dir(create: bool) -> Path:
     """
-    1. Root user: /run/lock/taro
+    1. Root user: /run/lock/runcore
     2. Non-root user: /tmp/taro_${USER}
 
     :param create: create path directories if not exist
@@ -208,7 +208,7 @@ def lock_dir(create: bool) -> Path:
     """
 
     if _is_root():
-        path = Path('/run/lock/taro')
+        path = Path('/run/lock/runcore')
     else:
         path = Path(f"/tmp/taro_{getpass.getuser()}")
 
@@ -220,7 +220,7 @@ def lock_dir(create: bool) -> Path:
 
 def lock_path(lock_name: str, create: bool) -> Path:
     """
-    1. Root user: /run/lock/taro/{lock-name}
+    1. Root user: /run/lock/runcore/{lock-name}
     2. Non-root user: /tmp/taro_${USER}/{lock-name}
 
     :param lock_name: socket file name
@@ -234,21 +234,21 @@ def lock_path(lock_name: str, create: bool) -> Path:
 
 def sqlite_db_path(create: bool) -> Path:
     """
-    1. Root user: /var/lib/taro/{db-file}
-    2. Non-root user: ${XDG_DATA_HOME}/taro/{db-file} or default to ${HOME}/.local/share/taro
+    1. Root user: /var/lib/runcore/{db-file}
+    2. Non-root user: ${XDG_DATA_HOME}/runcore/{db-file} or default to ${HOME}/.local/share/runcore
 
     :param create: create path directories if not exist
     :return: db file path
     """
 
     if _is_root():
-        path = Path('/var/lib/taro')
+        path = Path('/var/lib/runcore')
 
     elif os.environ.get('XDG_DATA_HOME'):
-        path = Path(os.environ['XDG_DATA_HOME']) / 'taro'
+        path = Path(os.environ['XDG_DATA_HOME']) / 'runcore'
     else:
         home = Path.home()
-        path = home / '.local' / 'share' / 'taro'
+        path = home / '.local' / 'share' / 'runcore'
 
     if create:
         path.mkdir(parents=True, exist_ok=True)

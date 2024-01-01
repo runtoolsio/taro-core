@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="taro",
+    name="runcore",
     version="0.10.1",
     author="Stan Svec",
     author_email="dev@stansvec.com",
@@ -24,7 +24,7 @@ setuptools.setup(
         "Operating System :: POSIX :: Linux",
     ],
     python_requires='>=3.8',
-    packages=find_packages(exclude=("test*",)) + find_namespace_packages(include=("taro.jobs.db",)),
+    packages=find_packages(exclude=("test*",)) + find_namespace_packages(include=("runcore.jobs.db",)),
     install_requires=[
         "PyYAML>=5.1.2",
         "pypager>=3.0.0",
@@ -36,12 +36,12 @@ setuptools.setup(
         "python-daemon>=2.3.0",
     ],
     package_data={
-        'taro': ['config/*.yaml'],
+        'runcore': ['config/*.yaml'],
         'taros': ['config/*.yaml'],
     },
     entry_points={
         "console_scripts": [
-            "taro = taroapp:main_cli",
+            "runcore = taroapp:main_cli",
             "taros = taros:main_cli",
         ]
     },

@@ -64,7 +64,7 @@ class JobRepositoryFile(JobRepository):
         return [Job(j.get('id'), j.get('properties')) for j in jobs]
 
     def reset(self, overwrite: bool):
-        # TODO Create `taro config create --jobs` command for this
+        # TODO Create `runcore config create --jobs` command for this
         path = self.path or (paths.taro_config_file_search_path(exclude_cwd=True)[0] / paths.JOBS_FILE)
         if not os.path.exists(path) or overwrite:
             pass

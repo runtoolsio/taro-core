@@ -16,7 +16,7 @@ This module consists of:
         a) A `load_*` method is invoked.
         b) The global persistence is accessed.
     Modules providing a `create_persistence` function, which returns a class adhering to the contract,
-    are discovered using the conventional package name pattern: `tarotools.taro.db.{persistence_type}`.
+    are discovered using the conventional package name pattern: `runtoolsio.runcore.db.{persistence_type}`.
 
 - Global persistence:
     This module itself implements the persistence contract, meaning it provides the contract methods
@@ -29,9 +29,10 @@ This module consists of:
 
 import importlib
 import pkgutil
-import sys
 from enum import Enum
 from typing import List
+
+import sys
 
 from tarotools import taro
 from tarotools.taro import paths, db

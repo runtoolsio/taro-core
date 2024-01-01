@@ -19,7 +19,7 @@ can assist in this process.
 
 Plugin Location:
 ----------------
-By default, the `load_modules` function locates modules in the `tarotools.plugins` namespace subpackage. More details
+By default, the `load_modules` function locates modules in the `runtoolsio.plugins` namespace subpackage. More details
 are available in the official documentation:
 https://packaging.python.org/en/latest/guides/creating-and-discovering-plugins/#using-namespace-packages
 
@@ -156,7 +156,7 @@ def load_modules(modules, *, package=tarotools.plugins) -> Dict[str, ModuleType]
 
     Args:
         modules (List[str]): Modules where plugins are defined.
-        package (ModuleType, optional): Base package for plugins. Defaults to `tarotools.plugins` namespace sub-package.
+        package (ModuleType, optional): Base package for plugins. Defaults to `runtoolsio.plugins` namespace sub-package.
     """
 
     if not modules:

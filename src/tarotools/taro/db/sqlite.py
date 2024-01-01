@@ -1,5 +1,5 @@
 """
-Persistence storage implementation using SQLite. See `tarotools.taro.persistence` module doc for much more details.
+Persistence storage implementation using SQLite. See `runtoolsio.runcore.persistence` module doc for much more details.
 """
 
 import datetime
